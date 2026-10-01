@@ -498,12 +498,7 @@
       }).catch(function(){btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast(T('or.err'),true)});
     };
   }
-  /* v1.0.5: десктоп — екранът с кутиите на един екран: ако съдържанието е по-високо от прозореца, zoom на .wrap (до 0.72) */
-  function fitDesktop(){var wrap=root.querySelector('.wrap');if(!wrap)return;wrap.style.zoom='';wrap.classList.remove('fit');
-    if(window.innerWidth<1000||S.screen!==1||(A.theme&&A.theme.fit_desktop===false))return;
-    var need=root.scrollHeight+root.getBoundingClientRect().top+window.scrollY,have=window.innerHeight;
-    if(need<=have)return;var z=Math.max(.72,Math.min(1,have/need));wrap.classList.add('fit');wrap.style.zoom=String(Math.floor(z*100)/100)}
-  function render(){renderS1();renderS2();renderS4();renderS5();fitDesktop();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  function render(){renderS1();renderS2();renderS4();renderS5();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
