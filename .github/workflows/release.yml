@@ -1,0 +1,78 @@
+# Автоматичен Release: при всеки push в main чете версията от ansa-promo.php.
+# Ако таг vX.Y.Z за нея още няма — прави ansa-promo.zip (папка ansa-promo/
+# вътре, както WP го очаква), създава тага и Release-а. Плъгинът на сайта вижда
+# новия release и предлага Update (или се обновява сам с auto-updates).
+# Т.е. „нова версия“ = вдигни версията в ansa-promo.php и push-ни. Нищо друго.
+# След release-а пингва сайта (LOGADOR GitHub Updater 1.1+ webhook) и той се обновява веднага —
+# нужни са secrets LOGADOR_HOOK_URL и LOGADOR_HOOK_SECRET (Settings → GitHub ъпдейти на сайта).
+# Без тях само предупреждава — сайтът вижда версията при следващата си проверка.
+name: release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: release
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Read version
+        id: v
+        run: |
+          VER=$(grep -m1 -E '^\s*\*\s*Version:' ansa-promo.php | sed -E 's/.*Version:\s*//; s/\s+$//')
+          CONST=$(grep -m1 -E "define\(\s*'ANSA_PROMO_VER'" ansa-promo.php | sed -E "s/.*'ANSA_PROMO_VER'[^']*'([0-9.]+)'.*/\1/")
+          echo "header=$VER const=$CONST"
+          [ -n "$VER" ] && [ "$VER" = "$CONST" ] || { echo "::error::Version: ($VER) и ANSA_PROMO_VER ($CONST) не съвпадат"; exit 1; }
+          if git ls-remote --exit-code --tags origin "v$VER" >/dev/null 2>&1; then echo "exists=1" >> "$GITHUB_OUTPUT"; echo "Таг v$VER вече има — няма нов release"; else echo "exists=0" >> "$GITHUB_OUTPUT"; fi
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+      - name: PHP lint
+        if: steps.v.outputs.exists == '0'
+        run: |
+          sudo apt-get install -y -qq php-cli >/dev/null
+          for f in $(find . -name '*.php' -not -path './.git/*'); do php -l "$f" >/dev/null || exit 1; done
+      - name: Build zip
+        if: steps.v.outputs.exists == '0'
+        run: |
+          mkdir -p build/ansa-promo
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
+          cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
+          unzip -l ansa-promo.zip | tail -1
+      - name: Release v${{ steps.v.outputs.ver }}
+        if: steps.v.outputs.exists == '0'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.ver }}
+          target_commitish: ${{ github.sha }}
+          name: v${{ steps.v.outputs.ver }}
+          files: ansa-promo.zip
+          generate_release_notes: true
+      - name: Ping сайта → обнови се сега
+        if: steps.v.outputs.exists == '0'
+        env:
+          URLS: ${{ secrets.LOGADOR_HOOK_URL }}
+          SECRET: ${{ secrets.LOGADOR_HOOK_SECRET }}
+          REPO: ${{ github.repository }}
+          VER: ${{ steps.v.outputs.ver }}
+        run: |
+          if [ -z "$URLS" ] || [ -z "$SECRET" ]; then
+            echo "::warning::Няма secrets LOGADOR_HOOK_URL / LOGADOR_HOOK_SECRET — сайтът ще види v$VER при следващата си проверка (до 6 ч + WP крон). Вземи ги от Settings → GitHub ъпдейти на сайта."
+            exit 0
+          fi
+          sleep 5
+          fail=0
+          for URL in $(printf '%s' "$URLS" | tr ',;' '  '); do
+            ok=0
+            for i in 1 2 3; do
+              echo "→ $URL (опит $i)"
+              out=$(curl -sS -m 280 -X POST "$URL" -H "X-Logador-Secret: $SECRET" --data-urlencode "repo=$REPO" -w '\nHTTP %{http_code}' || true)
+              echo "$out"
+              case "$out" in *"HTTP 200"*) ok=1; break;; esac
+              sleep $((i*20))
+            done
+            [ "$ok" = 1 ] || { echo "::error::$URL не се обнови до v$VER — виж отговора горе (auto-updates за плъгина трябва да са включени)."; fail=1; }
+          done
+          exit $fail
