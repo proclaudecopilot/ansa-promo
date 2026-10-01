@@ -54,3 +54,46 @@ body.admin-bar .ansa-promo{--ansa-promo-top:32px}
 body.ansa-promo-fullscreen{margin:0;padding:0!important;background:var(--cream,#faf3ec)}
 body.ansa-promo-fullscreen .ansa-promo{min-height:100vh}
 body.ansa-promo-page #wpadminbar{display:none}
+
+/* ── 5 · десктоп: екранът с кутиите на един екран без скрол (v1.0.5, искане на човека) ──
+   Контейнерът се разширява до 1600px, вертикалните отстъпи се свиват; ако пак не се събира, promo.js
+   прилага zoom на .wrap (fitDesktop), така че всичко да влезе във височината на прозореца. */
+@media(min-width:1000px){
+.ansa-promo .wrap{max-width:min(1600px,96vw);padding-bottom:16px}
+.ansa-promo .wrap.fit{padding-bottom:8px}
+.ansa-promo .hdr{padding:5px 14px}
+.ansa-promo .yban{padding:9px 16px;margin:10px 0 8px;gap:12px}
+.ansa-promo .yban i{font-size:30px}
+.ansa-promo .yban b{font-size:16px;line-height:1.2}
+.ansa-promo .yban small.lg{font-size:12px;line-height:1.25}
+.ansa-promo #apS1 h1{font-size:22px;margin:6px 0 2px}
+.ansa-promo #apS1 .lead{font-size:13.5px;margin-bottom:8px}
+.ansa-promo .boxes{gap:12px}
+.ansa-promo .box{padding:12px 14px 12px;border-radius:16px}
+.ansa-promo .brib{margin:-12px -14px 8px;padding:6px 14px}
+.ansa-promo .brib b{font-size:18px}
+.ansa-promo .bhd{margin-bottom:6px}
+.ansa-promo .bico{font-size:28px;width:40px;height:40px}
+.ansa-promo .bname{font-size:19px}
+.ansa-promo .brw{gap:6px}
+.ansa-promo .bry,.ansa-promo .cosmhl{padding:8px 10px;gap:10px;border-radius:12px}
+.ansa-promo .bry i,.ansa-promo .cosmhl i{width:40px;height:40px;font-size:22px}
+.ansa-promo .bry b,.ansa-promo .cosmhl b{font-size:13.5px;line-height:1.2}
+.ansa-promo .bry small,.ansa-promo .cosmhl small{font-size:11px;line-height:1.25}
+.ansa-promo .cpx{padding:3px 8px;margin-top:4px}
+.ansa-promo .cpx b{font-size:18px}
+.ansa-promo .brs{gap:5px}
+.ansa-promo .brc{padding:4px 8px;font-size:11.5px}
+.ansa-promo .bunlock{padding:8px 10px;margin-top:6px;font-size:12.5px;line-height:1.3}
+.ansa-promo .bunlock small{font-size:11px}
+.ansa-promo .bsave{margin-top:6px;padding:6px;font-size:13px}
+.ansa-promo .bfrom{margin:4px 0;font-size:12px}
+.ansa-promo .box .cta{min-height:46px;font-size:15px;margin-top:4px}
+.ansa-promo .box .bnote{display:none}
+.ansa-promo .bnote-m{display:none}
+.ansa-promo .guarl{margin-top:8px;font-size:12px;padding:6px 0}
+.ansa-promo .foot{margin-top:6px;font-size:11px;padding:4px 0}
+}
+
+/* фонът на цялата промо страница е кремав и под играта (body класът идва от Frontend::body_class) */
+body.ansa-promo-page{background:#faf3ec}
