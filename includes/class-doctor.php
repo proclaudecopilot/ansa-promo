@@ -5,6 +5,7 @@
  * Фаза 0: env() — състоянието на средата (същите редове печата и snippets/phase-0.php,
  * който обаче е самостоятелен, за да работи и ако плъгинът не се зареди).
  * Фаза 2 добавя checks() — publish gate-а (§7 от плана).
+ * @since 1.0.2 env() знае за чернова/продукти/регистър/leads.
  *
  * @package AnsaPromo
  * @since 1.0.0
@@ -44,7 +45,11 @@ final class Doctor {
 		$add( 'DB схема', (string) get_option( Schema::OPT_DB_VER, '—' ) . ' (очаквана ' . ANSA_PROMO_DB_VER . ')', 'info' );
 
 		$store = get_option( Plugin::OPTION );
-		$add( 'Option ' . Plugin::OPTION, is_array( $store ) ? 'има · ключове: ' . implode( ', ', array_keys( $store ) ) . ( isset( $store['version'] ) ? ' · version=' . $store['version'] : '' ) : 'няма (Фаза 1 я създава)', 'info' );
+		$add( 'Option ' . Plugin::OPTION, is_array( $store ) ? 'има · ключове: ' . implode( ', ', array_keys( $store ) ) . ' · version=' . (int) Config::version() . ' · history=' . count( Config::history() ) : 'няма (seed-ва се при първо зареждане)', is_array( $store ) ? 'ok' : 'warn' );
+		$draft = Config::get_draft(); $live = Frontend::products( $draft );
+		$add( 'Продукти в черновата', count( $draft['products'] ) . ' · с WC продукт: ' . count( array_filter( $draft['products'], function ( $p ) { return $p['product_id'] > 0; } ) ) . ' · живи (цена>0): ' . count( $live ) . ( $draft['page_id'] ? ' · page_id=' . $draft['page_id'] : ' · БЕЗ страница' ), count( $live ) ? 'ok' : 'warn' );
+		$add( 'Копи-регистър', count( Copy::defaults() ) . ' ключа · override-и в черновата: ' . count( $draft['copy'] ), 'info' );
+		$add( 'Leads', Leads::count() . ' реда', 'info' );
 
 		$add( 'LOGADOR GitHub Updater', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? LOGADOR_GH_UPDATER_VERSION . ( class_exists( 'LOGADOR_GitHub_Updater' ) && \LOGADOR_GitHub_Updater::token() ? ' · token има' : ' · БЕЗ token' ) : 'не е зареден (mu-plugin)', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? 'ok' : 'warn' );
 
@@ -70,11 +75,12 @@ final class Doctor {
 		return $rows;
 	}
 
-	public static function pages_with_shortcode() {
+	/** $structured=true → [{id,title,status,url}], иначе списък от редове за отчета. */
+	public static function pages_with_shortcode( $structured = false ) {
 		global $wpdb;
-		$ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ('page','post') AND post_status IN ('publish','draft','private') AND post_content LIKE '%[ansa_promo%' ORDER BY ID DESC LIMIT 10" );
+		$ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ('page','post') AND post_status IN ('publish','draft','private','pending') AND post_content LIKE '%[ansa_promo%' ORDER BY ID DESC LIMIT 10" );
 		$out = array();
-		foreach ( $ids as $id ) { $out[] = '#' . $id . ' „' . get_the_title( $id ) . '“ (' . get_post_status( $id ) . ') ' . get_permalink( $id ); }
+		foreach ( $ids as $id ) { $out[] = $structured ? array( 'id' => (int) $id, 'title' => get_the_title( $id ), 'status' => get_post_status( $id ), 'url' => get_permalink( $id ) ) : '#' . $id . ' „' . get_the_title( $id ) . '“ (' . get_post_status( $id ) . ') ' . get_permalink( $id ); }
 		return $out;
 	}
 }

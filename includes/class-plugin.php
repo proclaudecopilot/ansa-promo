@@ -2,7 +2,7 @@
 /**
  * ansa™ Промо — boot на плъгина.
  *
- * Фаза 0: таблици, празен админ екран, shortcode-заместител. Нищо друго не се закача.
+ * Фаза 0: таблици, админ екран, shortcode. Фаза 1: конфиг, копи-регистър, каталог, фронт (порт v73), leads, runtime ajax.
  *
  * @package AnsaPromo
  * @since 1.0.0
@@ -31,8 +31,16 @@ final class Plugin {
 	/** Извиква се на plugins_loaded (5), само при наличен WooCommerce. */
 	public function boot() {
 		Schema::maybe_upgrade();
+		Catalog::register();
 		Frontend::register();
+		Leads::register();
 		if ( is_admin() ) { Admin::register(); }
+		add_action( 'init', array( __CLASS__, 'cron' ) );
+		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
+	}
+
+	public static function cron() {
+		if ( ! wp_next_scheduled( 'ansa_promo_daily' ) ) { wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ansa_promo_daily' ); }
 	}
 
 	/** register_activation_hook — таблиците + маркер кога е активиран. */
@@ -42,6 +50,8 @@ final class Plugin {
 			add_option( 'ansa_promo_activated_at', current_time( 'mysql' ), '', false );
 		}
 	}
+
+	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); }
 
 	/* ── Shrine (съжителство) ───────────────────────────────────── */
 

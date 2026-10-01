@@ -38,7 +38,7 @@ jobs:
         if: steps.v.outputs.exists == '0'
         run: |
           mkdir -p build/ansa-promo
-          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude 'tests' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
           cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
           unzip -l ansa-promo.zip | tail -1
       - name: Release v${{ steps.v.outputs.ver }}

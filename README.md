@@ -14,21 +14,30 @@ GitHub Action-ът (`.github/workflows/release.yml`) прави `php -l`, `ansa-
 ```
 ansa-promo.php          header, константи (ANSA_PROMO_VER, ANSA_PROMO_PLUGIN_VER), autoloader AnsaPromo\, cache flush
                         при смяна на версията, HPOS compat, boot на plugins_loaded (5), mu-updater инсталатор
-includes/class-plugin.php    boot, activate, Shrine helpers (shrine_version, shrine_promo_module_loaded, shortcode_owner)
+includes/class-plugin.php    boot, activate/deactivate, cron, Shrine helpers (shrine_version, shrine_promo_module_loaded, shortcode_owner)
 includes/class-schema.php    таблици {prefix}ansa_promo_tickets / _leads (dbDelta при активация и при смяна на ANSA_PROMO_DB_VER)
-includes/class-frontend.php  [ansa_promo] (init 20 — печели над Shrine дори без guard)
-includes/class-admin.php     меню „🎁 ansa Промо“ → екран „Състояние“
+includes/class-config.php    option ansa_promo_store {draft, published, published_at, version, history[10]}; normalize; publish/discard/restore; export/import
+includes/class-copy.php      копи-регистърът (мокъп v73): groups → keys → defaults; effective/diff/validate/render; vars()
+includes/class-catalog.php   WC адаптери: wc_line (вариация „1 брой“), search, find_by_name; runtime transient + purge
+includes/class-frontend.php  [ansa_promo] (init 20), enqueue, runtime JSON (window.AnsaPromoRuntime), ?ansa_promo=draft, noindex, ajax runtime
+includes/class-leads.php     gate имейл → таблица leads (ajax ansa_promo_lead, nonce + rate limit), cron 180 дни
+includes/class-seed.php      началната чернова от мокъпа (продукти, FIT, проблеми); product_id по име в WC
+includes/class-admin.php     меню „🎁 ansa Промо“: Състояние · 🧰 Инструменти (страница, игра, срок, gate, публикуване, история, seed) · JSON
 includes/class-doctor.php    env() — редовете на екрана „Състояние“; Фаза 2 добавя checks()
 includes/mu/                 LOGADOR GitHub Updater (копира се в mu-plugins)
+assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
+assets/promo.js              порт на app.js от мокъпа — PROD/BOXES/копи от runtime JSON, всеки текст през T(key)
+templates/page.php           скелетът (id-та apS1/apOv/… — мокъп s1/ov/… с префикс ap)
+tests/                       wpstub.php + harness/ (статична страница без WP + Playwright скрийншоти/проверки за {{ }}, undefined, JS грешки)
 snippets/phase-N.php         Code Snippet за всяка фаза — self-check на живия сайт, човекът праща отчета
-docs/                        планът + мокъпът (не влизат в zip-а)
+docs/                        планът + мокъпът + port-css.py + shots/ (не влизат в zip-а)
 ```
 
 ## Фази
 | Фаза | Версия | Какво | Снипет |
 |------|--------|-------|--------|
 | 0 | 1.0.0 · 1.0.1 | репо, скелет, updater, таблици, guard в Shrine 6.19.22; 1.0.1 = LOGADOR updater 1.1.2 (поглъща форка на Partner) | `snippets/phase-0.php` — отчет за средата |
-| 1 | 1.0.2 | конфиг + копи-регистър + порт на мокъп v73 | — |
+| 1 | 1.0.2 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax | `snippets/phase-1.php` |
 | 2 | 1.0.3 | визуалният редактор | — |
 | 3 | 1.1.0 | количка и чекаут | — |
 | 4 | 1.2.0 | награди: билети, QR, REST, ваучер, книга | — |
@@ -46,3 +55,16 @@ docs/                        планът + мокъпът (не влизат в
 На ansa.bg има два форка на updater-а: LOGADOR (Shrine, Промо, Proof) и „proclaudecopilot“ (ANSA Partner 5.8.5, `proclaudecopilot-github-updater.php`, клас `PCC_GitHub_Updater`, страница `pcc-github`, собствен token option; при инсталация трие `logador-github-updater.php`). Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки. LOGADOR е по-новата линия (webhook, 29.09 следобед; D8 от плана) и затова печели: 1.1.2 дефинира guard-константата на форка (mu-plugins се зареждат по азбучен ред, l < p), той се връща на първия си ред; `page=pcc-github` се пренасочва към нашата страница. Token-ът се въвежда на страницата на LOGADOR (форкът го пази в свой option, който не четем). **Истинската поправка е в репото на Partner** (следващ release на affiliate-portal-ansa да носи LOGADOR 1.1.2 вместо форка) — иначе при ъпдейт на Partner с PCC > 1.0.2 инсталаторът му ще изтрие LOGADOR файла за една заявка (Промо го връща в същата заявка).
 
 **Отворени въпроси (с дефолт):** (P0) репото е `proclaudecopilot/ansa-promo` — потвърдено от човека. Останалите (§9 от плана) се питат във фазата, която ги иска.
+
+### Фаза 1 (1.0.2) — конфиг · копи-регистър · порт на мокъп v73
+**Какво има:** `Config` (чернова/публикувано/история 10/export/import), `Copy` (300 ключа в 13 групи, плейсхолдъри, validate), `Catalog` (wc_line по правилото „1 брой“, runtime transient 5 мин + purge при продукт/публикуване), `Frontend` (скелет + inline runtime + promo.css/js; `?ansa_promo=draft`, `&ansa_editor=1`; noindex при чернова/изключена игра; ajax `ansa_promo_runtime` за кеширани страници), `Leads` (ajax `ansa_promo_lead`, nonce + 10/мин/IP, hook `ansa_promo_lead_captured`, cron 180 дни), `Seed` (черновата от мокъпа при първо зареждане; product_id по име в WC), 🧰 Инструменти + JSON таб. promo.js: порт на v73 с T() навсякъде, sessionStorage на кутията, gate веднъж на сесия, `window.AnsaPromo.scenario()` + postMessage copy/cfg/scenario за редактора (Фаза 2), „Завърши поръчката“ → тост `ms.preview` (cart=false до Фаза 3).
+
+**Какво доказва Snippet 1:** option-ът и черновата (id, кутии, награди, order), всеки продукт → WC ред (id, вариация, цена, наличност, снимка), регистър vs. ключовете в promo.js (липсващи = 0), невалидни плейсхолдъри = 0, забранени фрази (D11/D4) = 0, кирилица в JS само граматични помощници, размер на runtime JSON, анонимен fetch на страницата (root div, JSON, css/js, noindex, TranslatePress следи), `ansa_promo_runtime` като анонимен, `ansa_promo_lead` с лош nonce → 403, cron насрочен.
+
+**Офлайн доказателство (tests/harness):** Playwright на 390×780 и 1280×900 през gate → кутии → пълнене → честито → поръчка → без UTM → малка кутия → табло → „сигурна ли си“ → смяна надолу → продукт → селектор: 0 JS грешки, 0 непопълнени `{{ }}`, 0 undefined/NaN. Скрийншоти: `docs/shots/phase-1/`.
+
+**Решения на билдъра:** `order` е `{desktop:[s,l,m], mobile:[l,m,s]}` (мобилният ред е и в CSS на мокъпа, JS-ът го налага inline); `bgn {show, rate}` за „(… лв.)“ до крайната сума (мокъпът го има); продуктът има поле `pack` („60 капсули · за 30 дни“) с fallback към `prod.pack`; `gate.consent_default`; shortcode-ът на изключена игра печата „скоро“ + линк към черновата за админи; текстовете за билетите казват „QR код в пратката“ (D4), не „скреч карта“ (мокъпът); сетът навсякъде е „Новият козметичен сет на ansa™ · 5 уникални продукта на стойност €129. Стартира през 2027 година.“ (D11); `rw.info.book` казва „по имейл“ (D6), не „печатна книга“.
+
+**Какво човекът трябва да види (единствената визуална фаза):** `/страницата/?ansa_promo=draft&utm_content=sakura` на телефон и десктоп — gate → три кутии → „Напълни кутията си“ → „Честито“ → поръчка (бутонът дава тост „Фаза 1“). Казва „Браво“ или какво не е наред.
+
+**Въпроси (с дефолт, виж §9):** (P1) снимки — дефолт: снимката на WC продукта (поле `img` в продукта може да я замени с attachment id); (P1) арт за яхта/сет/книга — дефолт: емоджитата от мокъпа, сменяеми в ⚙️ Двигател (Фаза 2).
