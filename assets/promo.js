@@ -78,6 +78,9 @@
   function boxVars(b){return {box:esc(b.name),box_l:esc(b.name.toLowerCase()),box_ic:b.ic,packs:b.packs,opk:opk(b.packs),pct:b.pct,tickets:tixOf(b),shans:shans(tixOf(b)),rest:b.packs-1,opk_rest:opk(b.packs-1),cosm_pay:b.cosm_pay!=null?money(b.cosm_pay):'',save:m0(boxSaveMax(b)),produkt:b.packs===1?'продукт':'продукти'}}
   /* козметичният сет: винаги зачертана стойност + „величествена“ цена (pill, никога inline) */
   function cosmPrice(r,big){if(r!=='cosm1'&&r!=='cosm50')return '';var b=boxOf(r==='cosm1'?'l':'m');if(!b||b.cosm_pay==null)return '';return '<span class="cpx'+(r==='cosm1'?' one':' half')+(big?' big':'')+'"><small'+ck('cpx.label')+'>'+T('cpx.label')+'</small><s>€'+COSM+'</s><b>€'+money(b.cosm_pay)+'</b></span>'}
+  /* v1.0.3: бадж с отстъпката + намалена/редовна цена в редовете на пълненето (искане на човека; не е в мокъп v73) */
+  function fprc(pr,b){return '<span class="fpct">−'+b.pct+'%</span>'}
+  function fprice(pr,b){return '<span class="fprc"><b>'+m(r2(pr.price*(1-b.pct/100)))+'</b><s>'+m(pr.price)+'</s></span>'}
   function tgtVars(t){var d=t.packs-(S.box!==null?BX().packs:0);return {box_t:esc(t.name),box_t_l:esc(t.name.toLowerCase()),box_t_ic:t.ic,pct_t:t.pct,save_t:m0(boxSaveMax(t)),s_box_t:sPrep(t.name,true),diff:d,prod_diff:prodw(d),opk_diff:opk(d),delyat:d===1?'дели':'делят'}}
 
   /* ── имейл-попъп (v73 „g2“): веднъж на сесия, може да се пропусне ── */
@@ -232,7 +235,7 @@
     var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+b.ic+' '+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
       +'<div class="f2box"><p class="f2intro"'+ck('fill.intro')+'>'+T('fill.intro',bv)+'</p>'+mix+'</div>'
       +'<div class="fslots" id="fSlots"></div>'
-      +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('fill.more')+'>'+T('fill.more')+'</button></div><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div>'}).join('')+'</div>'
+      +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small>'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more')+'>'+T('fill.more')+'</button></div><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div>'}).join('')+'</div>'
       +'<button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
     var mob=MOB();
     if(mob){
@@ -242,7 +245,7 @@
       body='<div class="mfh"><div class="mft"><span class="mfi">'+b.ic+'</span><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.pct')+'>'+T('mfill.pct',bv)+'</small></div><button class="mfsw" id="fBack"'+ck('mfill.sw')+'>'+T('mfill.sw')+'</button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
         +'<p class="mfin"'+ck('mfill.intro')+'>'+T('mfill.intro',Object.assign({same:P>1?T('mfill.same'):''},bv))+'</p>'
         +'<div class="mfg">'+gl.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>'
-        +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button></div><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div>'}).join('')+'</div>'
+        +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small>'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button></div><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div>'}).join('')+'</div>'
         +'<div class="mff"><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');

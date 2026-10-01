@@ -52,8 +52,15 @@ final class Config {
 			'checkout'  => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true, 'consent_default' => true ),
 			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
+			/* v1.0.3: страницата на цял екран — темплейтът „ansa™ Промо — цял екран“ + скриване на елементи на темата по селектори */
+			'theme'     => array( 'hide' => true, 'selectors' => self::default_hide_selectors() ),
 			'copy'      => array(),
 		);
+	}
+
+	/** Хедър/футър/плаващи бутони на OceanWP, Elementor, FunnelKit Cart, Claspo — скриват се на промо страницата. */
+	public static function default_hide_selectors() {
+		return "#site-header\n#site-header-sticky-wrapper\n.oceanwp-mobile-menu-icon\n#footer\n#site-footer\n.site-footer\n.page-header\nheader.elementor-location-header\nfooter.elementor-location-footer\n[data-elementor-type=\"header\"]\n[data-elementor-type=\"footer\"]\n.fkcart-floating-toggler\n#fkcart-floating-toggler\n.fkcart-toggler\n#scroll-top\n.claspo-widget\n#elementor-popup-modal";
 	}
 
 	public static function product_defaults() {
@@ -123,6 +130,7 @@ final class Config {
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
 		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] );
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
+		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
 		return $out;
 	}

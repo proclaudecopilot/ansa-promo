@@ -78,7 +78,7 @@ def main(path):
            ", 1:1; всеки селектор е под .ansa-promo).\n   Генериран от " + path +
            " с docs/port-css.py — не се редактира на ръка, редактира се мокъпът. */\n")
     tail = ("\n/* ── обвивка в WP: фонът не е на body, а на root-а ── */\n"
-            ".ansa-promo{position:relative;z-index:0;min-height:60vh}\n"
+            ".ansa-promo{position:relative;min-height:60vh}\n"
             ".ansa-promo::before{position:absolute}\n")
     open('assets/promo.css', 'w', encoding='utf-8').write(hdr + res + tail)
     print('rules', res.count('{'), 'from', css.count('{'))

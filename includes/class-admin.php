@@ -21,6 +21,17 @@ final class Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( ANSA_PROMO_FILE ), array( __CLASS__, 'action_links' ) );
 		add_action( 'admin_post_ansa_promo_tools', array( __CLASS__, 'handle' ) );
+		add_action( 'wp_ajax_ansa_promo_admin_search', array( __CLASS__, 'ajax_search' ) );
+	}
+
+	/** Търсене на WC продукт по име (таб Продукти). */
+	public static function ajax_search() {
+		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
+		$q = sanitize_text_field( (string) wp_unslash( $_GET['q'] ?? '' ) );
+		$out = array();
+		if ( ctype_digit( $q ) ) { $wc = Catalog::wc_line( (int) $q ); if ( $wc['wc_name'] ) { $out[] = array( 'id' => (int) $q, 'name' => $wc['wc_name'], 'type' => $wc['variation_id'] ? 'variable' : 'simple', 'price' => $wc['price'], 'img' => $wc['img'] ); } }
+		foreach ( Catalog::search( $q, 10 ) as $r ) { $wc = Catalog::wc_line( $r['id'] ); $r['img'] = $wc['img']; $r['price'] = $wc['price']; $r['note'] = $wc['note']; $out[] = $r; }
+		wp_send_json_success( $out );
 	}
 
 	public static function menu() {
@@ -54,7 +65,21 @@ final class Admin {
 				$cfg['utm_param'] = sanitize_text_field( (string) wp_unslash( $_POST['utm_param'] ?? 'utm_content' ) );
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
 				$cfg['bgn']['show'] = ! empty( $_POST['bgn_show'] );
+				$cfg['theme']['hide'] = ! empty( $_POST['theme_hide'] ); $cfg['theme']['selectors'] = (string) wp_unslash( $_POST['theme_selectors'] ?? '' );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
+			case 'products':
+				$cfg = Config::get_draft(); $rows = (array) ( $_POST['p'] ?? array() ); $new = array();
+				foreach ( $rows as $r ) {
+					if ( ! is_array( $r ) || ! empty( $r['del'] ) ) { continue; }
+					$r = wp_unslash( $r ); $key = strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) ( $r['key'] ?? '' ) ) );
+					if ( '' === $key && '' === trim( (string) ( $r['name'] ?? '' ) ) ) { continue; }
+					$old = Config::product( $cfg, $key ) ?: Config::product_defaults();
+					foreach ( array( 'key', 'name', 'ph', 'gname', 'gsub', 'ds', 'desc', 'ing', 'who', 'rating', 'reviews', 'cat', 'pack' ) as $f ) { if ( isset( $r[ $f ] ) ) { $old[ $f ] = (string) $r[ $f ]; } }
+					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] );
+					if ( isset( $r['theme'] ) ) { $old['theme'] = array_map( 'trim', explode( ',', (string) $r['theme'] ) ); }
+					$new[] = $old;
+				}
+				$cfg['products'] = $new; Config::save_draft( $cfg ); $msg = 'Продуктите са записани в черновата (' . count( $new ) . ').'; break;
 			case 'publish':
 				$msg = Config::publish() ? 'Публикувано — версия ' . Config::version() . '.' : 'Няма какво да се публикува.'; break;
 			case 'discard':
@@ -82,7 +107,7 @@ final class Admin {
 		$col  = array( 'ok' => '#1a7f37', 'warn' => '#9a6700', 'bad' => '#cf222e', 'info' => '#57606a' );
 		$draft = Config::get_draft(); $pub = Config::get_published();
 		$page_url = $draft['page_id'] ? get_permalink( $draft['page_id'] ) : '';
-		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'json' => 'JSON' );
+		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'json' => 'JSON' );
 		?>
 		<div class="wrap">
 			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 1</small></h1>
@@ -111,6 +136,11 @@ final class Admin {
 						<tr><th>UTM параметър</th><td><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span></td></tr>
 						<tr><th>Имейл-попъп</th><td><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label></td></tr>
 						<tr><th>Лева в поръчката</th><td><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label></td></tr>
+						<tr><th>Цял екран</th><td>
+							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>
+							<label><input type="checkbox" name="theme_hide" value="1"<?php checked( $draft['theme']['hide'] ); ?>> 2) Скрий и тези елементи на темата/плъгините на промо страницата (един селектор на ред; работи и без темплейта):</label><br>
+							<textarea name="theme_selectors" rows="6" class="large-text code"><?php echo esc_textarea( $draft['theme']['selectors'] ); ?></textarea>
+						</td></tr>
 					</table>
 					<p><button class="button button-primary">💾 Запази черновата</button></p>
 				</form>
@@ -141,6 +171,58 @@ final class Admin {
 				<p class="description">Свързването ключ ↔ WC продукт и останалите полета са в ⚙️ Двигател (Фаза 2). Дотогава: таб JSON (полето <code>product_id</code>).</p>
 				<?php self::form_open( 'seed', 'tools', ' onsubmit="return confirm(\'Това презаписва продуктите, FIT и проблемите в черновата с тези от мокъпа. Страницата, текстовете, срокът и чекаутът остават. Продължавам?\')"' ); ?><button class="button">🌱 Направи продуктите наново от мокъпа (търси ги в WC по име)</button></form>
 				</div>
+			<?php elseif ( 'products' === $tab ) : ?>
+				<?php $plist = $draft['products']; $plist[] = array_merge( Config::product_defaults(), array( 'key' => '', 'name' => '', 'enabled' => true, '_new' => true ) ); ?>
+				<?php self::form_open( 'products', 'products', ' style="display:block;margin-top:14px" id="apProducts"' ); ?>
+					<p>Ключът е UTM стойността (<code>?<?php echo esc_html( $draft['utm_param'] ); ?>=ключ</code>). Снимката и цената идват от избрания WC продукт (при variable — вариацията „1 брой“); „Снимка (attachment id)“ я заменя. Последният ред е за нов продукт. Записва се в <b>черновата</b> — публикуваш от 🧰 Инструменти.</p>
+					<style>.ap-prod{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:10px 12px;margin-bottom:10px}.ap-prod .ap-row{display:grid;grid-template-columns:70px 110px 1fr 1fr 70px;gap:8px;align-items:end}.ap-prod .ap-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}.ap-prod label{font-size:11px;color:#50575e;display:block}.ap-prod input[type=text],.ap-prod input[type=number],.ap-prod textarea{width:100%}.ap-prod .ap-wc{display:flex;gap:6px;align-items:center}.ap-prod .ap-wc input{width:90px}.ap-prod .ap-res{position:absolute;z-index:10;background:#fff;border:1px solid #c3c4c7;box-shadow:0 4px 14px rgba(0,0,0,.12);max-height:260px;overflow:auto;min-width:320px}.ap-prod .ap-res button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:#fff;padding:6px 8px;cursor:pointer}.ap-prod .ap-res button:hover{background:#f0f6fc}.ap-prod .ap-res img{width:32px;height:32px;object-fit:contain}.ap-prod .ap-thumb{width:48px;height:48px;object-fit:contain;border:1px solid #dcdcde;border-radius:6px;background:#fff}.ap-prod details{margin-top:6px}.ap-prod summary{cursor:pointer;color:#2271b1;font-size:12px}</style>
+					<?php foreach ( $plist as $i => $p ) : $wc = $p['product_id'] ? Catalog::wc_line( $p['product_id'] ) : null; ?>
+					<div class="ap-prod"<?php echo ! empty( $p['_new'] ) ? ' style="border-style:dashed"' : ''; ?>>
+						<div class="ap-row">
+							<div><label>вкл.</label><input type="checkbox" name="p[<?php echo $i; ?>][enabled]" value="1"<?php checked( ! empty( $p['enabled'] ) ); ?>> <label style="display:inline">изтрий</label> <input type="checkbox" name="p[<?php echo $i; ?>][del]" value="1"></div>
+							<div><label>ключ (UTM)</label><input type="text" name="p[<?php echo $i; ?>][key]" value="<?php echo esc_attr( $p['key'] ); ?>" placeholder="<?php echo ! empty( $p['_new'] ) ? 'нов' : ''; ?>"></div>
+							<div><label>име на страницата</label><input type="text" name="p[<?php echo $i; ?>][name]" value="<?php echo esc_attr( $p['name'] ); ?>"></div>
+							<div style="position:relative"><label>WC продукт (търси по име или ID)</label><div class="ap-wc"><input type="number" name="p[<?php echo $i; ?>][product_id]" value="<?php echo (int) $p['product_id']; ?>" class="ap-pid"><input type="text" class="ap-q" placeholder="търси…" style="flex:1" autocomplete="off"><img class="ap-thumb" src="<?php echo esc_url( $wc && $wc['img'] ? $wc['img'] : '' ); ?>" alt="" <?php echo $wc && $wc['img'] ? '' : 'style="visibility:hidden"'; ?>></div><div class="ap-res" hidden></div><small class="ap-note"><?php echo $wc ? esc_html( ( $wc['ok'] ? $wc['wc_name'] . ' · €' . number_format( $wc['price'], 2, ',', '' ) . ( $wc['variation_id'] ? ' · вар.#' . $wc['variation_id'] : '' ) . ( $wc['stock'] ? '' : ' · НЕ Е НАЛИЧЕН' ) : 'ПРОБЛЕМ: ' . $wc['note'] ) ) : 'не е свързан — няма да се показва'; ?></small></div>
+							<div><label>емоджи</label><input type="text" name="p[<?php echo $i; ?>][ph]" value="<?php echo esc_attr( $p['ph'] ); ?>"></div>
+						</div>
+						<div class="ap-row2">
+							<div><label>категория (селектор)</label><input type="text" name="p[<?php echo $i; ?>][cat]" value="<?php echo esc_attr( $p['cat'] ); ?>"></div>
+							<div><label>кратко „за какво е“ (ds)</label><input type="text" name="p[<?php echo $i; ?>][ds]" value="<?php echo esc_attr( $p['ds'] ); ?>"></div>
+							<div><label>снимка (attachment id, по избор)</label><input type="number" name="p[<?php echo $i; ?>][img]" value="<?php echo (int) $p['img']; ?>"></div>
+						</div>
+						<details><summary>още: описание · съставки · за кого · опаковка · рейтинг · отзиви · gate име/подзаглавие · цветове</summary>
+							<div class="ap-row2">
+								<div><label>описание (desc)</label><textarea name="p[<?php echo $i; ?>][desc]" rows="3"><?php echo esc_textarea( $p['desc'] ); ?></textarea></div>
+								<div><label>какво съдържа (ing)</label><textarea name="p[<?php echo $i; ?>][ing]" rows="3"><?php echo esc_textarea( $p['ing'] ); ?></textarea></div>
+								<div><label>за кого е (who)</label><textarea name="p[<?php echo $i; ?>][who]" rows="3"><?php echo esc_textarea( $p['who'] ); ?></textarea></div>
+								<div><label>опаковка (напр. 60 капсули · за 30 дни)</label><input type="text" name="p[<?php echo $i; ?>][pack]" value="<?php echo esc_attr( $p['pack'] ); ?>"></div>
+								<div><label>рейтинг (напр. 4.9 · 1 120 отзива)</label><input type="text" name="p[<?php echo $i; ?>][rating]" value="<?php echo esc_attr( $p['rating'] ); ?>"></div>
+								<div><label>цветове на gate-а (3 hex, със запетая)</label><input type="text" name="p[<?php echo $i; ?>][theme]" value="<?php echo esc_attr( implode( ',', (array) $p['theme'] ) ); ?>"></div>
+								<div><label>gate: пълно име (gname)</label><input type="text" name="p[<?php echo $i; ?>][gname]" value="<?php echo esc_attr( $p['gname'] ); ?>"></div>
+								<div><label>gate: подзаглавие (gsub)</label><input type="text" name="p[<?php echo $i; ?>][gsub]" value="<?php echo esc_attr( $p['gsub'] ); ?>"></div>
+								<div><label>отзиви (ред = име|звезди|текст)</label><textarea name="p[<?php echo $i; ?>][reviews]" rows="3"><?php echo esc_textarea( $p['reviews'] ); ?></textarea></div>
+							</div>
+						</details>
+					</div>
+					<?php endforeach; ?>
+					<p><button class="button button-primary">💾 Запази продуктите в черновата</button></p>
+				</form>
+				<script>
+				(function(){
+					var nonce=<?php echo wp_json_encode( wp_create_nonce( self::NONCE ) ); ?>,ajax=<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,t;
+					document.querySelectorAll('#apProducts .ap-q').forEach(function(q){
+						var box=q.closest('.ap-wc').parentNode.querySelector('.ap-res'),pid=q.closest('.ap-wc').querySelector('.ap-pid'),img=q.closest('.ap-wc').querySelector('.ap-thumb'),note=q.closest('.ap-wc').parentNode.querySelector('.ap-note');
+						q.addEventListener('input',function(){clearTimeout(t);var v=q.value.trim();if(v.length<2){box.hidden=true;return}
+							t=setTimeout(function(){fetch(ajax+'?action=ansa_promo_admin_search&nonce='+nonce+'&q='+encodeURIComponent(v),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
+								if(!r||!r.success){box.hidden=true;return}
+								box.innerHTML=r.data.length?r.data.map(function(x){return '<button type="button" data-id="'+x.id+'" data-img="'+(x.img||'')+'" data-name="'+x.name.replace(/"/g,'&quot;')+'" data-price="'+x.price+'"><img src="'+(x.img||'')+'" alt="">#'+x.id+' '+x.name+' <small>'+x.type+' · €'+x.price+(x.note?' · '+x.note:'')+'</small></button>'}).join(''):'<div style="padding:8px">нищо</div>';
+								box.hidden=false;
+								box.querySelectorAll('button').forEach(function(b){b.onclick=function(){pid.value=b.dataset.id;img.src=b.dataset.img;img.style.visibility=b.dataset.img?'visible':'hidden';note.textContent=b.dataset.name+' · €'+b.dataset.price+' (запази, за да влезе в черновата)';box.hidden=true;q.value=''}});
+							})},300)});
+						document.addEventListener('click',function(e){if(!box.contains(e.target)&&e.target!==q)box.hidden=true});
+					});
+				})();
+				</script>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<?php self::form_open( 'import', 'json', ' style="display:block;max-width:900px;margin-top:14px"' ); ?>
 					<p>Черновата като JSON. Редактирай и „Внеси“ — записва се като чернова (минава през normalize), публикуваш от 🧰 Инструменти.</p>

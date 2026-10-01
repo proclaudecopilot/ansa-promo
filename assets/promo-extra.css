@@ -1,0 +1,44 @@
+/* ansa™ Промо — добавки на плъгина ВЪРХУ порта на мокъпа (promo.css се генерира и не се пипа на ръка).
+   1) WC снимки вместо емоджита: контейнерите стават с фиксиран размер, бял фон и object-fit:contain.
+   2) z-index: overlay/тост/sticky над хедъра на темата (root-ът НЕ е stacking context).
+   3) Бадж с отстъпката + редовна/намалена цена в редовете на „Напълни кутията си“ (искане на човека, не е в мокъп v73).
+   4) „Цял екран“: скриване на хедър/футър/плаващи бутони на темата на промо страницата (селекторите са настройка). */
+
+/* ── 1 · снимки ── */
+.ansa-promo img.pimg,.ansa-promo img.timg,.ansa-promo img.simg,.ansa-promo img.oimg,.ansa-promo img.cimg,.ansa-promo img.gimg,.ansa-promo img.ppi,.ansa-promo img.hpic{width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block;background:#fff}
+.ansa-promo .cit i{flex:0 0 44px;width:44px;height:44px;border-radius:11px;background:linear-gradient(145deg,#fff6ee,#ffe3cf);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ansa-promo .cit .ctx{min-width:0}
+.ansa-promo .cit .ctx b,.ansa-promo .cit .ctx small{display:block;white-space:normal;word-break:normal;overflow-wrap:anywhere}
+.ansa-promo .fcat .pic,.ansa-promo .spic,.ansa-promo .tile .pic,.ansa-promo .orow .pic,.ansa-promo .ppic,.ansa-promo .ppimg,.ansa-promo .g2pic,.ansa-promo .fs{overflow:hidden;flex-shrink:0}
+.ansa-promo .fcat .pic:has(img),.ansa-promo .spic:has(img),.ansa-promo .tile .pic:has(img),.ansa-promo .orow .pic:has(img),.ansa-promo .ppic:has(img),.ansa-promo .ppimg:has(img),.ansa-promo .cit i:has(img),.ansa-promo .fs:has(img){background:#fff;border:1px solid rgba(232,114,42,.18)}
+.ansa-promo .fs img{width:100%;height:100%;object-fit:contain;border-radius:inherit}
+.ansa-promo .g2pic img.gimg{border-radius:50%;object-fit:cover}
+.ansa-promo h3 img.hpic{width:28px;height:28px;display:inline-block;vertical-align:middle;border-radius:8px;margin-right:4px}
+.ansa-promo .ppimg img.ppi{border-radius:22px}
+
+/* ── 2 · z-index над темата ── */
+.ansa-promo{position:relative;z-index:auto}
+.ansa-promo::before{z-index:0}
+.ansa-promo .wrap{position:relative;z-index:1}
+.ansa-promo .hdr{z-index:2147482990;top:var(--ansa-promo-top,0px)}
+.ansa-promo .sticky{z-index:2147482995}
+.ansa-promo .ov{z-index:2147483000}
+.ansa-promo .ov2{z-index:2147483001}
+.ansa-promo .toast{z-index:2147483002}
+body.admin-bar .ansa-promo{--ansa-promo-top:32px}
+@media(max-width:782px){body.admin-bar .ansa-promo{--ansa-promo-top:46px}}
+
+/* ── 3 · цена и отстъпка в редовете на пълненето ── */
+.ansa-promo .fcat{position:relative}
+.ansa-promo .fcat .fpct{position:absolute;top:-9px;right:10px;background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;font-size:11px;font-weight:900;letter-spacing:.02em;border-radius:999px;padding:2px 8px;box-shadow:0 2px 8px rgba(232,114,42,.3);z-index:2}
+.ansa-promo .fcat.on .fpct{background:linear-gradient(135deg,#16a34a,#4ade80)}
+.ansa-promo .fcat .fprc{display:flex;align-items:baseline;gap:6px;margin:2px 0 3px;font-size:12.5px;line-height:1.2}
+.ansa-promo .fcat .fprc b{color:var(--od);font-size:15px;font-weight:900}
+.ansa-promo .fcat .fprc s{color:var(--tan2);font-weight:500;font-size:12px}
+.ansa-promo .fcat.on .fprc b{color:var(--gd)}
+.ansa-promo .fcat.mrow .fpct{top:-8px;right:8px;font-size:10.5px}
+
+/* ── 4 · цял екран на страницата ── */
+body.ansa-promo-fullscreen{margin:0;padding:0!important;background:var(--cream,#faf3ec)}
+body.ansa-promo-fullscreen .ansa-promo{min-height:100vh}
+body.ansa-promo-page #wpadminbar{display:none}

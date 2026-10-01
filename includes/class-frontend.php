@@ -26,6 +26,34 @@ final class Frontend {
 		add_filter( 'wp_resource_hints', array( __CLASS__, 'hints' ), 10, 2 );
 		add_action( 'wp_ajax_ansa_promo_runtime', array( __CLASS__, 'ajax_runtime' ) );
 		add_action( 'wp_ajax_nopriv_ansa_promo_runtime', array( __CLASS__, 'ajax_runtime' ) );
+		/* v1.0.3: темплейт „цял екран“ за страници + скриване на елементи на темата */
+		add_filter( 'theme_page_templates', array( __CLASS__, 'page_templates' ), 10, 4 );
+		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 99 );
+		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
+		add_action( 'wp_head', array( __CLASS__, 'hide_css' ), 99 );
+	}
+
+	const TEMPLATE = 'ansa-promo-fullscreen.php';
+	public static function page_templates( $templates, $theme = null, $post = null, $post_type = 'page' ) {
+		if ( 'page' === $post_type ) { $templates[ self::TEMPLATE ] = 'ansa™ Промо — цял екран'; }
+		return $templates;
+	}
+	public static function is_fullscreen() { return is_singular( 'page' ) && get_page_template_slug( get_queried_object_id() ) === self::TEMPLATE; }
+	public static function template_include( $template ) {
+		return self::is_fullscreen() ? ANSA_PROMO_PATH . 'templates/fullscreen.php' : $template;
+	}
+	public static function body_class( $classes ) {
+		if ( self::is_promo_page() ) { $classes[] = 'ansa-promo-page'; }
+		return $classes;
+	}
+	/** Скрива хедър/футър/плаващи бутони на темата на промо страницата (настройка theme.hide + селектори). */
+	public static function hide_css() {
+		if ( ! self::is_promo_page() ) { return; }
+		$cfg = self::cfg();
+		if ( empty( $cfg['theme']['hide'] ) ) { return; }
+		$sel = array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $cfg['theme']['selectors'] ) ) ) );
+		if ( ! $sel ) { return; }
+		echo '<style id="ansa-promo-hide">' . esc_html( implode( ',', $sel ) ) . '{display:none!important}body.ansa-promo-page{padding-top:0!important}</style>' . "\n";
 	}
 
 	public static function add_shortcode() { add_shortcode( Plugin::SHORTCODE, array( __CLASS__, 'shortcode' ) ); }
@@ -59,6 +87,7 @@ final class Frontend {
 		static $done = false; if ( $done ) { return; } $done = true;
 		wp_enqueue_style( 'ansa-promo-nunito', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap', array(), null );
 		wp_enqueue_style( 'ansa-promo', ANSA_PROMO_URL . 'assets/promo.css', array( 'ansa-promo-nunito' ), ANSA_PROMO_VER );
+		wp_enqueue_style( 'ansa-promo-extra', ANSA_PROMO_URL . 'assets/promo-extra.css', array( 'ansa-promo' ), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo', ANSA_PROMO_URL . 'assets/promo.js', array(), ANSA_PROMO_VER, true );
 		wp_add_inline_script( 'ansa-promo', 'window.AnsaPromoRuntime=' . wp_json_encode( self::runtime( self::cfg(), self::is_draft_request() ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';', 'before' );
 	}
