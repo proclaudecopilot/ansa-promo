@@ -2,12 +2,19 @@
 /**
  * Plugin Name: LOGADOR GitHub Updater
  * Description: Един token за сайта; всеки плъгин с ред „GitHub Plugin URI: owner/repo“ в header-а си се обновява от GitHub Releases през стандартния WP ъпдейт (Update now / auto-updates). Webhook: GitHub Action-ът пингва сайта при release и той се обновява веднага. Инсталира се сам от плъгините на LOGADOR (mu-plugins).
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: LOGADOR
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 if ( defined( 'LOGADOR_GH_UPDATER_VERSION' ) ) return; // вече е зареден (от друго копие)
-define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.1' );
+define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.2' );
+/* v1.1.2: ANSA Partner ≤ 5.8.5 носи форк на същия updater под друго име
+   (proclaudecopilot-github-updater.php, клас PCC_GitHub_Updater, страница pcc-github).
+   Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки към GitHub.
+   mu-plugins се зареждат по азбучен ред (l < p), т.е. ние сме първи: дефинираме неговата guard-константа
+   и неговият файл се връща на първия ред, без да регистрира нищо. Инсталаторът на Partner вижда файла
+   си на място с актуална версия и не го пипа. Token-ът се въвежда на НАШАТА страница (Settings → GitHub ъпдейти). */
+if ( ! defined( 'PCC_GH_UPDATER_VERSION' ) ) define( 'PCC_GH_UPDATER_VERSION', '0' );
 
 final class LOGADOR_GitHub_Updater {
 	const OPT_TOKEN = 'logador_github_token';
@@ -25,6 +32,9 @@ final class LOGADOR_GitHub_Updater {
 		add_filter( 'http_request_args', array( $this, 'auth' ), 10, 2 );
 		add_filter( 'extra_plugin_headers', function ( $h ) { $h[] = 'GitHub Plugin URI'; return $h; } );
 		add_action( 'admin_menu', array( $this, 'menu' ) );
+		add_action( 'admin_init', function () { // v1.1.2: старите линкове на Partner към страницата на форка водят тук
+			if ( isset( $_GET['page'] ) && 'pcc-github' === $_GET['page'] ) { wp_safe_redirect( admin_url( 'options-general.php?page=logador-github' ) ); exit; }
+		} );
 		add_action( 'admin_post_logador_gh_save', array( $this, 'save' ) );
 		add_action( 'admin_post_logador_gh_check', array( $this, 'check' ) );
 		add_action( 'admin_post_nopriv_logador_gh_hook', array( $this, 'hook' ) ); // v1.1.0: push от GitHub Action → дърпа release-а сега

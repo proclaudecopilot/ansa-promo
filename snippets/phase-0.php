@@ -135,6 +135,8 @@ function ansa_promo_snippet0_report() {
 	$mud = ( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ) . '/logador-github-updater.php';
 	$p( 'mu файл', is_file( $mud ) ? 'има · ' . ( preg_match( '/\*\s*Version:\s*([0-9.]+)/', (string) file_get_contents( $mud ), $m ) ? $m[1] : '?' ) : 'ЛИПСВА' );
 	$p( 'зареден (константа)', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? LOGADOR_GH_UPDATER_VERSION : 'no' );
+	$pccf = ( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ) . '/proclaudecopilot-github-updater.php';
+	$p( 'PCC форк (Partner)', ( is_file( $pccf ) ? 'файлът има' : 'файлът липсва' ) . ' · PCC_GH_UPDATER_VERSION=' . ( defined( 'PCC_GH_UPDATER_VERSION' ) ? PCC_GH_UPDATER_VERSION : '—' ) . ' · форкът закачен=' . $yn( has_action( 'admin_post_pcc_gh_save' ) ) . ' (трябва: константа 0, закачен no)' );
 	if ( class_exists( 'LOGADOR_GitHub_Updater' ) ) {
 		$p( 'token', \LOGADOR_GitHub_Updater::token() ? 'има (' . strlen( \LOGADOR_GitHub_Updater::token() ) . ' знака)' : 'НЯМА' );
 		$tr = \LOGADOR_GitHub_Updater::tracked(); foreach ( $tr as $file => $t ) $p( 'следи ' . $file, $t['repo'] . ' · локално ' . $t['version'] );

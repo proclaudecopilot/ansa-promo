@@ -27,9 +27,9 @@ docs/                        планът + мокъпът (не влизат в
 ## Фази
 | Фаза | Версия | Какво | Снипет |
 |------|--------|-------|--------|
-| 0 | 1.0.0 | репо, скелет, updater, таблици, guard в Shrine 6.19.22 | `snippets/phase-0.php` — отчет за средата |
-| 1 | 1.0.1 | конфиг + копи-регистър + порт на мокъп v73 | — |
-| 2 | 1.0.2 | визуалният редактор | — |
+| 0 | 1.0.0 · 1.0.1 | репо, скелет, updater, таблици, guard в Shrine 6.19.22; 1.0.1 = LOGADOR updater 1.1.2 (поглъща форка на Partner) | `snippets/phase-0.php` — отчет за средата |
+| 1 | 1.0.2 | конфиг + копи-регистър + порт на мокъп v73 | — |
+| 2 | 1.0.3 | визуалният редактор | — |
 | 3 | 1.1.0 | количка и чекаут | — |
 | 4 | 1.2.0 | награди: билети, QR, REST, ваучер, книга | — |
 | 5 | 1.3.0 | Insights + ansa Partner | — |
@@ -41,5 +41,8 @@ docs/                        планът + мокъпът (не влизат в
 **Какво доказва Snippet 0:** плъгинът е активен и зареден (константи, класове), shortcode-ът е на `AnsaPromo\Frontend`, Shrine версия ≥ 6.19.22 и промо модулът му НЕ е зареден (guard), таблиците ги има, updater-ът вижда и двете репота (token + latest release), FunnelKit/HPOS/gateways/кеш за следващите фази, анонимен fetch на страницата с shortcode-а (ако има такава).
 
 **Решения на билдъра (без питане):** таблици `{prefix}ansa_promo_tickets` (колона `tickets`, не `count`; + `box`) и `{prefix}ansa_promo_leads`; schema версия в option `ansa_promo_db_ver`; shortcode на `init` 20; mu-updater 1.1.1 вместо 1.0.1 на ansa-shrine (инсталаторът го качва само ако е по-нов — сайтът получава и webhook-а); `Requires Plugins: woocommerce` в header-а; `docs/` и `snippets/` извън zip-а.
+
+### Фаза 0 · 1.0.1 (hotfix) — LOGADOR GitHub Updater 1.1.2
+На ansa.bg има два форка на updater-а: LOGADOR (Shrine, Промо, Proof) и „proclaudecopilot“ (ANSA Partner 5.8.5, `proclaudecopilot-github-updater.php`, клас `PCC_GitHub_Updater`, страница `pcc-github`, собствен token option; при инсталация трие `logador-github-updater.php`). Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки. LOGADOR е по-новата линия (webhook, 29.09 следобед; D8 от плана) и затова печели: 1.1.2 дефинира guard-константата на форка (mu-plugins се зареждат по азбучен ред, l < p), той се връща на първия си ред; `page=pcc-github` се пренасочва към нашата страница. Token-ът се въвежда на страницата на LOGADOR (форкът го пази в свой option, който не четем). **Истинската поправка е в репото на Partner** (следващ release на affiliate-portal-ansa да носи LOGADOR 1.1.2 вместо форка) — иначе при ъпдейт на Partner с PCC > 1.0.2 инсталаторът му ще изтрие LOGADOR файла за една заявка (Промо го връща в същата заявка).
 
 **Отворени въпроси (с дефолт):** (P0) репото е `proclaudecopilot/ansa-promo` — потвърдено от човека. Останалите (§9 от плана) се питат във фазата, която ги иска.
