@@ -38,6 +38,18 @@ body.admin-bar .ansa-promo{--ansa-promo-top:32px}
 .ansa-promo .fcat.on .fprc b{color:var(--gd)}
 .ansa-promo .fcat.mrow .fpct{top:-8px;right:8px;font-size:10.5px}
 
+/* 3b · мобилен ред (v1.0.4, искане на човека): снимка | текст; под текста един ред: цена · „Повече ›“ · ＋ Добави / степер */
+.ansa-promo .dc.fpm .fcat.mrow{grid-template-columns:52px minmax(0,1fr);grid-template-rows:auto auto;row-gap:6px;align-items:start}
+.ansa-promo .dc.fpm .mrow .pic{grid-row:1/3;align-self:center}
+.ansa-promo .dc.fpm .mrow .ftx{grid-row:1}
+.ansa-promo .dc.fpm .mrow .fbar{grid-column:2;grid-row:2;display:flex;align-items:center;gap:10px;min-width:0}
+.ansa-promo .dc.fpm .mrow .fbar .fprc{margin:0;flex:0 0 auto}
+.ansa-promo .dc.fpm .mrow .fbar .fmore{padding:0;white-space:nowrap}
+.ansa-promo .dc.fpm .mrow .fbar .mact{margin-left:auto;grid-column:auto;grid-row:auto}
+.ansa-promo .dc.fpm .mrow .madd{padding:7px 11px}
+.ansa-promo .dc.fpm .mrow .stp button{width:30px;height:30px}
+.ansa-promo .dc.fpm .mrow .fpct{top:-8px;right:8px}
+
 /* ── 4 · цял екран на страницата ── */
 body.ansa-promo-fullscreen{margin:0;padding:0!important;background:var(--cream,#faf3ec)}
 body.ansa-promo-fullscreen .ansa-promo{min-height:100vh}
