@@ -276,6 +276,7 @@
       var iSw=sv+'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
       var iGift=sv+'<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
       var iChev=sv+'<path d="m9 6 6 6-6 6"/></svg>';
+      var mcat=function(pr,r){var c=String(pr.cat||'').trim();return c?T('mfill.cat',{cat:esc(c.charAt(0).toLowerCase()+c.slice(1))}):esc(r.core?T('fill.cat.core'):r.t)};
       var gsum=[T('mfill.gs.tix',bv)].concat(main?[T(skey(main),bv)]:[]).join(' <i class="dot">•</i> ');
       var gall=b.rw.map(function(r){return '<span class="mfgi">'+rimg(r,/^tix/.test(r)?'🛥️':RW(r).ic)+'<b'+ck(gkey(r))+'>'+T(gkey(r),bv)+'</b></span>'}).join('');
       body='<div class="mfs" id="mfS"><div class="mfh">'
@@ -285,8 +286,8 @@
         +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div></div>'
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
-        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/3)+'"><div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(r.core?'<em class="fct">'+T('mfill.core',{t:esc(r.t)})+'</em>':'')+'<b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+iChev+'</button></div><div class="fbar">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div></div>'}).join('')
-        +(rows.length>3?'<div class="mpg" id="mPg"></div>':'')+'</div></div>'
+        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/3)+'"><div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="fpct mb">−'+b.pct+'%</span><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):mcat(pr,r))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+iChev+'</button></div><div class="fbar">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div></div>'}).join('')
+        +'</div></div>'+(rows.length>3?'<div class="mpg" id="mPg"></div>':'')
         +'<div class="mff"><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
