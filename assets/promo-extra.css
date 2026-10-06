@@ -189,7 +189,19 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .box.l .brib{padding-top:14px;padding-bottom:14px}
 .ansa-promo .box.l .brib b{font-size:36px}
 .ansa-promo .box.l .brib .bribl{font-size:15px}
-@media(min-width:1000px){.ansa-promo .boxes{align-items:start}.ansa-promo .box.l{transform:scale(1.035);transform-origin:top center;z-index:2}.ansa-promo .box.l .brib{border-radius:15px 15px 0 0}}
+/* v1.0.16: реална разлика в размера — колоната на Голямата е ~1.45× другите, Малка/Средна са леко смалени (zoom .94) и отместени надолу */
+@media(min-width:1000px){
+.ansa-promo .boxes{align-items:start;grid-template-columns:minmax(0,.86fr) minmax(0,1.28fr) minmax(0,.86fr);gap:18px}
+.ansa-promo .box.s,.ansa-promo .box.m{zoom:.94;margin-top:18px}
+.ansa-promo .box.l{z-index:2;margin-top:0;padding-left:20px;padding-right:20px}
+.ansa-promo .box.l .brib{border-radius:15px 15px 0 0;padding-top:16px;padding-bottom:16px}
+.ansa-promo .box.l .brib b{font-size:42px}
+.ansa-promo .box.l .brib .bribl{font-size:16px}
+.ansa-promo .box.l .bhd .bname{font-size:21px}
+.ansa-promo .box.l .bry i.rpic,.ansa-promo .box.l .cosmhl i.rpic{width:96px;height:96px}
+.ansa-promo .box.l .bry b,.ansa-promo .box.l .cosmhl b{font-size:15.5px}
+.ansa-promo .box.l>.cta{min-height:56px;font-size:17px}
+}
 @media(max-width:999px){.ansa-promo .box.l .brib b{font-size:30px}}
 @media(max-width:640px){.ansa-promo .box.l .brib b{font-size:28px!important}}
 
