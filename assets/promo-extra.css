@@ -61,23 +61,39 @@ body.ansa-promo-page #wpadminbar{display:none}
 body.ansa-promo-page{background:#faf3ec}
 
 /* ── 6 · снимки в имейл-попъпа ── */
-/* композицията на мокъпа се пази: награди = снимка вляво (~30% от плочката, цялата височина) · текст вдясно; кутии = ниска снимка над текста */
-.ansa-promo .dc.gatew{overflow:auto;scrollbar-width:thin}
-.ansa-promo .g2r.pic{grid-template-columns:minmax(0,30%) minmax(0,1fr);gap:10px;padding:5px 10px 5px 5px;align-items:center}
+/* композицията на мокъпа се пази: награди = снимка вляво (~36% от плочката, цялата височина) · текст вдясно; кутии = ниска снимка над текста.
+   Без хоризонтален скрол (.dcmore на мокъпа има отрицателни margin-и, а gatew е без padding); вертикален само ако екранът е по-нисък от попъпа. */
+.ansa-promo .dc.gatew{overflow-x:hidden;overflow-y:auto;scrollbar-width:thin}
+.ansa-promo .dc.gatew .dcmore{margin:0}
+.ansa-promo .g2hd{padding:10px 18px 2px}
+.ansa-promo .g2s{padding:8px 18px 5px}
+.ansa-promo .g2r.pic{grid-template-columns:minmax(0,36%) minmax(0,1fr);gap:10px;padding:5px 10px 5px 5px;align-items:center}
 .ansa-promo .g2r.pic .g2i,.ansa-promo .g2b.pic .g2i{display:block;width:100%;height:auto;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#fff;font-size:0;align-self:stretch}
-.ansa-promo .g2r.pic .g2i{min-height:64px}
+.ansa-promo .g2r.pic .g2i{min-height:80px}
 .ansa-promo .g2r.pic .g2i img,.ansa-promo .g2b.pic .g2i img{width:100%;height:100%;object-fit:cover;display:block}
 .ansa-promo .g2r.pic>div{min-width:0;padding:5px 0}
 .ansa-promo .g2r.pic b{font-size:13.5px}
 .ansa-promo .g2r.pic small{font-size:11px}
 .ansa-promo .g2r.hot.pic .g2i,.ansa-promo .g2r.gold.pic .g2i{background:#fff}
-.ansa-promo .g2b.pic{padding:5px 5px 9px}
-.ansa-promo .g2b.pic .g2i{aspect-ratio:16/7;margin-bottom:6px}
+.ansa-promo .g2b.pic{padding:5px 5px 8px}
+.ansa-promo .g2b.pic .g2i{aspect-ratio:16/6;margin-bottom:6px}
 @media(max-width:480px){
-.ansa-promo .g2r.pic{grid-template-columns:minmax(0,30%) minmax(0,1fr);gap:8px;padding:4px 8px 4px 4px}
-.ansa-promo .g2r.pic .g2i{min-height:56px}
+.ansa-promo .g2r.pic{grid-template-columns:minmax(0,32%) minmax(0,1fr);gap:8px;padding:4px 8px 4px 4px}
+.ansa-promo .g2r.pic .g2i{min-height:60px}
 .ansa-promo .g2r.pic b{font-size:12px}
 .ansa-promo .g2r.pic small{font-size:10px}
 .ansa-promo .g2b.pic{padding:4px 4px 7px}
 .ansa-promo .g2b.pic .g2i{aspect-ratio:16/9;margin-bottom:5px}
 }
+
+/* ── 7 · кутиите (v1.0.10, искане на човека): без емоджита (кутия/подарък/корона), лентата казва ясно „−X% на поръчката ти“,
+      името на кутията е с главни букви; „за да отключиш…“ е в попъпа „Напълни кутията си“, не в картата ── */
+.ansa-promo .brib .bribl{text-transform:uppercase;letter-spacing:.04em}
+.ansa-promo .bhd .bname,.ansa-promo .bmt b{text-transform:uppercase;letter-spacing:.04em}
+.ansa-promo .bhd .bname{font-size:18px}
+.ansa-promo .bm1{grid-template-columns:minmax(0,1fr) auto!important}
+.ansa-promo .bm1 .bmt{grid-column:1!important}
+.ansa-promo .bm1 .bmcta{grid-column:2!important}
+.ansa-promo .mft{grid-template-columns:minmax(0,1fr) auto auto!important}
+.ansa-promo .fp2 .f2intro b,.ansa-promo .mfin b{font-weight:900;color:var(--ink)}
+.ansa-promo .fp2 .f2intro b+b,.ansa-promo .f2box .f2intro b:last-of-type{color:var(--od)}
