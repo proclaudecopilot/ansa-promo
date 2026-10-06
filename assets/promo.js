@@ -8,6 +8,10 @@
   var A=window.AnsaPromoRuntime;if(!A)return;
   var root=document.getElementById('ansaPromo');if(!root)return;
   var $=function(id){return document.getElementById(id)};
+  /* v1.0.18: overlay-ите и тостът живеят на body („портал“). На телефон темата (OceanWP/Elementor) слага transform върху обвивката
+     и position:fixed спира да е спрямо екрана — попъпът се „хващаше“ в обвивката, overlay-ят не покриваше екрана, футърът падаше под него. */
+  var portal=document.createElement('div');portal.className='ansa-promo ansa-promo-portal';portal.setAttribute('data-no-translation','');if(root.getAttribute('data-editor'))portal.setAttribute('data-editor','1');
+  ['apToast','apOv','apOv2'].forEach(function(id){var el=$(id);if(el)portal.appendChild(el)});document.body.appendChild(portal);
 
   /* ── помощници ── */
   function m(n){return '€ '+Number(n).toFixed(2).replace('.',',')}
@@ -469,7 +473,7 @@
   function switchPopup(){
     var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><b>'+esc(x.name)+'</b><small>'+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
     info(T('sw.title'),b);
-    root.querySelectorAll('.bx[data-bx]').forEach(function(x){x.onclick=function(){var to=+x.dataset.bx;if(to===S.box){closeInfo();return}if(to<S.box)sureDown(to);else{closeInfo();chooseBox(to,true)}}});
+    $('apDc').querySelectorAll('.bx[data-bx]').forEach(function(x){x.onclick=function(){var to=+x.dataset.bx;if(to===S.box){closeInfo();return}if(to<S.box)sureDown(to);else{closeInfo();chooseBox(to,true)}}});
   }
   function sureDown(to){
     var cur=BX(),tgt=BOXES[to],tv=tgtVars(tgt);
@@ -570,7 +574,7 @@
   }
   window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
   if(A.editor){
-    root.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true);
+    [root,portal].forEach(function(r){r.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true)});
     window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;
       if(d.ansaPromo==='copy'){if(d.key){A.copy[d.key]=d.value}else{A.copy=Object.assign({},A.copy,d.copy||{})}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
       else if(d.ansaPromo==='cfg'&&d.runtime){Object.assign(A,d.runtime);bind();render()}

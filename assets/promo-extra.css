@@ -294,3 +294,10 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .mpgd i.on{background:var(--o);width:22px;border-radius:4px}
 .ansa-promo .mpgn{font-size:13px;font-weight:900;color:var(--ink2);min-width:34px;text-align:center}
 @media(max-height:700px){.ansa-promo .mitem .mrow .pic{width:60px;height:60px}.ansa-promo .mitem .mrow small{-webkit-line-clamp:2}.ansa-promo .mitem .fcat.mrow{padding:10px}}
+
+/* ── 14 · портал (v1.0.18): overlay-ите и тостът са преместени на body, за да не ги „хваща“ transform на обвивката на темата.
+      Обвивката носи класа .ansa-promo само заради променливите и шрифта — всичко останало от root-а се нулира. ── */
+.ansa-promo-portal,body.ansa-promo-fullscreen .ansa-promo-portal,body.ansa-promo-page .ansa-promo-portal{position:static!important;min-height:0!important;height:auto!important;background:none!important;overflow:visible!important;padding:0!important;margin:0!important;z-index:auto!important}
+.ansa-promo-portal::before{display:none!important;content:none!important}
+/* резерва: ако нещо все пак хване fixed-а, футърът на пълненето остава долу в скрол-кутията */
+.ansa-promo .dc.fpm .mff{position:sticky;bottom:0;z-index:3}
