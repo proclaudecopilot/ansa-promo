@@ -25,7 +25,7 @@ final class Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 	}
 
-	/** Медийната библиотека за „Снимки в попъпа“ (само на нашата страница). */
+	/** Медийната библиотека за „Снимки на наградите“ (само на нашата страница). */
 	public static function enqueue( $hook ) {
 		if ( false === strpos( (string) $hook, Plugin::MENU_SLUG ) ) { return; }
 		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
@@ -144,8 +144,8 @@ final class Admin {
 						<tr><th>Край</th><td><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59"></td></tr>
 						<tr><th>UTM параметър</th><td><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span></td></tr>
 						<tr><th>Имейл-попъп</th><td><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label></td></tr>
-						<tr><th>Снимки в попъпа</th><td>
-							<p class="description" style="margin:0 0 8px">Плочките „Можеш да получиш“ (4) и „Готова ли си?“ (3) показват снимка вместо емоджи. Attachment ID от медийната библиотека или пълен URL. <b>Празно = примерната снимка</b> (сивият етикет „примерна снимка“ на картинката изчезва, щом сложиш своя). Снимките се режат на 16:10 (награди) и 4:3 (кутии) — слагай хоризонтални, ≥ 800px.</p>
+						<tr><th>Снимки на наградите</th><td>
+							<p class="description" style="margin:0 0 8px">Снимките на наградите в имейл-попъпа, в картите на кутиите, в „Честито“ и в „Напълни кутията си“ (яхта · сет · книга · отстъпка · доставка) и на трите кутии в попъпа. Attachment ID от медийната библиотека или пълен URL. <b>Празно = примерната снимка</b> (сивият етикет „примерна снимка“ на картинката изчезва, щом сложиш своя). Наградите се показват квадратно (1:1), кутиите в попъпа — хоризонтално (16:6) — слагай снимки с мотив в центъра, ≥ 800px.</p>
 							<style>.ap-gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.ap-gi figure{margin:0;background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:8px}.ap-gi figure img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:#f6f7f7}.ap-gi figcaption{font-size:11px;color:#50575e;margin:6px 0 4px}.ap-gi .ap-gi-row{display:flex;gap:4px}.ap-gi .ap-gi-row input{flex:1;min-width:0}.ap-gi .ap-gi-dummy{font-size:10px;color:#9a6700}</style>
 							<div class="ap-gi" id="apGateImgs">
 							<?php foreach ( Config::gate_image_slots() as $k => $label ) : $cur = (string) ( $draft['gate']['images'][ $k ] ?? '' ); $url = Frontend::gate_images( $draft )[ $k ]; $dummy = Frontend::gate_image_is_dummy( $draft, $k ); ?>

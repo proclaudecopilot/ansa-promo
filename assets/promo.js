@@ -75,6 +75,9 @@
   function T(k,v){var s=A.copy&&A.copy[k];if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
   function ck(k){return A.editor?' data-ck="'+k+'"':''}
   function RW(r){return {ic:IC[r]||'🎁',sh:T('rw.'+r+'.sh'),t:T('rw.'+r+'.t'),s:T('rw.'+r+'.s')}}
+  /* v1.0.13: снимка на награда (gate.images от настройките: yacht/cosm/book/ship; празно = примерна) — без URL пада на емоджито */
+  function rwImgKey(r){return /^tix/.test(r)?'yacht':/^cosm/.test(r)?'cosm':r==='book'?'book':r==='ship'?'ship':''}
+  function rimg(r,emo,cls){var GI=(A.gate&&A.gate.images)||{},k=rwImgKey(r);return GI[k]?'<i class="'+(cls||'')+' rpic"><img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async"></i>':'<i'+(cls?' class="'+cls+'"':'')+'>'+emo+'</i>'}
   function boxVars(b){return {box:esc(b.name),box_l:esc(b.name.toLowerCase()),box_ic:b.ic,packs:b.packs,opk:opk(b.packs),pct:b.pct,tickets:tixOf(b),shans:shans(tixOf(b)),rest:b.packs-1,opk_rest:opk(b.packs-1),cosm_pay:b.cosm_pay!=null?money(b.cosm_pay):'',save:m0(boxSaveMax(b)),produkt:b.packs===1?'продукт':'продукти'}}
   /* козметичният сет: винаги зачертана стойност + „величествена“ цена (pill, никога inline) */
   function cosmPrice(r,big){if(r!=='cosm1'&&r!=='cosm50')return '';var b=boxOf(r==='cosm1'?'l':'m');if(!b||b.cosm_pay==null)return '';return '<span class="cpx'+(r==='cosm1'?' one':' half')+(big?' big':'')+'"><small'+ck('cpx.label')+'>'+T('cpx.label')+'</small><s>€'+COSM+'</s><b>€'+money(b.cosm_pay)+'</b></span>'}
@@ -179,7 +182,7 @@
     var b=BX();if(!b)return;var conf='';for(var ci=0;ci<18;ci++)conf+='<i style="left:'+(ci*5.5+2)+'%;animation-delay:'+(ci*.11)+'s;background:'+['#e8722a','#f59e0b','#16a34a','#6366f1','#e0507a'][ci%5]+'"></i>';
     var dc=$('apDc');dc.className='dc wide';dc.scrollTop=0;
     /* наградите — всяка с пълното си име; яхтата и сетът са героите */
-    var rows=b.rw.map(function(r){var k=RW(r);var cls=r==='cosm1'?'gold':r==='cosm50'?'violet':/^tix/.test(r)?'pink':'plain';var ic=/^tix/.test(r)?'🛥️':k.ic;return '<div class="hero '+cls+'"><i>'+ic+'</i><div><b'+ck('rw.'+r+'.t')+'>'+k.t+'</b><small'+ck('rw.'+r+'.s')+'>'+k.s+'</small>'+cosmPrice(r,true)+'</div><em class="hchk">✓</em></div>'}).join('');
+    var rows=b.rw.map(function(r){var k=RW(r);var cls=r==='cosm1'?'gold':r==='cosm50'?'violet':/^tix/.test(r)?'pink':'plain';var ic=/^tix/.test(r)?'🛥️':k.ic;return '<div class="hero '+cls+'">'+rimg(r,ic)+'<div><b'+ck('rw.'+r+'.t')+'>'+k.t+'</b><small'+ck('rw.'+r+'.s')+'>'+k.s+'</small>'+cosmPrice(r,true)+'</div><em class="hchk">✓</em></div>'}).join('');
     /* при по-малка кутия — предложение за Голямата */
     var big=boxOf('l'),up='';
     if(b.id==='s'&&big){var tv=tgtVars(big);var news=big.rw.filter(function(r){return b.rw.indexOf(r)<0});
@@ -234,7 +237,7 @@
     var b=BX(),c=S.core&&PROD[S.core]?PROD[S.core]:null,P=b.packs,bv=boxVars(b);
     var rows=[];if(c)rows.push({key:S.core,t:T('fill.cat.core'),why:c.ds,core:true});
     PROBS.forEach(function(p){if(PROD[p.key]&&p.key!==S.core)rows.push({key:p.key,t:p.t,why:p.why||PROD[p.key].ds})});
-    var gifts=b.rw.map(function(r){var w=RW(r);var big=/^tix|^cosm/.test(r);var lbl=/^tix/.test(r)?T('fill.g.tix',bv):r==='ship'?T('fill.g.ship'):r==='book'?T('fill.g.book'):T('fill.g.cosm');var sub=/^tix/.test(r)?T('fill.g.tix.sub'):/^cosm/.test(r)?cosmPrice(r):'';return '<span class="fg '+r+(big?' big':'')+'"><i>'+(/^tix/.test(r)?'🛥️':w.ic)+'</i><b>'+lbl+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span>'}).join('')+'<span class="fg pct"><i>💸</i><b>−'+b.pct+'%</b></span>';
+    var gifts=b.rw.map(function(r){var w=RW(r);var big=/^tix|^cosm/.test(r);var lbl=/^tix/.test(r)?T('fill.g.tix',bv):r==='ship'?T('fill.g.ship'):r==='book'?T('fill.g.book'):T('fill.g.cosm');var sub=/^tix/.test(r)?T('fill.g.tix.sub'):/^cosm/.test(r)?cosmPrice(r):'';return '<span class="fg '+r+(big?' big':'')+'">'+rimg(r,/^tix/.test(r)?'🛥️':w.ic)+'<b>'+lbl+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span>'}).join('')+'<span class="fg pct"><i>💸</i><b>−'+b.pct+'%</b></span>';
     var mix='';if(P>1){var a1=Math.ceil(P/2),a2=P-a1;mix='<p class="fmixt"'+ck('fill.mix')+'>'+T('fill.mix',{a:a1,b:a2})+'</p>'}
     var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
       +'<div class="f2box"><p class="f2intro"'+ck('fill.intro')+'>'+T('fill.intro',bv)+'</p>'+mix+'</div>'
@@ -285,17 +288,22 @@
     var c=S.core&&PROD[S.core]?PROD[S.core]:null,bv=boxVars(b);
     var from=c?r2(c.price*b.packs*(1-b.pct/100)+(b.rw.indexOf('ship')>-1?0:SHIP)):null;bv.from=from!=null?m(from):'';if(c){bv.core=esc(c.name)}
     var tixr=b.rw.filter(function(r){return /^tix/.test(r)})[0];
-    var yacht=tixr?'<div class="bry"><i>🛥️</i><div><em class="tixb"'+ck('yacht.badge')+'>'+T('yacht.badge',bv)+'</em><b'+ck('yacht.hero')+'>'+T('yacht.hero')+'</b><small'+ck('yacht.sub')+'>'+T('yacht.sub')+'</small></div></div>':'';
-    var cosm=b.rw.indexOf('cosm50')>-1?'<div class="cosmhl"><i>'+RW('cosm50').ic+'</i><div><em'+ck('box.cosm50.em')+'>'+T('box.cosm50.em',bv)+'</em><b'+ck('box.cosm50.b')+'>'+T('box.cosm50.b',bv)+'</b><small'+ck('box.cosm50.s')+'>'+T('box.cosm50.s',bv)+'</small>'+cosmPrice('cosm50')+'</div></div>'
-      :b.rw.indexOf('cosm1')>-1?'<div class="cosmhl gold"><i>'+RW('cosm1').ic+'</i><div><em'+ck('box.cosm1.em')+'>'+T('box.cosm1.em',bv)+'</em><b'+ck('box.cosm1.b')+'>'+T('box.cosm1.b',bv)+'</b><small'+ck('box.cosm1.s')+'>'+T('box.cosm1.s',bv)+'</small>'+cosmPrice('cosm1')+'</div></div>'
+    var yacht=tixr?'<div class="bry">'+rimg('tix','🛥️')+'<div><em class="tixb"'+ck('yacht.badge')+'>'+T('yacht.badge',bv)+'</em><b'+ck('yacht.hero')+'>'+T('yacht.hero')+'</b><small'+ck('yacht.sub')+'>'+T('yacht.sub')+'</small></div></div>':'';
+    var main=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
+    var cosm=main==='cosm50'?'<div class="cosmhl">'+rimg('cosm50',RW('cosm50').ic)+'<div><em'+ck('box.cosm50.em')+'>'+T('box.cosm50.em',bv)+'</em><b'+ck('box.cosm50.b')+'>'+T('box.cosm50.b',bv)+'</b><small'+ck('box.cosm50.s')+'>'+T('box.cosm50.s',bv)+'</small>'+cosmPrice('cosm50')+'</div></div>'
+      :main==='cosm1'?'<div class="cosmhl gold">'+rimg('cosm1',RW('cosm1').ic)+'<div><em'+ck('box.cosm1.em')+'>'+T('box.cosm1.em',bv)+'</em><b'+ck('box.cosm1.b')+'>'+T('box.cosm1.b',bv)+'</b><small'+ck('box.cosm1.s')+'>'+T('box.cosm1.s',bv)+'</small>'+cosmPrice('cosm1')+'</div></div>'
+      :main==='book'?'<div class="cosmhl book">'+rimg('book',RW('book').ic)+'<div><em'+ck('box.book.em')+'>'+T('box.book.em',bv)+'</em><b'+ck('box.book.b')+'>'+T('box.book.b',bv)+'</b><small'+ck('box.book.s')+'>'+T('box.book.s',bv)+'</small></div></div>'
       :'<div class="cosmhl no"><i>👑</i><div><b'+ck('box.cosm.no')+'>'+T('box.cosm.no')+'</b></div></div>';
-    var chips='<div class="brs">'+b.rw.filter(function(r){return !/^tix|^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+b.no.filter(function(r){return !/^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc no"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+'</div>';
+    var chips='<div class="brs">'+b.rw.filter(function(r){return !/^tix|^cosm/.test(r)&&r!==main}).map(function(r){var w=RW(r);return '<span class="brc">'+rimg(r,w.ic)+'<span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+b.no.filter(function(r){return !/^cosm/.test(r)||main==='book'}).map(function(r){var w=RW(r),nk=/^cosm/.test(r)?'rw.cosm.no.sh':'rw.'+r+'.sh';return '<span class="brc no">'+rimg(r,w.ic)+'<span'+ck(nk)+'>'+T(nk)+'</span></span>'}).join('')+'</div>';
     /* v1.0.10: „за да отключиш…“ вече не е в картата — показва се в попъпа „Напълни кутията си“ (fill.intro / mfill.intro) */
-    var hasCosm=b.cosm_pay!=null;
+    var hasCosm=b.cosm_pay!=null,hasBook=b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1;
     var best=b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'';
     var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small>'+best+'</div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
-      +'<div class="bmr"><div class="bmrow y"><i>🛥️</i><span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
-      +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'"><i>🌸</i><span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>'+(b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1?'<div class="bmrow x"><i>📖</i><span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':''):'<div class="bmrow off"><i>🌸</i><span'+ck('bmini.none')+'>'+T('bmini.none')+'</span></div>')
+      +'<div class="bmr"><div class="bmrow y">'+rimg('tix','🛥️')+'<span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
+      +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'">'+rimg('cosm1','🌸')+'<span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>':'')
+      +(hasBook?'<div class="bmrow x">'+rimg('book','📖')+'<span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':'')
+      +(!hasCosm&&hasBook?'<div class="bmrow off">'+rimg('cosm1','🌸')+'<span'+ck('bmini.nocosm')+'>'+T('bmini.nocosm')+'</span></div>':'')
+      +(!hasCosm&&!hasBook?'<div class="bmrow off">'+rimg('book','🌸')+'<span'+ck('bmini.none')+'>'+T('bmini.none')+'</span></div>':'')
       +'<button class="bmore" data-more-box="'+b.id+'"><span'+ck('bmini.more')+'>'+T('bmini.more')+'</span> <i>▾</i></button></div></div>';
     var ord=(A.box_order&&A.box_order.mobile)||[];var oi=ord.indexOf(b.id);
     return '<div class="box '+b.id+'"'+(oi>-1&&MOB()?' style="order:'+(oi+1)+'"':'')+'>'

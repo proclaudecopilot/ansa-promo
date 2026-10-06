@@ -135,3 +135,25 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo #apS1 h1{margin-bottom:14px}
 @media(max-width:999px){.ansa-promo .brib b{font-size:26px}}
 @media(max-width:640px){.ansa-promo .brib b{font-size:24px!important}.ansa-promo #apS1 h1{margin-bottom:10px}}
+
+/* ── 10 · снимки на наградите (v1.0.13, искане на човека): картите на кутиите, мобилното резюме, „Честито“ и подаръците в пълненето
+      ползват снимките от настройките (същите като в имейл-попъпа); основният подарък при Средна е книгата (.cosmhl.book) ── */
+.ansa-promo i.rpic{overflow:hidden;background:#fff!important;padding:0;font-size:0;flex:none}
+.ansa-promo i.rpic img{width:100%;height:100%;object-fit:cover;display:block}
+.ansa-promo .bry i.rpic,.ansa-promo .cosmhl i.rpic{width:84px;height:84px;border-radius:14px;box-shadow:0 4px 12px rgba(26,26,46,.12)}
+.ansa-promo .bry,.ansa-promo .cosmhl{gap:12px}
+.ansa-promo .cosmhl.book{background:linear-gradient(135deg,#fff4ea,#fff9f3);border:2px solid var(--o);box-shadow:0 4px 14px rgba(232,114,42,.16)}
+.ansa-promo .cosmhl.book em{color:var(--od)}
+.ansa-promo .cosmhl.book i{background:linear-gradient(135deg,#ef8c4f,#e8722a)}
+.ansa-promo .brc i.rpic{width:26px;height:26px;border-radius:50%;border:1px solid var(--ol)}
+.ansa-promo .brc{padding:3px 10px 3px 4px;gap:7px}
+.ansa-promo .brc.no i.rpic{filter:grayscale(1)}
+.ansa-promo .bmrow i.rpic{width:30px;height:30px;border-radius:8px}
+.ansa-promo .bmrow.off i.rpic{filter:grayscale(1);opacity:.5}
+.ansa-promo .hero i.rpic{width:64px;height:64px;border-radius:14px}
+.ansa-promo .celeb .cg2 .hero i.rpic{width:56px;height:56px}
+.ansa-promo .fg i.rpic{width:40px;height:40px;border-radius:10px}
+@media(max-width:999px){.ansa-promo .bry i.rpic,.ansa-promo .cosmhl i.rpic{width:68px;height:68px}}
+@media(max-width:640px){.ansa-promo .fg i.rpic{width:34px;height:34px}}
+@media(min-width:641px){.ansa-promo .fgifts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
+.ansa-promo .bmrow.x,.ansa-promo .bmrow.off{white-space:normal}
