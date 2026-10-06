@@ -56,6 +56,9 @@ body.admin-bar .ansa-promo{--ansa-promo-top:32px}
 body.ansa-promo-fullscreen{margin:0;padding:0!important;background:var(--cream,#faf3ec)}
 body.ansa-promo-fullscreen .ansa-promo{min-height:100vh}
 body.ansa-promo-page #wpadminbar{display:none}
+/* v1.0.12: лентата е скрита, затова и отместването за нея пада — иначе хедърът „виси“ 32px под горния ръб и крие лентата с яхтата */
+body.ansa-promo-page.admin-bar .ansa-promo{--ansa-promo-top:0px}
+html:has(body.ansa-promo-page.admin-bar){margin-top:0!important}
 
 /* фонът на цялата промо страница е кремав и под играта (body класът идва от Frontend::body_class) */
 body.ansa-promo-page{background:#faf3ec}
@@ -121,3 +124,14 @@ body.ansa-promo-page{background:#faf3ec}
 @keyframes apBump{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
 .ansa-promo .dc.fpm .mff .fsave{margin:0 0 6px;padding:6px 10px;font-size:12.5px}
 .ansa-promo .dc.fpm .mff .fsave b{font-size:15px}
+
+/* ── 9 · екранът с кутиите (v1.0.12, искане на човека): по-голям процент в лентата; без водещото изречение под заглавието;
+      „★ най-изгодна“ не е в лентата (лентите на трите кутии са еднакви), а под името „ГОЛЯМА КУТИЯ“ / в мобилното резюме ── */
+.ansa-promo .brib b{font-size:30px}
+.ansa-promo .brib .bribl{gap:10px}
+.ansa-promo .bhd{flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:12px}
+.ansa-promo .bhd .bbest,.ansa-promo .bmt .bbest{position:static;transform:none;margin:0;display:inline-block;background:linear-gradient(135deg,#b45309,#f0b429 60%,#b45309);color:#fff;border:1px solid #fff;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:3px 10px;box-shadow:0 2px 8px rgba(180,83,9,.25);white-space:nowrap}
+.ansa-promo .bmt .bbest{margin-top:5px;font-size:9.5px;padding:2px 9px}
+.ansa-promo #apS1 h1{margin-bottom:14px}
+@media(max-width:999px){.ansa-promo .brib b{font-size:26px}}
+@media(max-width:640px){.ansa-promo .brib b{font-size:24px!important}.ansa-promo #apS1 h1{margin-bottom:10px}}
