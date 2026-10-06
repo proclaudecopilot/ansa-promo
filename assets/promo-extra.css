@@ -357,3 +357,9 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .dc.fpm .mffb .fsave{border-radius:12px;padding:8px 12px}
 .ansa-promo .dc.fpm #nFill{border-radius:12px;min-height:50px}
 @media(max-width:360px){.ansa-promo .dc.fpm .fcat.mrow,.ansa-promo .mitem .fcat.mrow{grid-template-columns:88px minmax(0,1fr)}.ansa-promo .mitem .mrow .pic{width:88px;min-height:100px}}
+
+/* ── 16 · v1.0.21: на висок екран (iPhone Pro Max и т.н.) трите карти се разпределят равномерно по височина — всяка карта остава
+      с естествената си височина и е центрирана в своята трета, пагинацията е закотвена над футъра; при нисък екран списъкът скролва ── */
+.ansa-promo .mitem{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center}
+.ansa-promo .mitem .fcat.mrow{width:100%}
+.ansa-promo .mpg{margin-top:auto;padding-top:4px}
