@@ -411,11 +411,13 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .dc.fpm .fcat.mrow.core{background:#fff;border-color:rgba(232,114,42,.35)}
 .ansa-promo .dc.fpm .fcat.mrow.on,.ansa-promo .dc.fpm .fcat.mrow.on:hover{border-color:var(--g);background:#f6fcf7}
 .ansa-promo .dc.fpm .fcat.mrow:hover{border-color:rgba(232,114,42,.10)}
-.ansa-promo .dc.fpm .mitem .fcat.mrow .fpct.mb,.ansa-promo .dc.fpm .fcat.mrow .fpct{display:none}
+.ansa-promo .dc.fpm .mitem .fcat.mrow .fpct.mb,.ansa-promo .dc.fpm .fcat.mrow .fpct.mb{display:inline-block;position:absolute;top:10px;right:10px;background:var(--o);color:#fff;font-size:12px;font-weight:900;padding:4px 9px;border-radius:999px;box-shadow:0 2px 6px rgba(232,114,42,.25);line-height:1.2;z-index:1}
+.ansa-promo .dc.fpm .fcat.mrow.on .fpct.mb{background:var(--g)}
 .ansa-promo .dc.fpm .mitem .mrow .pic,.ansa-promo .dc.fpm .mrow .pic{grid-row:1/3;grid-column:1;width:104px;height:100%;min-height:104px;border-radius:14px;align-self:stretch;margin:0;background:#fff;border:1px solid rgba(232,114,42,.12);font-size:44px;display:flex;align-items:center;justify-content:center}
 .ansa-promo .dc.fpm .mitem .mrow .pic img,.ansa-promo .dc.fpm .mrow .pic img{object-fit:contain;padding:4px}
 .ansa-promo .dc.fpm .mitem .mrow .ftx,.ansa-promo .dc.fpm .mrow .ftx{grid-row:1;grid-column:2;display:flex;flex-direction:column;gap:3px;min-width:0}
-.ansa-promo .dc.fpm .mitem .mrow .fct,.ansa-promo .dc.fpm .mrow .fct{display:block;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--gd);line-height:1.2;margin:0!important;padding:0!important;white-space:normal!important}
+.ansa-promo .dc.fpm .mitem .mrow .fct,.ansa-promo .dc.fpm .mrow .fct{display:block;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--od);line-height:1.2;margin:0!important;padding:0 58px 0 0!important;white-space:normal!important;overflow:visible!important;text-overflow:clip}
+.ansa-promo .dc.fpm .mrow.core .fct{color:var(--gd)}
 .ansa-promo .dc.fpm .mitem .mrow b,.ansa-promo .dc.fpm .mrow b{font-size:19px;font-weight:900;line-height:1.15;letter-spacing:-.01em;color:var(--ink)}
 .ansa-promo .dc.fpm .mitem .mrow small,.ansa-promo .dc.fpm .mrow small{font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink2);margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ansa-promo .dc.fpm .mitem .mrow .fmore,.ansa-promo .dc.fpm .mrow .fmore{align-self:flex-start;display:inline-flex;align-items:center;gap:1px;margin-top:4px;padding:3px 0;font-size:13.5px;font-weight:800;color:var(--o);text-decoration:none;background:none;border:none;font-family:inherit}
@@ -430,7 +432,7 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .dc.fpm .mitem .mrow .stp button,.ansa-promo .dc.fpm .mrow .stp button{width:36px;height:36px;border-radius:11px;font-size:19px}
 .ansa-promo .dc.fpm .mrow .stp b{min-width:22px;font-size:16px}
 /* пагинация ‹ 1 от 2 › */
-.ansa-promo .dc.fpm .mpg{display:flex;align-items:center;justify-content:center;gap:28px;margin:auto 0 0;padding:6px 0 4px;flex:none}
+.ansa-promo .dc.fpm .mpg{display:flex;align-items:center;justify-content:center;gap:28px;margin:0;padding:8px 16px;flex:none;background:#f7f1ec;border-top:1px solid rgba(67,48,42,.06)}
 .ansa-promo .dc.fpm .mpgb{width:44px;height:44px;border-radius:50%;border:1.5px solid #e2d6cb;background:#fff;color:var(--o);font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(67,48,42,.05)}
 .ansa-promo .dc.fpm .mpgb:disabled{opacity:.35}
 .ansa-promo .dc.fpm .mpgd{display:none}

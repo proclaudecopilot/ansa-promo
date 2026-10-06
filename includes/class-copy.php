@@ -183,6 +183,7 @@ final class Copy {
 				'mfill.save'         => 'Спестяваш <b>{{save}}</b>',
 				'mfill.save.zero'    => 'всяка опаковка е с −{{pct}}%',
 				'mfill.core'         => '★ {{t}}',
+				'mfill.cat'          => 'Продукт за {{cat}}',
 				'mfill.more'         => 'Виж продукта',
 				'mfill.add'          => '＋ Добави',
 			),
