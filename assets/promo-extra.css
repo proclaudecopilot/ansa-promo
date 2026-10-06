@@ -97,3 +97,27 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .mft{grid-template-columns:minmax(0,1fr) auto auto!important}
 .ansa-promo .fp2 .f2intro b,.ansa-promo .mfin b{font-weight:900;color:var(--ink)}
 .ansa-promo .fp2 .f2intro b+b,.ansa-promo .f2box .f2intro b:last-of-type{color:var(--od)}
+
+/* ── 8 · „Напълни кутията си“ на десктоп (v1.0.11, искане на човека): категорията по-голяма и четлива; баджът казва и точната сума;
+      снимка | заглавие + описание, а под тях един ред: цена · „Повече за продукта“ · степер; над бутона — колко спестяваш до момента ── */
+.ansa-promo .dc.fpw{max-width:840px}
+.ansa-promo .dc.fpw .fcat.drow{grid-template-columns:60px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:8px;align-items:start;padding:14px 12px 12px}
+.ansa-promo .dc.fpw .fcat.drow .pic{grid-row:1/3;align-self:center}
+.ansa-promo .dc.fpw .fcat.drow .ftx{grid-row:1;grid-column:2}
+.ansa-promo .dc.fpw .fcat.drow .fbar{grid-column:2;grid-row:2;display:flex;align-items:center;gap:10px;min-width:0}
+.ansa-promo .dc.fpw .fcat.drow .fbar .fprc{margin:0;flex:0 0 auto}
+.ansa-promo .dc.fpw .fcat.drow .fbar .fmore{padding:0;white-space:nowrap;align-self:center}
+.ansa-promo .dc.fpw .fcat.drow .fbar .stp{margin-left:auto;grid-column:auto;grid-row:auto;align-self:center}
+.ansa-promo .dc.fpw .fcat.drow .fct{font-size:12.5px;letter-spacing:.06em;margin-bottom:3px;line-height:1.25}
+.ansa-promo .dc.fpw .fcat.drow b{font-size:16.5px}
+.ansa-promo .dc.fpw .fcat.drow small{font-size:12.5px;line-height:1.35;margin:0}
+.ansa-promo .fcat .fpct{font-size:11.5px;padding:3px 10px;top:-11px;right:12px;white-space:nowrap}
+.ansa-promo .fcat .fpct i{font-style:normal;opacity:.85}
+.ansa-promo .dc.fpw .fcat.drow .fpct{font-size:12px}
+.ansa-promo .fsave{text-align:center;font-size:13.5px;font-weight:700;color:var(--ink2);background:var(--os);border:1.5px dashed var(--ol);border-radius:12px;padding:8px 12px;margin:0 0 8px;line-height:1.35}
+.ansa-promo .fsave.on{background:#f3fbf5;border:1.5px solid var(--g);color:var(--ink)}
+.ansa-promo .fsave b{color:var(--gd);font-size:17px;font-weight:900}
+.ansa-promo .fsave.bump{animation:apBump .35s ease}
+@keyframes apBump{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+.ansa-promo .dc.fpm .mff .fsave{margin:0 0 6px;padding:6px 10px;font-size:12.5px}
+.ansa-promo .dc.fpm .mff .fsave b{font-size:15px}

@@ -79,7 +79,7 @@
   /* козметичният сет: винаги зачертана стойност + „величествена“ цена (pill, никога inline) */
   function cosmPrice(r,big){if(r!=='cosm1'&&r!=='cosm50')return '';var b=boxOf(r==='cosm1'?'l':'m');if(!b||b.cosm_pay==null)return '';return '<span class="cpx'+(r==='cosm1'?' one':' half')+(big?' big':'')+'"><small'+ck('cpx.label')+'>'+T('cpx.label')+'</small><s>€'+COSM+'</s><b>€'+money(b.cosm_pay)+'</b></span>'}
   /* v1.0.3: бадж с отстъпката + намалена/редовна цена в редовете на пълненето (искане на човека; не е в мокъп v73) */
-  function fprc(pr,b){return '<span class="fpct">−'+b.pct+'%</span>'}
+  function fprc(pr,b,q){return '<span class="fpct" data-pct="'+esc(pr.key)+'">'+T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q||0)))})+(q>1?' <i>×'+q+'</i>':'')+'</span>'}
   function fprice(pr,b){return '<span class="fprc"><b>'+m(r2(pr.price*(1-b.pct/100)))+'</b><s>'+m(pr.price)+'</s></span>'}
   function tgtVars(t){var d=t.packs-(S.box!==null?BX().packs:0);return {box_t:esc(t.name),box_t_l:esc(t.name.toLowerCase()),box_t_ic:t.ic,pct_t:t.pct,save_t:m0(boxSaveMax(t)),s_box_t:sPrep(t.name,true),diff:d,prod_diff:prodw(d),opk_diff:opk(d),delyat:d===1?'дели':'делят'}}
 
@@ -239,8 +239,8 @@
     var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
       +'<div class="f2box"><p class="f2intro"'+ck('fill.intro')+'>'+T('fill.intro',bv)+'</p>'+mix+'</div>'
       +'<div class="fslots" id="fSlots"></div>'
-      +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small>'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more')+'>'+T('fill.more')+'</button></div><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div>'}).join('')+'</div>'
-      +'<button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
+      +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat drow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more.s')+'>'+T('fill.more.s')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div>'}).join('')+'</div>'
+      +'<div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
     var mob=MOB();
     if(mob){
       var gl=[T('mfill.g.tix',bv)];
@@ -250,7 +250,7 @@
         +'<p class="mfin"'+ck('mfill.intro')+'>'+T('mfill.intro',Object.assign({same:P>1?T('mfill.same'):''},bv))+'</p>'
         +'<div class="mfg">'+gl.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>'
         +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'}).join('')+'</div>'
-        +'<div class="mff"><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><div class="fslots" id="fSlots"></div><div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -263,6 +263,9 @@
       dc.querySelectorAll('[data-dec]').forEach(function(x){x.disabled=!(needQ[x.dataset.dec]>0)});
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
       $('fSlots').innerHTML='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>'+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
+      var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*PROD[k].price*b.pct/100});save=r2(save);
+      dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
+      var fs=$('fSave');if(fs){var prev=fs.dataset.v;fs.innerHTML=t>0?'<span'+ck('fill.save')+'>'+T('fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('fill.save.zero')+'>'+T('fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
     sync();
     function inc(k){if(total()>=P){toast(T('fill.over2',{packs:P}),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
