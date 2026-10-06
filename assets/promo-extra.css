@@ -61,21 +61,23 @@ body.ansa-promo-page #wpadminbar{display:none}
 body.ansa-promo-page{background:#faf3ec}
 
 /* ── 6 · снимки в имейл-попъпа ── */
+/* композицията на мокъпа се пази: награди = снимка вляво (~30% от плочката, цялата височина) · текст вдясно; кутии = ниска снимка над текста */
 .ansa-promo .dc.gatew{overflow:auto;scrollbar-width:thin}
-.ansa-promo .g2r.pic{grid-template-columns:1fr;gap:7px;padding:5px 5px 10px;align-items:start}
-.ansa-promo .g2r.pic .g2i,.ansa-promo .g2b.pic .g2i{display:block;width:100%;height:auto;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#fff;font-size:0}
+.ansa-promo .g2r.pic{grid-template-columns:minmax(0,30%) minmax(0,1fr);gap:10px;padding:5px 10px 5px 5px;align-items:center}
+.ansa-promo .g2r.pic .g2i,.ansa-promo .g2b.pic .g2i{display:block;width:100%;height:auto;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#fff;font-size:0;align-self:stretch}
+.ansa-promo .g2r.pic .g2i{min-height:64px}
 .ansa-promo .g2r.pic .g2i img,.ansa-promo .g2b.pic .g2i img{width:100%;height:100%;object-fit:cover;display:block}
-.ansa-promo .g2r.pic>div{padding:0 5px}
-.ansa-promo .g2r.pic b{font-size:14px}
-.ansa-promo .g2r.pic small{font-size:11.5px;margin-top:2px}
+.ansa-promo .g2r.pic>div{min-width:0;padding:5px 0}
+.ansa-promo .g2r.pic b{font-size:13.5px}
+.ansa-promo .g2r.pic small{font-size:11px}
 .ansa-promo .g2r.hot.pic .g2i,.ansa-promo .g2r.gold.pic .g2i{background:#fff}
 .ansa-promo .g2b.pic{padding:5px 5px 9px}
-.ansa-promo .g2b.pic .g2i{aspect-ratio:4/3;margin-bottom:6px}
-.ansa-promo .g2b.pic b{font-size:13.5px}
+.ansa-promo .g2b.pic .g2i{aspect-ratio:16/7;margin-bottom:6px}
 @media(max-width:480px){
-.ansa-promo .g2r.pic{padding:4px 4px 8px;gap:6px}
-.ansa-promo .g2r.pic b{font-size:12.5px}
-.ansa-promo .g2r.pic small{font-size:10.5px}
+.ansa-promo .g2r.pic{grid-template-columns:minmax(0,30%) minmax(0,1fr);gap:8px;padding:4px 8px 4px 4px}
+.ansa-promo .g2r.pic .g2i{min-height:56px}
+.ansa-promo .g2r.pic b{font-size:12px}
+.ansa-promo .g2r.pic small{font-size:10px}
 .ansa-promo .g2b.pic{padding:4px 4px 7px}
-.ansa-promo .g2b.pic .g2i{aspect-ratio:1/1;margin-bottom:5px}
+.ansa-promo .g2b.pic .g2i{aspect-ratio:16/9;margin-bottom:5px}
 }
