@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="Средна кутия — примерна снимка">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd9c2"/><stop offset="1" stop-color="#ef8c4f"/></linearGradient>
+<radialGradient id="hl" cx=".25" cy=".2" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="sh" cx=".5" cy="1.1" r=".8"><stop offset="0" stop-color="#8a3a0c" stop-opacity=".45"/><stop offset="1" stop-color="#8a3a0c" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="800" height="500" fill="url(#bg)"/>
+<rect width="800" height="500" fill="url(#hl)"/>
+<rect width="800" height="500" fill="url(#sh)"/>
+<circle cx="640" cy="110" r="150" fill="#fff" fill-opacity=".18"/>
+<circle cx="120" cy="420" r="110" fill="#fff" fill-opacity=".12"/>
+<circle cx="400" cy="235" r="135" fill="#fff" fill-opacity=".85"/>
+<text x="400" y="290" text-anchor="middle" font-size="160" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">🎁</text>
+<text x="400" y="462" text-anchor="middle" font-size="26" font-weight="700" fill="#fff" fill-opacity=".92" font-family="Nunito,system-ui,sans-serif">Средна кутия · примерна снимка</text>
+</svg>

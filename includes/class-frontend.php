@@ -111,6 +111,20 @@ final class Frontend {
 		return $prods;
 	}
 
+	/** Снимките на плочките в имейл-попъпа като URL-и: attachment id → medium_large, URL → както е, празно → примерната снимка от assets/img/gate/. */
+	public static function gate_images( $cfg ) {
+		$out = array();
+		foreach ( Config::gate_image_slots() as $k => $label ) {
+			$v = (string) ( $cfg['gate']['images'][ $k ] ?? '' ); $url = '';
+			if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'medium_large' ); }
+			elseif ( '' !== $v ) { $url = $v; }
+			$out[ $k ] = $url ?: self::gate_dummy( $k );
+		}
+		return $out;
+	}
+	public static function gate_dummy( $k ) { return ANSA_PROMO_URL . 'assets/img/gate/' . $k . '.svg'; }
+	public static function gate_image_is_dummy( $cfg, $k ) { return '' === (string) ( $cfg['gate']['images'][ $k ] ?? '' ) || ( ctype_digit( (string) $cfg['gate']['images'][ $k ] ) && ! wp_get_attachment_image_url( (int) $cfg['gate']['images'][ $k ], 'medium_large' ) ); }
+
 	/** Всичко, което promo.js трябва да знае. Никакви цени не идват от клиента. */
 	public static function runtime( $cfg, $draft = false ) {
 		$editor = self::is_editor_request();
@@ -146,7 +160,7 @@ final class Frontend {
 			'secret'    => $cfg['secret'],
 			'ship'      => (float) $cfg['ship']['paid'],
 			'timer'     => $cfg['timer'],
-			'gate'      => $cfg['gate'],
+			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'deadline'  => $deadline,

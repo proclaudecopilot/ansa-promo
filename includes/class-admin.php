@@ -22,6 +22,13 @@ final class Admin {
 		add_filter( 'plugin_action_links_' . plugin_basename( ANSA_PROMO_FILE ), array( __CLASS__, 'action_links' ) );
 		add_action( 'admin_post_ansa_promo_tools', array( __CLASS__, 'handle' ) );
 		add_action( 'wp_ajax_ansa_promo_admin_search', array( __CLASS__, 'ajax_search' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+	}
+
+	/** Медийната библиотека за „Снимки в попъпа“ (само на нашата страница). */
+	public static function enqueue( $hook ) {
+		if ( false === strpos( (string) $hook, Plugin::MENU_SLUG ) ) { return; }
+		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
 	}
 
 	/** Търсене на WC продукт по име (таб Продукти). */
@@ -64,6 +71,8 @@ final class Admin {
 				$cfg['deadline'] = sanitize_text_field( (string) wp_unslash( $_POST['deadline'] ?? '' ) );
 				$cfg['utm_param'] = sanitize_text_field( (string) wp_unslash( $_POST['utm_param'] ?? 'utm_content' ) );
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
+				$gi = (array) ( $_POST['gate_img'] ?? array() ); $cfg['gate']['images'] = array();
+				foreach ( Config::gate_image_slots() as $k => $label ) { $cfg['gate']['images'][ $k ] = sanitize_text_field( (string) wp_unslash( $gi[ $k ] ?? '' ) ); }
 				$cfg['bgn']['show'] = ! empty( $_POST['bgn_show'] );
 				$cfg['theme']['hide'] = ! empty( $_POST['theme_hide'] ); $cfg['theme']['selectors'] = (string) wp_unslash( $_POST['theme_selectors'] ?? '' );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
@@ -135,6 +144,35 @@ final class Admin {
 						<tr><th>Край</th><td><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59"></td></tr>
 						<tr><th>UTM параметър</th><td><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span></td></tr>
 						<tr><th>Имейл-попъп</th><td><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label></td></tr>
+						<tr><th>Снимки в попъпа</th><td>
+							<p class="description" style="margin:0 0 8px">Плочките „Можеш да получиш“ (4) и „Готова ли си?“ (3) показват снимка вместо емоджи. Attachment ID от медийната библиотека или пълен URL. <b>Празно = примерната снимка</b> (сивият етикет „примерна снимка“ на картинката изчезва, щом сложиш своя). Снимките се режат на 16:10 (награди) и 4:3 (кутии) — слагай хоризонтални, ≥ 800px.</p>
+							<style>.ap-gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.ap-gi figure{margin:0;background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:8px}.ap-gi figure img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:#f6f7f7}.ap-gi figcaption{font-size:11px;color:#50575e;margin:6px 0 4px}.ap-gi .ap-gi-row{display:flex;gap:4px}.ap-gi .ap-gi-row input{flex:1;min-width:0}.ap-gi .ap-gi-dummy{font-size:10px;color:#9a6700}</style>
+							<div class="ap-gi" id="apGateImgs">
+							<?php foreach ( Config::gate_image_slots() as $k => $label ) : $cur = (string) ( $draft['gate']['images'][ $k ] ?? '' ); $url = Frontend::gate_images( $draft )[ $k ]; $dummy = Frontend::gate_image_is_dummy( $draft, $k ); ?>
+								<figure data-k="<?php echo esc_attr( $k ); ?>" data-dummy="<?php echo esc_url( Frontend::gate_dummy( $k ) ); ?>">
+									<img src="<?php echo esc_url( $url ); ?>" alt="">
+									<figcaption><?php echo esc_html( $label ); ?> <span class="ap-gi-dummy"<?php echo $dummy ? '' : ' hidden'; ?>>· примерна</span></figcaption>
+									<div class="ap-gi-row"><input type="text" name="gate_img[<?php echo esc_attr( $k ); ?>]" value="<?php echo esc_attr( $cur ); ?>" placeholder="ID или URL"><button type="button" class="button ap-gi-pick" title="избери от медийната библиотека">📁</button><button type="button" class="button ap-gi-clear" title="изчисти → примерна снимка">✕</button></div>
+								</figure>
+							<?php endforeach; ?>
+							</div>
+							<script>
+							(function(){
+								var root=document.getElementById('apGateImgs');if(!root)return;
+								root.querySelectorAll('figure').forEach(function(f){
+									var inp=f.querySelector('input'),img=f.querySelector('img'),dm=f.querySelector('.ap-gi-dummy');
+									function show(url,isDummy){img.src=url;dm.hidden=!isDummy}
+									f.querySelector('.ap-gi-clear').onclick=function(){inp.value='';show(f.dataset.dummy,true)};
+									inp.addEventListener('change',function(){var v=inp.value.trim();if(!v){show(f.dataset.dummy,true)}else if(/^https?:\/\//.test(v)){show(v,false)}});
+									f.querySelector('.ap-gi-pick').onclick=function(){
+										if(!window.wp||!wp.media){alert('Медийната библиотека не е заредена — въведи attachment ID или URL.');return}
+										var fr=wp.media({title:'Снимка за попъпа',library:{type:'image'},multiple:false,button:{text:'Използвай'}});
+										fr.on('select',function(){var a=fr.state().get('selection').first().toJSON();inp.value=a.id;var sz=a.sizes&&(a.sizes.medium_large||a.sizes.medium||a.sizes.full);show(sz?sz.url:a.url,false)});
+										fr.open()};
+								});
+							})();
+							</script>
+						</td></tr>
 						<tr><th>Лева в поръчката</th><td><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label></td></tr>
 						<tr><th>Цял екран</th><td>
 							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>

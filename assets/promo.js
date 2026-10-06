@@ -90,16 +90,20 @@
     if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;var t=(c&&c.theme)||['#ffe3cf','#ffb37a','#c2410c'];
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
     var dc=$('apDc');dc.className='dc gatew';dc.scrollTop=0;
-    function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+'"><i>'+b.ic+'</i><b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
+    /* v1.0.8: снимки вместо емоджита на плочките (gate.images от настройките; празно = примерна снимка). Без URL → емоджито от мокъпа. */
+    var GI=(A.gate&&A.gate.images)||{};
+    function gi(k,emo){return GI[k]?'<i class="g2i"><img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async"></i>':'<i>'+emo+'</i>'}
+    function gcl(k){return GI[k]?' pic':''}
+    function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+gcl('box_'+b.id)+'">'+gi('box_'+b.id,b.ic)+'<b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
     dc.innerHTML='<div class="gate g2" style="--g1:'+t[0]+';--g2:'+t[1]+';--g3:'+t[2]+'">'
       +'<div class="g2band"><div class="g2bt"><b'+ck('head.brand')+'>'+T('head.brand')+' <span'+ck('head.title')+'>'+T('head.title')+'</span></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
       +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
       +'<div class="g2s"><span class="g2n">1</span><span'+ck('gate.s1')+'>'+T('gate.s1')+'</span></div>'
       +'<div class="g2rw">'
-        +'<div class="g2r hot"><i>🛥️</i><div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>'
-        +'<div class="g2r gold"><i>👑</i><div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>'
-        +'<div class="g2r"><i>📖</i><div><b'+ck('gate.r3.b')+'>'+T('gate.r3.b')+'</b><small'+ck('gate.r3.s')+'>'+T('gate.r3.s')+'</small></div></div>'
-        +'<div class="g2r"><i>💸</i><div><b'+ck('gate.r4.b')+'>'+T('gate.r4.b')+'</b><small'+ck('gate.r4.s')+'>'+T('gate.r4.s')+'</small></div></div>'
+        +'<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>'
+        +'<div class="g2r gold'+gcl('cosm')+'">'+gi('cosm','👑')+'<div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>'
+        +'<div class="g2r'+gcl('book')+'">'+gi('book','📖')+'<div><b'+ck('gate.r3.b')+'>'+T('gate.r3.b')+'</b><small'+ck('gate.r3.s')+'>'+T('gate.r3.s')+'</small></div></div>'
+        +'<div class="g2r'+gcl('pct')+'">'+gi('pct','💸')+'<div><b'+ck('gate.r4.b')+'>'+T('gate.r4.b')+'</b><small'+ck('gate.r4.s')+'>'+T('gate.r4.s')+'</small></div></div>'
       +'</div>'
       +'<div class="g2s"><span class="g2n">2</span><span'+ck('gate.s2')+'>'+T('gate.s2')+'</span></div>'
       +'<p class="g2p"'+ck('gate.p')+'>'+T('gate.p')+'</p>'

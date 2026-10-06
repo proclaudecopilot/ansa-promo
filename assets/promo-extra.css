@@ -2,7 +2,9 @@
    1) WC снимки вместо емоджита: контейнерите стават с фиксиран размер, бял фон и object-fit:contain.
    2) z-index: overlay/тост/sticky над хедъра на темата (root-ът НЕ е stacking context).
    3) Бадж с отстъпката + редовна/намалена цена в редовете на „Напълни кутията си“ (искане на човека, не е в мокъп v73).
-   4) „Цял екран“: скриване на хедър/футър/плаващи бутони на темата на промо страницата (селекторите са настройка). */
+   4) „Цял екран“: скриване на хедър/футър/плаващи бутони на темата на промо страницата (селекторите са настройка).
+   6) Имейл-попъп (v1.0.8, искане на човека): плочките „Можеш да получиш“ и „Готова ли си?“ са със снимки вместо емоджита —
+      снимката е отгоре и пълни плочката почти до ръба; URL-ите идват от настройките (🧰 Инструменти → Снимки в попъпа), празно = примерна снимка. */
 
 /* ── 1 · снимки ── */
 .ansa-promo img.pimg,.ansa-promo img.timg,.ansa-promo img.simg,.ansa-promo img.oimg,.ansa-promo img.cimg,.ansa-promo img.gimg,.ansa-promo img.ppi,.ansa-promo img.hpic{width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block;background:#fff}
@@ -57,3 +59,23 @@ body.ansa-promo-page #wpadminbar{display:none}
 
 /* фонът на цялата промо страница е кремав и под играта (body класът идва от Frontend::body_class) */
 body.ansa-promo-page{background:#faf3ec}
+
+/* ── 6 · снимки в имейл-попъпа ── */
+.ansa-promo .dc.gatew{overflow:auto;scrollbar-width:thin}
+.ansa-promo .g2r.pic{grid-template-columns:1fr;gap:7px;padding:5px 5px 10px;align-items:start}
+.ansa-promo .g2r.pic .g2i,.ansa-promo .g2b.pic .g2i{display:block;width:100%;height:auto;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#fff;font-size:0}
+.ansa-promo .g2r.pic .g2i img,.ansa-promo .g2b.pic .g2i img{width:100%;height:100%;object-fit:cover;display:block}
+.ansa-promo .g2r.pic>div{padding:0 5px}
+.ansa-promo .g2r.pic b{font-size:14px}
+.ansa-promo .g2r.pic small{font-size:11.5px;margin-top:2px}
+.ansa-promo .g2r.hot.pic .g2i,.ansa-promo .g2r.gold.pic .g2i{background:#fff}
+.ansa-promo .g2b.pic{padding:5px 5px 9px}
+.ansa-promo .g2b.pic .g2i{aspect-ratio:4/3;margin-bottom:6px}
+.ansa-promo .g2b.pic b{font-size:13.5px}
+@media(max-width:480px){
+.ansa-promo .g2r.pic{padding:4px 4px 8px;gap:6px}
+.ansa-promo .g2r.pic b{font-size:12.5px}
+.ansa-promo .g2r.pic small{font-size:10.5px}
+.ansa-promo .g2b.pic{padding:4px 4px 7px}
+.ansa-promo .g2b.pic .g2i{aspect-ratio:1/1;margin-bottom:5px}
+}

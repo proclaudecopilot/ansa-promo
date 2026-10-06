@@ -10,7 +10,7 @@ open(out + '/harness/runtime.json', 'w').write(rt)
 t = open(root + '/templates/page.php', encoding='utf-8').read()
 t = re.sub(r'<\?php.*?\?>', '', t, flags=re.S)
 html = ('<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>harness</title>'
-        '<link rel="stylesheet" href="file://' + root + '/assets/promo.css"></head><body style="margin:0">' + t +
+        '<link rel="stylesheet" href="file://' + root + '/assets/promo.css"><link rel="stylesheet" href="file://' + root + '/assets/promo-extra.css"></head><body style="margin:0">' + t +
         '<script>window.AnsaPromoRuntime=' + rt + ';</script><script src="file://' + root + '/assets/promo.js"></script></body></html>')
 open(out + '/harness/index.html', 'w', encoding='utf-8').write(html)
 print('harness →', out + '/harness/index.html')
