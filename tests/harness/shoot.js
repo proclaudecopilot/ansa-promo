@@ -23,6 +23,7 @@ const { chromium } = require('playwright');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
     if (w < 500) { await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura' })); await shot('fill'); await check('fill');
+    { const ok = await page.$('#okBtn'); if (ok) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } }
     // add 4 more via steppers on mobile/desktop
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
     await shot('fill-done');

@@ -192,3 +192,61 @@ body.ansa-promo-page{background:#faf3ec}
 @media(min-width:1000px){.ansa-promo .boxes{align-items:start}.ansa-promo .box.l{transform:scale(1.035);transform-origin:top center;z-index:2}.ansa-promo .box.l .brib{border-radius:15px 15px 0 0}}
 @media(max-width:999px){.ansa-promo .box.l .brib b{font-size:30px}}
 @media(max-width:640px){.ansa-promo .box.l .brib b{font-size:28px!important}}
+
+/* ── 12 · „Напълни кутията си“ на телефон (v1.0.15, искане на човека): компактни редове с категорията над тях; сгъваем блок с подаръците
+      (яхта + основен подарък, процентът горе вдясно, останалите зад „още N подаръка“); слотовете на един широк ред; лепкав футър
+      със спестяването и „Продължи“; степерът хоризонтален. Мобилният вариант важи до 760px (MOBF) ── */
+.ansa-promo .dc.fpm .mfh{padding:10px 12px 10px}
+.ansa-promo .dc.fpm .mft{grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px}
+.ansa-promo .dc.fpm .mftx b{font-size:17px;text-transform:uppercase;letter-spacing:.03em}
+.ansa-promo .dc.fpm .mfsw{padding:7px 10px;font-size:12px}
+.ansa-promo .mfg2{position:relative;margin-top:9px;background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1.5px solid var(--gold);border-radius:14px;padding:9px 10px 8px}
+.ansa-promo .mfpct{position:absolute;top:-11px;right:10px;background:linear-gradient(135deg,#b45309,#f0b429 60%,#b45309);color:#fff;font-size:13px;font-weight:900;border-radius:999px;padding:3px 10px;box-shadow:0 2px 8px rgba(180,83,9,.3);border:1.5px solid #fff}
+.ansa-promo .mfgm{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding-right:70px}
+.ansa-promo .mfgi{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--ink);line-height:1.2}
+.ansa-promo .mfgi i{width:34px;height:34px;border-radius:9px;font-style:normal;font-size:20px;display:flex;align-items:center;justify-content:center;flex:none}
+.ansa-promo .mfgi b{font-weight:900}
+.ansa-promo .mfgi s{color:#a88a75;font-weight:700}
+.ansa-promo .mfgm .mfgi:first-child b b,.ansa-promo .mfgm .mfgi:first-child>b>b{color:#fff;background:linear-gradient(135deg,#c2185b,#e0507a);border-radius:6px;padding:1px 6px}
+.ansa-promo .mfgx{display:block;margin:7px 0 0;background:none;border:none;padding:0;font:inherit;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;text-underline-offset:2px}
+.ansa-promo .mfgh{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:7px;padding-top:7px;border-top:1px dashed rgba(180,83,9,.25)}
+.ansa-promo .mfgh[hidden]{display:none}
+.ansa-promo .mfgh .mfgi{font-size:12.5px}
+.ansa-promo .mfgh .mfgi i{width:28px;height:28px}
+/* редовете */
+.ansa-promo .dc.fpm .mfl{padding:8px 10px 12px;gap:5px}
+.ansa-promo .mcat{font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--od);margin:6px 4px 0;line-height:1.2}
+.ansa-promo .mcat.core{color:var(--gd)}
+.ansa-promo .mcat:first-child{margin-top:0}
+.ansa-promo .dc.fpm .fcat.mrow{grid-template-columns:46px minmax(0,1fr);row-gap:4px;padding:8px 9px 8px 8px;border-radius:12px;column-gap:9px}
+.ansa-promo .dc.fpm .mrow .pic{width:46px;height:46px;border-radius:10px}
+.ansa-promo .dc.fpm .mrow .ftx{gap:0}
+.ansa-promo .dc.fpm .mrow b{font-size:14px}
+.ansa-promo .dc.fpm .mrow small{font-size:11px;line-height:1.25;-webkit-line-clamp:2}
+.ansa-promo .dc.fpm .mrow .fbar{gap:8px}
+.ansa-promo .dc.fpm .mrow .fbar .fprc b{font-size:14px}
+.ansa-promo .dc.fpm .mrow .fbar .fprc s{font-size:11px}
+.ansa-promo .dc.fpm .mrow .fbar .fmore{font-size:11px}
+.ansa-promo .dc.fpm .mrow .madd{padding:6px 10px;font-size:12px}
+.ansa-promo .dc.fpm .mrow .stp{flex-direction:row!important}
+.ansa-promo .dc.fpm .mrow .stp button{width:28px;height:28px;font-size:16px}
+.ansa-promo .dc.fpm .mrow .stp b{min-width:16px;font-size:14px}
+.ansa-promo .dc.fpm .fcat.mrow .fpct{top:-8px;right:8px;font-size:10px;padding:2px 8px}
+/* лепкав футър: слотовете на един широк ред; спестяване + бутон на един ред */
+.ansa-promo .dc.fpm .mff{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.ansa-promo .dc.fpm .fslots{display:flex;align-items:center;gap:6px;margin:0 0 8px;padding:0;justify-content:stretch}
+.ansa-promo .dc.fpm .fsl{font-size:13px;margin-right:2px}
+.ansa-promo .dc.fpm .fs{flex:1 1 0;width:auto;height:42px;border-radius:11px;font-size:14px}
+.ansa-promo .dc.fpm .fs img{width:30px;height:30px}
+.ansa-promo .dc.fpm .mffb{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.ansa-promo .dc.fpm .mffb .fsave{margin:0;padding:6px 10px;font-size:12px;line-height:1.25;text-align:left}
+.ansa-promo .dc.fpm .mffb .fsave b{font-size:16px;display:block}
+.ansa-promo .dc.fpm #nFill{width:auto;min-height:48px;padding:0 16px;font-size:14.5px;white-space:nowrap}
+/* попъп „за да отключиш…“ с ОК */
+.ansa-promo .dc.pp .okp{text-align:center;padding:4px 0}
+.ansa-promo .okpi i{width:64px;height:64px;border-radius:16px;font-style:normal;font-size:36px;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.ansa-promo .okp p{font-size:16px;font-weight:700;color:var(--ink);line-height:1.4;margin:0 0 14px}
+.ansa-promo .okp p em{font-style:normal;font-weight:900;color:var(--od)}
+.ansa-promo .okp .cta{min-height:48px}
+/* десктоп маркъп на тесен екран (ако прозорецът е свит след отваряне) — степерът пак хоризонтален */
+.ansa-promo .dc.fpw .fcat.drow .stp{flex-direction:row!important}
