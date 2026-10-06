@@ -262,3 +262,35 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .okp .cta{min-height:48px}
 /* десктоп маркъп на тесен екран (ако прозорецът е свит след отваряне) — степерът пак хоризонтален */
 .ansa-promo .dc.fpw .fcat.drow .stp{flex-direction:row!important}
+
+/* ── 13 · телефон (v1.0.17, искане на човека): еднакви радиуси на кутията, лентата и външния ореол; „Напълни кутията си“ — 3 продукта
+      на страница с пагинация ‹ • • › 1 / 2, по-големи и подредени карти, които запълват екрана ── */
+@media(max-width:999px){
+.ansa-promo .box{border-radius:16px!important}
+.ansa-promo .box .brib,.ansa-promo .brib.gold{border-radius:13px 13px 0 0!important}
+.ansa-promo .box.l .brib{border-radius:12px 12px 0 0!important}
+.ansa-promo .box.l::before{border-radius:19px;inset:-3px}
+}
+.ansa-promo .mitem{display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+.ansa-promo .mitem.pg-off{display:none}
+.ansa-promo .dc.fpm .mfl{display:flex;flex-direction:column;gap:6px;padding:10px 12px 8px}
+.ansa-promo .mitem .fcat.mrow{flex:1 1 auto;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:6px;padding:12px 12px 12px 10px;border-radius:14px;align-content:center}
+.ansa-promo .mitem .mrow .pic{width:72px;height:72px;border-radius:14px}
+.ansa-promo .mitem .mrow b{font-size:16px}
+.ansa-promo .mitem .mrow small{font-size:12.5px;line-height:1.3;-webkit-line-clamp:3}
+.ansa-promo .mitem .mrow .fbar{gap:10px}
+.ansa-promo .mitem .mrow .fbar .fprc b{font-size:16px}
+.ansa-promo .mitem .mrow .fbar .fprc s{font-size:12px}
+.ansa-promo .mitem .mrow .fbar .fmore{font-size:12px}
+.ansa-promo .mitem .mrow .madd{padding:8px 13px;font-size:13px}
+.ansa-promo .mitem .mrow .stp button{width:32px;height:32px}
+.ansa-promo .mitem .mcat{font-size:11px;margin:0 4px 0}
+.ansa-promo .mitem .fcat.mrow .fpct{font-size:10.5px;padding:2px 9px;top:-9px;right:10px}
+.ansa-promo .mpg{display:flex;align-items:center;justify-content:center;gap:12px;padding:6px 0 2px;margin-top:auto;flex:none}
+.ansa-promo .mpgb{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--ol);background:#fff;color:var(--od);font:inherit;font-size:22px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center}
+.ansa-promo .mpgb:disabled{opacity:.3}
+.ansa-promo .mpgd{display:flex;gap:6px;align-items:center}
+.ansa-promo .mpgd i{width:8px;height:8px;border-radius:50%;background:#e5d6c8;display:block}
+.ansa-promo .mpgd i.on{background:var(--o);width:22px;border-radius:4px}
+.ansa-promo .mpgn{font-size:13px;font-weight:900;color:var(--ink2);min-width:34px;text-align:center}
+@media(max-height:700px){.ansa-promo .mitem .mrow .pic{width:60px;height:60px}.ansa-promo .mitem .mrow small{-webkit-line-clamp:2}.ansa-promo .mitem .fcat.mrow{padding:10px}}
