@@ -301,3 +301,59 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo-portal::before{display:none!important;content:none!important}
 /* резерва: ако нещо все пак хване fixed-а, футърът на пълненето остава долу в скрол-кутията */
 .ansa-promo .dc.fpm .mff{position:sticky;bottom:0;z-index:3}
+
+/* ── 15 · „Напълни кутията си“ на телефон, v1.0.19 — 10-те точки от анализа. Надделява над секции 12/13. ── */
+/* скала: отстъп 12px · радиуси 16 (карта/блок) · 12 (снимка/бутони/слотове) · 8 (бадж) */
+.ansa-promo .dc.fpm .mfh{padding:12px}
+.ansa-promo .dc.fpm .mfl{padding:12px;gap:12px;display:flex;flex-direction:column}
+.ansa-promo .dc.fpm .mff{padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+/* 7+8 · подаръците: един сгъваем ред, без втори „−40%“ */
+.ansa-promo .mfg2{margin-top:10px;padding:10px 12px;border-radius:16px}
+.ansa-promo .mfpct{display:none}
+.ansa-promo .mfgc{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;padding:0;font:inherit;text-align:left;color:var(--ink);cursor:pointer;min-height:34px}
+.ansa-promo .mfgc .mfgi{font-size:13px;min-width:0}
+.ansa-promo .mfgc .mfgi b{white-space:nowrap;display:block}
+.ansa-promo .mfgc .mfgi i{width:32px;height:32px;border-radius:8px}
+.ansa-promo .mfgn{margin-left:auto;flex:none;background:#fff;border:1.5px solid var(--gold);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;color:var(--goldd);font-style:normal}
+.ansa-promo .mfgc .chev{flex:none;font-style:normal;font-size:12px;color:var(--goldd);transition:transform .15s}
+.ansa-promo .mfgc.open .chev{transform:rotate(180deg)}
+.ansa-promo .mfgh{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(180,83,9,.25)}
+.ansa-promo .mfgh[hidden]{display:none}
+.ansa-promo .mfgh .mfgi{font-size:13px}
+.ansa-promo .mfgh .mfgi i{width:32px;height:32px;border-radius:8px}
+/* 1+2+4 · картата: естествена височина, снимката е лявата трета по цялата височина, категорията е вътре над името */
+.ansa-promo .mitem{flex:0 0 auto;display:block;min-height:0}
+.ansa-promo .mitem .mcat{display:none}
+.ansa-promo .dc.fpm .fcat.mrow,.ansa-promo .mitem .fcat.mrow{flex:none;display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:8px;align-items:start;align-content:start;padding:12px;border-radius:16px;position:relative;overflow:visible}
+.ansa-promo .mitem .mrow .pic{grid-row:1/3;grid-column:1;width:104px;height:100%;min-height:112px;border-radius:12px;align-self:stretch;margin:0;background:#fff;border:1px solid rgba(232,114,42,.18)}
+.ansa-promo .mitem .mrow .pic img{object-fit:contain;padding:4px}
+.ansa-promo .mitem .mrow .ftx{grid-row:1;grid-column:2;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ansa-promo .mitem .mrow .fct{display:block;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--od);line-height:1.2;margin:0 56px 2px 0;white-space:normal!important;overflow:visible!important;text-overflow:clip}
+.ansa-promo .mitem .mrow.core .fct{color:var(--gd)}
+.ansa-promo .mitem .mrow b{font-size:16px;line-height:1.15}
+.ansa-promo .mitem .mrow small{font-size:12.5px;line-height:1.3;-webkit-line-clamp:2;color:var(--ink2);margin:0}
+/* 5 · „Повече ›“ под описанието, с нормална зона за докосване */
+.ansa-promo .mitem .mrow .fmore{align-self:flex-start;margin-top:4px;padding:4px 0;font-size:12px}
+/* 3 · един бадж „−40%“ вътре в картата горе вдясно; спестяването е в общата сума долу */
+.ansa-promo .mitem .fcat.mrow .fpct.mb{position:absolute;top:12px;right:12px;font-size:11.5px;font-weight:900;padding:3px 8px;border-radius:8px;box-shadow:none}
+.ansa-promo .mitem .fcat.mrow.on .fpct.mb{background:linear-gradient(135deg,#16a34a,#4ade80)}
+/* 6 · тих „+ Добави“, степерът идва на негово място */
+.ansa-promo .mitem .mrow .fbar{grid-row:2;grid-column:2;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.ansa-promo .mitem .mrow .fbar .fprc{margin:0}
+.ansa-promo .mitem .mrow .fbar .fprc b{font-size:17px}
+.ansa-promo .mitem .mrow .fbar .fprc s{font-size:12px}
+.ansa-promo .mitem .mrow .madd{background:#fff;color:var(--od);border:1.5px solid var(--o);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:900}
+.ansa-promo .mitem .mrow .stp{border-radius:12px;padding:2px}
+.ansa-promo .mitem .mrow .stp button{width:32px;height:32px;border-radius:10px}
+/* 9 · пагинация долепена до картите: ‹ 1 / 2 › */
+.ansa-promo .mpg{margin:0;padding:0;gap:12px;flex:none;justify-content:center}
+.ansa-promo .mpgb{width:40px;height:40px;border-radius:12px}
+.ansa-promo .mpgd{display:none}
+.ansa-promo .mpgn{font-size:14px;min-width:44px}
+/* 10 · футърът в същата скала */
+.ansa-promo .dc.fpm .fslots{gap:8px;margin:0 0 10px}
+.ansa-promo .dc.fpm .fs{border-radius:12px;height:44px}
+.ansa-promo .dc.fpm .mffb{gap:10px}
+.ansa-promo .dc.fpm .mffb .fsave{border-radius:12px;padding:8px 12px}
+.ansa-promo .dc.fpm #nFill{border-radius:12px;min-height:50px}
+@media(max-width:360px){.ansa-promo .dc.fpm .fcat.mrow,.ansa-promo .mitem .fcat.mrow{grid-template-columns:88px minmax(0,1fr)}.ansa-promo .mitem .mrow .pic{width:88px;min-height:100px}}
