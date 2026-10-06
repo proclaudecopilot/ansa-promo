@@ -27,7 +27,8 @@ final class Config {
 			'deadline'  => '2026-12-31 23:59',
 			'page_id'   => 0,
 			'utm_param' => 'utm_content',
-			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true ),
+			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
+			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'images' => self::gate_image_defaults() ),
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
 			'ship'      => array( 'paid' => 2.55 ),
 			/* продуктите в играта — key = UTM стойност; цената, наличността и (по подразбиране) снимката идват от WC при рендиране */
@@ -58,6 +59,12 @@ final class Config {
 		);
 	}
 
+	/** Плочките в имейл-попъпа, които имат снимка: ключ → етикет за админа. Редът е редът на екрана. */
+	public static function gate_image_slots() {
+		return array( 'yacht' => 'Почивка с яхта (1)', 'cosm' => 'Козметичен сет (2)', 'book' => 'Книга с рецепти (3)', 'pct' => 'Отстъпка (4)', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
+	}
+	public static function gate_image_defaults() { return array_fill_keys( array_keys( self::gate_image_slots() ), '' ); }
+
 	/** Хедър/футър/плаващи бутони на OceanWP, Elementor, FunnelKit Cart, Claspo — скриват се на промо страницата. */
 	public static function default_hide_selectors() {
 		return "#site-header\n#site-header-sticky-wrapper\n.oceanwp-mobile-menu-icon\n#footer\n#site-footer\n.site-footer\n.page-header\nheader.elementor-location-header\nfooter.elementor-location-footer\n[data-elementor-type=\"header\"]\n[data-elementor-type=\"footer\"]\n.fkcart-floating-toggler\n#fkcart-floating-toggler\n.fkcart-toggler\n#scroll-top\n.claspo-widget\n#elementor-popup-modal";
@@ -78,6 +85,9 @@ final class Config {
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
+		$imgs = array();
+		foreach ( self::gate_image_slots() as $k => $label ) { $v = trim( (string) ( is_array( $out['gate']['images'] ?? null ) ? ( $out['gate']['images'][ $k ] ?? '' ) : '' ) ); $imgs[ $k ] = ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ); }
+		$out['gate']['images'] = $imgs;
 		$out['timer']['minutes'] = max( 0, (int) $out['timer']['minutes'] ); $out['timer']['warn_under'] = max( 0, (int) $out['timer']['warn_under'] );
 		$out['ship']['paid'] = round( (float) $out['ship']['paid'], 2 );
 		/* products */
