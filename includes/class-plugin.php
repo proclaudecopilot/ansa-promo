@@ -31,6 +31,7 @@ final class Plugin {
 	/** Извиква се на plugins_loaded (5), само при наличен WooCommerce. */
 	public function boot() {
 		Schema::maybe_upgrade();
+		Config::maybe_migrate();
 		Catalog::register();
 		Frontend::register();
 		Leads::register();

@@ -38,8 +38,9 @@ final class Config {
 			/* „С какво да ти помогнем?“ — проблем → продукт (по един продукт на проблем) */
 			'problems'  => array(),
 			'boxes'     => array(
-				array( 'id' => 's', 'ic' => '📦', 'name' => 'Малка кутия',  'packs' => 1, 'pct' => 20, 'tickets' => 1, 'rw' => array( 'tix' ),                          'no' => array( 'cosm50', 'book', 'ship' ), 'tag' => '',                                 'cosm_pay' => null ),
-				array( 'id' => 'm', 'ic' => '🎁', 'name' => 'Средна кутия', 'packs' => 3, 'pct' => 30, 'tickets' => 3, 'rw' => array( 'tix3', 'cosm50', 'book', 'ship' ), 'no' => array(),                           'tag' => 'Най-популярна',                       'cosm_pay' => 64.5 ),
+				/* v1.0.13 (човекът, 06.10): Малка −15% · 1× яхта; Средна −30% · 3× яхта + книга + доставка (без сет); Голяма без промяна */
+				array( 'id' => 's', 'ic' => '📦', 'name' => 'Малка кутия',  'packs' => 1, 'pct' => 15, 'tickets' => 1, 'rw' => array( 'tix' ),                 'no' => array( 'book', 'ship', 'cosm1' ), 'tag' => '',                                 'cosm_pay' => null ),
+				array( 'id' => 'm', 'ic' => '🎁', 'name' => 'Средна кутия', 'packs' => 3, 'pct' => 30, 'tickets' => 3, 'rw' => array( 'tix3', 'book', 'ship' ), 'no' => array( 'cosm1' ),                 'tag' => 'Най-популярна',                       'cosm_pay' => null ),
 				array( 'id' => 'l', 'ic' => '👑', 'name' => 'Голяма кутия', 'packs' => 5, 'pct' => 40, 'tickets' => 5, 'rw' => array( 'tix5', 'cosm1', 'book', 'ship' ),  'no' => array(),                           'tag' => 'Най-изгодна · спестяваш най-много', 'cosm_pay' => 1 ),
 			),
 			'order'     => array( 'desktop' => array( 's', 'l', 'm' ), 'mobile' => array( 'l', 'm', 's' ) ),
@@ -59,9 +60,28 @@ final class Config {
 		);
 	}
 
-	/** Плочките в имейл-попъпа, които имат снимка: ключ → етикет за админа. Редът е редът на екрана. */
+	/** v1.0.13: новата структура на наградите. Еднократно пренаписва кутиите s/m в черновата и публикуваното, ако още са със
+	 *  старите дефолти (Малка −20% · [tix]; Средна −30% · [tix3, cosm50, book, ship]); ръчно променени кутии не се пипат. */
+	public static function maybe_migrate() {
+		if ( get_option( 'ansa_promo_rw_v2' ) ) { return; }
+		$s = self::read_store(); $changed = false; $d = self::defaults();
+		$old = array( 's' => array( 'pct' => 20.0, 'rw' => array( 'tix' ) ), 'm' => array( 'pct' => 30.0, 'rw' => array( 'tix3', 'cosm50', 'book', 'ship' ) ) );
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['boxes'] ) || ! is_array( $s[ $slot ]['boxes'] ) ) { continue; }
+			foreach ( $s[ $slot ]['boxes'] as $i => $b ) {
+				$id = is_array( $b ) ? (string) ( $b['id'] ?? '' ) : '';
+				if ( ! isset( $old[ $id ] ) ) { continue; }
+				if ( (float) ( $b['pct'] ?? 0 ) !== $old[ $id ]['pct'] || array_values( array_map( 'strval', (array) ( $b['rw'] ?? array() ) ) ) !== $old[ $id ]['rw'] ) { continue; }
+				foreach ( $d['boxes'] as $db ) { if ( $db['id'] === $id ) { foreach ( array( 'pct', 'rw', 'no', 'cosm_pay' ) as $f ) { $s[ $slot ]['boxes'][ $i ][ $f ] = $db[ $f ]; } $changed = true; } }
+			}
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_rw_v2', $changed ? 'migrated' : 'noop', false );
+	}
+
+	/** Плочките със снимка (имейл-попъп + картите на кутиите): ключ → етикет за админа. */
 	public static function gate_image_slots() {
-		return array( 'yacht' => 'Почивка с яхта (1)', 'cosm' => 'Козметичен сет (2)', 'book' => 'Книга с рецепти (3)', 'pct' => 'Отстъпка (4)', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
+		return array( 'yacht' => 'Почивка с яхта', 'cosm' => 'Козметичен сет', 'book' => 'Книга с рецепти', 'pct' => 'Отстъпка', 'ship' => 'Безплатна доставка', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
 	}
 	public static function gate_image_defaults() { return array_fill_keys( array_keys( self::gate_image_slots() ), '' ); }
 
