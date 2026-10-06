@@ -151,7 +151,7 @@
   $('apOv').onclick=function(e){if(e.target.id==='apOv'&&!S._lockOv)closeInfo()};
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(!$('apOv2').classList.contains('off')){$('apOv2').classList.add('off');return}if(!S._lockOv&&!$('apOv').classList.contains('off'))closeInfo()}});
 
-  function howPopup(){info(T('how.title'),'<p class="hb"'+ck('how.p')+'>'+T('how.p')+'</p>'+BOXES.map(function(b){return '<div class="il"><span>'+b.ic+' '+esc(b.name)+' · '+b.packs+' '+opk(b.packs)+'</span><b>−'+b.pct+'% · '+b.rw.map(function(r){return RW(r).ic}).join(' ')+'</b></div>'}).join('')+'<p class="mut"'+ck('how.foot')+'>'+T('how.foot')+'</p>')}
+  function howPopup(){info(T('how.title'),'<p class="hb"'+ck('how.p')+'>'+T('how.p')+'</p>'+BOXES.map(function(b){return '<div class="il"><span>'+esc(b.name)+' · '+b.packs+' '+opk(b.packs)+'</span><b>−'+b.pct+'% · '+b.rw.map(function(r){return RW(r).ic}).join(' ')+'</b></div>'}).join('')+'<p class="mut"'+ck('how.foot')+'>'+T('how.foot')+'</p>')}
   $('apHow').onclick=howPopup;
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
@@ -236,7 +236,7 @@
     PROBS.forEach(function(p){if(PROD[p.key]&&p.key!==S.core)rows.push({key:p.key,t:p.t,why:p.why||PROD[p.key].ds})});
     var gifts=b.rw.map(function(r){var w=RW(r);var big=/^tix|^cosm/.test(r);var lbl=/^tix/.test(r)?T('fill.g.tix',bv):r==='ship'?T('fill.g.ship'):r==='book'?T('fill.g.book'):T('fill.g.cosm');var sub=/^tix/.test(r)?T('fill.g.tix.sub'):/^cosm/.test(r)?cosmPrice(r):'';return '<span class="fg '+r+(big?' big':'')+'"><i>'+(/^tix/.test(r)?'🛥️':w.ic)+'</i><b>'+lbl+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span>'}).join('')+'<span class="fg pct"><i>💸</i><b>−'+b.pct+'%</b></span>';
     var mix='';if(P>1){var a1=Math.ceil(P/2),a2=P-a1;mix='<p class="fmixt"'+ck('fill.mix')+'>'+T('fill.mix',{a:a1,b:a2})+'</p>'}
-    var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+b.ic+' '+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
+    var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
       +'<div class="f2box"><p class="f2intro"'+ck('fill.intro')+'>'+T('fill.intro',bv)+'</p>'+mix+'</div>'
       +'<div class="fslots" id="fSlots"></div>'
       +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small>'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more')+'>'+T('fill.more')+'</button></div><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div>'}).join('')+'</div>'
@@ -246,7 +246,7 @@
       var gl=[T('mfill.g.tix',bv)];
       if(b.cosm_pay!=null)gl.push(T('mfill.g.cosm',bv));
       if(b.rw.indexOf('book')>-1)gl.push(T('mfill.g.book'));if(b.rw.indexOf('ship')>-1)gl.push(T('mfill.g.ship'));
-      body='<div class="mfh"><div class="mft"><span class="mfi">'+b.ic+'</span><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.pct')+'>'+T('mfill.pct',bv)+'</small></div><button class="mfsw" id="fBack"'+ck('mfill.sw')+'>'+T('mfill.sw')+'</button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
+      body='<div class="mfh"><div class="mft"><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.pct')+'>'+T('mfill.pct',bv)+'</small></div><button class="mfsw" id="fBack"'+ck('mfill.sw')+'>'+T('mfill.sw')+'</button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
         +'<p class="mfin"'+ck('mfill.intro')+'>'+T('mfill.intro',Object.assign({same:P>1?T('mfill.same'):''},bv))+'</p>'
         +'<div class="mfg">'+gl.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>'
         +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'}).join('')+'</div>'
@@ -287,9 +287,9 @@
       :b.rw.indexOf('cosm1')>-1?'<div class="cosmhl gold"><i>'+RW('cosm1').ic+'</i><div><em'+ck('box.cosm1.em')+'>'+T('box.cosm1.em',bv)+'</em><b'+ck('box.cosm1.b')+'>'+T('box.cosm1.b',bv)+'</b><small'+ck('box.cosm1.s')+'>'+T('box.cosm1.s',bv)+'</small>'+cosmPrice('cosm1')+'</div></div>'
       :'<div class="cosmhl no"><i>👑</i><div><b'+ck('box.cosm.no')+'>'+T('box.cosm.no')+'</b></div></div>';
     var chips='<div class="brs">'+b.rw.filter(function(r){return !/^tix|^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+b.no.filter(function(r){return !/^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc no"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+'</div>';
-    var unlock='<div class="bunlock"><span'+ck('box.unlock')+'>'+T('box.unlock',bv)+'</span>'+(c?'<small'+ck(b.packs===1?'box.unlock.one':'box.unlock.many')+'>'+T(b.packs===1?'box.unlock.one':'box.unlock.many',bv)+'</small>':'')+'</div>';
+    /* v1.0.10: „за да отключиш…“ вече не е в картата — показва се в попъпа „Напълни кутията си“ (fill.intro / mfill.intro) */
     var hasCosm=b.cosm_pay!=null;
-    var mini='<div class="bmini"><div class="bm1"><span class="bmic">'+b.ic+'</span><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
+    var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
       +'<div class="bmr"><div class="bmrow y"><i>🛥️</i><span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
       +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'"><i>🌸</i><span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>'+(b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1?'<div class="bmrow x"><i>📖</i><span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':''):'<div class="bmrow off"><i>🌸</i><span'+ck('bmini.none')+'>'+T('bmini.none')+'</span></div>')
       +'<button class="bmore" data-more-box="'+b.id+'"><span'+ck('bmini.more')+'>'+T('bmini.more')+'</span> <i>▾</i></button></div></div>';
@@ -297,9 +297,8 @@
     return '<div class="box '+b.id+'"'+(oi>-1&&MOB()?' style="order:'+(oi+1)+'"':'')+'>'
       +'<div class="brib'+(b.id==='l'?' gold':'')+'"><div class="bribl"'+ck('box.rib')+'>'+T('box.rib',bv)+'</div>'+(b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'')+'</div>'
       +mini
-      +'<div class="bhd"><div class="bico">'+b.ic+'</div><div class="bname">'+esc(b.name)+'</div></div>'
+      +'<div class="bhd"><div class="bname">'+esc(b.name)+'</div></div>'
       +'<div class="brw">'+yacht+cosm+chips+'</div>'
-      +unlock
       +'<div class="bsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
       +(from?'<div class="bfrom"'+ck('box.from')+'>'+T('box.from',bv)+'</div>':'')
       +'<button class="cta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('box.cta')+'>'+T('box.cta',bv)+'</button>'
@@ -436,7 +435,7 @@
     $('keepGo').onclick=function(){closeInfo();go(A.secret&&A.secret.enabled&&SECRETLIST().length?4:5)};
   }
   function switchPopup(){
-    var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><i>'+x.ic+'</i><b>'+esc(x.name)+'</b><small>'+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
+    var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><b>'+esc(x.name)+'</b><small>'+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
     info(T('sw.title'),b);
     root.querySelectorAll('.bx[data-bx]').forEach(function(x){x.onclick=function(){var to=+x.dataset.bx;if(to===S.box){closeInfo();return}if(to<S.box)sureDown(to);else{closeInfo();chooseBox(to,true)}}});
   }
