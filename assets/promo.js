@@ -153,6 +153,11 @@
 
   /* ── попъпи ── */
   function info(t,b,wide){var dc=$('apDc');dc.className='dc'+(wide?' wide':'');dc.scrollTop=0;dc.innerHTML='<button class="ux" id="apUx" aria-label="затвори">✕</button>'+(t?'<h3>'+t+'</h3>':'')+'<div class="ib">'+b+'</div>';$('apOv').classList.remove('off');$('apUx').onclick=closeInfo}
+  /* v1.0.22: резерва за телефон — ако нещо на страницата (transform/zoom на родител) „хване“ fixed-а на листа и той излезе от екрана
+     (виждаше се като „бутонът Продължи е под екрана, освен при 75% zoom“), го наместваме по измерения отместък и по височината на прозореца */
+  function fitSheet(dc){dc=dc||$('apDc');if(!dc||!dc.classList.contains('fpm'))return;dc.style.top='';dc.style.left='';dc.style.width='';dc.style.height='';var r=dc.getBoundingClientRect(),vh=window.innerHeight,vw=window.innerWidth;
+    if(Math.abs(r.top)>2)dc.style.top=(-r.top)+'px';if(Math.abs(r.left)>2)dc.style.left=(-r.left)+'px';if(Math.abs(r.width-vw)>2)dc.style.width=vw+'px';if(Math.abs(r.height-vh)>2)dc.style.height=vh+'px'}
+  window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))fitSheet()});
   function closeInfo(){$('apOv').classList.add('off');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
   function scrollHint(){var dc=$('apDc');var more=dc.scrollHeight-dc.scrollTop-dc.clientHeight>24;dc.classList.toggle('more',more);var h=$('apMore');if(!h){h=document.createElement('div');h.id='apMore';h.className='dcmore';h.innerHTML='<span'+ck('ms.more')+'>'+T('ms.more')+'</span>';dc.appendChild(h);h.onclick=function(){dc.scrollBy({top:dc.clientHeight*.7,behavior:'smooth'})}}else dc.appendChild(h)}
   (function(){var dc=$('apDc');dc.addEventListener('scroll',function(){dc.classList.toggle('more',dc.scrollHeight-dc.scrollTop-dc.clientHeight>24)});if(window.MutationObserver){var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){if(ms[i].type==='childList'&&![].some.call(ms[i].addedNodes,function(n){return n.id==='apMore'})){setTimeout(scrollHint,60);return}}});mo.observe(dc,{childList:true})}window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))scrollHint()})})();
@@ -259,29 +264,38 @@
       +'<div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
     var mob=MOBF();S._fillMob=mob;
     if(mob){
-      /* v1.0.19 (анализът на човека, 10 точки): карти с естествена височина и снимка в лявата трета; категорията е вътре над името;
-         един бадж „−40%“ вътре в картата; тих бутон „+ Добави“; подаръците са един сгъваем ред; пагинация ‹ 1 / 2 › долепена до картите;
-         единна скала за отстъпи (12px) и радиуси (16/12/8). Футърът е лепкав (слотове · спестяване · „Продължи“). */
+      /* v1.0.22 (инспирацията на човека): пълноекранен лист — заглавие „Голяма кутия“ + „5 опаковки по твой избор“ + бадж „−40% на всяка
+         опаковка“ + „Смени кутията“; лента „Подаръци и бонуси“ с „Виж всички ›“ (разгъва списъка); „Избери продуктите“; карти без категория
+         и без бадж (снимка | име · описание · „Виж продукта ›“ · цена + „+ Добави“); пагинация ‹ 1 от 2 ›; лепкав футър „Твоята кутия · 0 от 5“
+         + слотове + бутон. Хедърът и списъкът скролват заедно (.mfs), футърът е винаги видим. */
       var main=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
-      var hidden=b.rw.filter(function(r){return !/^tix/.test(r)&&r!==main});
-      var gkey=function(r){return /^cosm/.test(r)?'mfill.g.cosm':'mfill.g.'+r};
-      var skey=function(r){return /^cosm/.test(r)?'mfill.gs.cosm':'mfill.gs.'+r};
-      var gline='<button class="mfgc" id="mfGx" type="button" aria-expanded="false"><span class="mfgi">'+rimg('tix','🛥️')+'<b'+ck('mfill.gs.tix')+'>'+T('mfill.gs.tix',bv)+'</b></span>'
-        +(main?'<span class="mfgi">'+rimg(main,RW(main).ic)+'<b'+ck(skey(main))+'>'+T(skey(main),bv)+'</b></span>':'')
-        +(hidden.length?'<em class="mfgn">+'+hidden.length+'</em><i class="chev">▾</i>':'')+'</button>'
-        +(hidden.length?'<div class="mfgh" id="mfGh" hidden>'+hidden.map(function(r){return '<span class="mfgi">'+rimg(r,RW(r).ic)+'<b'+ck(gkey(r))+'>'+T(gkey(r),bv)+'</b></span>'}).join('')+'</div>':'');
-      body='<div class="mfh"><div class="mft"><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.pct')+'>'+T('mfill.pct',bv)+'</small></div><button class="mfsw" id="fBack"'+ck('mfill.sw')+'>'+T('mfill.sw')+'</button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
-        +'<div class="mfg2">'+gline+'</div></div>'
-        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/3)+'"><div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="fpct mb">−'+b.pct+'%</span><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button></div><div class="fbar">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div></div>'}).join('')
-        +(rows.length>3?'<div class="mpg" id="mPg"></div>':'')+'</div>'
-        +'<div class="mff"><div class="fslots" id="fSlots"></div><div class="mffb"><div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button></div></div>';
+      var gkey=function(r){return /^tix/.test(r)?'mfill.g.tix':/^cosm/.test(r)?'mfill.g.cosm':'mfill.g.'+r};
+      var skey=function(r){return /^tix/.test(r)?'mfill.gs.tix':/^cosm/.test(r)?'mfill.gs.cosm':'mfill.gs.'+r};
+      var sv='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+      var iTag=sv+'<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>';
+      var iSw=sv+'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
+      var iGift=sv+'<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
+      var iChev=sv+'<path d="m9 6 6 6-6 6"/></svg>';
+      var gsum=[T('mfill.gs.tix',bv)].concat(main?[T(skey(main),bv)]:[]).join(' <i class="dot">•</i> ');
+      var gall=b.rw.map(function(r){return '<span class="mfgi">'+rimg(r,/^tix/.test(r)?'🛥️':RW(r).ic)+'<b'+ck(gkey(r))+'>'+T(gkey(r),bv)+'</b></span>'}).join('');
+      body='<div class="mfs" id="mfS"><div class="mfh">'
+        +'<div class="mft"><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.sub')+'>'+T('mfill.sub',bv)+'</small></div><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
+        +'<div class="mfhr"><span class="mfpill"'+ck('mfill.pct')+'>'+iTag+'<span>'+T('mfill.pct',bv)+'</span></span><button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
+        +'<div class="mfg2"><button class="mfgc" id="mfGx" type="button" aria-expanded="false"><i class="mfgic">'+iGift+'</i><span class="mfgt"><b'+ck('mfill.gifts.t')+'>'+T('mfill.gifts.t')+'</b><small>'+gsum+'</small></span><em class="mfga" id="mfGa"'+ck('mfill.gifts.all')+'>'+T('mfill.gifts.all')+'</em></button>'
+        +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div></div>'
+        +'</div>'
+        +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
+        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/3)+'"><div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(r.core?'<em class="fct">'+T('mfill.core',{t:esc(r.t)})+'</em>':'')+'<b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+iChev+'</button></div><div class="fbar">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div></div>'}).join('')
+        +(rows.length>3?'<div class="mpg" id="mPg"></div>':'')+'</div></div>'
+        +'<div class="mff"><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
     /* v1.0.17: 3 продукта на страница (телефон) */
     var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/3),pg=0;var showPg=function(){dc.querySelectorAll('.mitem').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         pgEl.innerHTML='<button class="mpgb" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна">‹</button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span><button class="mpgb" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща">›</button>';
-        pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();$('mfL').scrollTop=0}})};showPg()}
-    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false')}}
+        pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0}})};showPg()}
+    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all')}}
+    if(mob)fitSheet(dc);
     if(mob)unlockPopup(b,P);
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
     var ux=$('apUx');if(ux)ux.remove();S._lockOv=true;
@@ -292,7 +306,8 @@
       dc.querySelectorAll('[data-inc]').forEach(function(x){x.disabled=need<=0});
       dc.querySelectorAll('[data-dec]').forEach(function(x){x.disabled=!(needQ[x.dataset.dec]>0)});
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
-      $('fSlots').innerHTML='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>'+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
+      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      $('fSlots').innerHTML=cnt+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*PROD[k].price*b.pct/100});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
