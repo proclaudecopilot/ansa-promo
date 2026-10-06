@@ -292,15 +292,16 @@
     var chips='<div class="brs">'+b.rw.filter(function(r){return !/^tix|^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+b.no.filter(function(r){return !/^cosm/.test(r)}).map(function(r){var w=RW(r);return '<span class="brc no"><i>'+w.ic+'</i><span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+'</div>';
     /* v1.0.10: „за да отключиш…“ вече не е в картата — показва се в попъпа „Напълни кутията си“ (fill.intro / mfill.intro) */
     var hasCosm=b.cosm_pay!=null;
-    var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
+    var best=b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'';
+    var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small>'+best+'</div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
       +'<div class="bmr"><div class="bmrow y"><i>🛥️</i><span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
       +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'"><i>🌸</i><span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>'+(b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1?'<div class="bmrow x"><i>📖</i><span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':''):'<div class="bmrow off"><i>🌸</i><span'+ck('bmini.none')+'>'+T('bmini.none')+'</span></div>')
       +'<button class="bmore" data-more-box="'+b.id+'"><span'+ck('bmini.more')+'>'+T('bmini.more')+'</span> <i>▾</i></button></div></div>';
     var ord=(A.box_order&&A.box_order.mobile)||[];var oi=ord.indexOf(b.id);
     return '<div class="box '+b.id+'"'+(oi>-1&&MOB()?' style="order:'+(oi+1)+'"':'')+'>'
-      +'<div class="brib'+(b.id==='l'?' gold':'')+'"><div class="bribl"'+ck('box.rib')+'>'+T('box.rib',bv)+'</div>'+(b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'')+'</div>'
+      +'<div class="brib'+(b.id==='l'?' gold':'')+'"><div class="bribl"'+ck('box.rib')+'>'+T('box.rib',bv)+'</div></div>'
       +mini
-      +'<div class="bhd"><div class="bname">'+esc(b.name)+'</div></div>'
+      +'<div class="bhd"><div class="bname">'+esc(b.name)+'</div>'+best+'</div>'
       +'<div class="brw">'+yacht+cosm+chips+'</div>'
       +'<div class="bsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
       +(from?'<div class="bfrom"'+ck('box.from')+'>'+T('box.from',bv)+'</div>':'')
@@ -312,7 +313,7 @@
     var c=S.core&&PROD[S.core]?PROD[S.core]:null;
     var ord=(A.box_order&&A.box_order.desktop)||BOXES.map(function(b){return b.id});
     h+='<div class="yban"><i>🛥️</i><div><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small class="lg"'+ck('yban.s')+'>'+T('yban.s')+'</small></div></div>'
-      +'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="lead lg"'+ck(c?'boxes.lead':'boxes.lead.noutm')+'>'+T(c?'boxes.lead':'boxes.lead.noutm')+'</p>'
+      +'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1>'
       +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
       +'<div class="guarl"><span'+ck('boxes.guar')+'>'+T('boxes.guar')+'</span>'+(c?' · <button class="lnk" id="chg1"'+ck('boxes.chg')+'>'+T('boxes.chg')+'</button>':'')+'</div>';
     el.innerHTML=h;
