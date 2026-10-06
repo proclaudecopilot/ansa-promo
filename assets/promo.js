@@ -25,6 +25,7 @@
   function money(n){return String(n).replace('.',',')}
   function lv(n){if(!A.bgn||!A.bgn.show)return '';return '<span class="bgn">('+(Number(n)*Number(A.bgn.rate||1.95583)).toFixed(2).replace('.',',')+' лв.)</span>'}
   function MOB(){return window.innerWidth<=640}
+  function MOBF(){return window.innerWidth<=760} /* v1.0.15: пълненето е „мобилно“ и на големи телефони/малки таблети */
 
   var PROD,ORDER,FIT,PROBS,BOXES,SHIP,BOOK_VAL,COSM,YACHT,IC,BI,SECRET_PCT,SECRET_N;
   function bind(){
@@ -176,6 +177,14 @@
     $('apUx2').onclick=close;$('ppClose').onclick=close;var ad=$('ppAdd');if(ad)ad.onclick=function(){close();onAdd(k)};
   }
   $('apOv2').onclick=function(e){if(e.target.id==='apOv2')$('apOv2').classList.add('off')};
+  /* v1.0.15: „За да отключиш тези награди…“ като попъп с ОК (мобилно; веднъж на сесия за кутия) */
+  function unlockPopup(b,P){
+    var key='ansa_promo_unlock_'+b.id;try{if(sessionStorage.getItem(key)==='1')return}catch(e){}
+    var dc=$('apDc2');dc.innerHTML='<div class="okp"><div class="okpi">'+rimg('tix','🎁')+'</div><p'+ck('mfill.intro')+'>'+T('mfill.intro',Object.assign({same:P>1?T('mfill.same'):''},boxVars(b)))+'</p><button class="cta" id="okBtn"'+ck('mfill.ok')+'>'+T('mfill.ok')+'</button></div>';
+    $('apOv2').classList.remove('off');
+    $('okBtn').onclick=function(){$('apOv2').classList.add('off');try{sessionStorage.setItem(key,'1')}catch(e){}};
+  }
+  (function(){var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){if($('apOv').classList.contains('off')||!document.querySelector('#apDc .fp2'))return;if(S._fillMob!==MOBF())fillPopup()},150)})})();
 
   /* ── честито ── */
   function celebrate(){
@@ -244,18 +253,23 @@
       +'<div class="fslots" id="fSlots"></div>'
       +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat drow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more.s')+'>'+T('fill.more.s')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div>'}).join('')+'</div>'
       +'<div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
-    var mob=MOB();
+    var mob=MOBF();S._fillMob=mob;
     if(mob){
-      var gl=[T('mfill.g.tix',bv)];
-      if(b.cosm_pay!=null)gl.push(T('mfill.g.cosm',bv));
-      if(b.rw.indexOf('book')>-1)gl.push(T('mfill.g.book'));if(b.rw.indexOf('ship')>-1)gl.push(T('mfill.g.ship'));
+      /* v1.0.15 (искане на човека): сгъваем блок с подаръците — вижда се яхтата + основният подарък, процентът е горе вдясно,
+         книга/доставка са зад „още N подаръка“; „за да отключиш…“ е попъп с ОК; категорията е над реда; футърът е лепкав */
+      var main=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
+      var hidden=b.rw.filter(function(r){return !/^tix/.test(r)&&r!==main});
+      var gmain='<div class="mfgm"><span class="mfgi">'+rimg('tix','🛥️')+'<b'+ck('mfill.g.tix')+'>'+T('mfill.g.tix',bv)+'</b></span>'
+        +(main?'<span class="mfgi">'+rimg(main,RW(main).ic)+'<b'+ck(/^cosm/.test(main)?'mfill.g.cosm':'mfill.g.book')+'>'+T(/^cosm/.test(main)?'mfill.g.cosm':'mfill.g.book',bv)+'</b></span>':'')+'</div>';
+      var ghid=hidden.length?'<button class="mfgx" id="mfGx" type="button"><span'+ck('mfill.gifts.more')+'>'+T('mfill.gifts.more',{n:hidden.length,podar:hidden.length===1?'подарък':'подаръка'})+'</span></button><div class="mfgh" id="mfGh" hidden>'+hidden.map(function(r){return '<span class="mfgi">'+rimg(r,RW(r).ic)+'<b'+ck('mfill.g.'+r)+'>'+T('mfill.g.'+r,bv)+'</b></span>'}).join('')+'</div>':'';
       body='<div class="mfh"><div class="mft"><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.pct')+'>'+T('mfill.pct',bv)+'</small></div><button class="mfsw" id="fBack"'+ck('mfill.sw')+'>'+T('mfill.sw')+'</button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
-        +'<p class="mfin"'+ck('mfill.intro')+'>'+T('mfill.intro',Object.assign({same:P>1?T('mfill.same'):''},bv))+'</p>'
-        +'<div class="mfg">'+gl.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>'
-        +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'}).join('')+'</div>'
-        +'<div class="mff"><div class="fslots" id="fSlots"></div><div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mfg2"><span class="mfpct">−'+b.pct+'%</span>'+gmain+ghid+'</div></div>'
+        +'<div class="mfl">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="mcat'+(r.core?' core':'')+'">'+(r.core?T('mfill.core',{t:esc(r.t)}):esc(r.t))+'</div><div class="fcat mrow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('mfill.more')+'>'+T('mfill.more')+'</button><div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'}).join('')+'</div>'
+        +'<div class="mff"><div class="fslots" id="fSlots"></div><div class="mffb"><div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button></div></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
+    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh'),open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.innerHTML='<span>'+(open?T('mfill.gifts.less'):T('mfill.gifts.more',{n:h.children.length,podar:h.children.length===1?'подарък':'подаръка'}))+'</span>'}}
+    if(mob)unlockPopup(b,P);
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
     var ux=$('apUx');if(ux)ux.remove();S._lockOv=true;
     var goBack=function(){S._lockOv=false;S._fillPending=false;closeInfo();S.box=null;S.slots=[];S.timerEnd=null;go(1)};$('fBack').onclick=goBack;var fc=$('fClose');if(fc)fc.onclick=goBack;
@@ -268,7 +282,7 @@
       $('fSlots').innerHTML='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>'+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*PROD[k].price*b.pct/100});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
-      var fs=$('fSave');if(fs){var prev=fs.dataset.v;fs.innerHTML=t>0?'<span'+ck('fill.save')+'>'+T('fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('fill.save.zero')+'>'+T('fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
+      var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
     sync();
     function inc(k){if(total()>=P){toast(T('fill.over2',{packs:P}),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
