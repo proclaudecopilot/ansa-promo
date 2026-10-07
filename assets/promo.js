@@ -354,12 +354,21 @@
       :main==='cosm1'?'<div class="cosmhl gold">'+rimg('cosm1',RW('cosm1').ic)+'<div><em'+ck('box.cosm1.em')+'>'+T('box.cosm1.em',bv)+'</em><b'+ck('box.cosm1.b')+'>'+T('box.cosm1.b',bv)+'</b><small'+ck('box.cosm1.s')+'>'+T('box.cosm1.s',bv)+'</small>'+cosmPrice('cosm1')+'</div></div>'
       :main==='book'?'<div class="cosmhl book">'+rimg('book',RW('book').ic)+'<div><em'+ck('box.book.em')+'>'+T('box.book.em',bv)+'</em><b'+ck('box.book.b')+'>'+T('box.book.b',bv)+'</b><small'+ck('box.book.s')+'>'+T('box.book.s',bv)+'</small></div></div>'
       :'<div class="cosmhl no"><i>👑</i><div><b'+ck('box.cosm.no')+'>'+T('box.cosm.no')+'</b></div></div>';
+    /* v1.0.29: наградите на десктоп са еднакви редове (снимка · заглавие · подзаглавие), сетът е откроен; липсващите са приглушени */
+    var brows=(tixr?'<div class="br tix">'+rimg('tix','🛥️')+'<div><b'+ck('yacht.badge')+'>'+T('yacht.badge',bv)+'</b><small'+ck('yacht.hero')+'>'+T('yacht.hero')+'</small></div></div>':'')
+      +b.rw.filter(function(r){return !/^tix/.test(r)}).map(function(r){var w=RW(r);
+        if(r==='cosm1'||r==='cosm50')return '<div class="br hl">'+rimg(r,w.ic)+'<div><em'+ck('box.'+r+'.em')+'>'+T('box.'+r+'.em',bv)+'</em><b'+ck('box.'+r+'.b')+'>'+T('box.'+r+'.b',bv)+'</b><small'+ck('box.'+r+'.s')+'>'+T('box.'+r+'.s',bv)+'</small>'+cosmPrice(r)+'</div></div>';
+        if(r==='book')return '<div class="br">'+rimg(r,w.ic)+'<div><b'+ck('box.book.b')+'>'+T('box.book.b',bv)+'</b><small'+ck('box.book.s')+'>'+T('box.book.s',bv)+'</small></div></div>';
+        return '<div class="br">'+rimg(r,w.ic)+'<div><b'+ck('rw.'+r+'.sh')+'>'+w.sh+'</b></div></div>'}).join('')
+      +b.no.map(function(r){var w=RW(r),nk=/^cosm/.test(r)?'rw.cosm.no.sh':'rw.'+r+'.sh';return '<div class="br off">'+rimg(r,w.ic)+'<div><b'+ck(nk)+'>'+T(nk)+'</b></div></div>'}).join('');
     var chips='<div class="brs">'+b.rw.filter(function(r){return !/^tix|^cosm/.test(r)&&r!==main}).map(function(r){var w=RW(r);return '<span class="brc">'+rimg(r,w.ic)+'<span'+ck('rw.'+r+'.sh')+'>'+w.sh+'</span></span>'}).join('')+b.no.filter(function(r){return !/^cosm/.test(r)||main==='book'}).map(function(r){var w=RW(r),nk=/^cosm/.test(r)?'rw.cosm.no.sh':'rw.'+r+'.sh';return '<span class="brc no">'+rimg(r,w.ic)+'<span'+ck(nk)+'>'+T(nk)+'</span></span>'}).join('')+'</div>';
     /* v1.0.10: „за да отключиш…“ вече не е в картата — показва се в попъпа „Напълни кутията си“ (fill.intro / mfill.intro) */
     var hasCosm=b.cosm_pay!=null,hasBook=b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1;
     var best=b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'';
     /* v1.0.24: на телефон „★ най-изгодна“ не е в реда с името (ставаха три реда и бутонът се разместваше), а най-отдолу в картата (.bbest-m) */
     var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
+      /* v1.0.29: „спестяваш до €X“ се вижда и на телефон */
+      +'<div class="bmsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
       +'<div class="bmr"><div class="bmrow y">'+rimg('tix','🛥️')+'<span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
       +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'">'+rimg('cosm1','🌸')+'<span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>':'')
       +(b.rw.indexOf('book')>-1?'<div class="bmrow x">'+rimg('book','📖')+'<span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':'')
@@ -371,10 +380,13 @@
     return '<div class="box '+b.id+'"'+(oi>-1&&MOB()?' style="order:'+(oi+1)+'"':'')+'>'
       +'<div class="brib'+(b.id==='l'?' gold':'')+'"><div class="bribl"'+ck('box.rib')+'>'+T('box.rib',bv)+'</div></div>'
       +mini
+      +(b.id==='l'?'<div class="bbest-d"'+ck('box.best')+'>'+T('box.best')+'</div>':'')
       +'<div class="bhd"><div class="bname">'+esc(b.name)+'</div>'+best+'</div>'
-      +'<div class="brw">'+yacht+cosm+chips+'</div>'
+      /* v1.0.29: десктоп — голям процент + „отстъпка на поръчката ти“, после „Спестяваш до €X“ като откроен ред, после наградите */
+      +'<div class="bpc"><b>−'+b.pct+'%</b><small'+ck('box.pct.sub')+'>'+T('box.pct.sub')+'</small></div>'
       +'<div class="bsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
       +(from?'<div class="bfrom"'+ck('box.from')+'>'+T('box.from',bv)+'</div>':'')
+      +'<div class="brw"><div class="brl">'+brows+'</div></div>'
       +'<button class="cta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('box.cta')+'>'+T('box.cta',bv)+'</button>'
       +'<div class="bnote"'+ck('box.note')+'>'+T('box.note')+'</div>'
       +(b.id==='l'?'<div class="bbest-m"'+ck('box.best')+'>'+T('box.best')+'</div>':'')+'</div>';
@@ -383,12 +395,18 @@
     var el=$('apS1'),h='';
     var c=S.core&&PROD[S.core]?PROD[S.core]:null;
     var ord=(A.box_order&&A.box_order.desktop)||BOXES.map(function(b){return b.id});
-    h+='<div class="yban"><i>🛥️</i><div><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small class="lg"'+ck('yban.s')+'>'+T('yban.s')+'</small></div></div>'
-      +'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1>'
+    /* v1.0.29 (по примера на човека): стъпки 1·2·3, „Твоят избор: …“ + голямо заглавие + подзаглавие; лентата с яхтата е под кутиите,
+       като блок със снимка, до нея блок за козметичния сет (и двата отварят инфото за наградата) */
+    var GI=(A.gate&&A.gate.images)||{};
+    h+='<div class="steps">'+[1,2,3].map(function(n){return '<span class="st'+(n===1?' on':'')+'"><i>'+n+'</i><span'+ck('steps.'+n)+'>'+T('steps.'+n)+'</span></span>'}).join('')+'</div>'
+      +'<div class="s1hero">'+(c?'<em class="eyebrow"'+ck('boxes.eyebrow')+'>'+T('boxes.eyebrow')+'</em>':'')+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
       +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
+      +'<div class="s1info"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
+      +'<div class="ib2 c" id="s1C"><i class="ibpic">'+(GI.cosm?'<img src="'+esc(GI.cosm)+'" alt="">':'🌸')+'</i><div class="ibtx"><em'+ck('cban.tag')+'>'+T('cban.tag')+'</em><b'+ck('cban.b')+'>'+T('cban.b')+'</b><small'+ck('cban.s')+'>'+T('cban.s')+'</small><button class="lnk" type="button" data-rw="cosm1"'+ck('cban.more')+'>'+T('cban.more')+'</button></div></div></div>'
       +'<div class="guarl"><span'+ck('boxes.guar')+'>'+T('boxes.guar')+'</span>'+(c?' · <button class="lnk" id="chg1"'+ck('boxes.chg')+'>'+T('boxes.chg')+'</button>':'')+'</div>';
     el.innerHTML=h;
     el.querySelectorAll('[data-box]').forEach(function(b){b.onclick=function(){chooseBox(+b.dataset.box,false)}});
+    el.querySelectorAll('[data-rw]').forEach(function(x){x.onclick=function(e){e.stopPropagation();rewardPopup(x.dataset.rw)}});
     el.querySelectorAll('[data-more-box]').forEach(function(x){x.onclick=function(){var bx=x.closest('.box');var open=!bx.classList.contains('open');el.querySelectorAll('.box.open').forEach(function(o){o.classList.remove('open')});if(open){bx.classList.add('open');setTimeout(function(){bx.scrollIntoView({behavior:'smooth',block:'nearest'})},50)}}});
     var cg=$('chg1');if(cg)cg.onclick=function(){S.core=null;render();saveS()};
   }

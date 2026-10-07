@@ -601,3 +601,133 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .cacts .csave{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 8px;padding:9px 12px;border-radius:12px;font-size:14.5px;font-weight:800;line-height:1.25;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.25)}
 .ansa-promo .cacts .csave b{font-weight:900;font-size:16px;color:#fff}
 @media(max-width:640px){.ansa-promo .dc.wide .celeb .cacts{padding-top:8px}.ansa-promo .celeb .cacts .cta{min-height:50px;font-size:15.5px}}
+
+/* ── 23 · v1.0.29 (по примера на човека, в езика на ansa): стъпки 1·2·3 над екрана с кутиите; „Твоят избор: …“ + голямо заглавие +
+      подзаглавие; на десктоп картата е име · ГОЛЯМ ПРОЦЕНТ · „отстъпка на поръчката ти“ · ред „Спестяваш до €X“ · наградите като
+      еднакви редове (сетът откроен, липсващите приглушени) · бутон; „Най-изгодна“ е на горния ръб на Голямата; под кутиите са
+      блокът на томболата (снимка на яхтата) и блокът на козметичния сет; на телефон „спестяваш до“ влиза в резюмето ── */
+/* стъпки */
+.ansa-promo .steps{display:flex;justify-content:center;align-items:center;gap:0;margin:10px 0 6px;flex-wrap:nowrap}
+.ansa-promo .st{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--tan2);white-space:nowrap}
+.ansa-promo .st i{width:26px;height:26px;border-radius:50%;border:2px solid var(--ol);background:#fff;color:var(--tan2);font-style:normal;font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ansa-promo .st.on{color:var(--ink)}
+.ansa-promo .st.on i{background:linear-gradient(135deg,#ef8c4f,#e8722a);border-color:transparent;color:#fff;box-shadow:0 3px 8px rgba(232,114,42,.3)}
+.ansa-promo .st+.st::before{content:'';display:block;width:48px;height:2px;background:var(--ol);margin:0 12px;border-radius:2px}
+/* заглавие */
+.ansa-promo .s1hero{text-align:center;margin:10px 0 20px}
+.ansa-promo .s1hero .eyebrow{display:block;font-style:normal;font-size:16px;font-weight:800;color:var(--od);margin-bottom:4px}
+.ansa-promo #apS1 .s1hero h1{font-size:40px;margin:0 0 6px;letter-spacing:-.03em}
+.ansa-promo .s1sub{font-size:17px;font-weight:600;color:var(--muted);margin:0}
+/* десктоп карти */
+@media(min-width:1000px){
+.ansa-promo .box .brib{display:none}
+.ansa-promo .box{padding-top:24px!important;overflow:visible}
+.ansa-promo .bhd{justify-content:center;margin-bottom:2px}
+.ansa-promo .bhd .bname,.ansa-promo .box.l .bhd .bname{font-size:14px;letter-spacing:.1em;color:var(--tan);text-align:center}
+.ansa-promo .bhd .bbest{position:absolute;top:-15px;left:50%;transform:translateX(-50%);margin:0;font-size:11px;padding:5px 14px;white-space:nowrap}
+.ansa-promo .bpc{text-align:center;margin:2px 0 12px}
+.ansa-promo .bpc b{display:block;font-size:60px;font-weight:900;line-height:1;letter-spacing:-.04em;color:var(--ink)}
+.ansa-promo .box.l .bpc b{font-size:72px;background:linear-gradient(135deg,#b45309,#e8722a 60%,#d97706);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ansa-promo .bpc small{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-top:4px}
+.ansa-promo .bsave{background:var(--os);border:1.5px solid var(--ol);border-radius:14px;padding:0 14px;margin:0 0 6px}
+.ansa-promo .bsave span{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:800;color:var(--ink2)}
+.ansa-promo .bsave span::before{content:'';width:26px;height:26px;flex:none;background:center/contain no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c2410c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z'/><path d='M2 9v1c0 1.1.9 2 2 2h1'/><circle cx='16' cy='11' r='.6' fill='%23c2410c'/></svg>")}
+.ansa-promo .bsave b{font-size:24px;font-weight:900;color:var(--od);letter-spacing:-.02em}
+.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff8e6,#fff1cc);border-color:var(--gold)}
+.ansa-promo .box.l .bsave b{font-size:28px}
+.ansa-promo .bfrom{margin:0 0 10px;font-size:12px}
+.ansa-promo .brw{margin:4px 0 14px;flex:1}
+.ansa-promo .brl{display:flex;flex-direction:column}
+.ansa-promo .br{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:10px 2px;border-bottom:1px dashed var(--ol);text-align:left}
+.ansa-promo .br:last-child{border-bottom:none}
+.ansa-promo .br>i{width:44px;height:44px;border-radius:50%;font-style:normal;font-size:24px;display:flex;align-items:center;justify-content:center;background:var(--os);flex:none;overflow:hidden}
+.ansa-promo .br>i.rpic{border:1px solid var(--ol)}
+.ansa-promo .br>i img{width:100%;height:100%;object-fit:cover}
+.ansa-promo .br b{display:block;font-size:15px;font-weight:900;line-height:1.2;color:var(--ink)}
+.ansa-promo .br small{display:block;font-size:12.5px;font-weight:600;color:var(--tan);line-height:1.3;margin-top:2px}
+.ansa-promo .br em{display:block;font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--goldd);margin-bottom:2px}
+.ansa-promo .br.tix b{color:var(--ink)}
+.ansa-promo .box.l .br.tix b{font-size:16px}
+.ansa-promo .br.hl{background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1.5px solid var(--gold);border-radius:14px;padding:10px 12px;margin:6px 0 2px}
+.ansa-promo .br.hl>i{background:#fff}
+.ansa-promo .br .cpx{position:static;display:inline-flex;margin-top:6px}
+.ansa-promo .br.off{opacity:.55}
+.ansa-promo .br.off b{font-weight:700;color:var(--tan);text-decoration:line-through}
+.ansa-promo .br.off>i{filter:grayscale(1)}
+.ansa-promo .box>.cta{margin-top:auto}
+}
+/* телефон: резюмето на кутията има „спестяваш до €X“ */
+.ansa-promo .bmsave{display:none}
+@media(max-width:640px){
+.ansa-promo .bmsave{display:flex;align-items:center;justify-content:center;gap:6px;margin:9px 0 0;padding:7px 10px;border-radius:10px;background:var(--os);border:1px dashed var(--ol);font-size:13px;font-weight:800;color:var(--ink2)}
+.ansa-promo .bmsave b{font-size:16px;font-weight:900;color:var(--od)}
+.ansa-promo .box.l .bmsave{background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1px solid var(--gold)}
+.ansa-promo .steps{margin:6px 0 2px}
+.ansa-promo .st{font-size:11px;gap:5px}
+.ansa-promo .st i{width:22px;height:22px;font-size:11px}
+.ansa-promo .st+.st::before{width:14px;margin:0 6px}
+.ansa-promo .s1hero{margin:8px 0 12px}
+.ansa-promo .s1hero .eyebrow{font-size:13px;margin-bottom:2px}
+.ansa-promo #apS1 .s1hero h1{font-size:26px;margin:0 0 4px}
+.ansa-promo .s1sub{font-size:13.5px}
+}
+@media(min-width:641px) and (max-width:999px){.ansa-promo .bpc{display:none}.ansa-promo #apS1 .s1hero h1{font-size:32px}}
+/* блоковете под кутиите: томбола + козметичен сет */
+.ansa-promo .s1info{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;margin-top:22px}
+.ansa-promo .ib2{display:grid;grid-template-columns:200px minmax(0,1fr);background:#fff;border:1.5px solid var(--ol);border-radius:20px;overflow:hidden;box-shadow:0 6px 24px rgba(232,114,42,.08);text-align:left}
+.ansa-promo .ib2 .ibpic{font-style:normal;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(145deg,#fff6ee,#ffe3cf);min-height:150px}
+.ansa-promo .ib2 .ibpic img{width:100%;height:100%;object-fit:cover;display:block}
+.ansa-promo .ib2 .ibtx{padding:16px 18px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.ansa-promo .ib2 .ibtx em{display:inline-block;font-style:normal;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--od);background:var(--os);border-radius:999px;padding:3px 10px}
+.ansa-promo .ib2 .ibtx b{font-size:19px;font-weight:900;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
+.ansa-promo .ib2 .ibtx small{font-size:13px;font-weight:600;color:var(--muted);line-height:1.4}
+.ansa-promo .ib2 .ibtx .lnk{margin-top:4px;padding:2px 0;font-size:13.5px;font-weight:800;color:var(--od);text-decoration:underline;text-underline-offset:3px}
+.ansa-promo .ib2.c .ibtx em{color:var(--goldd);background:#fff4d6}
+.ansa-promo .ib2.c{border-color:#f0d9a0}
+@media(max-width:999px){.ansa-promo .s1info{grid-template-columns:1fr;gap:12px;margin-top:16px}.ansa-promo .ib2{grid-template-columns:120px minmax(0,1fr)}.ansa-promo .ib2 .ibpic{min-height:120px;font-size:44px}.ansa-promo .ib2 .ibtx{padding:12px 14px}.ansa-promo .ib2 .ibtx b{font-size:15.5px}.ansa-promo .ib2 .ibtx small{font-size:12.5px}}
+@media(max-width:640px){.ansa-promo .boxes+.bnote-m+.s1info{margin-left:-9px;margin-right:-9px}.ansa-promo .ib2{grid-template-columns:96px minmax(0,1fr);border-radius:16px}.ansa-promo .ib2 .ibpic{min-height:100px}}
+
+/* 23b · поправки след първата снимка: редовете на наградите без фон/рамка от стария порт, „Най-изгодна“ не покрива името,
+   процентът (.bpc) е само на десктоп, на телефон стъпките показват само активния етикет с текст */
+.ansa-promo .brw .brl,.ansa-promo .brw .br{background:transparent;border:none;box-shadow:none;padding:0;margin:0;border-radius:0}
+.ansa-promo .br{display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px;align-items:center;padding:8px 2px!important;border-bottom:1px dashed var(--ol)!important;text-align:left}
+.ansa-promo .br:last-child{border-bottom:none!important}
+.ansa-promo .br>i{width:40px;height:40px;border-radius:50%;font-style:normal;font-size:22px;display:flex;align-items:center;justify-content:center;background:var(--os);flex:none;overflow:hidden}
+.ansa-promo .br>i.rpic{border:1px solid var(--ol)}
+.ansa-promo .br>i img{width:100%;height:100%;object-fit:cover}
+.ansa-promo .br>div>b{display:block;font-size:14px;font-weight:900;line-height:1.2;color:var(--ink)}
+.ansa-promo .br b b{display:inline;font-size:inherit}
+.ansa-promo .br small{display:block;font-size:12px;font-weight:600;color:var(--tan);line-height:1.3;margin-top:2px}
+.ansa-promo .br em{display:block;font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--goldd);margin-bottom:2px}
+.ansa-promo .br.hl{background:linear-gradient(135deg,#fff8e6,#fff1cc)!important;border:1.5px solid var(--gold)!important;border-radius:14px!important;padding:10px 12px!important;margin:6px 0 2px!important}
+.ansa-promo .br.hl>i{background:#fff}
+.ansa-promo .br .cpx{position:static;display:inline-flex;margin-top:6px}
+.ansa-promo .br.off{opacity:.55}
+.ansa-promo .br.off>div>b{font-weight:700;color:var(--tan);text-decoration:line-through}
+.ansa-promo .br.off>i{filter:grayscale(1)}
+.ansa-promo .bpc{display:none}
+@media(min-width:1000px){
+.ansa-promo .bpc{display:block}
+.ansa-promo .box.l{padding-top:38px!important}
+.ansa-promo .bhd .bbest{top:-16px}
+.ansa-promo .bsave{background:var(--os)!important;display:block!important;width:auto!important;height:auto!important}
+.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff8e6,#fff1cc)!important}
+.ansa-promo .brw{display:block!important}
+.ansa-promo .br{grid-template-columns:44px minmax(0,1fr);gap:12px;padding:10px 2px!important}
+.ansa-promo .br>i{width:44px;height:44px;font-size:24px}
+.ansa-promo .br>div>b{font-size:15px}
+.ansa-promo .br small{font-size:12.5px}
+}
+@media(max-width:640px){
+.ansa-promo .st:not(.on)>span{display:none}
+.ansa-promo .st.on{font-size:12.5px}
+.ansa-promo .st+.st::before{width:22px;margin:0 8px}
+}
+
+/* 23c · „Най-изгодна“ на десктоп е пряко дете на картата (.bbest-d) и стои на горния ѝ ръб; редът „спестяваш до“ е в оранжевия тон */
+.ansa-promo .bbest-d{display:none}
+@media(min-width:1000px){
+.ansa-promo .bhd .bbest{display:none!important}
+.ansa-promo .bbest-d{display:inline-block;position:absolute;top:-17px;left:50%;transform:translateX(-50%);z-index:3;background:linear-gradient(135deg,#b45309,#f0b429 60%,#b45309);color:#fff;border:2px solid #fff;font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:5px 14px;box-shadow:0 4px 12px rgba(180,83,9,.3);white-space:nowrap}
+.ansa-promo .bsave span{background:transparent!important;color:var(--ink2)!important;padding:0!important;white-space:normal}
+}
