@@ -112,15 +112,15 @@ final class Frontend {
 			   са резерва при празен WC или при изключена отметка „текстовете от WooCommerce“ */
 			$ds = $p['ds']; $desc = $p['desc']; $name = '' !== $p['name'] ? $p['name'] : $wc['wc_name'];
 			if ( ! empty( $p['wc_text'] ) ) {
-				/* v1.0.26: и името е истинското — заглавието на Shrine или името на WC продукта (родителя, не „… – 1 опаковка“) */
-				if ( '' !== $wc['title'] ) { $name = $wc['title']; }
-				elseif ( '' !== $wc['base_name'] ) {
-					/* v1.0.32: WC името често носи и слоган („Daily Greens | Най-продаваната…“, „Sakura SkinTonic - Японската…“) — вземаме само частта преди разделителя */
-					$parts = preg_split( '/\s+[|\-–—:]\s+/u', $wc['base_name'] ); $nm = trim( (string) ( $parts[0] ?? '' ) );
-					$name = '' !== $nm ? $nm : $wc['base_name'];
-				}
+				/* v1.0.33: името е марката — WC името на родителя преди разделителя („Daily Greens | Най-продаваната…“ → „Daily Greens“);
+				   заглавието на Shrine (на живия сайт е слоганът, напр. „Плодова напитка за сън… | с пробиотици“) е „за какво е“ (ds),
+				   също само до разделителя; резерва за ds — подзаглавието на Shrine или първото изречение на краткото описание */
+				$cut = function ( $t ) { $parts = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t ); return trim( (string) ( $parts[0] ?? '' ) ); };
+				if ( '' !== $wc['base_name'] ) { $nm = $cut( $wc['base_name'] ); $name = '' !== $nm ? $nm : $wc['base_name']; }
 				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
-				if ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
+				$t1 = '' !== $wc['title'] ? $cut( $wc['title'] ) : '';
+				if ( '' !== $t1 && mb_strtolower( $t1 ) !== mb_strtolower( $name ) ) { $ds = self::clip( $t1, 90 ); }
+				elseif ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
 				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
 			}
 			$prods[ $p['key'] ] = array(
