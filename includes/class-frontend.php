@@ -65,7 +65,12 @@ final class Frontend {
 	/** Страницата с shortcode-а ли е това? */
 	public static function is_promo_page() {
 		if ( ! is_singular() ) { return false; }
-		$post = get_post(); return $post && has_shortcode( (string) $post->post_content, Plugin::SHORTCODE );
+		$post = get_post(); if ( ! $post ) { return false; }
+		if ( has_shortcode( (string) $post->post_content, Plugin::SHORTCODE ) ) { return true; }
+		/* v1.0.24: страница, сглобена с Elementor, държи shortcode-а в _elementor_data, не в post_content — иначе body класът и
+		   скриването на елементите на темата (fkcart и т.н.) не се прилагаха, макар играта да се рендира */
+		$el = (string) get_post_meta( $post->ID, '_elementor_data', true );
+		return '' !== $el && false !== strpos( $el, '[' . Plugin::SHORTCODE );
 	}
 
 	public static function headers() {

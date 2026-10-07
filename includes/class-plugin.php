@@ -32,6 +32,7 @@ final class Plugin {
 	public function boot() {
 		Schema::maybe_upgrade();
 		Config::maybe_migrate();
+		Config::maybe_migrate_name();
 		Catalog::register();
 		Frontend::register();
 		Leads::register();

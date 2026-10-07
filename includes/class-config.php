@@ -22,7 +22,7 @@ final class Config {
 	public static function defaults() {
 		return array(
 			'id'        => 'orange_q4_2026',
-			'name'      => 'ansa™ Розово Тримесечие',
+			'name'      => 'Сезонът на ansa™',
 			'enabled'   => false,
 			'deadline'  => '2026-12-31 23:59',
 			'page_id'   => 0,
@@ -77,6 +77,18 @@ final class Config {
 		}
 		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
 		update_option( 'ansa_promo_rw_v2', $changed ? 'migrated' : 'noop', false );
+	}
+
+	/** v1.0.24: промото се казва „Сезонът на ansa™“ — старото име по подразбиране („ansa™ Розово Тримесечие“) се пренаписва еднократно
+	 *  в черновата и публикуваното; ръчно сменено име не се пипа. */
+	public static function maybe_migrate_name() {
+		if ( get_option( 'ansa_promo_name_v2' ) ) { return; }
+		$s = self::read_store(); $changed = false; $new = self::defaults()['name'];
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( is_array( $s[ $slot ] ) && isset( $s[ $slot ]['name'] ) && 'ansa™ Розово Тримесечие' === (string) $s[ $slot ]['name'] ) { $s[ $slot ]['name'] = $new; $changed = true; }
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_name_v2', $changed ? 'migrated' : 'noop', false );
 	}
 
 	/** Плочките със снимка (имейл-попъп + картите на кутиите): ключ → етикет за админа. */
