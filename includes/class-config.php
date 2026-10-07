@@ -107,6 +107,23 @@ final class Config {
 		update_option( 'ansa_promo_sku_v1', $changed ? 'migrated' : 'noop', false );
 	}
 
+	/** v1.0.28: категориите на MenoStop и ThyroZen (човекът): „Менопауза и перименопауза“ / „Щитовидна жлеза и Хашимото“ —
+	 *  еднократно, само ако още са със сийднатото „Хормони и менопауза“. */
+	public static function maybe_migrate_cat() {
+		if ( get_option( 'ansa_promo_cat_v1' ) ) { return; }
+		$map = array( 'meno' => 'Менопауза и перименопауза', 'thyro' => 'Щитовидна жлеза и Хашимото' );
+		$s = self::read_store(); $changed = false;
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['products'] ) || ! is_array( $s[ $slot ]['products'] ) ) { continue; }
+			foreach ( $s[ $slot ]['products'] as $i => $p ) {
+				$k = is_array( $p ) ? (string) ( $p['key'] ?? '' ) : '';
+				if ( isset( $map[ $k ] ) && 'Хормони и менопауза' === trim( (string) ( $p['cat'] ?? '' ) ) ) { $s[ $slot ]['products'][ $i ]['cat'] = $map[ $k ]; $changed = true; }
+			}
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_cat_v1', $changed ? 'migrated' : 'noop', false );
+	}
+
 	/** Плочките със снимка (имейл-попъп + картите на кутиите): ключ → етикет за админа. */
 	public static function gate_image_slots() {
 		return array( 'yacht' => 'Почивка с яхта', 'cosm' => 'Козметичен сет', 'book' => 'Книга с рецепти', 'pct' => 'Отстъпка', 'ship' => 'Безплатна доставка', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
