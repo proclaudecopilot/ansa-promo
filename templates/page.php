@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
   <div class="ov off" id="apOv"><div class="dc" id="apDc"></div></div>
   <div class="ov ov2 off" id="apOv2"><div class="dc pp" id="apDc2"></div></div>
   <div class="wrap">
-    <div class="hdr" id="apHdr"><div class="top"><div class="brand"><b></b> <span></span></div><div class="boxchip" id="apChip"></div><div class="topr"><button class="how" id="apHow" type="button"></button><div class="timer" id="apTimer"></div></div></div><div id="apStrip"></div></div>
+    <div class="hdr" id="apHdr"><div class="top"><div class="brand"><span></span> <b></b></div><div class="boxchip" id="apChip"></div><div class="topr"><button class="how" id="apHow" type="button"></button><div class="timer" id="apTimer"></div></div></div><div id="apStrip"></div></div>
     <div class="scr" id="apS1"></div>
     <div class="scr" id="apS2"></div>
     <div class="scr" id="apS4"></div>

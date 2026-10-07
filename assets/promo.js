@@ -12,6 +12,10 @@
      и position:fixed спира да е спрямо екрана — попъпът се „хващаше“ в обвивката, overlay-ят не покриваше екрана, футърът падаше под него. */
   var portal=document.createElement('div');portal.className='ansa-promo ansa-promo-portal';portal.setAttribute('data-no-translation','');if(root.getAttribute('data-editor'))portal.setAttribute('data-editor','1');
   ['apToast','apOv','apOv2'].forEach(function(id){var el=$(id);if(el)portal.appendChild(el)});document.body.appendChild(portal);
+  /* v1.0.24: body класът се слага и от тук — страница, сглобена с Elementor, не го получава от PHP (shortcode-ът не е в post_content) */
+  document.body.classList.add('ansa-promo-page');
+  /* v1.0.24: на телефон лентата с яхтата е плаваща картинка долу вдясно (в портала, за да не я хване transform на темата) */
+  var yfab=document.createElement('div');yfab.className='yfab';yfab.id='apYfab';yfab.style.display='none';portal.appendChild(yfab);
 
   /* ── помощници ── */
   function m(n){return '€ '+Number(n).toFixed(2).replace('.',',')}
@@ -20,7 +24,7 @@
   function opk(n){return n===1?'опаковка':'опаковки'}
   function prodw(n){return n===1?'продукт':'продукта'}
   function shans(n){return n===1?'шанс':'шанса'}
-  function ths(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')}
+  function ths(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0')}
   function sPrep(w,cap){var z=/^[сзСЗ]/.test(String(w||''))?'със':'с';return cap?z.charAt(0).toUpperCase()+z.slice(1):z}
   function vPrep(w,cap){var z=/^[вфВФ]/.test(String(w||''))?'във':'в';return cap?z.charAt(0).toUpperCase()+z.slice(1):z}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -104,7 +108,7 @@
     function gcl(k){return GI[k]?' pic':''}
     function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+gcl('box_'+b.id)+'">'+gi('box_'+b.id,b.ic)+'<b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
     dc.innerHTML='<div class="gate g2" style="--g1:'+t[0]+';--g2:'+t[1]+';--g3:'+t[2]+'">'
-      +'<div class="g2band"><div class="g2bt"><b'+ck('head.brand')+'>'+T('head.brand')+' <span'+ck('head.title')+'>'+T('head.title')+'</span></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
+      +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
       +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
       +'<div class="g2s"><span class="g2n">1</span><span'+ck('gate.s1')+'>'+T('gate.s1')+'</span></div>'
       +'<div class="g2rw">'
@@ -140,8 +144,10 @@
     $('apSticky').style.display=(n===2&&window.innerWidth<1000)?'block':'none';
     window.scrollTo(0,0);render();saveS();
   }
-  function startTimer(){var mins=Number(A.timer&&A.timer.minutes)||0;if(mins&&!S.timerEnd)S.timerEnd=Date.now()+mins*60*1000}
-  var timerI=setInterval(function(){var el=$('apTimer');if(!el)return;if(!S.timerEnd){el.innerHTML=T('head.deadline');return}var left=Math.max(0,S.timerEnd-Date.now()),mm=Math.floor(left/60000),ss=Math.floor(left%60000/1000),t=mm+':'+(ss<10?'0':'')+ss,hot=left<(Number(A.timer&&A.timer.warn_under)||3)*60000;el.innerHTML=T('head.timer',{mmss:t});el.classList.toggle('hot',hot);var t2=$('apTimer2');if(t2){t2.innerHTML='⏳ <b>'+t+'</b>';t2.classList.toggle('hot',hot)}},500);
+  /* v1.0.24: обратното броене „кутията е запазена за mm:ss“ е махнато (искане на човека) — чипът в хедъра казва само „до {{deadline}}“;
+     S.timerEnd остава в сесията само за съвместимост със стари сесии, head.timer остава в регистъра, но не се рендира */
+  function startTimer(){S.timerEnd=null}
+  function renderTimer(){var el=$('apTimer');if(el){el.innerHTML=T('head.deadline');el.classList.remove('hot')}var t2=$('apTimer2');if(t2){t2.innerHTML='';t2.classList.remove('hot')}}
 
   /* ── тост + undo ── */
   var toastT;
@@ -341,7 +347,8 @@
     /* v1.0.10: „за да отключиш…“ вече не е в картата — показва се в попъпа „Напълни кутията си“ (fill.intro / mfill.intro) */
     var hasCosm=b.cosm_pay!=null,hasBook=b.rw.indexOf('book')>-1||b.rw.indexOf('ship')>-1;
     var best=b.id==='l'?'<div class="bbest"'+ck('box.best')+'>'+T('box.best')+'</div>':'';
-    var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small>'+best+'</div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
+    /* v1.0.24: на телефон „★ най-изгодна“ не е в реда с името (ставаха три реда и бутонът се разместваше), а най-отдолу в картата (.bbest-m) */
+    var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck('bmini.packs')+'>'+T('bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
       +'<div class="bmr"><div class="bmrow y">'+rimg('tix','🛥️')+'<span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
       +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'">'+rimg('cosm1','🌸')+'<span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>':'')
       +(b.rw.indexOf('book')>-1?'<div class="bmrow x">'+rimg('book','📖')+'<span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':'')
@@ -358,7 +365,8 @@
       +'<div class="bsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
       +(from?'<div class="bfrom"'+ck('box.from')+'>'+T('box.from',bv)+'</div>':'')
       +'<button class="cta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('box.cta')+'>'+T('box.cta',bv)+'</button>'
-      +'<div class="bnote"'+ck('box.note')+'>'+T('box.note')+'</div></div>';
+      +'<div class="bnote"'+ck('box.note')+'>'+T('box.note')+'</div>'
+      +(b.id==='l'?'<div class="bbest-m"'+ck('box.best')+'>'+T('box.best')+'</div>':'')+'</div>';
   }
   function renderS1(){
     var el=$('apS1'),h='';
@@ -557,7 +565,21 @@
       }).catch(function(){btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast(T('or.err'),true)});
     };
   }
-  function render(){renderS1();renderS2();renderS4();renderS5();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  /* v1.0.24: плаващата яхта (телефон, само на екрана с кутиите): картинка + „Томбола“; при докосване се разгъва с текста на лентата
+     (yban.b / yban.s), „Повече за наградата ›“ отваря инфото за томболата, „Разбрах“ / ✕ / докосване извън нея я свива */
+  function yfabClose(){yfab.classList.remove('open');var b=$('apYfabB');if(b)b.setAttribute('aria-expanded','false')}
+  function renderYfab(){
+    var on=S.screen===1;yfab.style.display=on?'':'none';if(!on){yfab.classList.remove('open');return}
+    yfab.innerHTML='<button class="yfabb" id="apYfabB" type="button" aria-expanded="'+(yfab.classList.contains('open')?'true':'false')+'">'+rimg('tix','🛥️','yfi')+'<span'+ck('yfab.tag')+'>'+T('yfab.tag')+'</span></button>'
+      +'<div class="yfabc"><button class="yfabx" id="apYfabX" type="button" aria-label="затвори">✕</button>'+rimg('tix','🛥️','yfi')
+      +'<b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small>'
+      +'<div class="yfaba"><button class="lnk" id="apYfabM" type="button"'+ck('yfab.more')+'>'+T('yfab.more')+'</button><button class="cta" id="apYfabOk" type="button"'+ck('yfab.ok')+'>'+T('yfab.ok')+'</button></div></div>';
+    $('apYfabB').onclick=function(){yfab.classList.add('open');this.setAttribute('aria-expanded','true')};
+    $('apYfabX').onclick=yfabClose;$('apYfabOk').onclick=yfabClose;
+    $('apYfabM').onclick=function(){yfabClose();rewardPopup('tix')};
+  }
+  document.addEventListener('click',function(e){if(yfab.classList.contains('open')&&!yfab.contains(e.target))yfabClose()},true);
+  function render(){renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
