@@ -271,11 +271,21 @@
     PROBS.forEach(function(p){if(PROD[p.key]&&p.key!==S.core)rows.push({key:p.key,t:p.t,why:p.why||PROD[p.key].ds})});
     var gifts=b.rw.map(function(r){var w=RW(r);var big=/^tix|^cosm/.test(r);var lbl=/^tix/.test(r)?T('fill.g.tix',bv):r==='ship'?T('fill.g.ship'):r==='book'?T('fill.g.book'):T('fill.g.cosm');var sub=/^tix/.test(r)?T('fill.g.tix.sub'):/^cosm/.test(r)?cosmPrice(r):'';return '<span class="fg '+r+(big?' big':'')+'">'+rimg(r,/^tix/.test(r)?'🛥️':w.ic)+'<b>'+lbl+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span>'}).join('')+'<span class="fg pct"><i>💸</i><b>−'+b.pct+'%</b></span>';
     var mix='';if(P>1){var a1=Math.ceil(P/2),a2=P-a1;mix='<p class="fmixt"'+ck('fill.mix')+'>'+T('fill.mix',{a:a1,b:a2})+'</p>'}
-    var body='<div class="fp2"><div class="f2h"><b'+ck('fill.hero.'+b.id)+'>'+T('fill.hero.'+b.id)+'</b><div class="fgifts">'+gifts+'</div></div>'
-      +'<div class="f2box"><p class="f2intro"'+ck('fill.intro')+'>'+T('fill.intro',bv)+'</p>'+mix+'</div>'
-      +'<div class="fslots" id="fSlots"></div>'
-      +'<div class="fcats">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat drow'+(r.core?' core':'')+'" data-nq="'+r.key+'">'+fprc(pr,b)+'<span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><em class="fct">'+esc(r.t)+'</em><b>'+esc(pr.name)+'</b><small>'+esc(r.why)+'</small></div><div class="fbar">'+fprice(pr,b)+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more.s')+'>'+T('fill.more.s')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div>'}).join('')+'</div>'
-      +'<div class="fsave" id="fSave"></div><button class="cta" id="nFill"></button><div class="fback"><button class="lnk" id="fBack"'+ck('fill.back')+'>'+T('fill.back')+'</button></div></div>';
+    /* v1.0.31 (мокъпът на човека): хедър „Напълни кутията си“ + „Голяма кутия · Промени“ + ✕; панел „С пълна кутия получаваш“ с две големи
+       плочки (яхта · основен подарък) и ред с останалите; „Комбинирай 5 опаковки…“ + „Избрани 2 от 5“ + прогрес; картите в 2 колони
+       (снимка · име · „за какво е“ · описание · „За продукта ›“ · цена · „+ Добави“/степер · бадж −40%); лепкав футър „Спестяваш €X“ + бутон */
+    var dmain=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
+    var dtiles='<div class="f3t">'+rimg('tix','🛥️','f3i')+'<div><b'+ck('fill.g.tix')+'>'+T('fill.g.tix',bv)+'</b><span'+ck('fill.gt.tix.b')+'>'+T('fill.gt.tix.b')+'</span><small'+ck('fill.g.tix.sub')+'>'+T('fill.g.tix.sub')+'</small></div></div>'
+      +(dmain==='cosm1'||dmain==='cosm50'?'<div class="f3t gold">'+rimg(dmain,RW(dmain).ic,'f3i')+'<div><b'+ck('fill.gt.cosm.t')+'>'+T('fill.gt.cosm.t',bv)+'</b><span'+ck('fill.gt.cosm.b')+'>'+T('fill.gt.cosm.b',bv)+'</span><small'+ck('fill.gt.cosm.s')+'>'+T('fill.gt.cosm.s')+'</small></div></div>'
+        :dmain==='book'?'<div class="f3t">'+rimg('book',RW('book').ic,'f3i')+'<div><b'+ck('fill.g.book')+'>'+T('fill.g.book')+'</b><span'+ck('fill.gt.book.b')+'>'+T('fill.gt.book.b',bv)+'</span><small'+ck('fill.gt.book.s')+'>'+T('fill.gt.book.s')+'</small></div></div>':'');
+    var drest=b.rw.filter(function(r){return !/^tix/.test(r)&&r!==dmain}).map(function(r){var w=RW(r);return '<span class="f3r">'+rimg(r,w.ic,'f3ri')+'<b'+ck('fill.g.'+r)+'>'+T('fill.g.'+r)+'</b></span>'}).join('<i class="f3sep"></i>');
+    var body='<div class="fp2 fp3"><div class="f3h"><div><h3'+ck('fill.title')+'>'+T('fill.title')+'</h3><div class="f3sub"><b>'+esc(b.name)+'</b><button class="lnk" id="fBack" type="button"'+ck('fill.chg')+'>'+T('fill.chg')+'</button></div></div><button class="f3x" id="fClose" type="button" aria-label="затвори">✕</button></div>'
+      +'<div class="f3g"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t')+'</b><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div>'
+      +'<p class="f3mix"'+ck('fill.combine')+'>'+T('fill.combine',bv)+'</p>'
+      +'<div class="f3p"><span class="f3n"><span'+ck('fill.sel.a')+'>'+T('fill.sel.a')+'</span> <span id="fSlotsN"></span> <span'+ck('fill.sel.b')+'>'+T('fill.sel.b')+'</span></span><span class="f3bar"><i id="fBar"></i></span><em id="fPct">0%</em></div>'
+      +'<div class="fslots" id="fSlots" hidden></div>'
+      +'<div class="fcats f3grid">'+rows.map(function(r){var pr=PROD[r.key];return '<div class="fcat drow'+(r.core?' core':'')+'" data-nq="'+r.key+'"><span class="fpct mb">−'+b.pct+'%</span><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx"><b>'+esc(pr.name)+'</b>'+(pr.ds?'<span class="f3ds">'+esc(pr.ds)+'</span>':'')+'<small>'+esc(r.core&&pr.ds===r.why?pr.desc:r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('fill.more.l')+'>'+T('fill.more.l')+'</button></div><div class="fbar">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'}).join('')+'</div></div>'
+      +'<div class="f3f"><div class="f3s"><i class="f3pig"></i><div><div class="fsave" id="fSave"></div><small'+ck('fill.save.sub')+'>'+T('fill.save.sub',bv)+'</small></div></div><button class="cta" id="nFill"></button></div>';
     var mob=MOBF();S._fillMob=mob;var MPP=2; /* v1.0.25: продукти на страница в мобилното пълнене (бяха 3) */
     if(mob){
       /* v1.0.22 (инспирацията на човека): пълноекранен лист — заглавие „Голяма кутия“ + „5 опаковки по твой избор“ + бадж „−40% на всяка
@@ -325,6 +335,7 @@
       dc.querySelectorAll('[data-dec]').forEach(function(x){x.disabled=!(needQ[x.dataset.dec]>0)});
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
       var cnt='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      var fb=$('fBar');if(fb){var pc=Math.round(t/P*100);fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
       $('fSlots').innerHTML=cnt+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*PROD[k].price*b.pct/100});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
