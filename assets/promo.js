@@ -306,8 +306,8 @@
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
     var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=0;var showPg=function(){dc.querySelectorAll('.mitem').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
-        var dots='';for(var di=0;di<pages;di++)dots+='<i'+(di===pg?' class="on"':'')+'></i>';
-        pgEl.innerHTML='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgc"><span class="mpgd">'+dots+'</span><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span></span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
+        /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
+        pgEl.innerHTML='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
         pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0}})};showPg()}
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all')}}
     if(mob)fitSheet(dc);
@@ -580,7 +580,7 @@
     var on=S.screen===1;yfab.style.display=on?'':'none';if(!on){yfab.classList.remove('open');return}
     yfab.innerHTML='<button class="yfabb" id="apYfabB" type="button" aria-expanded="'+(yfab.classList.contains('open')?'true':'false')+'">'+rimg('tix','🛥️','yfi')+'<span'+ck('yfab.tag')+'>'+T('yfab.tag')+'</span></button>'
       +'<div class="yfabc"><button class="yfabx" id="apYfabX" type="button" aria-label="затвори">✕</button>'+rimg('tix','🛥️','yfi')
-      +'<b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small>'
+      +'<b'+ck('yfab.b')+'>'+T('yfab.b')+'</b><small'+ck('yfab.s')+'>'+T('yfab.s')+'</small>'
       +'<div class="yfaba"><button class="lnk" id="apYfabM" type="button"'+ck('yfab.more')+'>'+T('yfab.more')+'</button><button class="cta" id="apYfabOk" type="button"'+ck('yfab.ok')+'>'+T('yfab.ok')+'</button></div></div>';
     $('apYfabB').onclick=function(){yfab.classList.add('open');this.setAttribute('aria-expanded','true')};
     $('apYfabX').onclick=yfabClose;$('apYfabOk').onclick=yfabClose;
