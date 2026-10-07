@@ -731,3 +731,35 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .bbest-d{display:inline-block;position:absolute;top:-17px;left:50%;transform:translateX(-50%);z-index:3;background:linear-gradient(135deg,#b45309,#f0b429 60%,#b45309);color:#fff;border:2px solid #fff;font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:5px 14px;box-shadow:0 4px 12px rgba(180,83,9,.3);white-space:nowrap}
 .ansa-promo .bsave span{background:transparent!important;color:var(--ink2)!important;padding:0!important;white-space:normal}
 }
+
+/* ── 24 · v1.0.30 (искане на човека): Малка/Средна са по-големи (Голямата не изпъква дразнещо); името е центрирано над процента;
+      Малка −20% (PHP); Средната е в теракота — процентът не е черен, бутонът е плътен и четлив; блоковете за томболата и сета са
+      НАД кутиите като компактни плочки, за да се виждат без скрол (на телефон остават под кутиите) ── */
+@media(min-width:1000px){
+.ansa-promo .boxes{grid-template-columns:minmax(0,1fr) minmax(0,1.16fr) minmax(0,1fr);gap:18px}
+.ansa-promo .box.s,.ansa-promo .box.m{zoom:1;margin-top:14px}
+.ansa-promo .bhd{display:flex;justify-content:center}
+.ansa-promo .bhd .bname,.ansa-promo .box.l .bhd .bname{flex:1 1 100%;text-align:center;grid-column:auto}
+.ansa-promo .bpc b{font-size:62px}
+.ansa-promo .box.l .bpc b{font-size:70px}
+.ansa-promo .box.m .bpc b{background:linear-gradient(135deg,#c2410c,#e0905f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ansa-promo .box.s .bpc b{color:var(--ink2)}
+.ansa-promo .box.m .bsave{background:#fdf0e6!important;border-color:#f0cdb3}
+.ansa-promo .box.m .bsave b{color:#c2410c}
+/* плочките над кутиите */
+.ansa-promo .s1info.top{grid-template-columns:1fr 1fr;gap:14px;margin:0 0 20px}
+.ansa-promo .s1info.top .ib2{grid-template-columns:150px minmax(0,1fr);border-radius:18px}
+.ansa-promo .s1info.top .ibpic{min-height:118px;font-size:48px}
+.ansa-promo .s1info.top .ibtx{padding:12px 16px 10px;gap:3px}
+.ansa-promo .s1info.top .ibtx b{font-size:15.5px}
+.ansa-promo .s1info.top .ibtx small{font-size:12.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ansa-promo .s1info.top .ibtx .lnk{margin-top:2px;font-size:13px}
+.ansa-promo #apS1 .s1hero{margin-bottom:16px}
+}
+/* Средната: плътен теракотен бутон с бял текст (на всички ширини) */
+.ansa-promo .box.m>.cta,.ansa-promo .box.m .bmcta{background:linear-gradient(135deg,#e0905f,#cf7342);color:#fff;border:none;box-shadow:0 6px 18px rgba(207,115,66,.35)}
+/* телефон/таблет: плочките остават под кутиите (flex order) */
+@media(max-width:999px){
+.ansa-promo #apS1.on{display:flex;flex-direction:column}
+.ansa-promo #apS1>.steps{order:0}.ansa-promo #apS1>.s1hero{order:1}.ansa-promo #apS1>.boxes{order:2}.ansa-promo #apS1>.bnote-m{order:3}.ansa-promo #apS1>.s1info{order:4;margin-top:16px}.ansa-promo #apS1>.guarl{order:5}
+}

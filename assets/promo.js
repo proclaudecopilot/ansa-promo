@@ -400,9 +400,10 @@
     var GI=(A.gate&&A.gate.images)||{};
     h+='<div class="steps">'+[1,2,3].map(function(n){return '<span class="st'+(n===1?' on':'')+'"><i>'+n+'</i><span'+ck('steps.'+n)+'>'+T('steps.'+n)+'</span></span>'}).join('')+'</div>'
       +'<div class="s1hero">'+(c?'<em class="eyebrow"'+ck('boxes.eyebrow')+'>'+T('boxes.eyebrow')+'</em>':'')+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
-      +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
-      +'<div class="s1info"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
+      +'<div class="s1info top"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
       +'<div class="ib2 c" id="s1C"><i class="ibpic">'+(GI.cosm?'<img src="'+esc(GI.cosm)+'" alt="">':'🌸')+'</i><div class="ibtx"><em'+ck('cban.tag')+'>'+T('cban.tag')+'</em><b'+ck('cban.b')+'>'+T('cban.b')+'</b><small'+ck('cban.s')+'>'+T('cban.s')+'</small><button class="lnk" type="button" data-rw="cosm1"'+ck('cban.more')+'>'+T('cban.more')+'</button></div></div></div>'
+      +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
+
       +'<div class="guarl"><span'+ck('boxes.guar')+'>'+T('boxes.guar')+'</span>'+(c?' · <button class="lnk" id="chg1"'+ck('boxes.chg')+'>'+T('boxes.chg')+'</button>':'')+'</div>';
     el.innerHTML=h;
     el.querySelectorAll('[data-box]').forEach(function(b){b.onclick=function(){chooseBox(+b.dataset.box,false)}});
