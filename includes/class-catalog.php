@@ -32,7 +32,7 @@ final class Catalog {
 
 	/** Цена/снимка/наличност от WC за даден (родителски или вариационен) продукт. */
 	public static function wc_line( $product_id ) {
-		$out = array( 'ok' => false, 'price' => 0.0, 'sale' => null, 'img' => '', 'wc_name' => '', 'stock' => false, 'variation_id' => 0, 'product_id' => (int) $product_id, 'note' => '', 'short' => '', 'title' => '', 'subtitle' => '' );
+		$out = array( 'ok' => false, 'price' => 0.0, 'sale' => null, 'img' => '', 'wc_name' => '', 'stock' => false, 'variation_id' => 0, 'product_id' => (int) $product_id, 'note' => '', 'short' => '', 'title' => '', 'subtitle' => '', 'base_name' => '' );
 		if ( ! function_exists( 'wc_get_product' ) ) { $out['note'] = 'WooCommerce липсва'; return $out; }
 		$p = $product_id ? wc_get_product( (int) $product_id ) : null;
 		if ( ! $p ) { $out['note'] = 'няма такъв продукт'; return $out; }
@@ -66,6 +66,7 @@ final class Catalog {
 		   и заглавието/подзаглавието, ако Shrine ги е презаписал (_ansa_title_override / _ansa_title_main / _ansa_title_subtitle) */
 		$base = $p->is_type( 'variation' ) ? wc_get_product( $p->get_parent_id() ) : $p;
 		if ( $base ) {
+			$out['base_name'] = trim( wp_strip_all_tags( (string) $base->get_name() ) );
 			$short = trim( wp_strip_all_tags( (string) $base->get_short_description() ) );
 			if ( '' === $short ) { $short = trim( wp_strip_all_tags( (string) $src->get_description() ) ); }
 			$out['short'] = preg_replace( '/\s+/u', ' ', $short );
@@ -77,6 +78,12 @@ final class Catalog {
 		$out['ok']    = $out['price'] > 0;
 		if ( ! $out['ok'] ) { $out['note'] = 'цена 0'; }
 		return $out;
+	}
+
+	/** v1.0.26: продукт/вариация по SKU (вариацията „1 опаковка“) — 0, ако няма. */
+	public static function find_by_sku( $sku ) {
+		$sku = trim( (string) $sku ); if ( '' === $sku || ! function_exists( 'wc_get_product_id_by_sku' ) ) { return 0; }
+		return (int) wc_get_product_id_by_sku( $sku );
 	}
 
 	/** Търсене на продукт по име (за seed и за ⚙️ Двигател). Връща [{id, name, type, price}] */

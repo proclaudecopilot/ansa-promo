@@ -84,7 +84,7 @@ final class Admin {
 					if ( '' === $key && '' === trim( (string) ( $r['name'] ?? '' ) ) ) { continue; }
 					$old = Config::product( $cfg, $key ) ?: Config::product_defaults();
 					foreach ( array( 'key', 'name', 'ph', 'gname', 'gsub', 'ds', 'desc', 'ing', 'who', 'rating', 'reviews', 'cat', 'pack' ) as $f ) { if ( isset( $r[ $f ] ) ) { $old[ $f ] = (string) $r[ $f ]; } }
-					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] ); $old['wc_text'] = ! empty( $r['wc_text'] );
+					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] ); $old['wc_text'] = ! empty( $r['wc_text'] ); $old['sku'] = sanitize_text_field( (string) ( $r['sku'] ?? '' ) );
 					if ( isset( $r['theme'] ) ) { $old['theme'] = array_map( 'trim', explode( ',', (string) $r['theme'] ) ); }
 					$new[] = $old;
 				}
@@ -214,7 +214,7 @@ final class Admin {
 				<?php self::form_open( 'products', 'products', ' style="display:block;margin-top:14px" id="apProducts"' ); ?>
 					<p>Ключът е UTM стойността (<code>?<?php echo esc_html( $draft['utm_param'] ); ?>=ключ</code>). Снимката и цената идват от избрания WC продукт (при variable — вариацията „1 брой“); „Снимка (attachment id)“ я заменя. Последният ред е за нов продукт. Записва се в <b>черновата</b> — публикуваш от 🧰 Инструменти.</p>
 					<style>.ap-prod{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:10px 12px;margin-bottom:10px}.ap-prod .ap-row{display:grid;grid-template-columns:70px 110px 1fr 1fr 70px;gap:8px;align-items:end}.ap-prod .ap-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}.ap-prod label{font-size:11px;color:#50575e;display:block}.ap-prod input[type=text],.ap-prod input[type=number],.ap-prod textarea{width:100%}.ap-prod .ap-wc{display:flex;gap:6px;align-items:center}.ap-prod .ap-wc input{width:90px}.ap-prod .ap-res{position:absolute;z-index:10;background:#fff;border:1px solid #c3c4c7;box-shadow:0 4px 14px rgba(0,0,0,.12);max-height:260px;overflow:auto;min-width:320px}.ap-prod .ap-res button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:#fff;padding:6px 8px;cursor:pointer}.ap-prod .ap-res button:hover{background:#f0f6fc}.ap-prod .ap-res img{width:32px;height:32px;object-fit:contain}.ap-prod .ap-thumb{width:48px;height:48px;object-fit:contain;border:1px solid #dcdcde;border-radius:6px;background:#fff}.ap-prod details{margin-top:6px}.ap-prod summary{cursor:pointer;color:#2271b1;font-size:12px}</style>
-					<?php foreach ( $plist as $i => $p ) : $wc = $p['product_id'] ? Catalog::wc_line( $p['product_id'] ) : null; ?>
+					<?php foreach ( $plist as $i => $p ) : $rpid = '' !== $p['sku'] ? ( Catalog::find_by_sku( $p['sku'] ) ?: (int) $p['product_id'] ) : (int) $p['product_id']; $wc = $rpid ? Catalog::wc_line( $rpid ) : null; ?>
 					<div class="ap-prod"<?php echo ! empty( $p['_new'] ) ? ' style="border-style:dashed"' : ''; ?>>
 						<div class="ap-row">
 							<div><label>вкл.</label><input type="checkbox" name="p[<?php echo $i; ?>][enabled]" value="1"<?php checked( ! empty( $p['enabled'] ) ); ?>> <label style="display:inline">изтрий</label> <input type="checkbox" name="p[<?php echo $i; ?>][del]" value="1"></div>
@@ -222,6 +222,10 @@ final class Admin {
 							<div><label>име на страницата</label><input type="text" name="p[<?php echo $i; ?>][name]" value="<?php echo esc_attr( $p['name'] ); ?>"></div>
 							<div style="position:relative"><label>WC продукт (търси по име или ID)</label><div class="ap-wc"><input type="number" name="p[<?php echo $i; ?>][product_id]" value="<?php echo (int) $p['product_id']; ?>" class="ap-pid"><input type="text" class="ap-q" placeholder="търси…" style="flex:1" autocomplete="off"><img class="ap-thumb" src="<?php echo esc_url( $wc && $wc['img'] ? $wc['img'] : '' ); ?>" alt="" <?php echo $wc && $wc['img'] ? '' : 'style="visibility:hidden"'; ?>></div><div class="ap-res" hidden></div><small class="ap-note"><?php echo $wc ? esc_html( ( $wc['ok'] ? $wc['wc_name'] . ' · €' . number_format( $wc['price'], 2, ',', '' ) . ( $wc['variation_id'] ? ' · вар.#' . $wc['variation_id'] : '' ) . ( $wc['stock'] ? '' : ' · НЕ Е НАЛИЧЕН' ) : 'ПРОБЛЕМ: ' . $wc['note'] ) ) : 'не е свързан — няма да се показва'; ?></small></div>
 							<div><label>емоджи</label><input type="text" name="p[<?php echo $i; ?>][ph]" value="<?php echo esc_attr( $p['ph'] ); ?>"></div>
+						</div>
+						<div class="ap-row2" style="grid-template-columns:1fr 2fr">
+							<div><label>SKU на вариацията „1 опаковка“ (печели над WC ID)</label><input type="text" name="p[<?php echo $i; ?>][sku]" value="<?php echo esc_attr( $p['sku'] ); ?>" placeholder="напр. dgr001"></div>
+							<div style="font-size:12px;color:#50575e;align-self:end"><?php if ( '' !== $p['sku'] ) { echo $rpid ? 'SKU → WC #' . (int) $rpid . ( $wc && $wc['base_name'] ? ' · ' . esc_html( $wc['base_name'] ) : '' ) . ( $wc && $wc['variation_id'] ? ' · вариация #' . (int) $wc['variation_id'] : '' ) . ( $wc ? ' · € ' . esc_html( number_format( $wc['price'], 2 ) ) : '' ) : '<b style="color:#b32d2e">SKU не е намерен в WooCommerce</b>'; } ?></div>
 						</div>
 						<div class="ap-row2">
 							<div><label>категория (селектор)</label><input type="text" name="p[<?php echo $i; ?>][cat]" value="<?php echo esc_attr( $p['cat'] ); ?>"></div>

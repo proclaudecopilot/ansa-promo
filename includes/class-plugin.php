@@ -33,6 +33,7 @@ final class Plugin {
 		Schema::maybe_upgrade();
 		Config::maybe_migrate();
 		Config::maybe_migrate_name();
+		Config::maybe_migrate_sku();
 		Catalog::register();
 		Frontend::register();
 		Leads::register();

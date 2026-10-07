@@ -181,15 +181,20 @@
   function stars(n){var h='';for(var i=1;i<=5;i++)h+='<i class="'+(i<=n?'on':'')+'">★</i>';return '<span class="ppstars">'+h+'</span>'}
   function productPopup(k,onAdd){
     var pr=PROD[k],dc=$('apDc2'),p=pct();var cat='';PROBS.forEach(function(x){if(x.key===k)cat=x.t});
-    var revs=(pr.reviews||[]).slice(0,3).map(function(r){return '<div class="pprv">'+stars(r.s)+'<p>'+esc(r.t)+'</p><small>— '+esc(r.n)+'</small></div>'}).join('');
+    /* v1.0.26: отзивите са карусел — по един, с ‹ › и точки (сменя се и сам на 4.5 s) */
+    var RV=(pr.reviews||[]);var revs=RV.length?'<div class="pprc" id="ppRc">'+RV.map(function(r,i){return '<div class="pprv'+(i?'':' on')+'" data-i="'+i+'">'+stars(r.s)+'<p>'+esc(r.t)+'</p><small>— '+esc(r.n)+'</small></div>'}).join('')+(RV.length>1?'<div class="pprn"><button class="pprb" data-rv="-1" aria-label="предишен">‹</button><span class="pprd">'+RV.map(function(_,i){return '<i'+(i?'':' class="on"')+'></i>'}).join('')+'</span><button class="pprb" data-rv="1" aria-label="следващ">›</button></div>':'')+'</div>':'';
     dc.innerHTML='<button class="ux" id="apUx2" aria-label="затвори">✕</button><div class="pph"><div class="ppimg">'+pic(pr,'ppi')+'</div><div class="pptx">'+(cat?'<em class="fct">'+esc(cat)+'</em>':'')+'<h3>'+esc(pr.name)+'</h3><p class="ppds">'+esc(pr.ds)+'</p>'+(pr.rating?'<div class="pprate">'+stars(5)+' <span>'+esc(pr.rating)+'</span></div>':'')+'</div></div>'
       +'<p class="ppdesc">'+esc(pr.desc)+'</p>'
       +((pr.ing||pr.who)?'<div class="ppgrid">'+(pr.ing?'<div><b'+ck('pp.ing')+'>'+T('pp.ing')+'</b><p>'+esc(pr.ing)+'</p></div>':'')+(pr.who?'<div><b'+ck('pp.who')+'>'+T('pp.who')+'</b><p>'+esc(pr.who)+'</p></div>':'')+'</div>':'')
       +(revs?'<div class="pprevs"><b'+ck('pp.reviews')+'>'+T('pp.reviews')+'</b>'+revs+'</div>':'')
-      +'<div class="ppfoot"><div class="il"><span'+ck('prod.price')+'>'+T('prod.price')+'</span><b>'+m(r2(pr.price*(1-p/100)))+' <s class="was">'+m(pr.price)+'</s></b><small>'+packTxt(pr)+'</small></div>'+(onAdd?'<button class="cta" id="ppAdd"'+ck('pp.add')+'>'+T('pp.add')+'</button>':'')+'<button class="lnk" id="ppClose"'+ck('pp.close')+'>'+T('pp.close')+'</button></div>';
+      /* v1.0.26: цената и спестяването са ясно видими — голяма цена, зачертана редовна, зелен ред „Спестяваш €X“ */
+      +'<div class="ppfoot"><div class="ppprice"><small class="ppl"'+ck('pp.price.now')+'>'+T('pp.price.now',{pct:p})+'</small><div class="ppnow"><b>'+m(r2(pr.price*(1-p/100)))+'</b><s class="was">'+m(pr.price)+'</s></div><div class="ppsave"'+ck('pp.save')+'>'+T('pp.save',{save:m(r2(pr.price*p/100))})+'</div>'+(packTxt(pr)?'<small class="pppack">'+packTxt(pr)+'</small>':'')+'</div>'+(onAdd?'<button class="cta" id="ppAdd"'+ck('pp.add')+'>'+T('pp.add')+'</button>':'')+'<button class="lnk" id="ppClose"'+ck('pp.close')+'>'+T('pp.close')+'</button></div>';
     $('apOv2').classList.remove('off');dc.scrollTop=0;
     var close=function(){$('apOv2').classList.add('off')};
     $('apUx2').onclick=close;$('ppClose').onclick=close;var ad=$('ppAdd');if(ad)ad.onclick=function(){close();onAdd(k)};
+    var rc=$('ppRc');if(rc&&RV.length>1){var ri=0,rt;var show=function(n){ri=(n+RV.length)%RV.length;rc.querySelectorAll('.pprv').forEach(function(x){x.classList.toggle('on',Number(x.dataset.i)===ri)});rc.querySelectorAll('.pprd i').forEach(function(x,i){x.classList.toggle('on',i===ri)})};
+      var arm=function(){clearInterval(rt);rt=setInterval(function(){if($('apOv2').classList.contains('off')||!document.body.contains(rc)){clearInterval(rt);return}show(ri+1)},4500)};
+      rc.querySelectorAll('[data-rv]').forEach(function(x){x.onclick=function(e){e.stopPropagation();show(ri+Number(x.dataset.rv));arm()}});arm()}
   }
   $('apOv2').onclick=function(e){if(e.target.id==='apOv2')$('apOv2').classList.add('off')};
   /* v1.0.15: „За да отключиш тези награди…“ като попъп с ОК (мобилно; веднъж на сесия за кутия) */
