@@ -22,7 +22,9 @@ const { chromium } = require('playwright');
     await shot('gate'); await check('gate');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
     await page.screenshot({ path: S + '/shots/' + tag + '-boxes-full.png', fullPage: true });
-    if (w < 500) { await page.click('#apYfabB'); await shot('yfab'); await check('yfab'); await page.click('#apYfabOk'); await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
+    await page.click('.fabu[data-fab="tix"] .yfabb'); await shot('yfab'); await check('yfab'); await page.click('.fabu[data-fab="tix"] [data-fx].cta');
+    await page.click('.fabu[data-fab="cosm1"] .yfabb'); await shot('cfab'); await check('cfab'); await page.click('.fabu[data-fab="cosm1"] [data-fx].cta');
+    if (w < 500) { await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura' })); await shot('fill'); await check('fill');
     { const ok = await page.$('#okBtn'); if (ok) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } }
     // add 4 more via steppers on mobile/desktop
