@@ -102,21 +102,25 @@ final class Frontend {
 		$prods = array();
 		foreach ( $cfg['products'] as $p ) {
 			if ( empty( $p['enabled'] ) ) { continue; }
-			$wc = Catalog::wc_line( $p['product_id'] );
+			/* v1.0.26: SKU на вариацията „1 опаковка“ печели над product_id (по име се хващаха грешни продукти — сетове) */
+			$pid = '' !== $p['sku'] ? ( Catalog::find_by_sku( $p['sku'] ) ?: (int) $p['product_id'] ) : (int) $p['product_id'];
+			$wc = Catalog::wc_line( $pid );
 			if ( ! $wc['ok'] ) { continue; }
 			$img = $p['img'] ? (string) wp_get_attachment_image_url( (int) $p['img'], 'medium' ) : '';
 			/* v1.0.25: „за какво е“ (ds) и описанието (desc) идват от WooCommerce като на продуктовата страница — подзаглавието на Shrine
 			   или първото изречение на краткото описание за ds, цялото кратко описание (до 260 знака) за desc; полетата от 📦 Продукти
 			   са резерва при празен WC или при изключена отметка „текстовете от WooCommerce“ */
-			$ds = $p['ds']; $desc = $p['desc'];
+			$ds = $p['ds']; $desc = $p['desc']; $name = '' !== $p['name'] ? $p['name'] : $wc['wc_name'];
 			if ( ! empty( $p['wc_text'] ) ) {
+				/* v1.0.26: и името е истинското — заглавието на Shrine или името на WC продукта (родителя, не „… – 1 опаковка“) */
+				if ( '' !== $wc['title'] ) { $name = $wc['title']; } elseif ( '' !== $wc['base_name'] ) { $name = $wc['base_name']; }
 				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
 				if ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
 				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
 			}
 			$prods[ $p['key'] ] = array(
 				'key' => $p['key'], 'id' => (int) ( $wc['product_id'] ?: $p['product_id'] ), 'vid' => (int) $wc['variation_id'], 'ph' => $p['ph'], 'img' => $img ?: $wc['img'],
-				'name' => '' !== $p['name'] ? $p['name'] : $wc['wc_name'], 'gname' => $p['gname'], 'gsub' => $p['gsub'],
+				'name' => $name, 'gname' => $p['gname'], 'gsub' => $p['gsub'],
 				'ds' => $ds, 'desc' => $desc, 'ing' => $p['ing'], 'who' => $p['who'], 'rating' => $p['rating'], 'pack' => $p['pack'],
 				'reviews' => array_values( array_filter( array_map( function ( $l ) { $x = array_map( 'trim', explode( '|', $l ) ); return count( $x ) >= 3 ? array( 'n' => $x[0], 's' => max( 1, min( 5, (int) $x[1] ) ), 't' => $x[2] ) : null; }, preg_split( '/\r?\n/', (string) $p['reviews'] ) ) ) ),
 				'cat' => $p['cat'], 'theme' => $p['theme'], 'price' => (float) $wc['price'], 'stock' => (bool) $wc['stock'],

@@ -91,6 +91,22 @@ final class Config {
 		update_option( 'ansa_promo_name_v2', $changed ? 'migrated' : 'noop', false );
 	}
 
+	/** v1.0.26: SKU-тата на шестте продукта (човекът ги даде) — еднократно в черновата и публикуваното, само където полето е празно. */
+	public static function maybe_migrate_sku() {
+		if ( get_option( 'ansa_promo_sku_v1' ) ) { return; }
+		$map = array( 'greens' => 'dgr001', 'sakura' => 'SKST', 'berber' => 'BRBR', 'meno' => 'MENO', 'red' => 'prod002', 'thyro' => 'prod003' );
+		$s = self::read_store(); $changed = false;
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['products'] ) || ! is_array( $s[ $slot ]['products'] ) ) { continue; }
+			foreach ( $s[ $slot ]['products'] as $i => $p ) {
+				$k = is_array( $p ) ? (string) ( $p['key'] ?? '' ) : '';
+				if ( isset( $map[ $k ] ) && '' === trim( (string) ( $p['sku'] ?? '' ) ) ) { $s[ $slot ]['products'][ $i ]['sku'] = $map[ $k ]; $changed = true; }
+			}
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_sku_v1', $changed ? 'migrated' : 'noop', false );
+	}
+
 	/** Плочките със снимка (имейл-попъп + картите на кутиите): ключ → етикет за админа. */
 	public static function gate_image_slots() {
 		return array( 'yacht' => 'Почивка с яхта', 'cosm' => 'Козметичен сет', 'book' => 'Книга с рецепти', 'pct' => 'Отстъпка', 'ship' => 'Безплатна доставка', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
@@ -103,7 +119,7 @@ final class Config {
 	}
 
 	public static function product_defaults() {
-		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true, 'wc_text' => true );
+		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true, 'wc_text' => true, 'sku' => '' );
 	}
 
 	public static function normalize( $data ) {
@@ -138,6 +154,7 @@ final class Config {
 			$p['theme'] = array_values( array_map( function ( $c ) { return preg_match( '/^#[0-9a-f]{3,8}$/i', (string) $c ) ? $c : '#ffffff'; }, array_pad( array_slice( (array) $p['theme'], 0, 3 ), 3, '#ffffff' ) ) );
 			$p['enabled'] = ! empty( $p['enabled'] );
 			$p['wc_text'] = ! empty( $p['wc_text'] ); /* v1.0.25: „за какво е“ и описанието идват от WooCommerce (по подразбиране) */
+			$p['sku'] = sanitize_text_field( (string) ( $p['sku'] ?? '' ) ); /* v1.0.26: SKU на вариацията „1 опаковка“ — печели над product_id */
 			$prods[] = $p;
 		}
 		$out['products'] = $prods;

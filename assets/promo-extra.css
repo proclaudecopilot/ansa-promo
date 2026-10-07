@@ -536,3 +536,33 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mff .fsave.on{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;font-size:15px;box-shadow:0 4px 12px rgba(22,163,74,.25)}
 .ansa-promo .dc.fpm .mff .fsave b{font-size:inherit;font-weight:900;color:inherit;display:inline}
 .ansa-promo .dc.fpm .mff .fsave.on b{font-size:17px}
+
+/* ── 20 · v1.0.26 (искане на човека): пагинацията на телефон е в три равни колони — „Назад“ вляво, „1 от 3“ с точките в свой
+      контейнер по средата, „Още продукти“ вдясно; в продуктовия попъп отзивите са карусел (по един), а цената и спестяването са
+      големи и ясни; продуктите се резолвират по SKU (PHP) ── */
+/* пагинация: dedicated container по средата */
+.ansa-promo .dc.fpm .mpg{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px}
+.ansa-promo .dc.fpm .mpgb.pv{justify-self:start}
+.ansa-promo .dc.fpm .mpgb.nx{justify-self:end}
+.ansa-promo .dc.fpm .mpgb{white-space:nowrap}
+.ansa-promo .dc.fpm .mpgc{justify-self:center;background:#fff;border:1.5px solid #e2d6cb;border-radius:999px;padding:5px 14px;gap:3px;min-width:84px}
+.ansa-promo .dc.fpm .mpgn{font-size:12px;line-height:1.1}
+/* отзиви: карусел */
+.ansa-promo .pprc{position:relative}
+.ansa-promo .pprc .pprv{display:none;margin:0;min-height:88px}
+.ansa-promo .pprc .pprv.on{display:block;animation:yfabIn .25s ease}
+.ansa-promo .pprn{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:8px}
+.ansa-promo .pprb{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ol);background:#fff;color:var(--od);font:inherit;font-size:20px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ansa-promo .pprd{display:flex;justify-content:center;gap:5px}
+.ansa-promo .pprd i{width:7px;height:7px;border-radius:50%;background:#e5d6c8;display:block;transition:width .2s}
+.ansa-promo .pprd i.on{background:var(--o);width:20px;border-radius:4px}
+/* цена + спестяване в продуктовия попъп */
+.ansa-promo .ppfoot{border-top:none;padding-top:0}
+.ansa-promo .ppprice{background:linear-gradient(135deg,#fff6ee,#fff1e6);border:1.5px solid var(--ol);border-radius:16px;padding:12px 14px;margin:0 0 10px;text-align:center}
+.ansa-promo .ppprice .ppl{display:block;font-size:11.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--tan);margin-bottom:4px}
+.ansa-promo .ppprice .ppnow{display:flex;align-items:baseline;justify-content:center;gap:10px;flex-wrap:wrap}
+.ansa-promo .ppprice .ppnow b{font-size:30px;font-weight:900;color:var(--o);letter-spacing:-.02em;line-height:1}
+.ansa-promo .ppprice .ppnow s{font-size:15px;font-weight:700;color:var(--tan2)}
+.ansa-promo .ppprice .ppsave{display:inline-block;margin-top:8px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:13.5px;font-weight:800;border-radius:999px;padding:6px 14px;line-height:1.2}
+.ansa-promo .ppprice .ppsave b{font-weight:900;font-size:15px;color:#fff}
+.ansa-promo .ppprice .pppack{display:block;margin-top:7px;font-size:11.5px;font-weight:700;color:var(--tan)}
