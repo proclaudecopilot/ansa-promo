@@ -1009,3 +1009,35 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mfsw{font-size:12.5px;flex:none;padding:6px 0}
 .ansa-promo .dc.fpm .mfpill svg,.ansa-promo .dc.fpm .mfsw svg{width:14px;height:14px}
 }
+
+/* ── 30 · v1.0.36 (инспирацията на човека, телефон): картата е по-спокойна — категорията е малък етикет вътре над името, баджът е мек
+      (светъл фон, оранжев текст; плътен при избор), снимка ~104px с рамка, „за какво е“ 15.5px, описание 14px в по-светъл тон,
+      „За продукта ›“, стара цена сиво + нова 24px оранжево, мек степер, плътен „+ Добави“; картите с 12px между тях ── */
+@media(max-width:760px){
+.ansa-promo .dc.fpm .mcath{display:none}
+.ansa-promo .dc.fpm .mfl{gap:12px;padding:0 16px 16px}
+.ansa-promo .dc.fpm .mfpk{margin:20px 16px 12px;font-size:21px}
+.ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{padding:14px 16px 14px;gap:12px;border-radius:18px;border:1.5px solid rgba(232,114,42,.16);box-shadow:0 2px 10px rgba(67,48,42,.04)}
+.ansa-promo .dc.fpm .fcat.mrow.r3.on{border-color:rgba(232,114,42,.6);background:#fff7f1}
+.ansa-promo .fcat.r3 .r3h{align-items:flex-start}
+.ansa-promo .fcat.r3 .r3t{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}
+.ansa-promo .fcat.r3 .r3cat{font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--od);line-height:1.2}
+.ansa-promo .fcat.r3 .r3cat.core{color:var(--gd)}
+.ansa-promo .fcat.r3 .r3h b{font-size:18px}
+.ansa-promo .fcat.r3 .r3h .fpct.mb{background:#fbe3d3;color:var(--od);font-size:13px;padding:5px 11px;margin-top:2px}
+.ansa-promo .fcat.r3.on .r3h .fpct.mb{background:var(--o);color:#fff}
+.ansa-promo .fcat.r3 .r3m{grid-template-columns:104px minmax(0,1fr);gap:14px;align-items:start}
+.ansa-promo .fcat.r3 .r3m .pic,.ansa-promo .dc.fpm .mitem .mrow.r3 .pic,.ansa-promo .dc.fpm .mrow.r3 .pic{width:104px;height:104px;aspect-ratio:auto;border-radius:12px;border:1px solid rgba(232,114,42,.18)}
+.ansa-promo .fcat.r3 .ftx{gap:4px;padding-top:2px!important}
+.ansa-promo .fcat.r3 .ftx .f3ds{font-size:15.5px;font-weight:700;color:var(--ink);line-height:1.3}
+.ansa-promo .fcat.r3 .ftx small,.ansa-promo .dc.fpm .mitem .mrow.r3 small,.ansa-promo .dc.fpm .mrow.r3 small{font-size:14px;font-weight:500;color:var(--muted);line-height:1.4;-webkit-line-clamp:2}
+.ansa-promo .fcat.r3 .ftx .fmore{margin-top:4px;font-size:14px;font-weight:800}
+.ansa-promo .fcat.r3 .fbar.r3f{padding-top:12px;margin-top:0}
+.ansa-promo .fcat.r3 .r3f .fprc{gap:10px}
+.ansa-promo .fcat.r3 .r3f .fprc s{font-size:15px;color:#9a8b80}
+.ansa-promo .fcat.r3 .r3f .fprc b{font-size:24px}
+.ansa-promo .fcat.r3 .r3f .madd{min-height:46px;padding:0 20px;font-size:16px;border-radius:12px}
+.ansa-promo .fcat.r3 .r3f .stp{border-color:#f0c9ad;border-radius:12px;padding:3px}
+.ansa-promo .fcat.r3 .r3f .stp button{width:38px;height:38px;border-radius:9px;background:#fbe3d3;color:var(--od)}
+.ansa-promo .fcat.r3 .r3f .stp b{min-width:28px;font-size:17px}
+}
