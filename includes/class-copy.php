@@ -160,7 +160,9 @@ final class Copy {
 				'fill.title'         => 'Напълни кутията си',
 				/* v1.0.31: десктоп по мокъпа на човека — хедър с кутията и „Промени“, панел „С пълна кутия получаваш“, прогрес, 2 колони карти, лепкав футър */
 				'fill.chg'           => 'Промени',
-				'fill.gifts.t'       => 'С пълна кутия получаваш:',
+				/* v1.0.32: едноредов хедър „Напълни своята ГОЛЯМА кутия (−40%)“ + „С тази кутия получаваш 4 награди:“ */
+				'fill.title2'        => 'Напълни своята <em>{{box_adj_u}}</em> кутия (−{{pct}}%)',
+				'fill.gifts.t'       => 'С тази кутия получаваш <b>{{nrw}} {{nagradi}}</b>:',
 				'fill.gt.tix.b'      => 'Почивка на яхта в Гърция',
 				'fill.gt.cosm.t'     => 'Козметичен сет за €{{cosm_pay}}',
 				'fill.gt.cosm.b'     => '5 продукта на стойност €{{cosm_value}}',
@@ -451,7 +453,7 @@ final class Copy {
 	/** Плейсхолдърите, които promo.js/рендерът познават. Всичко извън списъка е грешка в Doctor. */
 	public static function vars() {
 		return array(
-			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay',
+			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi',
 			'yacht', 'ship', 'book_value', 'cosm_value', 'cosm_pay_m', 'cosm_pay_l', 'cosm_min', 'deadline', 'max_pct', 'pct_s', 'pct_m', 'pct_l',
 			'tickets_s', 'tickets_m', 'tickets_l', 'name', 'n', 'need', 'rest', 'opk_rest', 'save', 'pay', 'value', 'from', 'a', 'b', 'diff', 'prod_diff',
 			'opk_diff', 'delyat', 'box_t', 'box_t_l', 'box_t_ic', 'pct_t', 'save_t', 's_box_t', 'save_l', 'save_prod', 'on', 'total', 'pos', 'mmss',

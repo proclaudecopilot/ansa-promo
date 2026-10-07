@@ -113,7 +113,12 @@ final class Frontend {
 			$ds = $p['ds']; $desc = $p['desc']; $name = '' !== $p['name'] ? $p['name'] : $wc['wc_name'];
 			if ( ! empty( $p['wc_text'] ) ) {
 				/* v1.0.26: и името е истинското — заглавието на Shrine или името на WC продукта (родителя, не „… – 1 опаковка“) */
-				if ( '' !== $wc['title'] ) { $name = $wc['title']; } elseif ( '' !== $wc['base_name'] ) { $name = $wc['base_name']; }
+				if ( '' !== $wc['title'] ) { $name = $wc['title']; }
+				elseif ( '' !== $wc['base_name'] ) {
+					/* v1.0.32: WC името често носи и слоган („Daily Greens | Най-продаваната…“, „Sakura SkinTonic - Японската…“) — вземаме само частта преди разделителя */
+					$parts = preg_split( '/\s+[|\-–—:]\s+/u', $wc['base_name'] ); $nm = trim( (string) ( $parts[0] ?? '' ) );
+					$name = '' !== $nm ? $nm : $wc['base_name'];
+				}
 				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
 				if ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
 				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
