@@ -118,8 +118,9 @@ final class Frontend {
 				/* v1.0.35: префиксът на марката („Ansa™ Sakura SkinTonic“) пада от името; ако заглавието на Shrine започва със същото име
 				   („Sakura SkinTonic - Японската напитка за кожа“), „за какво е“ е частта след разделителя, не повторение на името */
 				$split = function ( $t ) { $p = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t, 2 ); return array( trim( (string) ( $p[0] ?? '' ) ), trim( (string) ( $p[1] ?? '' ) ) ); };
-				$brand = function ( $t ) { return trim( (string) preg_replace( '/^\s*ansa\s*(™|\x{2122}|tm)?\s+/iu', '', (string) $t ) ); };
-				if ( '' !== $wc['base_name'] ) { $nm = $brand( $split( $wc['base_name'] )[0] ); $name = '' !== $nm ? $nm : $wc['base_name']; }
+				$brand = function ( $t ) { return trim( (string) preg_replace( '/^\s*ansa\s*(™|\x{2122}|tm)?(\s+|$)/iu', '', (string) $t ) ); };
+				/* v1.0.36: при „ansa™ – Daily Greens“ първата част е самата марка — тогава името е втората част */
+				if ( '' !== $wc['base_name'] ) { list( $b0, $b1 ) = $split( $wc['base_name'] ); $nm = $brand( $b0 ); if ( '' === $nm ) { $nm = $brand( $b1 ); } $name = '' !== $nm ? $nm : $wc['base_name']; }
 				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
 				list( $t1, $t2 ) = '' !== $wc['title'] ? $split( $wc['title'] ) : array( '', '' );
 				$t1 = $brand( $t1 );
