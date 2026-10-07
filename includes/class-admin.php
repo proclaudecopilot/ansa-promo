@@ -84,7 +84,7 @@ final class Admin {
 					if ( '' === $key && '' === trim( (string) ( $r['name'] ?? '' ) ) ) { continue; }
 					$old = Config::product( $cfg, $key ) ?: Config::product_defaults();
 					foreach ( array( 'key', 'name', 'ph', 'gname', 'gsub', 'ds', 'desc', 'ing', 'who', 'rating', 'reviews', 'cat', 'pack' ) as $f ) { if ( isset( $r[ $f ] ) ) { $old[ $f ] = (string) $r[ $f ]; } }
-					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] );
+					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] ); $old['wc_text'] = ! empty( $r['wc_text'] );
 					if ( isset( $r['theme'] ) ) { $old['theme'] = array_map( 'trim', explode( ',', (string) $r['theme'] ) ); }
 					$new[] = $old;
 				}
@@ -228,6 +228,7 @@ final class Admin {
 							<div><label>кратко „за какво е“ (ds)</label><input type="text" name="p[<?php echo $i; ?>][ds]" value="<?php echo esc_attr( $p['ds'] ); ?>"></div>
 							<div><label>снимка (attachment id, по избор)</label><input type="number" name="p[<?php echo $i; ?>][img]" value="<?php echo (int) $p['img']; ?>"></div>
 						</div>
+						<p style="margin:8px 0 0;font-size:12px"><label><input type="checkbox" name="p[<?php echo $i; ?>][wc_text]" value="1"<?php checked( ! empty( $p['wc_text'] ) ); ?>> <b>текстовете от WooCommerce</b> — „за какво е“ и описанието идват от продукта (подзаглавието на Shrine, ако има, и краткото описание); полетата „ds“ и „desc“ тук са резерва, когато WC е празен. Без отметка се ползват само полетата тук.</label><?php if ( $wc && ! empty( $p['wc_text'] ) ) : ?><br><span style="color:#50575e">WC сега: <?php echo esc_html( $wc['subtitle'] ?: mb_substr( $wc['short'], 0, 90 ) ); ?><?php echo mb_strlen( $wc['short'] ) > 90 && ! $wc['subtitle'] ? '…' : ''; ?></span><?php endif; ?></p>
 						<details><summary>още: описание · съставки · за кого · опаковка · рейтинг · отзиви · gate име/подзаглавие · цветове</summary>
 							<div class="ap-row2">
 								<div><label>описание (desc)</label><textarea name="p[<?php echo $i; ?>][desc]" rows="3"><?php echo esc_textarea( $p['desc'] ); ?></textarea></div>

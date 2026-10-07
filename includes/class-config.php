@@ -103,7 +103,7 @@ final class Config {
 	}
 
 	public static function product_defaults() {
-		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true );
+		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true, 'wc_text' => true );
 	}
 
 	public static function normalize( $data ) {
@@ -137,6 +137,7 @@ final class Config {
 			$p['reviews'] = (string) $p['reviews'];
 			$p['theme'] = array_values( array_map( function ( $c ) { return preg_match( '/^#[0-9a-f]{3,8}$/i', (string) $c ) ? $c : '#ffffff'; }, array_pad( array_slice( (array) $p['theme'], 0, 3 ), 3, '#ffffff' ) ) );
 			$p['enabled'] = ! empty( $p['enabled'] );
+			$p['wc_text'] = ! empty( $p['wc_text'] ); /* v1.0.25: „за какво е“ и описанието идват от WooCommerce (по подразбиране) */
 			$prods[] = $p;
 		}
 		$out['products'] = $prods;

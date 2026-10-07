@@ -105,15 +105,37 @@ final class Frontend {
 			$wc = Catalog::wc_line( $p['product_id'] );
 			if ( ! $wc['ok'] ) { continue; }
 			$img = $p['img'] ? (string) wp_get_attachment_image_url( (int) $p['img'], 'medium' ) : '';
+			/* v1.0.25: „за какво е“ (ds) и описанието (desc) идват от WooCommerce като на продуктовата страница — подзаглавието на Shrine
+			   или първото изречение на краткото описание за ds, цялото кратко описание (до 260 знака) за desc; полетата от 📦 Продукти
+			   са резерва при празен WC или при изключена отметка „текстовете от WooCommerce“ */
+			$ds = $p['ds']; $desc = $p['desc'];
+			if ( ! empty( $p['wc_text'] ) ) {
+				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
+				if ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
+				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
+			}
 			$prods[ $p['key'] ] = array(
 				'key' => $p['key'], 'id' => (int) ( $wc['product_id'] ?: $p['product_id'] ), 'vid' => (int) $wc['variation_id'], 'ph' => $p['ph'], 'img' => $img ?: $wc['img'],
 				'name' => '' !== $p['name'] ? $p['name'] : $wc['wc_name'], 'gname' => $p['gname'], 'gsub' => $p['gsub'],
-				'ds' => $p['ds'], 'desc' => $p['desc'], 'ing' => $p['ing'], 'who' => $p['who'], 'rating' => $p['rating'], 'pack' => $p['pack'],
+				'ds' => $ds, 'desc' => $desc, 'ing' => $p['ing'], 'who' => $p['who'], 'rating' => $p['rating'], 'pack' => $p['pack'],
 				'reviews' => array_values( array_filter( array_map( function ( $l ) { $x = array_map( 'trim', explode( '|', $l ) ); return count( $x ) >= 3 ? array( 'n' => $x[0], 's' => max( 1, min( 5, (int) $x[1] ) ), 't' => $x[2] ) : null; }, preg_split( '/\r?\n/', (string) $p['reviews'] ) ) ) ),
 				'cat' => $p['cat'], 'theme' => $p['theme'], 'price' => (float) $wc['price'], 'stock' => (bool) $wc['stock'],
 			);
 		}
 		return $prods;
+	}
+
+	/** Първото изречение на текст (до . ! ? или нов ред). */
+	public static function first_sentence( $t ) {
+		$t = trim( (string) $t ); if ( '' === $t ) { return ''; }
+		if ( preg_match( '/^(.{12,}?[.!?])(\s|$)/su', $t, $m ) ) { return trim( rtrim( $m[1], '.' ) ); }
+		return $t;
+	}
+	/** Отрязва до n знака по дума, с многоточие. */
+	public static function clip( $t, $n ) {
+		$t = trim( (string) $t ); if ( mb_strlen( $t ) <= $n ) { return $t; }
+		$c = mb_substr( $t, 0, $n ); $sp = mb_strrpos( $c, ' ' ); if ( $sp !== false && $sp > $n * 0.6 ) { $c = mb_substr( $c, 0, $sp ); }
+		return rtrim( $c, ' ,;:—-' ) . '…';
 	}
 
 	/** Снимките на плочките в имейл-попъпа като URL-и: attachment id → medium_large, URL → както е, празно → примерната снимка от assets/img/gate/. */
