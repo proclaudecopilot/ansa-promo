@@ -115,11 +115,16 @@ final class Frontend {
 				/* v1.0.33: името е марката — WC името на родителя преди разделителя („Daily Greens | Най-продаваната…“ → „Daily Greens“);
 				   заглавието на Shrine (на живия сайт е слоганът, напр. „Плодова напитка за сън… | с пробиотици“) е „за какво е“ (ds),
 				   също само до разделителя; резерва за ds — подзаглавието на Shrine или първото изречение на краткото описание */
-				$cut = function ( $t ) { $parts = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t ); return trim( (string) ( $parts[0] ?? '' ) ); };
-				if ( '' !== $wc['base_name'] ) { $nm = $cut( $wc['base_name'] ); $name = '' !== $nm ? $nm : $wc['base_name']; }
+				/* v1.0.35: префиксът на марката („Ansa™ Sakura SkinTonic“) пада от името; ако заглавието на Shrine започва със същото име
+				   („Sakura SkinTonic - Японската напитка за кожа“), „за какво е“ е частта след разделителя, не повторение на името */
+				$split = function ( $t ) { $p = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t, 2 ); return array( trim( (string) ( $p[0] ?? '' ) ), trim( (string) ( $p[1] ?? '' ) ) ); };
+				$brand = function ( $t ) { return trim( (string) preg_replace( '/^\s*ansa\s*(™|\x{2122}|tm)?\s+/iu', '', (string) $t ) ); };
+				if ( '' !== $wc['base_name'] ) { $nm = $brand( $split( $wc['base_name'] )[0] ); $name = '' !== $nm ? $nm : $wc['base_name']; }
 				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
-				$t1 = '' !== $wc['title'] ? $cut( $wc['title'] ) : '';
+				list( $t1, $t2 ) = '' !== $wc['title'] ? $split( $wc['title'] ) : array( '', '' );
+				$t1 = $brand( $t1 );
 				if ( '' !== $t1 && mb_strtolower( $t1 ) !== mb_strtolower( $name ) ) { $ds = self::clip( $t1, 90 ); }
+				elseif ( '' !== $t2 ) { $ds = self::clip( $t2, 90 ); }
 				elseif ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
 				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
 			}

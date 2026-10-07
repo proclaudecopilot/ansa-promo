@@ -164,7 +164,7 @@
   function fitSheet(dc){dc=dc||$('apDc');if(!dc||!dc.classList.contains('fpm'))return;dc.style.top='';dc.style.left='';dc.style.width='';dc.style.height='';var r=dc.getBoundingClientRect(),vh=window.innerHeight,vw=window.innerWidth;
     if(Math.abs(r.top)>2)dc.style.top=(-r.top)+'px';if(Math.abs(r.left)>2)dc.style.left=(-r.left)+'px';if(Math.abs(r.width-vw)>2)dc.style.width=vw+'px';if(Math.abs(r.height-vh)>2)dc.style.height=vh+'px'}
   window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))fitSheet()});
-  function closeInfo(){$('apOv').classList.add('off');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
+  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
   function scrollHint(){var dc=$('apDc');var more=dc.scrollHeight-dc.scrollTop-dc.clientHeight>24;dc.classList.toggle('more',more);var h=$('apMore');if(!h){h=document.createElement('div');h.id='apMore';h.className='dcmore';h.innerHTML='<span'+ck('ms.more')+'>'+T('ms.more')+'</span>';dc.appendChild(h);h.onclick=function(){dc.scrollBy({top:dc.clientHeight*.7,behavior:'smooth'})}}else dc.appendChild(h)}
   (function(){var dc=$('apDc');dc.addEventListener('scroll',function(){dc.classList.toggle('more',dc.scrollHeight-dc.scrollTop-dc.clientHeight>24)});if(window.MutationObserver){var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){if(ms[i].type==='childList'&&![].some.call(ms[i].addedNodes,function(n){return n.id==='apMore'})){setTimeout(scrollHint,60);return}}});mo.observe(dc,{childList:true})}window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))scrollHint()})})();
   $('apOv').onclick=function(e){if(e.target.id==='apOv'&&!S._lockOv)closeInfo()};
@@ -320,11 +320,12 @@
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         /* v1.0.25: 2 продукта на страница; категорията е заглавие над картата (.mcath), не вътре в нея */
         +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="mcath'+(r.core?' core':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):mcat(pr,r))+'</h5>'+fcard(r,'mrow')+'</div>'}).join('')
-        +'</div></div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')
+        /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
+        +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
         +'<div class="mff"><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b></div><span class="mffn" id="fSlotsN"></span></div><div class="fsave" id="fSave"></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
-    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob)dc.classList.add('fpm');
+    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm')} /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
     var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=0;var showPg=function(){dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
