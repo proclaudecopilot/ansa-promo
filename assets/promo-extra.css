@@ -870,3 +870,44 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpw .f3f:has(.fsave.full){background:#eef9f1;border-top-color:rgba(22,163,74,.25)}
 .ansa-promo .dc.fpw .f3f:has(.fsave.full) .f3pig{background-color:#d6f2df;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2315803d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z'/><path d='M2 9v1c0 1.1.9 2 2 2h1'/><circle cx='16' cy='11' r='.6' fill='%2315803d'/></svg>")}
 .ansa-promo .dc.fpw .f3f:has(.fsave.full) .f3s small{color:var(--gd)}
+
+/* ── 27 · v1.0.33 (мокъпът на човека): картата на продукта е на три реда — (1) заглавие + бадж −X% вдясно; (2) снимка 30% | „за какво е“,
+      описание, „За продукта ›“; (3) стара цена · нова цена · „+ Добави“/степер — еднакво в десктоп (.fp3 .drow) и телефон (.fpm .mrow) ── */
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3,.ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{display:flex!important;flex-direction:column;gap:10px;grid-template-columns:none;padding:14px 14px 12px;border-radius:18px;position:relative}
+/* ред 1 */
+.ansa-promo .fcat.r3 .r3h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.ansa-promo .fcat.r3 .r3h b{font-size:20px;font-weight:900;line-height:1.15;color:var(--ink);letter-spacing:-.01em;padding:0!important;min-width:0}
+.ansa-promo .fcat.r3 .r3h .fpct.mb{position:static!important;flex:none;background:var(--o);color:#fff;font-size:14px;font-weight:900;padding:5px 12px;border-radius:999px;box-shadow:none;line-height:1.2;display:inline-block}
+.ansa-promo .fcat.r3.on .r3h .fpct.mb{background:var(--g)}
+/* ред 2 */
+.ansa-promo .fcat.r3 .r3m{display:grid;grid-template-columns:30% minmax(0,1fr);gap:14px;align-items:start}
+.ansa-promo .fcat.r3 .r3m .pic,.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 .pic,.ansa-promo .dc.fpm .mitem .mrow.r3 .pic,.ansa-promo .dc.fpm .mrow.r3 .pic{grid-row:auto;grid-column:auto;width:100%;height:auto;min-height:0;aspect-ratio:1/1;border-radius:12px;background:#fff;border:1px solid rgba(232,114,42,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;margin:0;font-size:44px;align-self:start}
+.ansa-promo .fcat.r3 .r3m .pic img{width:100%;height:100%;object-fit:contain;padding:4px}
+.ansa-promo .fcat.r3 .r3m .ftx,.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 .ftx,.ansa-promo .dc.fpm .mitem .mrow.r3 .ftx,.ansa-promo .dc.fpm .mrow.r3 .ftx{grid-row:auto;grid-column:auto;display:flex;flex-direction:column;gap:4px;min-width:0;padding:0!important}
+.ansa-promo .fcat.r3 .ftx .f3ds{display:block;font-size:17px;font-weight:900;color:var(--ink);line-height:1.2}
+.ansa-promo .fcat.r3 .ftx small,.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 small,.ansa-promo .dc.fpm .mitem .mrow.r3 small,.ansa-promo .dc.fpm .mrow.r3 small{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;font-weight:600;color:var(--ink2);line-height:1.35;margin:0}
+.ansa-promo .fcat.r3 .ftx .fmore{align-self:flex-start;margin-top:4px;padding:2px 0;font-size:14px;font-weight:800;color:var(--od);text-decoration:none;background:none;border:none;font-family:inherit;cursor:pointer}
+/* ред 3 */
+.ansa-promo .fcat.r3 .fbar.r3f,.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 .fbar,.ansa-promo .dc.fpm .mitem .mrow.r3 .fbar,.ansa-promo .dc.fpm .mrow.r3 .fbar{grid-row:auto;grid-column:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 0;padding-top:12px;border-top:1px solid rgba(67,48,42,.08);flex-wrap:nowrap}
+.ansa-promo .fcat.r3 .r3f .fprc{display:flex;flex-direction:row;align-items:baseline;gap:10px;margin:0;min-width:0}
+.ansa-promo .fcat.r3 .r3f .fprc s{order:0;font-size:15px;font-weight:700;color:var(--tan2);white-space:nowrap}
+.ansa-promo .fcat.r3 .r3f .fprc b{order:1;font-size:26px;font-weight:900;color:var(--od);letter-spacing:-.02em;line-height:1;white-space:nowrap}
+.ansa-promo .fcat.r3 .r3f .mact{margin-left:auto;flex:none}
+.ansa-promo .fcat.r3 .r3f .madd{background:linear-gradient(135deg,#e0905f,#cf7342);color:#fff;border:none;border-radius:14px;padding:0 20px;min-height:46px;font:inherit;font-size:16px;font-weight:900;box-shadow:0 4px 12px rgba(207,115,66,.3);cursor:pointer}
+.ansa-promo .fcat.r3 .r3f .stp{display:none;border-radius:14px;padding:3px;border:1.5px solid var(--o);background:#fff;flex-direction:row!important}
+.ansa-promo .fcat.r3.on .r3f .stp{display:inline-flex}
+.ansa-promo .fcat.r3.on .r3f .madd{display:none}
+.ansa-promo .fcat.r3 .r3f .stp button{width:40px;height:40px;border-radius:11px;font-size:20px;background:#fbe3d3;color:var(--od)}
+.ansa-promo .fcat.r3 .r3f .stp b{min-width:30px;font-size:18px;text-align:center}
+/* избрана карта */
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3.on,.ansa-promo .dc.fpm .fcat.mrow.r3.on{border-color:var(--o);background:#fffaf6}
+/* десктоп: 2 колони, картите с еднаква височина */
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3{height:100%}
+@media(max-width:360px){.ansa-promo .fcat.r3 .r3h b{font-size:18px}.ansa-promo .fcat.r3 .r3f .fprc b{font-size:22px}.ansa-promo .fcat.r3 .r3f .madd{padding:0 14px;font-size:15px}}
+/* 27b · баджът е винаги вдясно в реда със заглавието */
+.ansa-promo .fcat.r3 .r3h{display:flex!important;justify-content:space-between!important}
+.ansa-promo .fcat.r3 .r3h>b{flex:1 1 auto!important}
+.ansa-promo .fcat.r3 .r3h .fpct.mb{margin-left:auto!important}
+/* 27c · редовете на картата са на пълна ширина (старото align-items:start на картата ги свиваше) */
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3,.ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{align-items:stretch!important;align-content:stretch!important}
+.ansa-promo .fcat.r3>.r3h,.ansa-promo .fcat.r3>.r3m,.ansa-promo .fcat.r3>.r3f{width:100%;align-self:stretch}
