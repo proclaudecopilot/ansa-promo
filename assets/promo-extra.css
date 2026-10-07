@@ -502,3 +502,37 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 @keyframes yfabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes yfabPulse{0%,100%{box-shadow:0 8px 24px rgba(232,114,42,.35)}50%{box-shadow:0 8px 30px rgba(232,114,42,.6)}}
 @media(prefers-reduced-motion:reduce){.ansa-promo-portal .yfabb,.ansa-promo-portal .yfab.open .yfabc{animation:none}}
+
+/* ── 19 · v1.0.25 (искане на човека): „ТОМБОЛА“ под яхтата е четливо; „Напълни кутията си“ на телефон — 2 продукта на страница,
+      категорията е заглавие над картата, пагинацията е ясна („‹ Назад · • • • 1 от 3 · Още продукти ›“), „Спестяваш €X“ е отделен
+      зелен ред в лепкавия футър; подаръците казват „Козметика за €1 вместо €129“ (копи) ── */
+/* 1 · плаващата яхта: по-голяма картинка и етикет */
+.ansa-promo-portal .yfabb i{width:66px;height:66px}
+.ansa-promo-portal .yfabb span{font-size:12.5px;letter-spacing:.05em;margin-top:3px;padding:0 2px 1px}
+.ansa-promo-portal .yfabb{padding:4px 4px 4px;border-radius:20px}
+/* 3 · категорията като заглавие над картата */
+.ansa-promo .dc.fpm .mitem{gap:0}
+.ansa-promo .dc.fpm .mcath{display:block;margin:0 2px 8px;font-size:14px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--od);line-height:1.2}
+.ansa-promo .dc.fpm .mcath.core{color:var(--gd)}
+.ansa-promo .dc.fpm .mitem .mrow .fct,.ansa-promo .dc.fpm .mrow .fct{display:none}
+.ansa-promo .dc.fpm .mfl{gap:16px}
+.ansa-promo .dc.fpm .mitem .mrow .pic,.ansa-promo .dc.fpm .mrow .pic{min-height:120px}
+.ansa-promo .dc.fpm .mitem .mrow small,.ansa-promo .dc.fpm .mrow small{-webkit-line-clamp:3}
+/* 3 · пагинация с текст, точки и „1 от 3“ */
+.ansa-promo .dc.fpm .mpg{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 12px;background:#f7f1ec;border-top:1px solid rgba(67,48,42,.08)}
+.ansa-promo .dc.fpm .mpgb{width:auto;height:44px;border-radius:999px;padding:0 14px 0 10px;display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:900;color:#fff;background:var(--o);border:none;box-shadow:0 4px 12px rgba(232,114,42,.25)}
+.ansa-promo .dc.fpm .mpgb.nx{padding:0 10px 0 14px}
+.ansa-promo .dc.fpm .mpgb i{font-style:normal;font-size:22px;line-height:1}
+.ansa-promo .dc.fpm .mpgb:disabled{opacity:1;background:#ece4dd;color:#b3a69b;box-shadow:none}
+.ansa-promo .dc.fpm .mpgc{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.ansa-promo .dc.fpm .mpgd{display:flex;gap:5px;align-items:center}
+.ansa-promo .dc.fpm .mpgd i{width:7px;height:7px;border-radius:50%;background:#dccfc3;display:block}
+.ansa-promo .dc.fpm .mpgd i.on{background:var(--o);width:20px;border-radius:4px}
+.ansa-promo .dc.fpm .mpgn{font-size:12.5px;font-weight:800;color:var(--ink2);min-width:0}
+@media(max-width:360px){.ansa-promo .dc.fpm .mpgb span{display:none}.ansa-promo .dc.fpm .mpgb,.ansa-promo .dc.fpm .mpgb.nx{padding:0 12px}}
+/* 5 · „Спестяваш €X“ — ясен ред в лепкавия футър */
+.ansa-promo .dc.fpm .mfft{margin:0 0 8px}
+.ansa-promo .dc.fpm .mff .fsave{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 10px;padding:9px 12px;border-radius:12px;font-size:14px;font-weight:800;line-height:1.25;text-align:center;background:#fbe8da;border:1.5px dashed rgba(232,114,42,.45);color:var(--od)}
+.ansa-promo .dc.fpm .mff .fsave.on{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;font-size:15px;box-shadow:0 4px 12px rgba(22,163,74,.25)}
+.ansa-promo .dc.fpm .mff .fsave b{font-size:inherit;font-weight:900;color:inherit;display:inline}
+.ansa-promo .dc.fpm .mff .fsave.on b{font-size:17px}
