@@ -221,15 +221,18 @@
     var mix=uniq(S.slots.filter(Boolean)).length>1;
     /* мобилно: еднаквите продукти се групират — „5× Sakura“ */
     if(MOB()){var grp={},go_=[];S.slots.filter(Boolean).forEach(function(k){if(!grp[k]){grp[k]=0;go_.push(k)}grp[k]++});
-      items=go_.map(function(k){var pr=PROD[k],q=grp[k];return '<div class="cit"><em class="cq"'+ck('cb.q')+'>'+T('cb.q',{q:q})+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(q*pr.price*(1-b.pct/100)))+'<s>'+m(q*pr.price)+'</s></span></div>'}).join('')}
+      /* v1.0.28: на телефон се вижда само първият продукт, останалите са зад „Виж всички продукти (+N)“ — да остане място за наградите */
+      items=go_.map(function(k,gi){var pr=PROD[k],q=grp[k];return '<div class="cit'+(gi?' hid':'')+'"><em class="cq"'+ck('cb.q')+'>'+T('cb.q',{q:q})+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(q*pr.price*(1-b.pct/100)))+'<s>'+m(q*pr.price)+'</s></span></div>'}).join('')
+      +(go_.length>1?'<button class="cmore" id="cMore" type="button" data-n="'+(go_.length-1)+'"'+ck('cb.more')+'>'+T('cb.more',{n:go_.length-1})+'</button>':'')}
     var cbox='<div class="cbox"><div class="cbh"><b'+ck(mix?'cb.mix':'cb.same')+'>'+T(mix?'cb.mix':'cb.same')+'</b><small'+ck('cb.meta')+'>'+T('cb.meta',{save_prod:m(r2(cat()*b.pct/100))})+'</small></div>'+items+'</div>';
     var pay_='<div class="vline eq cpay"><div class="vl pay"><em'+ck('cb.pay')+'>'+T('cb.pay')+'</em><b>'+m(pay())+'</b></div><div class="vlarr">→</div><div class="vl get"><em'+ck('cb.get')+'>'+T('cb.get')+'</em><b>'+m0(value())+'</b></div></div>';
     var subk='cb.sub.'+b.id;
     dc.innerHTML='<div class="celeb"><div class="confetti">'+conf+'</div><div class="chead"><span class="cbig">🎉</span><h3'+ck('cb.title')+'>'+T('cb.title')+'</h3></div>'
       +'<div class="cgrid"><div class="cg1">'+cbox+pay_+'</div><div class="cg2"><p class="csub"'+ck(subk)+'>'+T(subk)+'</p><div class="rlist">'+rows+'</div></div></div>'+up
-      +'<div class="cacts"><button class="cta" id="cGo"'+ck('cb.cta')+'>'+T('cb.cta')+'</button><div class="crow"><button class="lnk" id="cEdit"'+ck('cb.edit')+'>'+T('cb.edit')+'</button><button class="lnk" id="cSwitch"'+ck('cb.switch')+'>'+T('cb.switch')+'</button></div></div></div>';
+      +'<div class="cacts"><div class="csave"'+ck('cb.save')+'>'+T('cb.save',{save:m(r2(cat()*b.pct/100))})+'</div><button class="cta" id="cGo"'+ck('cb.cta')+'>'+T('cb.cta',{total:m(pay())})+'</button><div class="crow"><button class="lnk" id="cEdit"'+ck('cb.edit')+'>'+T('cb.edit')+'</button><button class="lnk" id="cSwitch"'+ck('cb.switch')+'>'+T('cb.switch')+'</button></div></div></div>';
     $('apOv').classList.remove('off');S._lockOv=true;S._fillPending=false;saveS();
     $('cGo').onclick=function(){S._lockOv=false;closeInfo();go(5)};
+    var cm=$('cMore');if(cm){cm.onclick=function(){var bx=cm.closest('.cbox'),open=!bx.classList.contains('open');bx.classList.toggle('open',open);cm.innerHTML=open?T('cb.less'):T('cb.more',{n:cm.dataset.n})}}
     $('cEdit').onclick=function(){S._lockOv=false;closeInfo();S._fillPending=(S.screen!==2);fillModePopup()};
     var cs=$('cSwitch');if(cs)cs.onclick=function(){S._lockOv=false;switchPopup()};
     var cu=$('cUp');if(cu)cu.onclick=function(){S._lockOv=false;closeInfo();chooseBox(BI.l,true)};

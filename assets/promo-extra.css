@@ -576,3 +576,28 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mitem .mrow .ftx>b,.ansa-promo .dc.fpm .mrow .ftx>b{padding-right:64px}
 .ansa-promo-portal .yfabc b{font-size:14px}
 .ansa-promo-portal .yfabc small{font-size:12.5px}
+
+/* ── 22 · v1.0.28 (искане на човека): продуктовият попъп на телефон е долен лист (не цял екран — лесно се затваря: дръжка, ✕,
+      докосване отгоре); „Честито“ на телефон: само първият продукт, останалите зад „Виж всички продукти (+N)“, лепкав ред
+      „Спестяваш €X“ над бутона, а бутонът казва сумата; категориите на MenoStop/ThyroZen са сменени (PHP) ── */
+/* 2 · долен лист */
+@media(max-width:760px){
+.ansa-promo .ov2{align-items:flex-end;padding:0;background:rgba(26,26,46,.45)}
+.ansa-promo .dc.pp{max-width:none;width:100%;max-height:78dvh;border-radius:24px 24px 0 0;padding:28px 16px calc(12px + env(safe-area-inset-bottom));animation:ppUp .28s ease;box-shadow:0 -12px 40px rgba(26,26,46,.25)}
+.ansa-promo .dc.pp::before{content:'';position:absolute;top:9px;left:50%;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#dccfc3}
+.ansa-promo .dc.pp .ux{top:12px;right:12px}
+.ansa-promo .dc.pp .ppfoot{position:sticky;bottom:calc(-12px - env(safe-area-inset-bottom));background:#fff;margin:8px -16px -12px;padding:8px 16px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -8px 20px rgba(26,26,46,.06)}
+.ansa-promo .dc.pp .ppprice{margin-bottom:8px;padding:10px 12px}
+.ansa-promo .dc.pp .ppprice .ppnow b{font-size:26px}
+.ansa-promo .dc.pp .ppfoot .lnk{margin-top:6px}
+.ansa-promo .dc.pp .ppdesc{font-size:14px}
+}
+@keyframes ppUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.ansa-promo .dc.pp{animation:none}}
+/* 3 · „Честито“ */
+.ansa-promo .cbox .cit.hid{display:none}
+.ansa-promo .cbox.open .cit.hid{display:grid}
+.ansa-promo .cmore{display:block;width:100%;margin:8px 0 2px;background:#fff;border:1.5px dashed var(--ol);border-radius:12px;padding:9px 12px;font:inherit;font-size:13px;font-weight:800;color:var(--od);cursor:pointer}
+.ansa-promo .cacts .csave{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 8px;padding:9px 12px;border-radius:12px;font-size:14.5px;font-weight:800;line-height:1.25;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.25)}
+.ansa-promo .cacts .csave b{font-weight:900;font-size:16px;color:#fff}
+@media(max-width:640px){.ansa-promo .dc.wide .celeb .cacts{padding-top:8px}.ansa-promo .celeb .cacts .cta{min-height:50px;font-size:15.5px}}
