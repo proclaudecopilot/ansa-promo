@@ -6,6 +6,7 @@
 # След release-а пингва сайта (LOGADOR GitHub Updater 1.1+ webhook) и той се обновява веднага —
 # нужни са secrets LOGADOR_HOOK_URL и LOGADOR_HOOK_SECRET (Settings → GitHub ъпдейти на сайта).
 # Без тях само предупреждава — сайтът вижда версията при следващата си проверка.
+# Ръчно „Run workflow“ (workflow_dispatch) само пингва сайта за текущата версия, ако тагът ѝ вече го има.
 name: release
 on:
   push:
@@ -51,7 +52,8 @@ jobs:
           files: ansa-promo.zip
           generate_release_notes: true
       - name: Ping сайта → обнови се сега
-        if: steps.v.outputs.exists == '0'
+        # ръчно пускане (workflow_dispatch) винаги пингва — за „обнови сайта сега“ към вече качен release
+        if: steps.v.outputs.exists == '0' || github.event_name == 'workflow_dispatch'
         env:
           URLS: ${{ secrets.LOGADOR_HOOK_URL }}
           SECRET: ${{ secrets.LOGADOR_HOOK_SECRET }}
