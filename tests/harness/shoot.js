@@ -29,6 +29,14 @@ const { chromium } = require('playwright');
     { const ok = await page.$('#okBtn'); if (ok) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } }
     // add 4 more via steppers on mobile/desktop
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
+    // v1.0.39: въпросникът „Не си сигурна какво ти трябва?“ → избор на 2 проблема → подредба с етикет „според теб“
+    await page.click('#fQuiz'); await shot('quiz'); await check('quiz');
+    await page.evaluate(() => { ['thyro', 'berber'].forEach(k => { const i = document.querySelector('.fqz input[value="' + k + '"]'); if (i) { i.click(); } }); });
+    await shot('quiz-picked');
+    await page.click('#fqGo'); await page.waitForTimeout(300); await shot('fill-quiz'); await check('fill-quiz');
+    { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apDc [data-nq]')).map(x => x.dataset.nq).join(',')); if (!/^sakura,(thyro,berber|berber,thyro)/.test(o)) errors.push(tag + ' fill-quiz: подредбата е ' + o); }
+    await page.evaluate(() => { const n = document.querySelector('#apDc .mpgb.nx'); if (n) n.click(); }); await shot('fill-quiz-p2');
+    await page.evaluate(() => { const n = document.querySelector('#apDc .mpgb.pv'); if (n) n.click(); });
     await shot('fill-done');
     await page.click('#nFill'); await page.waitForTimeout(600); await shot('celeb'); await check('celeb');
     await page.click('#cGo'); await shot('order'); await check('order');
