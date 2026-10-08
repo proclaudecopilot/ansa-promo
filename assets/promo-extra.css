@@ -1225,7 +1225,9 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 /* ── 36 · v1.0.45 (забележки на човека, телефон): (1) лентата казва „✓ За теб: …“; (2) „↓ Още продукти“ над футъра + лек градиент,
       докато списъкът не е скролнат до края; (3) отстоянията: страницата зад листа не скролва (html.ap-lock), листът е закован на
       inset:0, хедърът и страничните ръбове уважават safe-area (iPhone с viewport-fit=cover: статус барът и „челото“ не покриват текста) ── */
-html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;overscroll-behavior:none}
+html.ap-lock{overflow:hidden!important;height:100%!important;overscroll-behavior:none}
+/* v1.0.52: iOS Safari — body е fixed на запазената позиция (top се слага от promo.js), иначе страницата зад листа се мести при докосване */
+html.ap-lock body{position:fixed!important;left:0!important;right:0!important;width:100%!important;overflow:hidden!important;overscroll-behavior:none}
 @media(max-width:760px){
 .ansa-promo .dc.fpw.fpm{position:fixed;inset:0!important;margin:0!important;transform:none}
 .ansa-promo .dc.fpw.fpm>.ib{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1304,4 +1306,19 @@ html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;o
 .ansa-promo .dc.gatew .g2f .cta{min-height:50px;width:100%;padding:0 16px;font-size:16px;white-space:nowrap}
 .ansa-promo .dc.gatew .gc{font-size:11.5px;margin-top:8px}
 .ansa-promo .dc.gatew .gskip{margin-top:6px;font-size:12.5px}
+}
+
+/* ── 40 · v1.0.52 (забележка на човека, iPhone Safari): (1) листът не беше на цял екран — body скролваше под него (iOS игнорира
+      overflow:hidden) и листът „падаше“; сега body е fixed докато листът е отворен (виж html.ap-lock по-горе); (2) хоризонтален скрол —
+      забранен навсякъде на промо страницата: overflow-x:hidden на <html> и <body>, touch-action: pan-y (само вертикално панорамиране),
+      нищо не може да е по-широко от екрана ── */
+html.ansa-promo-html{overflow-x:hidden!important;max-width:100vw}
+html.ansa-promo-html body{overflow-x:hidden!important;max-width:100vw;touch-action:pan-y pinch-zoom}
+html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
+@media(max-width:760px){
+.ansa-promo .dc.fpw.fpm{touch-action:pan-y;overflow-x:hidden;max-width:100vw}
+.ansa-promo .dc.fpm .mfs{overflow-x:hidden;touch-action:pan-y;overscroll-behavior:contain}
+.ansa-promo .dc.fpm .mfl,.ansa-promo .dc.fpm .mitem,.ansa-promo .dc.fpm .fcat.mrow.r3{max-width:100%;overflow-x:hidden}
+.ansa-promo .ov.ovfpm{touch-action:none;overflow:hidden}
+.ansa-promo .dc .fqz{overflow-x:hidden;touch-action:pan-y}
 }
