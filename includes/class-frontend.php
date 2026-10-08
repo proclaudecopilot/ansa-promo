@@ -119,6 +119,9 @@ final class Frontend {
 		$name = esc_html( (string) ( $cfg['name'] ?: 'Сезонът на ansa™' ) );
 		return '<div class="ansa-promo ansa-promo-off ansa-promo-pwgate" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '">'
 			. '<style>.ansa-promo-pwgate{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;background:#faf3ec;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e}'
+			/* v1.0.47: promo.css се зарежда и тук (maybe_enqueue) и .ansa-promo::before (фонът, position:absolute; inset:0; z-index:0) покриваше формата —
+			   не можеше да се цъкне в полето. Псевдо-елементът е махнат за формата, а тя е над всичко (position:relative; z-index:1). */
+			. '.ansa-promo-pwgate::before{display:none!important;content:none!important}.ansa-pw{position:relative;z-index:1}'
 			. '.ansa-pw{width:100%;max-width:420px;background:#fff;border:1.5px solid rgba(232,114,42,.25);border-radius:22px;padding:28px 24px;box-shadow:0 14px 40px rgba(232,114,42,.12);text-align:center}'
 			. '.ansa-pw .b{font-weight:900;color:#e8722a;font-size:22px}.ansa-pw h2{margin:6px 0 4px;font-size:24px;font-weight:900;letter-spacing:-.02em}.ansa-pw p{margin:0 0 16px;font-size:14px;color:#6b5f58;font-weight:600}'
 			. '.ansa-pw input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:13px 14px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;margin-bottom:10px;background:#fff}'
