@@ -106,8 +106,10 @@ final class Frontend {
 		if ( null !== $given && self::preview_available() ) {
 			if ( hash_equals( (string) self::preview_cfg()['password'], $given ) ) {
 				setcookie( self::PW_COOKIE, self::preview_token( $given ), time() + 30 * DAY_IN_SECONDS, '/', '', is_ssl(), true );
-				$to = remove_query_arg( 'ansa_pw' ); if ( ! $to ) { $to = get_permalink(); }
-				wp_safe_redirect( $to ); exit;
+				/* v1.0.49: маркер, видим за JS (не httponly) — кеширана форма (FlyingPress/CDN) се презарежда сама с параметър, който кешът пропуска */
+				setcookie( self::PW_COOKIE . '_ok', '1', time() + 30 * DAY_IN_SECONDS, '/', '', is_ssl(), false );
+				$to = remove_query_arg( array( 'ansa_pw', 'ansa_pw_ok' ) ); if ( ! $to ) { $to = get_permalink(); }
+				wp_safe_redirect( add_query_arg( 'ansa_pw_ok', (string) time(), $to ) ); exit;
 			}
 			self::$pw_err = true;
 		}
@@ -129,11 +131,18 @@ final class Frontend {
 			. '.ansa-pw input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:13px 14px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;margin-bottom:10px;background:#fff}'
 			. '.ansa-pw button{width:100%;font:inherit;font-size:16px;font-weight:900;color:#fff;border:none;border-radius:14px;min-height:50px;background:linear-gradient(135deg,#ef8c4f,#e8722a 50%,#e56b50);cursor:pointer}'
 			. '.ansa-pw .err{color:#b91c1c;font-weight:800;margin:10px 0 0;font-size:14px}.ansa-pw small{display:block;margin-top:14px;font-size:12px;color:#a88a75;font-weight:600}</style>'
-			. '<form class="ansa-pw" method="post" action="' . esc_url( remove_query_arg( 'ansa_pw' ) ) . '"><div class="b">ansa™</div><h2>' . $name . '</h2><p>Предварителен преглед. Въведи паролата, която получи от екипа на ansa.</p>'
+			. '<form class="ansa-pw" method="post" action="' . esc_url( remove_query_arg( array( 'ansa_pw', 'ansa_pw_ok' ) ) ) . '"><div class="b">ansa™</div><h2>' . $name . '</h2><p>Предварителен преглед. Въведи паролата, която получи от екипа на ansa.</p>'
 			. '<input type="password" name="ansa_pw" placeholder="Парола" autocomplete="current-password" required autofocus><button type="submit">Влез →</button>'
 			. ( self::$pw_err ? '<p class="err">Грешна парола — опитай пак.</p>' : '' )
+			. '<p class="err" id="ansaPwCache" hidden>Паролата е приета, но страницата се връща от кеша на сайта. Изключи тази страница от кеша (FlyingPress → Cache → Exclude pages) и го изчисти, после опитай пак.</p>'
 			. '<small>Страницата не е публична. Играта ще стартира скоро.</small></form></div>'
-			. '<script>(function(){var g=document.getElementById("ansaPromo");if(g&&g.parentNode!==document.body){document.body.appendChild(g)}var i=g&&g.querySelector("input");if(i){try{i.focus()}catch(e){}}})();</script>';
+			. '<script>(function(){var g=document.getElementById("ansaPromo");if(g&&g.parentNode!==document.body){document.body.appendChild(g)}'
+			/* v1.0.49: с маркер-бисквитка (паролата е приета), но формата пак е на екрана → кеширана форма: презареждане с параметър; ако и с параметъра
+			   формата остане → съобщение за кеша и маркерът се трие (без цикъл) */
+			. 'var ok=/(?:^|;\\s*)' . self::PW_COOKIE . '_ok=1/.test(document.cookie),hasP=/[?&]ansa_pw_ok=/.test(location.search);'
+			. 'if(ok&&!hasP){location.replace(location.pathname+(location.search?location.search+"&":"?")+"ansa_pw_ok="+Date.now());return}'
+			. 'if(ok&&hasP){var m=document.getElementById("ansaPwCache");if(m)m.hidden=false;document.cookie="' . self::PW_COOKIE . '_ok=; Max-Age=0; path=/"}'
+			. 'var i=g&&g.querySelector("input");if(i){try{i.focus()}catch(e){}}})();</script>';
 	}
 	public static function robots( $robots ) {
 		if ( self::is_promo_page() && ( self::is_draft_request() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; }
