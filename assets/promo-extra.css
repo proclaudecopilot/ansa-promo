@@ -1265,3 +1265,43 @@ html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;o
       (формата с паролата, „скоро“ + линкът за админи) фонът не е нужен ── */
 .ansa-promo.ansa-promo-off::before{display:none!important;content:none!important}
 .ansa-promo.ansa-promo-off .ansa-pw,.ansa-promo.ansa-promo-off .ansa-promo-admin-note{position:relative;z-index:1}
+
+/* ── 39 · v1.0.50 (предложение 1, избрано от човека): имейл-попъпът на телефон е компактен — полето за имейл + „Участвам“ + съгласието са
+      залепени в дъното на попъпа и се виждат винаги; стъпка 2 (трите кутии) не се показва (дубликат на следващия екран); наградите са
+      четири реда със снимка 56px вляво; банерът и заглавието са по-малки. Снимките на наградите и на кутиите вече не се разтягат към
+      текста (фиксиран квадрат / contain) — и на десктоп ── */
+/* снимките: квадрат, центриран, не стречнат към височината на текста */
+.ansa-promo .g2r.pic .g2i{align-self:center;height:auto;min-height:0;aspect-ratio:1/1}
+.ansa-promo .g2b.pic .g2i img{object-fit:contain;padding:2px;box-sizing:border-box}
+@media(max-width:760px){
+.ansa-promo .dc.gatew{display:flex;flex-direction:column;padding:0;max-height:calc(100dvh - 24px);overflow:hidden;border-radius:20px}
+.ansa-promo .dc.gatew .gate.g2{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+.ansa-promo .dc.gatew .dcmore{display:none!important}
+/* банер + заглавие */
+.ansa-promo .dc.gatew .g2band{padding:10px 14px 9px;gap:10px}
+.ansa-promo .dc.gatew .g2bt b{font-size:16px}
+.ansa-promo .dc.gatew .g2bt em{font-size:11px;padding:4px 9px}
+.ansa-promo .dc.gatew .g2pic{width:44px;height:44px}
+.ansa-promo .dc.gatew .g2pic img,.ansa-promo .dc.gatew .g2pic .gimg{width:44px;height:44px}
+.ansa-promo .dc.gatew .g2hd{padding:10px 14px 0}
+.ansa-promo .dc.gatew .g2hd h3{font-size:20px;line-height:1.15}
+.ansa-promo .dc.gatew .g2hd p{font-size:12.5px;margin-top:2px}
+/* стъпка 1 */
+.ansa-promo .dc.gatew .g2s{padding:8px 14px 4px;font-size:14px}
+.ansa-promo .dc.gatew .g2rw{grid-template-columns:1fr;gap:6px;padding:0 14px 6px}
+.ansa-promo .dc.gatew .g2r{padding:7px 10px;gap:10px}
+.ansa-promo .dc.gatew .g2r.pic{grid-template-columns:56px minmax(0,1fr);gap:10px;padding:5px 10px 5px 5px}
+.ansa-promo .dc.gatew .g2r.pic .g2i{width:56px;height:56px;min-height:0;aspect-ratio:auto;align-self:center;border-radius:10px}
+.ansa-promo .dc.gatew .g2r.pic>div{padding:2px 0}
+.ansa-promo .dc.gatew .g2r.pic b,.ansa-promo .dc.gatew .g2r b{font-size:13.5px}
+.ansa-promo .dc.gatew .g2r.pic small,.ansa-promo .dc.gatew .g2r small{font-size:11.5px}
+/* стъпка 2 — не се показва на телефон */
+.ansa-promo .dc.gatew .g2s2,.ansa-promo .dc.gatew .g2p,.ansa-promo .dc.gatew .g2bx{display:none!important}
+/* формата — залепена в дъното */
+.ansa-promo .dc.gatew .gate.g2 .gform{position:sticky;bottom:0;z-index:3;margin-top:auto;background:#fff;border-top:1px solid rgba(67,48,42,.08);box-shadow:0 -6px 18px rgba(26,26,46,.06);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.ansa-promo .dc.gatew .g2f{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.ansa-promo .dc.gatew .g2f input{height:48px;font-size:15px}
+.ansa-promo .dc.gatew .g2f .cta{min-height:48px;padding:0 16px;font-size:15px;white-space:nowrap}
+.ansa-promo .dc.gatew .gc{font-size:11.5px;margin-top:8px}
+.ansa-promo .dc.gatew .gskip{margin-top:6px;font-size:12.5px}
+}
