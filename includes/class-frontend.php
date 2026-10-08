@@ -68,11 +68,14 @@ final class Frontend {
 	private static $pw_ok = null; private static $pw_err = false;
 	public static function preview_cfg() { $d = Config::get_draft(); return is_array( $d['preview'] ?? null ) ? $d['preview'] : array( 'enabled' => false, 'password' => '' ); }
 	public static function preview_token( $pw ) { return hash_hmac( 'sha256', (string) $pw, wp_salt( 'auth' ) ); }
-	public static function preview_available() { $p = self::preview_cfg(); return ! empty( $p['enabled'] ) && '' !== (string) $p['password'] && ! Config::is_live( Config::get_published() ); }
+	/* v1.0.38: защитата е безусловна — щом е включена, всеки без парола вижда формата, дори играта да е пусната (човекът: „да стане достъпно с парола“);
+	   админите (manage_woocommerce) минават без парола и виждат черновата */
+	public static function preview_available() { $p = self::preview_cfg(); return ! empty( $p['enabled'] ) && '' !== (string) $p['password']; }
 	public static function preview_ok() {
 		if ( null !== self::$pw_ok ) { return self::$pw_ok; }
 		self::$pw_ok = false;
 		if ( ! self::preview_available() ) { return false; }
+		if ( current_user_can( Plugin::CAP ) ) { self::$pw_ok = true; return true; }
 		$c = isset( $_COOKIE[ self::PW_COOKIE ] ) ? (string) $_COOKIE[ self::PW_COOKIE ] : '';
 		self::$pw_ok = '' !== $c && hash_equals( self::preview_token( self::preview_cfg()['password'] ), $c );
 		return self::$pw_ok;
@@ -108,7 +111,8 @@ final class Frontend {
 			}
 			self::$pw_err = true;
 		}
-		if ( self::is_draft_request() ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } }
+		/* v1.0.38: при включена защита страницата никога не се кешира — иначе кеш плъгинът връща формата (или играта) на всички */
+		if ( self::is_draft_request() || self::preview_available() ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } }
 	}
 	/** Формата за парола (вместо „скоро“), когато прегледът е включен. */
 	private static function gate_html( $cfg ) {
@@ -158,25 +162,11 @@ final class Frontend {
 			/* v1.0.25: „за какво е“ (ds) и описанието (desc) идват от WooCommerce като на продуктовата страница — подзаглавието на Shrine
 			   или първото изречение на краткото описание за ds, цялото кратко описание (до 260 знака) за desc; полетата от 📦 Продукти
 			   са резерва при празен WC или при изключена отметка „текстовете от WooCommerce“ */
-			$ds = $p['ds']; $desc = $p['desc']; $name = '' !== $p['name'] ? $p['name'] : $wc['wc_name'];
-			if ( ! empty( $p['wc_text'] ) ) {
-				/* v1.0.33: името е марката — WC името на родителя преди разделителя („Daily Greens | Най-продаваната…“ → „Daily Greens“);
-				   заглавието на Shrine (на живия сайт е слоганът, напр. „Плодова напитка за сън… | с пробиотици“) е „за какво е“ (ds),
-				   също само до разделителя; резерва за ds — подзаглавието на Shrine или първото изречение на краткото описание */
-				/* v1.0.35: префиксът на марката („Ansa™ Sakura SkinTonic“) пада от името; ако заглавието на Shrine започва със същото име
-				   („Sakura SkinTonic - Японската напитка за кожа“), „за какво е“ е частта след разделителя, не повторение на името */
-				$split = function ( $t ) { $p = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t, 2 ); return array( trim( (string) ( $p[0] ?? '' ) ), trim( (string) ( $p[1] ?? '' ) ) ); };
-				$brand = function ( $t ) { return trim( (string) preg_replace( '/^\s*ansa\s*(™|\x{2122}|tm)?(\s+|$)/iu', '', (string) $t ) ); };
-				/* v1.0.36: при „ansa™ – Daily Greens“ първата част е самата марка — тогава името е втората част */
-				if ( '' !== $wc['base_name'] ) { list( $b0, $b1 ) = $split( $wc['base_name'] ); $nm = $brand( $b0 ); if ( '' === $nm ) { $nm = $brand( $b1 ); } $name = '' !== $nm ? $nm : $wc['base_name']; }
-				if ( '' !== $wc['short'] ) { $desc = self::clip( $wc['short'], 260 ); }
-				list( $t1, $t2 ) = '' !== $wc['title'] ? $split( $wc['title'] ) : array( '', '' );
-				$t1 = $brand( $t1 );
-				if ( '' !== $t1 && mb_strtolower( $t1 ) !== mb_strtolower( $name ) ) { $ds = self::clip( $t1, 90 ); }
-				elseif ( '' !== $t2 ) { $ds = self::clip( $t2, 90 ); }
-				elseif ( '' !== $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
-				elseif ( '' !== $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
-			}
+			/* v1.0.38 (човекът: „ръчно да може да се мапне“): полетата в 📦 Продукти печелят, когато са попълнени; WC пълни само празните */
+			list( $wn, $wds, $wdesc ) = self::wc_texts( $wc );
+			$name = '' !== $p['name'] ? $p['name'] : ( $wn ?: $wc['wc_name'] );
+			$ds   = '' !== $p['ds'] ? $p['ds'] : ( ! empty( $p['wc_text'] ) ? $wds : '' );
+			$desc = '' !== $p['desc'] ? $p['desc'] : ( ! empty( $p['wc_text'] ) ? $wdesc : '' );
 			$prods[ $p['key'] ] = array(
 				'key' => $p['key'], 'id' => (int) ( $wc['product_id'] ?: $p['product_id'] ), 'vid' => (int) $wc['variation_id'], 'ph' => $p['ph'], 'img' => $img ?: $wc['img'],
 				'name' => $name, 'gname' => $p['gname'], 'gsub' => $p['gsub'],
@@ -186,6 +176,22 @@ final class Frontend {
 			);
 		}
 		return $prods;
+	}
+
+	/** v1.0.38: какво дава WooCommerce за [име, „за какво е“, описание] — марката без „ansa™“ и без слогана; заглавието на Shrine като ds. */
+	public static function wc_texts( $wc ) {
+		$split = function ( $t ) { $p = preg_split( '/\s+[|\-–—:]\s+/u', (string) $t, 2 ); return array( trim( (string) ( $p[0] ?? '' ) ), trim( (string) ( $p[1] ?? '' ) ) ); };
+		$brand = function ( $t ) { return trim( (string) preg_replace( '/^\s*ansa\s*(™|\x{2122}|tm)?(\s+|$)/iu', '', (string) $t ) ); };
+		$name = '';
+		if ( '' !== (string) $wc['base_name'] ) { list( $b0, $b1 ) = $split( $wc['base_name'] ); $nm = $brand( $b0 ); if ( '' === $nm ) { $nm = $brand( $split( $b1 )[0] ); } $name = $nm; }
+		$desc = '' !== (string) $wc['short'] ? self::clip( $wc['short'], 260 ) : '';
+		list( $t1, $t2 ) = '' !== (string) $wc['title'] ? $split( $wc['title'] ) : array( '', '' ); $t1 = $brand( $t1 );
+		if ( '' !== $t1 && mb_strtolower( $t1 ) !== mb_strtolower( $name ) ) { $ds = self::clip( $t1, 90 ); }
+		elseif ( '' !== $t2 ) { $ds = self::clip( $t2, 90 ); }
+		elseif ( '' !== (string) $wc['subtitle'] ) { $ds = self::clip( $wc['subtitle'], 90 ); }
+		elseif ( '' !== (string) $wc['short'] ) { $ds = self::clip( self::first_sentence( $wc['short'] ), 90 ); }
+		else { $ds = ''; }
+		return array( $name, $ds, $desc );
 	}
 
 	/** Първото изречение на текст (до . ! ? или нов ред). */
@@ -270,8 +276,8 @@ final class Frontend {
 	public static function shortcode( $atts = array(), $content = '' ) {
 		$cfg = self::cfg();
 		$draft = self::is_draft_request();
+		if ( ! $draft && self::preview_available() ) { return self::gate_html( $cfg ); } /* v1.0.38: формата за парола е пред всичко, докато защитата е включена */
 		if ( ! $draft && ! Config::is_live( $cfg ) ) {
-			if ( self::preview_available() ) { return self::gate_html( $cfg ); } /* v1.0.37: форма за парола вместо „скоро“ */
 			$html = '<div class="ansa-promo ansa-promo-off" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><p class="ansa-promo-soon" style="text-align:center;font:700 22px/1.3 Nunito,system-ui,sans-serif;padding:48px 16px;margin:0">ansa™ Промо — скоро.</p>';
 			if ( current_user_can( Plugin::CAP ) ) {
 				$html .= '<p class="ansa-promo-admin-note" style="text-align:center;font:500 13px/1.5 system-ui,sans-serif;opacity:.6;margin:0 0 24px">ansa™ Промо ' . esc_html( ANSA_PROMO_VER ) . ' · играта е ' . ( empty( $cfg['enabled'] ) ? 'изключена' : 'изтекла' ) . ' (виждаш това само като админ) · <a href="' . esc_url( add_query_arg( 'ansa_promo', 'draft' ) ) . '">виж черновата</a></p>';
