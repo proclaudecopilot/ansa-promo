@@ -1179,3 +1179,17 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mfs>.mpg>.mpgn{text-align:center}
 }
 @media(max-width:380px){.ansa-promo .dc.fpm .mh1t{white-space:normal;overflow:visible}} /* тесни телефони: заглавието на два реда вместо отрязване */
+
+/* ── 33 · v1.0.42 (забележки на човека от живия сайт, телефон): (1) заглавието в хедъра е по-голямо — „ГОЛЯМА КУТИЯ“ 18px и под него
+      „−40% НА ВСИЧКО“ 15px в оранжево; (2) 8px фон между картите (бяха залепени една за друга); (3) без пагинация — списъкът скролва
+      до долу под залепения хедър, няма празно място над „Твоята кутия“ ── */
+@media(max-width:760px){
+.ansa-promo .dc.fpm .mh1{align-items:flex-start}
+.ansa-promo .dc.fpm .mh1t{font-size:18px;letter-spacing:.03em;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.15}
+.ansa-promo .dc.fpm .mh1t em{display:block;font-size:15px;margin-top:2px;letter-spacing:.04em}
+.ansa-promo .dc.fpm .mfh2 .mfx{margin-top:2px}
+.ansa-promo .dc.fpm .mh2{margin-top:6px}
+.ansa-promo .dc.fpm .mfl{gap:8px;padding:0 0 8px;border-top:none;flex:none}
+.ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{border-bottom:none}
+}
+@media(max-width:380px){.ansa-promo .dc.fpm .mh1t{font-size:17px;letter-spacing:.02em}}
