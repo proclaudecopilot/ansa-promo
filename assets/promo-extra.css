@@ -1193,3 +1193,11 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{border-bottom:none}
 }
 @media(max-width:380px){.ansa-promo .dc.fpm .mh1t{font-size:17px;letter-spacing:.02em}}
+
+/* ── 34 · v1.0.43 (забележка на човека): под „Избери още 4 опаковки“ прозираше страницата — мобилният лист носи и класа .fpw на десктоп
+      попъпа, чиито правила (max-height: calc(100dvh − 32px); .ib с padding 22px 26px) печелеха над .fpm: листът беше с 32px по-нисък от
+      екрана и с 26px отстъп отстрани + 22px отгоре. Сега листът е точно екранът, без вътрешни отстъпи ── */
+@media(max-width:760px){
+.ansa-promo .dc.fpw.fpm{height:100vh;height:100dvh;max-height:100dvh;top:0;left:0;right:0;bottom:0;width:100%}
+.ansa-promo .dc.fpw.fpm>.ib{padding:0;overflow:hidden}
+}
