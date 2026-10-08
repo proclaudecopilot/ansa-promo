@@ -1299,9 +1299,9 @@ html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;o
 .ansa-promo .dc.gatew .g2s2,.ansa-promo .dc.gatew .g2p,.ansa-promo .dc.gatew .g2bx{display:none!important}
 /* формата — залепена в дъното */
 .ansa-promo .dc.gatew .gate.g2 .gform{position:sticky;bottom:0;z-index:3;margin-top:auto;background:#fff;border-top:1px solid rgba(67,48,42,.08);box-shadow:0 -6px 18px rgba(26,26,46,.06);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
-.ansa-promo .dc.gatew .g2f{grid-template-columns:minmax(0,1fr) auto;gap:8px}
-.ansa-promo .dc.gatew .g2f input{height:48px;font-size:15px}
-.ansa-promo .dc.gatew .g2f .cta{min-height:48px;padding:0 16px;font-size:15px;white-space:nowrap}
+.ansa-promo .dc.gatew .g2f{grid-template-columns:1fr;gap:8px} /* v1.0.51 (човекът): полето и бутонът на два реда */
+.ansa-promo .dc.gatew .g2f input{height:48px;font-size:15px;width:100%}
+.ansa-promo .dc.gatew .g2f .cta{min-height:50px;width:100%;padding:0 16px;font-size:16px;white-space:nowrap}
 .ansa-promo .dc.gatew .gc{font-size:11.5px;margin-top:8px}
 .ansa-promo .dc.gatew .gskip{margin-top:6px;font-size:12.5px}
 }
