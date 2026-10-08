@@ -118,7 +118,9 @@ final class Frontend {
 	private static function gate_html( $cfg ) {
 		$name = esc_html( (string) ( $cfg['name'] ?: 'Сезонът на ansa™' ) );
 		return '<div class="ansa-promo ansa-promo-off ansa-promo-pwgate" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '">'
-			. '<style>.ansa-promo-pwgate{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;background:#faf3ec;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e}'
+			. '<style>.ansa-promo-pwgate{position:fixed;inset:0;z-index:2147483646;isolation:isolate;overflow:auto;-webkit-overflow-scrolling:touch;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:32px 16px;box-sizing:border-box;background:#faf3ec;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e}'
+			/* v1.0.48: формата е собствен слой на цял екран над всичко (тема, попъпи, плаващи бутони) и се мести в края на <body>, за да не е
+			   в обвивка с transform (там position:fixed не е спрямо екрана). promo.css/js не се зареждат на нея (maybe_enqueue). */
 			/* v1.0.47: promo.css се зарежда и тук (maybe_enqueue) и .ansa-promo::before (фонът, position:absolute; inset:0; z-index:0) покриваше формата —
 			   не можеше да се цъкне в полето. Псевдо-елементът е махнат за формата, а тя е над всичко (position:relative; z-index:1). */
 			. '.ansa-promo-pwgate::before{display:none!important;content:none!important}.ansa-pw{position:relative;z-index:1}'
@@ -130,7 +132,8 @@ final class Frontend {
 			. '<form class="ansa-pw" method="post" action="' . esc_url( remove_query_arg( 'ansa_pw' ) ) . '"><div class="b">ansa™</div><h2>' . $name . '</h2><p>Предварителен преглед. Въведи паролата, която получи от екипа на ansa.</p>'
 			. '<input type="password" name="ansa_pw" placeholder="Парола" autocomplete="current-password" required autofocus><button type="submit">Влез →</button>'
 			. ( self::$pw_err ? '<p class="err">Грешна парола — опитай пак.</p>' : '' )
-			. '<small>Страницата не е публична. Играта ще стартира скоро.</small></form></div>';
+			. '<small>Страницата не е публична. Играта ще стартира скоро.</small></form></div>'
+			. '<script>(function(){var g=document.getElementById("ansaPromo");if(g&&g.parentNode!==document.body){document.body.appendChild(g)}var i=g&&g.querySelector("input");if(i){try{i.focus()}catch(e){}}})();</script>';
 	}
 	public static function robots( $robots ) {
 		if ( self::is_promo_page() && ( self::is_draft_request() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; }
@@ -141,7 +144,14 @@ final class Frontend {
 		return $urls;
 	}
 
-	public static function maybe_enqueue() { if ( self::is_promo_page() ) { self::enqueue(); } }
+	/** v1.0.48: формата за парола е на екрана (защитата е включена и няма валидна бисквитка/админ). */
+	public static function gate_shown() { return self::preview_available() && ! self::is_draft_request(); }
+	/* v1.0.48: на формата за парола НЕ се зареждат promo.css/promo.js (нямат работа там и фонът .ansa-promo::before покриваше полето) — само шрифтът */
+	public static function maybe_enqueue() {
+		if ( ! self::is_promo_page() ) { return; }
+		if ( self::gate_shown() ) { wp_enqueue_style( 'ansa-promo-nunito', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap', array(), null ); return; }
+		self::enqueue();
+	}
 
 	public static function enqueue() {
 		static $done = false; if ( $done ) { return; } $done = true;
@@ -279,7 +289,7 @@ final class Frontend {
 	public static function shortcode( $atts = array(), $content = '' ) {
 		$cfg = self::cfg();
 		$draft = self::is_draft_request();
-		if ( ! $draft && self::preview_available() ) { return self::gate_html( $cfg ); } /* v1.0.38: формата за парола е пред всичко, докато защитата е включена */
+		if ( self::gate_shown() ) { return self::gate_html( $cfg ); } /* v1.0.38: формата за парола е пред всичко, докато защитата е включена */
 		if ( ! $draft && ! Config::is_live( $cfg ) ) {
 			$html = '<div class="ansa-promo ansa-promo-off" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><p class="ansa-promo-soon" style="text-align:center;font:700 22px/1.3 Nunito,system-ui,sans-serif;padding:48px 16px;margin:0">ansa™ Промо — скоро.</p>';
 			if ( current_user_can( Plugin::CAP ) ) {
