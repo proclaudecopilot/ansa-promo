@@ -322,7 +322,7 @@
          КОЗМЕТИЧЕН СЕТ“ + „Виж повече“ (разгъва списъка с всички подаръци) + „Смени кутията“ */
       bv.box_u=esc(String(b.name).toUpperCase());bv.gift=/^cosm/.test(main)?T('fill.g.cosm').toLowerCase():main==='book'?T('fill.g.book').toLowerCase():'';
       body='<div class="mfs" id="mfS"><div class="mfh mfh2">'
-        +'<div class="mh1"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
+        +'<div class="mh1"><div class="mh1l"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><span class="mh1p"'+ck('mfill.h.pct')+'>'+T('mfill.h.pct',bv)+'</span></div><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
         +'<div class="mh2"><span class="mh2g"><span'+ck(bv.gift?'mfill.h.gifts':'mfill.h.gifts1')+'>'+T(bv.gift?'mfill.h.gifts':'mfill.h.gifts1',bv)+'</span> <button class="lnk" id="mfGx" type="button" aria-expanded="false"'+ck('mfill.h.more')+'>'+T('mfill.h.more')+'</button></span>'
         +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
         +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div>'
