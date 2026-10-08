@@ -297,7 +297,7 @@
     var drest=b.rw.filter(function(r){return !/^tix/.test(r)&&r!==dmain}).map(function(r){var w=RW(r);return '<span class="f3r">'+rimg(r,w.ic,'f3ri')+'<b'+ck('fill.g.'+r)+'>'+T('fill.g.'+r)+'</b></span>'}).join('<i class="f3sep"></i>');
     var body='<div class="fp2 fp3"><div class="f3h"><div class="f3hl"><h3'+ck('fill.title2')+'>'+T('fill.title2',bv)+'</h3><button class="lnk" id="fBack" type="button"'+ck('fill.chg')+'>'+T('fill.chg')+'</button></div><button class="f3x" id="fClose" type="button" aria-label="затвори">✕</button></div>'
       +'<div class="f3g"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t',bv)+'</b><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div>'
-      +'<div class="f3mixr"><p class="f3mix"'+ck('fill.combine')+'>'+T('fill.combine',bv)+'</p><button class="lnk fqzl" id="fQuiz" type="button"'+ck(qz?'fill.quiz.redo':'fill.quiz.l')+'>'+T(qz?'fill.quiz.redo':'fill.quiz.l')+'</button></div>'
+      +'<div class="f3mixr"><p class="f3mix"'+ck('fill.combine')+'>'+T('fill.combine',bv)+'</p><button class="fqzb'+(qz?' on':'')+'" id="fQuiz" type="button"'+ck('fill.quiz.l')+'><i>?</i><span>'+T('fill.quiz.l')+'</span></button></div>'
       +'<div class="f3p"><span class="f3n"><span'+ck('fill.sel.a')+'>'+T('fill.sel.a')+'</span> <span id="fSlotsN"></span> <span'+ck('fill.sel.b')+'>'+T('fill.sel.b')+'</span></span><span class="f3bar"><i id="fBar"></i></span><em id="fPct">0%</em></div>'
       +'<div class="fslots" id="fSlots" hidden></div>'
       +'<div class="fcats f3grid">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="f3item" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="f3cat'+(r.core?' core':r.pick?' pick':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):r.pick?pcat(String(pr.cat||'').trim()||r.t):mcat(pr,r))+'</h5>'+fcard(r,'drow')+'</div>'}).join('')+'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
@@ -328,7 +328,7 @@
         +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div>'
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
-        +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck(qz?'fill.quiz.redo':'fill.quiz.l')+'>'+T(qz?'fill.quiz.redo':'fill.quiz.l')+'</button>'
+        +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck('fill.quiz.l')+'>'+T('fill.quiz.l')+'</button>'
         /* v1.0.25: 2 продукта на страница; категорията е заглавие над картата (.mcath), не вътре в нея */
         +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',r.pick?pcat(String(pr.cat||'').trim()||r.t):esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */

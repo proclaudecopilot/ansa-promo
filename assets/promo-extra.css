@@ -1069,6 +1069,8 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .fqzl{display:block;flex:none;margin:-8px 16px 12px;font-size:14.5px;text-align:left;white-space:normal}
 /* 3 · избран във въпросника: лентата казва „✓ Според теб: тегло и метаболизъм“ и е плътна; лентите са с еднаква височина (2 реда) */
 .ansa-promo .dc.fpw .fp3 .f3cat{min-height:46px}
+/* v1.0.44: фиксирана височина на лентата — 1 и 2 реда категория дават еднакви карти (при min-height имаше 2px разлика) */
+.ansa-promo .dc.fpw .fp3 .f3cat{height:48px;min-height:0;overflow:hidden;align-content:center}
 .ansa-promo .fp3 .f3cat.pick{background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;border-color:var(--o)}
 .ansa-promo .dc.fpw .fp3 .f3item:has(.f3cat.pick) .fcat.drow.r3{border-color:var(--o);border-top-color:transparent}
 .ansa-promo .fcat.r3 .r3cat.pick{color:var(--od)}
@@ -1201,3 +1203,21 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpw.fpm{height:100vh;height:100dvh;max-height:100dvh;top:0;left:0;right:0;bottom:0;width:100%}
 .ansa-promo .dc.fpw.fpm>.ib{padding:0;overflow:hidden}
 }
+
+/* ── 35 · v1.0.44 (забележки на човека, десктоп): (1) „Не си сигурна какво ти трябва?“ е видим пил с „?“, с постоянен текст (след отговор
+      не става „Промени отговорите“ — състоянието се вижда по лентите „✓ Според теб“, същият бутон отваря отговорите за промяна);
+      (2) редът „цена · + Добави“ е закотвен в дъното на картата — на една линия при всички продукти, независимо от дължината на текста ── */
+.ansa-promo .fqzb{display:inline-flex;align-items:center;gap:8px;flex:none;border:1.5px solid var(--o);background:#fff;color:var(--od);border-radius:999px;padding:0 16px 0 6px;min-height:40px;font:inherit;font-size:14.5px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(232,114,42,.12)}
+.ansa-promo .fqzb i{width:28px;height:28px;border-radius:50%;background:var(--o);color:#fff;font-style:normal;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
+.ansa-promo .fqzb:hover{background:#fff7f1}
+.ansa-promo .fqzb.on{border-color:var(--g);color:var(--gd)}
+.ansa-promo .fqzb.on i{background:var(--g)}
+.ansa-promo .fqzb.on i::before{content:'✓'}
+.ansa-promo .fqzb.on i{font-size:0}
+.ansa-promo .fqzb.on i::before{font-size:15px}
+.ansa-promo .fp3 .f3mixr{align-items:center}
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 .r3m{flex:1 1 auto}
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3 .r3f{margin-top:auto;min-height:56px;box-sizing:border-box} /* степерът (избран) е по-висок от „+ Добави“ — еднаква височина в двете състояния */
+.ansa-promo .dc.fpw .fp3 .f3item{display:flex;flex-direction:column}
+.ansa-promo .dc.fpw .fp3 .f3item.pg-off{display:none}
+.ansa-promo .dc.fpw .fp3 .f3item .fcat.drow.r3{flex:1 1 auto;height:auto}
