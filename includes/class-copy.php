@@ -233,6 +233,11 @@ final class Copy {
 				'fill.quiz.go'       => 'Покажи ми продуктите',
 				'fill.quiz.skip'     => 'Пропусни',
 				'fill.quiz.cat'      => '✓ Според теб: {{cat}}',
+				/* v1.0.41: компактният залепен хедър на телефона — два реда */
+				'mfill.h.title'      => '{{box_u}} · <em>−{{pct}}% на всичко</em>',
+				'mfill.h.gifts'      => 'Участваш за яхта и {{gift}}',
+				'mfill.h.gifts1'     => 'Участваш за яхта',
+				'mfill.h.more'       => 'Виж повече',
 			),
 			'celeb' => array(
 				'cb.title'           => 'Честито, ти напълни своята {{box_l}}!',
@@ -461,7 +466,7 @@ final class Copy {
 	/** Плейсхолдърите, които promo.js/рендерът познават. Всичко извън списъка е грешка в Doctor. */
 	public static function vars() {
 		return array(
-			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi',
+			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi', 'box_u', 'gift',
 			'yacht', 'ship', 'book_value', 'cosm_value', 'cosm_pay_m', 'cosm_pay_l', 'cosm_min', 'deadline', 'max_pct', 'pct_s', 'pct_m', 'pct_l',
 			'tickets_s', 'tickets_m', 'tickets_l', 'name', 'n', 'need', 'rest', 'opk_rest', 'save', 'pay', 'value', 'from', 'a', 'b', 'diff', 'prod_diff',
 			'opk_diff', 'delyat', 'box_t', 'box_t_l', 'box_t_ic', 'pct_t', 'save_t', 's_box_t', 'save_l', 'save_prod', 'on', 'total', 'pos', 'mmss',

@@ -317,11 +317,14 @@
       var iChev=sv+'<path d="m9 6 6 6-6 6"/></svg>';
       var gsum=[T('mfill.gs.tix',bv)].concat(main?[T(skey(main),bv)]:[]).join(' <i class="dot">•</i> ');
       var gall=b.rw.map(function(r){return '<span class="mfgi">'+rimg(r,/^tix/.test(r)?'🛥️':RW(r).ic)+'<b'+ck(gkey(r))+'>'+T(gkey(r),bv)+'</b></span>'}).join('');
-      body='<div class="mfs" id="mfS"><div class="mfh">'
-        +'<div class="mft"><div class="mftx"><b>'+esc(b.name)+'</b><small'+ck('mfill.sub')+'>'+T('mfill.sub',bv)+'</small></div><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
-        +'<div class="mfhr"><span class="mfpill"'+ck('mfill.pct')+'>'+iTag+'<span>'+T('mfill.pct',bv)+'</span></span><button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
-        +'<div class="mfg2"><button class="mfgc" id="mfGx" type="button" aria-expanded="false"><i class="mfgic">'+iGift+'</i><span class="mfgt"><b'+ck('mfill.gifts.t')+'>'+T('mfill.gifts.t')+'</b><small>'+gsum+'</small></span><em class="mfga" id="mfGa"'+ck('mfill.gifts.all')+'>'+T('mfill.gifts.all')+'</em></button>'
-        +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div></div>'
+      /* v1.0.41 (искане на човека): хедърът е два реда и стои залепен горе — „ГОЛЯМА КУТИЯ · −40% НА ВСИЧКО“ + ✕; „УЧАСТВАШ ЗА ЯХТА И
+         КОЗМЕТИЧЕН СЕТ“ + „Виж повече“ (разгъва списъка с всички подаръци) + „Смени кутията“ */
+      bv.box_u=esc(String(b.name).toUpperCase());bv.gift=/^cosm/.test(main)?T('fill.g.cosm').toLowerCase():main==='book'?T('fill.g.book').toLowerCase():'';
+      body='<div class="mfs" id="mfS"><div class="mfh mfh2">'
+        +'<div class="mh1"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
+        +'<div class="mh2"><span class="mh2g"><span'+ck(bv.gift?'mfill.h.gifts':'mfill.h.gifts1')+'>'+T(bv.gift?'mfill.h.gifts':'mfill.h.gifts1',bv)+'</span> <button class="lnk" id="mfGx" type="button" aria-expanded="false"'+ck('mfill.h.more')+'>'+T('mfill.h.more')+'</button></span>'
+        +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
+        +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div>'
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck(qz?'fill.quiz.redo':'fill.quiz.l')+'>'+T(qz?'fill.quiz.redo':'fill.quiz.l')+'</button>'
@@ -338,7 +341,7 @@
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
         pgEl.innerHTML='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
         pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0;else{var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest'})}}})};showPg()}
-    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all')}}
+    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
     if(mob)unlockPopup(b,P);
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
