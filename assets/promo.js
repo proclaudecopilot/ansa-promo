@@ -164,7 +164,7 @@
   function fitSheet(dc){dc=dc||$('apDc');if(!dc||!dc.classList.contains('fpm'))return;dc.style.top='';dc.style.left='';dc.style.width='';dc.style.height='';var r=dc.getBoundingClientRect(),vh=window.innerHeight,vw=window.innerWidth;
     if(Math.abs(r.top)>2)dc.style.top=(-r.top)+'px';if(Math.abs(r.left)>2)dc.style.left=(-r.left)+'px';if(Math.abs(r.width-vw)>2)dc.style.width=vw+'px';if(Math.abs(r.height-vh)>2)dc.style.height=vh+'px'}
   window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))fitSheet()});
-  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
+  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');document.documentElement.classList.remove('ap-lock');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
   function scrollHint(){var dc=$('apDc');var more=dc.scrollHeight-dc.scrollTop-dc.clientHeight>24;dc.classList.toggle('more',more);var h=$('apMore');if(!h){h=document.createElement('div');h.id='apMore';h.className='dcmore';h.innerHTML='<span'+ck('ms.more')+'>'+T('ms.more')+'</span>';dc.appendChild(h);h.onclick=function(){dc.scrollBy({top:dc.clientHeight*.7,behavior:'smooth'})}}else dc.appendChild(h)}
   (function(){var dc=$('apDc');dc.addEventListener('scroll',function(){dc.classList.toggle('more',dc.scrollHeight-dc.scrollTop-dc.clientHeight>24)});if(window.MutationObserver){var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){if(ms[i].type==='childList'&&![].some.call(ms[i].addedNodes,function(n){return n.id==='apMore'})){setTimeout(scrollHint,60);return}}});mo.observe(dc,{childList:true})}window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))scrollHint()})})();
   $('apOv').onclick=function(e){if(e.target.id==='apOv'&&!S._lockOv)closeInfo()};
@@ -334,9 +334,9 @@
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
-    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm')} /* v1.0.35: без :has — overlay-ят е без отстъпи */
+    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');document.documentElement.classList.add('ap-lock');setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
     var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=0;var showPg=function(){dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
@@ -345,6 +345,8 @@
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
     if(mob)unlockPopup(b,P);
+    /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
+    var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){mm.classList.toggle('off',ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24)};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}}
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
     var ux=$('apUx');if(ux)ux.remove();S._lockOv=true;
     var goBack=function(){S._lockOv=false;S._fillPending=false;closeInfo();S.box=null;S.slots=[];S.timerEnd=null;go(1)};$('fBack').onclick=goBack;var fc=$('fClose');if(fc)fc.onclick=goBack;

@@ -1221,3 +1221,18 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpw .fp3 .f3item{display:flex;flex-direction:column}
 .ansa-promo .dc.fpw .fp3 .f3item.pg-off{display:none}
 .ansa-promo .dc.fpw .fp3 .f3item .fcat.drow.r3{flex:1 1 auto;height:auto}
+
+/* ── 36 · v1.0.45 (забележки на човека, телефон): (1) лентата казва „✓ За теб: …“; (2) „↓ Още продукти“ над футъра + лек градиент,
+      докато списъкът не е скролнат до края; (3) отстоянията: страницата зад листа не скролва (html.ap-lock), листът е закован на
+      inset:0, хедърът и страничните ръбове уважават safe-area (iPhone с viewport-fit=cover: статус барът и „челото“ не покриват текста) ── */
+html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;overscroll-behavior:none}
+@media(max-width:760px){
+.ansa-promo .dc.fpw.fpm{position:fixed;inset:0!important;margin:0!important;transform:none}
+.ansa-promo .dc.fpw.fpm>.ib{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.ansa-promo .dc.fpm .mfh.mfh2{padding-top:calc(8px + env(safe-area-inset-top))}
+.ansa-promo .dc.fpm .mff{overflow:visible}
+.ansa-promo .dc.fpm .mff::before{content:'';position:absolute;left:0;right:0;top:-30px;height:30px;background:linear-gradient(to bottom,rgba(247,241,236,0),rgba(247,241,236,.96));pointer-events:none}
+.ansa-promo .dc.fpm .mfmore{position:absolute;left:50%;top:-52px;transform:translateX(-50%);z-index:4;border:none;border-radius:999px;background:var(--ink);color:#fff;font:inherit;font-size:13px;font-weight:800;padding:0 14px;min-height:34px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 14px rgba(26,26,46,.28);cursor:pointer;transition:opacity .2s,transform .2s;animation:apMoreNudge 1.8s ease-in-out infinite}
+.ansa-promo .dc.fpm .mfmore.off{opacity:0;pointer-events:none;transform:translate(-50%,8px);animation:none}
+@keyframes apMoreNudge{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,4px)}}
+}
