@@ -117,7 +117,7 @@
         +'<div class="g2r'+gcl('book')+'">'+gi('book','📖')+'<div><b'+ck('gate.r3.b')+'>'+T('gate.r3.b')+'</b><small'+ck('gate.r3.s')+'>'+T('gate.r3.s')+'</small></div></div>'
         +'<div class="g2r'+gcl('pct')+'">'+gi('pct','💸')+'<div><b'+ck('gate.r4.b')+'>'+T('gate.r4.b')+'</b><small'+ck('gate.r4.s')+'>'+T('gate.r4.s')+'</small></div></div>'
       +'</div>'
-      +'<div class="g2s"><span class="g2n">2</span><span'+ck('gate.s2')+'>'+T('gate.s2')+'</span></div>'
+      +'<div class="g2s g2s2"><span class="g2n">2</span><span'+ck('gate.s2')+'>'+T('gate.s2')+'</span></div>' /* v1.0.50: на телефон стъпка 2 (кутиите) не се показва — следващият екран е точно кутиите */
       +'<p class="g2p"'+ck('gate.p')+'>'+T('gate.p')+'</p>'
       +'<div class="g2bx">'+gbx(bs)+gbx(bm)+gbx(bl,' best')+'</div>'
       +'<div class="gform"><div class="g2f"><input type="email" id="gEmail" placeholder="'+esc(T('gate.placeholder'))+'" autocomplete="email" value="'+esc(S.email||'')+'"><button class="cta gcta" id="gGo"'+ck('gate.cta')+'>'+T('gate.cta')+'</button></div>'
