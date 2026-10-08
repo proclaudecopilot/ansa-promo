@@ -36,6 +36,7 @@ final class Plugin {
 		Config::maybe_migrate_sku();
 		Config::maybe_migrate_cat();
 		Config::maybe_migrate_pct();
+		Config::maybe_migrate_wctext();
 		Catalog::register();
 		Frontend::register();
 		Leads::register();
