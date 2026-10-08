@@ -1097,3 +1097,60 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .fqza{flex-direction:column;align-items:stretch;gap:12px}
 .ansa-promo .dc.fpm .fqza .cta{width:100%;min-width:0;min-height:54px}
 .ansa-promo .dc.fpm .fqza .lnk{text-align:center;padding:4px 0}
+
+/* ── 31 · v1.0.40 (забележка на човека, телефон): „Напълни кутията си“ е app-like на пълна ширина — картите са от ръб до ръб (без странични
+      отстъпи, без заоблени ъгли и сенки, разделени с тънка линия), хедърът и подаръците са компактни, футърът е по-нисък — за да се виждат
+      продуктите, а не рамки ── */
+@media(max-width:760px){
+/* хедър */
+.ansa-promo .dc.fpm .mfh{padding:12px 14px 0}
+.ansa-promo .dc.fpm .mft{gap:10px}
+.ansa-promo .dc.fpm .mftx b{font-size:22px}
+.ansa-promo .dc.fpm .mftx small{font-size:14px}
+.ansa-promo .dc.fpm .mfx{width:36px;height:36px}
+.ansa-promo .dc.fpm .mfhr{margin-top:8px;gap:6px}
+/* подаръците: един компактен ред икона | „Подаръци и бонуси · 5 билета…“ | „Виж всички ›“ */
+.ansa-promo .dc.fpm .mfg2{margin:10px 0 0;padding:0;border-radius:14px;background:#f8e5d7}
+.ansa-promo .dc.fpm .mfgc{grid-template-columns:34px minmax(0,1fr) auto;column-gap:10px;padding:9px 12px;align-items:center}
+.ansa-promo .dc.fpm .mfgic{width:34px;height:34px;border-radius:10px}
+.ansa-promo .dc.fpm .mfgic svg{width:18px;height:18px}
+.ansa-promo .dc.fpm .mfgt{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.ansa-promo .dc.fpm .mfgt>b{display:inline;font-size:15px;white-space:nowrap}
+.ansa-promo .dc.fpm .mfgt small{display:none} /* резюмето не се събира на 390px — „Виж всички ›“ разгъва списъка */
+.ansa-promo .dc.fpm .mfga{font-size:13px;white-space:nowrap}
+.ansa-promo .dc.fpm .mfgh{padding:0 12px 10px}
+/* „Избери продуктите“ + връзката към въпросника на един ред */
+.ansa-promo .dc.fpm .mfpk{margin:14px 14px 8px;font-size:19px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ansa-promo .dc.fpm .fqzl{margin:-4px 14px 8px;font-size:13.5px}
+/* листът: карти от ръб до ръб */
+.ansa-promo .dc.fpm .mfl{padding:0;gap:0;border-top:1px solid rgba(67,48,42,.1)}
+.ansa-promo .dc.fpm .mitem{flex:none;justify-content:flex-start}
+.ansa-promo .dc.fpm .mitem .fcat.mrow.r3,.ansa-promo .dc.fpm .fcat.mrow.r3{padding:12px 14px 12px;gap:10px;border-radius:0;border:none;border-bottom:1px solid rgba(67,48,42,.1);box-shadow:none;background:#fff}
+.ansa-promo .dc.fpm .fcat.mrow.r3.on{background:#fff7f1;box-shadow:inset 4px 0 0 var(--o)}
+.ansa-promo .dc.fpm .fcat.r3 .r3m{grid-template-columns:92px minmax(0,1fr);gap:12px}
+.ansa-promo .dc.fpm .mitem .mrow.r3 .pic,.ansa-promo .dc.fpm .mrow.r3 .pic{width:92px;height:92px}
+.ansa-promo .dc.fpm .fcat.r3 .r3h b{font-size:17.5px}
+.ansa-promo .dc.fpm .fcat.r3 .ftx .f3ds{font-size:15px}
+.ansa-promo .dc.fpm .fcat.r3 .ftx small{font-size:13.5px}
+.ansa-promo .dc.fpm .fcat.r3 .ftx .fmore{margin-top:2px;font-size:13.5px}
+.ansa-promo .dc.fpm .fcat.r3 .fbar.r3f{padding-top:10px}
+.ansa-promo .dc.fpm .fcat.r3 .r3f .fprc b{font-size:22px}
+.ansa-promo .dc.fpm .fcat.r3 .r3f .madd{min-height:44px;padding:0 18px;font-size:15.5px}
+.ansa-promo .dc.fpm .fcat.r3 .r3f .stp button{width:36px;height:36px}
+.ansa-promo .dc.fpm .mfs>.mpg{padding:10px 14px 14px}
+/* футър: по-нисък — заглавие + брой на един ред, слотове 38px, „Спестяваш“ като тънка лента, бутон 50px */
+.ansa-promo .dc.fpm .mff{padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.ansa-promo .dc.fpm .mfft{margin:0 0 8px}
+.ansa-promo .dc.fpm .mfft b{font-size:17px}
+.ansa-promo .dc.fpm .mffn .fsl,.ansa-promo .dc.fpm .fsl{font-size:17px}
+/* „Спестяваш“ е тънък зелен ред под „Твоята кутия“ (в .mfftx, promo.js v1.0.40), не отделна лента */
+.ansa-promo .dc.fpm .mff .mfftx .fsave{display:none;margin:2px 0 0;padding:0;background:none;border:none;font-size:13px;font-weight:800;color:var(--gd);line-height:1.2;text-align:left;justify-content:flex-start}
+.ansa-promo .dc.fpm .mff .mfftx .fsave.on{display:block}
+.ansa-promo .dc.fpm .mff .mfftx .fsave b{display:inline;font-size:13px;color:var(--gd)}
+/* цената на един ред: стара · нова */
+.ansa-promo .dc.fpm .mitem .mrow.r3 .fbar .fprc,.ansa-promo .dc.fpm .mrow.r3 .fbar .fprc{flex-direction:row;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ansa-promo .dc.fpm .fslots{gap:8px;margin:0 0 8px}
+.ansa-promo .dc.fpm .fs{height:38px;border-radius:10px;font-size:13px}
+.ansa-promo .dc.fpm .fs img{width:26px;height:26px}
+.ansa-promo .dc.fpm #nFill{min-height:50px;font-size:16px}
+}
