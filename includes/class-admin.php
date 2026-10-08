@@ -75,6 +75,7 @@ final class Admin {
 				foreach ( Config::gate_image_slots() as $k => $label ) { $cfg['gate']['images'][ $k ] = sanitize_text_field( (string) wp_unslash( $gi[ $k ] ?? '' ) ); }
 				$cfg['bgn']['show'] = ! empty( $_POST['bgn_show'] );
 				$cfg['theme']['hide'] = ! empty( $_POST['theme_hide'] ); $cfg['theme']['selectors'] = (string) wp_unslash( $_POST['theme_selectors'] ?? '' );
+				$cfg['preview']['enabled'] = ! empty( $_POST['preview_enabled'] ); $cfg['preview']['password'] = trim( wp_strip_all_tags( (string) wp_unslash( $_POST['preview_password'] ?? '' ) ) );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
 			case 'products':
 				$cfg = Config::get_draft(); $rows = (array) ( $_POST['p'] ?? array() ); $new = array();
@@ -174,6 +175,11 @@ final class Admin {
 							</script>
 						</td></tr>
 						<tr><th>Лева в поръчката</th><td><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label></td></tr>
+						<tr><th>Преглед с парола</th><td>
+							<label><input type="checkbox" name="preview_enabled" value="1"<?php checked( ! empty( $draft['preview']['enabled'] ) ); ?>> докато играта не е пусната, страницата показва форма за парола; с правилна парола се вижда <b>черновата</b> (за екипа и избрани клиенти, без вход в сайта)</label>
+							<p><input type="text" name="preview_password" class="regular-text code" value="<?php echo esc_attr( $draft['preview']['password'] ); ?>" placeholder="парола"> <span class="description">паролата се помни в браузъра 30 дни; смяната ѝ изхвърля всички</span></p>
+							<?php $pl = Frontend::preview_link(); if ( $pl ) : ?><p class="description">Линк за екипа (отваря и записва паролата): <code><?php echo esc_html( $pl ); ?></code></p><?php else : ?><p class="description">Избери страницата по-горе, за да видиш линка за екипа.</p><?php endif; ?>
+						</td></tr>
 						<tr><th>Цял екран</th><td>
 							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>
 							<label><input type="checkbox" name="theme_hide" value="1"<?php checked( $draft['theme']['hide'] ); ?>> 2) Скрий и тези елементи на темата/плъгините на промо страницата (един селектор на ред; работи и без темплейта):</label><br>

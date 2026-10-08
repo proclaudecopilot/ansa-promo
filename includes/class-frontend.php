@@ -58,7 +58,30 @@ final class Frontend {
 
 	public static function add_shortcode() { add_shortcode( Plugin::SHORTCODE, array( __CLASS__, 'shortcode' ) ); }
 
-	public static function is_draft_request() { return isset( $_GET['ansa_promo'] ) && 'draft' === $_GET['ansa_promo'] && current_user_can( Plugin::CAP ); }
+	public static function is_draft_request() { return ( isset( $_GET['ansa_promo'] ) && 'draft' === $_GET['ansa_promo'] && current_user_can( Plugin::CAP ) ) || self::preview_ok(); }
+
+	/* ── v1.0.37: преглед с парола ──
+	   Докато играта не е пусната (published.enabled = false / изтекла), страницата показва форма за парола. Правилна парола (от 🧰 Инструменти,
+	   по подразбиране SD(A0%as09) → бисквитка за 30 дни с HMAC на паролата → посетителят вижда ЧЕРНОВАТА без да влиза в сайта.
+	   Работи и с линк ?ansa_pw=<парола> (записва бисквитката и маха параметъра). Смяна на паролата обезсилва всички бисквитки. */
+	const PW_COOKIE = 'ansa_promo_pw';
+	private static $pw_ok = null; private static $pw_err = false;
+	public static function preview_cfg() { $d = Config::get_draft(); return is_array( $d['preview'] ?? null ) ? $d['preview'] : array( 'enabled' => false, 'password' => '' ); }
+	public static function preview_token( $pw ) { return hash_hmac( 'sha256', (string) $pw, wp_salt( 'auth' ) ); }
+	public static function preview_available() { $p = self::preview_cfg(); return ! empty( $p['enabled'] ) && '' !== (string) $p['password'] && ! Config::is_live( Config::get_published() ); }
+	public static function preview_ok() {
+		if ( null !== self::$pw_ok ) { return self::$pw_ok; }
+		self::$pw_ok = false;
+		if ( ! self::preview_available() ) { return false; }
+		$c = isset( $_COOKIE[ self::PW_COOKIE ] ) ? (string) $_COOKIE[ self::PW_COOKIE ] : '';
+		self::$pw_ok = '' !== $c && hash_equals( self::preview_token( self::preview_cfg()['password'] ), $c );
+		return self::$pw_ok;
+	}
+	/** Линкът за екипа: страницата + ?ansa_pw=<парола>. */
+	public static function preview_link() {
+		$d = Config::get_draft(); $url = ! empty( $d['page_id'] ) ? get_permalink( (int) $d['page_id'] ) : '';
+		return $url ? add_query_arg( 'ansa_pw', rawurlencode( (string) $d['preview']['password'] ), $url ) : '';
+	}
 	public static function is_editor_request() { return self::is_draft_request() && ! empty( $_GET['ansa_editor'] ); }
 	public static function cfg() { return self::is_draft_request() ? Config::get_draft() : Config::get_published(); }
 
@@ -75,7 +98,32 @@ final class Frontend {
 
 	public static function headers() {
 		if ( ! self::is_promo_page() ) { return; }
-		if ( self::is_draft_request() ) { nocache_headers(); }
+		/* v1.0.37: въведена парола (форма или ?ansa_pw=) → бисквитка + redirect без параметъра */
+		$given = isset( $_POST['ansa_pw'] ) ? (string) wp_unslash( $_POST['ansa_pw'] ) : ( isset( $_GET['ansa_pw'] ) ? (string) wp_unslash( $_GET['ansa_pw'] ) : null );
+		if ( null !== $given && self::preview_available() ) {
+			if ( hash_equals( (string) self::preview_cfg()['password'], $given ) ) {
+				setcookie( self::PW_COOKIE, self::preview_token( $given ), time() + 30 * DAY_IN_SECONDS, '/', '', is_ssl(), true );
+				$to = remove_query_arg( 'ansa_pw' ); if ( ! $to ) { $to = get_permalink(); }
+				wp_safe_redirect( $to ); exit;
+			}
+			self::$pw_err = true;
+		}
+		if ( self::is_draft_request() ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } }
+	}
+	/** Формата за парола (вместо „скоро“), когато прегледът е включен. */
+	private static function gate_html( $cfg ) {
+		$name = esc_html( (string) ( $cfg['name'] ?: 'Сезонът на ansa™' ) );
+		return '<div class="ansa-promo ansa-promo-off ansa-promo-pwgate" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '">'
+			. '<style>.ansa-promo-pwgate{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;background:#faf3ec;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e}'
+			. '.ansa-pw{width:100%;max-width:420px;background:#fff;border:1.5px solid rgba(232,114,42,.25);border-radius:22px;padding:28px 24px;box-shadow:0 14px 40px rgba(232,114,42,.12);text-align:center}'
+			. '.ansa-pw .b{font-weight:900;color:#e8722a;font-size:22px}.ansa-pw h2{margin:6px 0 4px;font-size:24px;font-weight:900;letter-spacing:-.02em}.ansa-pw p{margin:0 0 16px;font-size:14px;color:#6b5f58;font-weight:600}'
+			. '.ansa-pw input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:13px 14px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;margin-bottom:10px;background:#fff}'
+			. '.ansa-pw button{width:100%;font:inherit;font-size:16px;font-weight:900;color:#fff;border:none;border-radius:14px;min-height:50px;background:linear-gradient(135deg,#ef8c4f,#e8722a 50%,#e56b50);cursor:pointer}'
+			. '.ansa-pw .err{color:#b91c1c;font-weight:800;margin:10px 0 0;font-size:14px}.ansa-pw small{display:block;margin-top:14px;font-size:12px;color:#a88a75;font-weight:600}</style>'
+			. '<form class="ansa-pw" method="post" action="' . esc_url( remove_query_arg( 'ansa_pw' ) ) . '"><div class="b">ansa™</div><h2>' . $name . '</h2><p>Предварителен преглед. Въведи паролата, която получи от екипа на ansa.</p>'
+			. '<input type="password" name="ansa_pw" placeholder="Парола" autocomplete="current-password" required autofocus><button type="submit">Влез →</button>'
+			. ( self::$pw_err ? '<p class="err">Грешна парола — опитай пак.</p>' : '' )
+			. '<small>Страницата не е публична. Играта ще стартира скоро.</small></form></div>';
 	}
 	public static function robots( $robots ) {
 		if ( self::is_promo_page() && ( self::is_draft_request() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; }
@@ -223,6 +271,7 @@ final class Frontend {
 		$cfg = self::cfg();
 		$draft = self::is_draft_request();
 		if ( ! $draft && ! Config::is_live( $cfg ) ) {
+			if ( self::preview_available() ) { return self::gate_html( $cfg ); } /* v1.0.37: форма за парола вместо „скоро“ */
 			$html = '<div class="ansa-promo ansa-promo-off" id="ansaPromo" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><p class="ansa-promo-soon" style="text-align:center;font:700 22px/1.3 Nunito,system-ui,sans-serif;padding:48px 16px;margin:0">ansa™ Промо — скоро.</p>';
 			if ( current_user_can( Plugin::CAP ) ) {
 				$html .= '<p class="ansa-promo-admin-note" style="text-align:center;font:500 13px/1.5 system-ui,sans-serif;opacity:.6;margin:0 0 24px">ansa™ Промо ' . esc_html( ANSA_PROMO_VER ) . ' · играта е ' . ( empty( $cfg['enabled'] ) ? 'изключена' : 'изтекла' ) . ' (виждаш това само като админ) · <a href="' . esc_url( add_query_arg( 'ansa_promo', 'draft' ) ) . '">виж черновата</a></p>';
