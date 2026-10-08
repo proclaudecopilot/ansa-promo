@@ -13,7 +13,7 @@
   var portal=document.createElement('div');portal.className='ansa-promo ansa-promo-portal';portal.setAttribute('data-no-translation','');if(root.getAttribute('data-editor'))portal.setAttribute('data-editor','1');
   ['apToast','apOv','apOv2'].forEach(function(id){var el=$(id);if(el)portal.appendChild(el)});document.body.appendChild(portal);
   /* v1.0.24: body класът се слага и от тук — страница, сглобена с Elementor, не го получава от PHP (shortcode-ът не е в post_content) */
-  document.body.classList.add('ansa-promo-page');
+  document.body.classList.add('ansa-promo-page');document.documentElement.classList.add('ansa-promo-html'); /* v1.0.52: overflow-x:hidden и на <html> */
   /* v1.0.24: на телефон лентата с яхтата е плаваща картинка долу вдясно (в портала, за да не я хване transform на темата) */
   var yfab=document.createElement('div');yfab.className='yfab';yfab.id='apYfab';yfab.style.display='none';portal.appendChild(yfab);
 
@@ -161,10 +161,15 @@
   function info(t,b,wide){var dc=$('apDc');dc.className='dc'+(wide?' wide':'');dc.scrollTop=0;dc.innerHTML='<button class="ux" id="apUx" aria-label="затвори">✕</button>'+(t?'<h3>'+t+'</h3>':'')+'<div class="ib">'+b+'</div>';$('apOv').classList.remove('off');$('apUx').onclick=closeInfo}
   /* v1.0.22: резерва за телефон — ако нещо на страницата (transform/zoom на родител) „хване“ fixed-а на листа и той излезе от екрана
      (виждаше се като „бутонът Продължи е под екрана, освен при 75% zoom“), го наместваме по измерения отместък и по височината на прозореца */
+  /* v1.0.52: iOS Safari не спира скрола на body с overflow:hidden — докато листът е отворен, body е position:fixed на текущата позиция
+     (html.ap-lock), при затваряне позицията се връща. Хоризонтален скрол на страницата е забранен (html.ansa-promo-html). */
+  var lockY=null;
+  function lockBody(){if(lockY!==null)return;lockY=window.pageYOffset||document.documentElement.scrollTop||0;document.documentElement.classList.add('ap-lock');document.body.style.top=(-lockY)+'px'}
+  function unlockBody(){if(lockY===null)return;document.documentElement.classList.remove('ap-lock');document.body.style.top='';var y=lockY;lockY=null;window.scrollTo(0,y)}
   function fitSheet(dc){dc=dc||$('apDc');if(!dc||!dc.classList.contains('fpm'))return;dc.style.top='';dc.style.left='';dc.style.width='';dc.style.height='';var r=dc.getBoundingClientRect(),vh=window.innerHeight,vw=window.innerWidth;
     if(Math.abs(r.top)>2)dc.style.top=(-r.top)+'px';if(Math.abs(r.left)>2)dc.style.left=(-r.left)+'px';if(Math.abs(r.width-vw)>2)dc.style.width=vw+'px';if(Math.abs(r.height-vh)>2)dc.style.height=vh+'px'}
   window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))fitSheet()});
-  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');document.documentElement.classList.remove('ap-lock');S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
+  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');unlockBody();S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
   function scrollHint(){var dc=$('apDc');var more=dc.scrollHeight-dc.scrollTop-dc.clientHeight>24;dc.classList.toggle('more',more);var h=$('apMore');if(!h){h=document.createElement('div');h.id='apMore';h.className='dcmore';h.innerHTML='<span'+ck('ms.more')+'>'+T('ms.more')+'</span>';dc.appendChild(h);h.onclick=function(){dc.scrollBy({top:dc.clientHeight*.7,behavior:'smooth'})}}else dc.appendChild(h)}
   (function(){var dc=$('apDc');dc.addEventListener('scroll',function(){dc.classList.toggle('more',dc.scrollHeight-dc.scrollTop-dc.clientHeight>24)});if(window.MutationObserver){var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){if(ms[i].type==='childList'&&![].some.call(ms[i].addedNodes,function(n){return n.id==='apMore'})){setTimeout(scrollHint,60);return}}});mo.observe(dc,{childList:true})}window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))scrollHint()})})();
   $('apOv').onclick=function(e){if(e.target.id==='apOv'&&!S._lockOv)closeInfo()};
@@ -336,7 +341,7 @@
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
         +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
-    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');document.documentElement.classList.add('ap-lock');setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
+    info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
     var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=0;var showPg=function(){dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
