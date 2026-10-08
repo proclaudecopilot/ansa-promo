@@ -234,7 +234,7 @@ final class Copy {
 				'fill.quiz.skip'     => 'Пропусни',
 				'fill.quiz.cat'      => '✓ Според теб: {{cat}}',
 				/* v1.0.41: компактният залепен хедър на телефона — два реда */
-				'mfill.h.title'      => '{{box_u}} · <em>−{{pct}}% на всичко</em>',
+				'mfill.h.title'      => '{{box_u}} <em>−{{pct}}% на всичко</em>',
 				'mfill.h.gifts'      => 'Участваш за яхта и {{gift}}',
 				'mfill.h.gifts1'     => 'Участваш за яхта',
 				'mfill.h.more'       => 'Виж повече',

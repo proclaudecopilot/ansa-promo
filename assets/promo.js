@@ -280,7 +280,8 @@
        (снимка · име · „за какво е“ · описание · „За продукта ›“ · цена · „+ Добави“/степер · бадж −40%); лепкав футър „Спестяваш €X“ + бутон */
     /* v1.0.32: 2 продукта на страница и на десктоп, категорията е заглавие над картата; „Напълни своята ГОЛЯМА кутия (−40%)“ */
     /* v1.0.39: 3 продукта на страница на десктоп (6 продукта = 2 пълни страници), 2 на телефон */
-    var MPP=MOBF()?2:3;var mcat=function(pr,r){var c=String(pr.cat||'').trim();return c?T('mfill.cat',{cat:esc(c.charAt(0).toLowerCase()+c.slice(1))}):esc(r.core?T('fill.cat.core'):r.t)};
+    /* v1.0.42: на телефон няма пагинация — списъкът скролва под залепения хедър (всички продукти = една страница) */
+    var MPP=MOBF()?Math.max(1,rows.length):3;var mcat=function(pr,r){var c=String(pr.cat||'').trim();return c?T('mfill.cat',{cat:esc(c.charAt(0).toLowerCase()+c.slice(1))}):esc(r.core?T('fill.cat.core'):r.t)};
     bv.box_adj_u=esc(String(b.name).replace(/\s*кутия\s*/i,' ').trim().toUpperCase());bv.nrw=b.rw.length;bv.nagradi=b.rw.length===1?'награда':'награди';
     /* v1.0.33 (мокъпът на човека): картата е на три реда — заглавие + бадж −X% · снимка (30%) + „за какво е“/описание/„За продукта ›“ ·
        стара цена, нова цена, „+ Добави“/степер — еднакво на десктоп (.drow) и телефон (.mrow) */
