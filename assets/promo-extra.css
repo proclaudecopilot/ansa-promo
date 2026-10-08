@@ -1259,3 +1259,9 @@ html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;o
 .ansa-promo .dc.fpm .mfh2 .mfgh .mfgi i{width:30px;height:30px;background:#fff}
 }
 @media(max-width:380px){.ansa-promo .dc.fpm .mh1t{font-size:17px;letter-spacing:.02em;white-space:nowrap}.ansa-promo .dc.fpm .mh1p{font-size:10.5px;padding:3px 8px}}
+
+/* ── 38 · v1.0.47 (забележка на човека): формата с паролата не се цъкаше — promo.css се зарежда и на нея (maybe_enqueue), а фонът
+      .ansa-promo::before (position:absolute; inset:0; z-index:0) стои над непозиционираното съдържание. На „изключените“ екрани
+      (формата с паролата, „скоро“ + линкът за админи) фонът не е нужен ── */
+.ansa-promo.ansa-promo-off::before{display:none!important;content:none!important}
+.ansa-promo.ansa-promo-off .ansa-pw,.ansa-promo.ansa-promo-off .ansa-promo-admin-note{position:relative;z-index:1}
