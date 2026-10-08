@@ -1111,13 +1111,13 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mfhr{margin-top:8px;gap:6px}
 /* подаръците: един компактен ред икона | „Подаръци и бонуси · 5 билета…“ | „Виж всички ›“ */
 .ansa-promo .dc.fpm .mfg2{margin:10px 0 0;padding:0;border-radius:14px;background:#f8e5d7}
-.ansa-promo .dc.fpm .mfgc{grid-template-columns:34px minmax(0,1fr) auto;column-gap:10px;padding:9px 12px;align-items:center}
+.ansa-promo .dc.fpm .mfgc{grid-template-columns:34px minmax(0,1fr) auto;column-gap:8px;padding:9px 12px;align-items:center}
 .ansa-promo .dc.fpm .mfgic{width:34px;height:34px;border-radius:10px}
 .ansa-promo .dc.fpm .mfgic svg{width:18px;height:18px}
 .ansa-promo .dc.fpm .mfgt{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-.ansa-promo .dc.fpm .mfgt>b{display:inline;font-size:15px;white-space:nowrap}
+.ansa-promo .dc.fpm .mfgt>b{display:inline;font-size:14px;white-space:nowrap}
 .ansa-promo .dc.fpm .mfgt small{display:none} /* резюмето не се събира на 390px — „Виж всички ›“ разгъва списъка */
-.ansa-promo .dc.fpm .mfga{font-size:13px;white-space:nowrap}
+.ansa-promo .dc.fpm .mfga{font-size:12.5px;white-space:nowrap}
 .ansa-promo .dc.fpm .mfgh{padding:0 12px 10px}
 /* „Избери продуктите“ + връзката към въпросника на един ред */
 .ansa-promo .dc.fpm .mfpk{margin:14px 14px 8px;font-size:19px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
