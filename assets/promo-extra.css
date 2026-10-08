@@ -1117,6 +1117,7 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .dc.fpm .mfgt{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
 .ansa-promo .dc.fpm .mfgt>b{display:inline;font-size:14px;white-space:nowrap}
 .ansa-promo .dc.fpm .mfgt small{display:none} /* резюмето не се събира на 390px — „Виж всички ›“ разгъва списъка */
+@media(max-width:380px){.ansa-promo .dc.fpm .mfgt,.ansa-promo .dc.fpm .mfgt>b{white-space:normal}.ansa-promo .dc.fpm .mfgt>b{font-size:13.5px;line-height:1.2}} /* тесни телефони: два реда вместо отрязване */
 .ansa-promo .dc.fpm .mfga{font-size:12.5px;white-space:nowrap}
 .ansa-promo .dc.fpm .mfgh{padding:0 12px 10px}
 /* „Избери продуктите“ + връзката към въпросника на един ред */
