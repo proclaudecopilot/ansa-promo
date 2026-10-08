@@ -234,7 +234,8 @@ final class Copy {
 				'fill.quiz.cat'      => '✓ За теб: {{cat}}',
 				'mfill.more.dn'      => '↓ Още продукти',
 				/* v1.0.41: компактният залепен хедър на телефона — два реда */
-				'mfill.h.title'      => '{{box_u}} <em>−{{pct}}% на всичко</em>',
+				'mfill.h.title'      => '{{box_u}}',
+				'mfill.h.pct'        => '−{{pct}}% на всичко',
 				'mfill.h.gifts'      => 'Участваш за яхта и {{gift}}',
 				'mfill.h.gifts1'     => 'Участваш за яхта',
 				'mfill.h.more'       => 'Виж повече',

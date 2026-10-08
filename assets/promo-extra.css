@@ -1236,3 +1236,26 @@ html.ap-lock,html.ap-lock body{overflow:hidden!important;height:100%!important;o
 .ansa-promo .dc.fpm .mfmore.off{opacity:0;pointer-events:none;transform:translate(-50%,8px);animation:none}
 @keyframes apMoreNudge{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,4px)}}
 }
+
+/* ── 37 · v1.0.46 (искане на човека: „сложи фон и подреди sticky хедъра“): хедърът е оранжев градиент (като бутоните), бял текст —
+      ред 1: „ГОЛЯМА КУТИЯ“ + бял пил „−40% НА ВСИЧКО“ + ✕ (прозрачен бял); ред 2: „Участваш за яхта и козметичен сет · Виж повече“ +
+      прозрачен бял бутон „Смени кутията“; разгънатите подаръци са на същия фон ── */
+@media(max-width:760px){
+.ansa-promo .dc.fpm .mfh.mfh2{background:linear-gradient(135deg,#f0924f 0%,#e8722a 58%,#e2613e 100%);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 11px;border-bottom:none;box-shadow:0 6px 20px rgba(232,114,42,.35)}
+.ansa-promo .dc.fpm .mh1{display:flex;align-items:center;gap:10px}
+.ansa-promo .dc.fpm .mh1l{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;flex-wrap:wrap}
+.ansa-promo .dc.fpm .mh1t{display:block;flex:none;color:#fff;font-size:19px;font-weight:900;letter-spacing:.03em;text-transform:uppercase;line-height:1.15;white-space:nowrap;overflow:visible;text-shadow:0 1px 0 rgba(0,0,0,.08)}
+.ansa-promo .dc.fpm .mh1p{display:inline-flex;align-items:center;flex:none;background:#fff;color:var(--od);font-size:11.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:4px 10px;line-height:1.2;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.ansa-promo .dc.fpm .mfh2 .mfx{margin:0;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;font-size:15px;flex:none}
+.ansa-promo .dc.fpm .mh2{margin-top:9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ansa-promo .dc.fpm .mh2g{flex:1 1 auto;min-width:0;color:rgba(255,255,255,.95);font-size:12.5px;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.3}
+.ansa-promo .dc.fpm .mh2g .lnk{color:#fff;font-size:12.5px;font-weight:900;letter-spacing:0;text-transform:none;text-decoration:underline;text-underline-offset:2px;padding:0;white-space:nowrap}
+.ansa-promo .dc.fpm .mfh2 .mfsw{flex:none;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:0 12px 0 10px;min-height:32px;font-size:12px;font-weight:800;gap:6px}
+.ansa-promo .dc.fpm .mfh2 .mfsw svg{width:13px;height:13px}
+.ansa-promo .dc.fpm .mfh2 .mfgh{margin:10px 0 0;padding:10px 0 2px;border-top:1px dashed rgba(255,255,255,.45);gap:8px}
+.ansa-promo .dc.fpm .mfh2 .mfgh .mfgi{color:#fff;font-size:13.5px}
+.ansa-promo .dc.fpm .mfh2 .mfgh .mfgi b{color:#fff}
+.ansa-promo .dc.fpm .mfh2 .mfgh .mfgi s{color:rgba(255,255,255,.7)}
+.ansa-promo .dc.fpm .mfh2 .mfgh .mfgi i{width:30px;height:30px;background:#fff}
+}
+@media(max-width:380px){.ansa-promo .dc.fpm .mh1t{font-size:17px;letter-spacing:.02em;white-space:nowrap}.ansa-promo .dc.fpm .mh1p{font-size:10.5px;padding:3px 8px}}
