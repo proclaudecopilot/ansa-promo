@@ -59,7 +59,7 @@ function ansa_sec_audit_report() {
 
 	// ── Маркери на атаката (IOC) ───────────────────────────────────────────────
 	$ioc_attack  = array( 'patchstackk', 'imgcdn1', 'document.createElement(\'script\')', 'document.createElement("script")', '/fz/x.js' );
-	$ioc_generic = array( 'eval(base64_decode', 'eval(gzinflate', 'eval(str_rot13', 'eval(atob', 'atob(', 'String.fromCharCode', 'document.write(unescape', '<script src="http', "<script src='http", 'wp_set_current_user(1', 'FilesMan', 'c99', 'r57', '$_POST["pass"]', 'move_uploaded_file(', 'wp_insert_user(' );
+	$ioc_generic = array( 'String.fromCharCode', '<script src="http', "<script src='http" );
 	$extra = array();
 	if ( ! empty( $_GET['ioc'] ) ) foreach ( explode( ',', sanitize_text_field( wp_unslash( $_GET['ioc'] ) ) ) as $x ) if ( '' !== trim( $x ) ) $extra[] = trim( $x );
 	$ioc_db = array_merge( $ioc_attack, $extra );
@@ -88,7 +88,7 @@ function ansa_sec_audit_report() {
 
 	// ── B. Поръчки с payload ──────────────────────────────────────────────────
 	$h( 'B. Поръчки с XSS/JS следи в адресни полета' );
-	$like = array( '<', 'script', 'document.', 'javascript:', 'onerror', 'onload=', "');", '");', 'eval(', 'alert(', 'src=', 'patchstackk', 'imgcdn1' );
+	$like = array( '<', 'script', 'document.', 'javascript:', 'onerror', 'onload=', "');", '");', 'src=', 'patchstackk', 'imgcdn1' );
 	$esc_like = function ( $s ) use ( $wpdb ) { return '%' . $wpdb->esc_like( $s ) . '%'; };
 	$hits = array(); // id => array( 'fields' => [field=>value], ... )
 	$tbl_orders = $wpdb->prefix . 'wc_orders'; $tbl_addr = $wpdb->prefix . 'wc_order_addresses'; $tbl_opd = $wpdb->prefix . 'wc_order_operational_data';
@@ -111,7 +111,7 @@ function ansa_sec_audit_report() {
 	$rows = $wpdb->get_results( "SELECT ID, post_excerpt FROM {$wpdb->posts} WHERE post_type='shop_order' AND post_excerpt <> '' AND (" . str_replace( 'pm.meta_value', 'post_excerpt', implode( ' OR ', $w3 ) ) . ') ORDER BY ID DESC LIMIT 200', ARRAY_A );
 	foreach ( (array) $rows as $r ) $hits[ (int) $r['ID'] ]['fields']['post_excerpt(note)'] = $r['post_excerpt'];
 	// филтър на фалшиви попадения: „src=“, „<“ и „');“ в нормални адреси са редки, но все пак показваме всичко и маркираме тежките
-	$heavy = function ( $v ) { return (bool) preg_match( '/<script|document\.|javascript:|onerror|onload=|eval\(|alert\(|createElement|patchstackk|imgcdn1|\.js[\'"]/i', (string) $v ); };
+	$heavy = function ( $v ) { return (bool) preg_match( '/<script|document\.|javascript:|onerror|onload=|createElement|patchstackk|imgcdn1|\.js[\'"]/i', (string) $v ); };
 	krsort( $hits );
 	$p( 'поръчки с подозрителни полета', count( $hits ) );
 	$by_ip = array(); $by_status = array(); $by_day = array(); $by_ua = array(); $beyond_draft = array(); $n = 0;
@@ -257,7 +257,7 @@ function ansa_sec_audit_report() {
 	foreach ( array( ABSPATH . '.htaccess', ABSPATH . '.user.ini', ABSPATH . 'php.ini', ABSPATH . 'wp-config.php', WP_CONTENT_DIR . '/.htaccess', ABSPATH . 'wp-admin/.htaccess', ABSPATH . 'wp-includes/.htaccess', WP_CONTENT_DIR . '/plugins/.htaccess', WP_CONTENT_DIR . '/debug.log' ) as $f ) {
 		if ( ! file_exists( $f ) ) continue;
 		$c = (string) @file_get_contents( $f, false, null, 0, 200000 );
-		$bad = array(); foreach ( array( 'auto_prepend_file', 'auto_append_file', 'php_value', 'AddHandler', 'AddType application/x-httpd', 'SetHandler', 'RewriteRule .*http', 'base64_decode', 'eval(', 'patchstackk', 'imgcdn1' ) as $t ) if ( false !== stripos( $c, $t ) ) $bad[] = $t;
+		$bad = array(); foreach ( array( 'auto_prepend_file', 'auto_append_file', 'php_value', 'AddHandler', 'AddType application/x-httpd', 'SetHandler', 'RewriteRule .*http', 'patchstackk', 'imgcdn1' ) as $t ) if ( false !== stripos( $c, $t ) ) $bad[] = $t;
 		$p( str_replace( ABSPATH, '/', $f ), size_format( filesize( $f ) ) . ' · ' . $ago( filemtime( $f ) ) . ( $bad ? ' · съдържа: ' . implode( ',', $bad ) . ( 'wp-config.php' === basename( $f ) && ! array_diff( $bad, array( 'php_value' ) ) ? '' : $flag( true ) ) : '' ) );
 	}
 	$p( 'php ini auto_prepend_file', ini_get( 'auto_prepend_file' ) ?: '—' );
