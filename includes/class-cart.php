@@ -30,6 +30,11 @@ final class Cart {
 		add_action( 'wp_ajax_ansa_promo_add', array( __CLASS__, 'ajax_add' ) );
 		add_action( 'wp_ajax_nopriv_ansa_promo_add', array( __CLASS__, 'ajax_add' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'apply_pricing' ), 95 );
+		/* v1.5.3: FunnelKit Cart „Rewards“ (безплатен подарък/купон/доставка по праг) не важат за промо количката —
+		   сетът, книгата и билетите са наградите ѝ; подаръкът по праг влизаше като чужд ред на €0 (CollaMask ×2). */
+		add_filter( 'fkcart_reward_rules_checking', array( __CLASS__, 'no_fk_rewards' ), 1, 2 );
+		add_filter( 'fkcart_reward_enabled', array( __CLASS__, 'no_fk_rewards' ), 1, 2 );
+		add_action( 'woocommerce_cart_loaded_from_session', array( __CLASS__, 'strip_foreign' ), 20 );
 		add_filter( 'woocommerce_cart_item_quantity', array( __CLASS__, 'lock_qty' ), 10, 3 );
 		add_filter( 'woocommerce_cart_item_remove_link', array( __CLASS__, 'lock_remove' ), 10, 2 );
 		add_filter( 'woocommerce_cart_item_name', array( __CLASS__, 'cart_label' ), 10, 3 );
@@ -194,10 +199,40 @@ final class Cart {
 		if ( $gw && WC()->session ) { WC()->session->set( 'chosen_payment_method', $gw ); }
 	}
 
+	/* ═══ ЧУЖДИ РЕДОВЕ (v1.5.3) ═══ */
+	/** FunnelKit Cart Rewards: нито една награда по праг, докато в количката има промо група. true = наградата се дава. */
+	public static function no_fk_rewards( $status, $reward = null ) {
+		if ( ! self::group() ) { return $status; }
+		return apply_filters( 'ansa_promo_fk_reward', false, $status, $reward );
+	}
+	/**
+	 * Ред без наша META, добавен автоматично от друг плъгин (подарък на FunnelKit Cart Rewards, на Shrine, …), не остава в промо
+	 * количката. Разпознава се по cart item data ключовете (fkcart*, *gift*, *reward*); filter ansa_promo_strip_foreign( bool, $key, $item, $g )
+	 * позволява и друго правило (напр. всеки чужд ред). Ръчно добавени продукти с цена (order bump) не се пипат.
+	 */
+	public static function strip_foreign( $cart = null ) {
+		if ( self::$mutating ) { return; }
+		$cart = $cart instanceof \WC_Cart ? $cart : ( function_exists( 'WC' ) ? WC()->cart : null ); if ( ! $cart ) { return; }
+		$g = self::group( $cart ); if ( ! $g || empty( $g['foreign'] ) ) { return; }
+		$std = array( 'key', 'product_id', 'variation_id', 'variation', 'quantity', 'data', 'data_hash', 'line_tax_data', 'line_subtotal', 'line_subtotal_tax', 'line_total', 'line_tax' );
+		$remove = array();
+		foreach ( $g['foreign'] as $key ) {
+			$item = $cart->get_cart_item( $key ); if ( ! $item ) { continue; }
+			$extra = array_diff( array_keys( $item ), $std );
+			$auto  = (bool) preg_grep( '/fkcart|gift|reward/i', $extra );
+			if ( apply_filters( 'ansa_promo_strip_foreign', $auto, $key, $item, $g ) ) { $remove[] = $key; }
+		}
+		if ( ! $remove ) { return; }
+		self::$mutating = true;
+		foreach ( $remove as $key ) { $cart->remove_cart_item( $key ); }
+		self::$mutating = false;
+	}
+
 	/* ═══ ЦЕНИ ═══ */
 	public static function apply_pricing( $cart ) {
 		if ( self::$mutating ) { return; }
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) { return; }
+		self::strip_foreign( $cart );
 		$g = self::group( $cart ); if ( ! $g ) { return; }
 		$valid = self::group_valid( $g );
 		$pct = $valid ? $g['pct'] : 0; $spct = $valid ? $g['spct'] : 0;
@@ -274,7 +309,7 @@ final class Cart {
 		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box || null === $box['cosm_pay'] ) { return; }
 		$v = self::vars( $cfg, $box ); $ctx = self::ctx();
 		/* v1.5.0: картичка — чекбокс | икона | текст, подравнено вляво; !important, защото FunnelKit/reskin-ът центрират и презаписват label-ите */
-		echo '<div class="ansa-promo-cosm-wrap"><input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><span class="ansa-promo-cosm__check"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '></span><span class="ansa-promo-cosm__ic">' . esc_html( self::copy( 'co.cosm.ic' ) ) . '</span><span class="ansa-promo-cosm__txt"><b>' . wp_kses_post( self::copy( 'co.cosm.label', $v ) ) . '</b><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label></div>';
+		echo '<div class="ansa-promo-cosm-wrap"><input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><span class="ansa-promo-cosm__check"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '></span><span class="ansa-promo-cosm__ic">' . esc_html( self::copy( 'co.cosm.ic' ) ) . '</span><span class="ansa-promo-cosm__txt"><span class="ansa-promo-cosm__h">' . wp_kses_post( self::copy( 'co.cosm.label', $v ) ) . '</span><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label></div>';
 		self::checkout_css();
 	}
 	private static function checkout_css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-promo-co-css">'
@@ -292,7 +327,10 @@ final class Cart {
 		. '.ansa-promo-cosm__check input{width:22px!important;height:22px!important;min-width:22px;margin:0!important;accent-color:#e8722a;cursor:pointer;-webkit-appearance:checkbox!important;appearance:auto!important;position:static!important;opacity:1!important;display:inline-block!important;visibility:visible!important}'
 		. '.ansa-promo-cosm__ic{flex:none!important;width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid #f6c9d6;display:flex!important;align-items:center;justify-content:center;font-size:22px;line-height:1}'
 		. '.ansa-promo-cosm__txt{flex:1 1 auto!important;min-width:0;text-align:left!important;display:block!important}'
-		. '.ansa-promo-cosm__txt b{display:block!important;font-weight:800!important;font-size:15px!important;line-height:1.3!important;color:#1a1a2e!important;margin:2px 0 4px!important;text-align:left!important}'
+		. '.ansa-promo-cosm__h{display:block!important;font-weight:800!important;font-size:15px!important;line-height:1.35!important;color:#1a1a2e!important;margin:2px 0 4px!important;text-align:left!important}'
+		/* v1.5.3: „за <s>€129</s> <b>€1</b>“ — задраскана стойност в сиво, цената голяма и оранжева */
+		. '.ansa-promo-cosm__h s{color:#9a8a82!important;font-weight:600!important;text-decoration:line-through!important;white-space:nowrap}'
+		. '.ansa-promo-cosm__h b{color:#e8722a!important;font-weight:900!important;font-size:18px!important;white-space:nowrap}'
 		. '.ansa-promo-cosm__txt small{display:block!important;font-size:12.5px!important;line-height:1.45!important;color:#7a6a62!important;font-weight:600!important;text-align:left!important}'
 		. '@media (max-width:480px){.ansa-promo-cosm__ic{display:none!important}label.ansa-promo-cosm{padding:12px 14px!important;gap:10px!important}}'
 		/* етикети в количката, безплатна книга, заключено количество, благодаря */
