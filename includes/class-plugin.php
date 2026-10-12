@@ -45,7 +45,7 @@ final class Plugin {
 		Insights::register();
 		Partner::register();
 		Probe::register();
-		if ( is_admin() ) { Admin::register(); }
+		if ( is_admin() ) { Admin::register(); Editor::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
 	}

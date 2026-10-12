@@ -77,6 +77,50 @@ final class Doctor {
 		return $rows;
 	}
 
+	/* ── Publish gate (план §7): [{id, level ok|warn|bad|info, msg}] — bad спира публикуването ── */
+	public static function checks( $cfg = null ) {
+		$cfg = $cfg ?: Config::get_draft(); $out = array();
+		$c = function ( $id, $level, $msg ) use ( &$out ) { $out[] = array( 'id' => $id, 'level' => $level, 'msg' => $msg ); };
+		/* 1. страница */
+		$pid = (int) $cfg['page_id']; $post = $pid ? get_post( $pid ) : null;
+		if ( ! $post ) { $c( 'page', 'bad', 'Няма избрана страница с [ansa_promo] (🧰 Инструменти).' ); }
+		else { $has = has_shortcode( (string) $post->post_content, Plugin::SHORTCODE ) || false !== strpos( (string) get_post_meta( $pid, '_elementor_data', true ), '[' . Plugin::SHORTCODE ); $c( 'page', $has ? 'ok' : 'bad', 'Страница #' . $pid . ' „' . get_the_title( $pid ) . '“ (' . get_post_status( $pid ) . ')' . ( $has ? ' съдържа [ansa_promo]' : ' НЕ съдържа [ansa_promo]' ) ); }
+		/* 2. продукти */
+		$live = Frontend::products( $cfg ); $enabled = array_filter( $cfg['products'], function ( $p ) { return ! empty( $p['enabled'] ); } );
+		$c( 'products', count( $live ) >= 1 ? 'ok' : 'bad', count( $live ) . ' продукта с WC ред и цена > 0 от ' . count( $enabled ) . ' включени' . ( count( $live ) < count( $enabled ) ? ' — ' . implode( ', ', array_diff( array_column( $enabled, 'key' ), array_keys( $live ) ) ) . ' нямат WC продукт/цена (изключени от страницата)' : '' ) );
+		$noimg = array(); $oos = array(); foreach ( $live as $k => $p ) { if ( empty( $p['img'] ) ) { $noimg[] = $k; } if ( empty( $p['stock'] ) ) { $oos[] = $k; } }
+		if ( $noimg ) { $c( 'images', 'warn', 'Без снимка: ' . implode( ', ', $noimg ) ); } if ( $oos ) { $c( 'stock', 'warn', 'Изчерпани в WC: ' . implode( ', ', $oos ) ); }
+		/* 3. кутии */
+		$rw_ok = array( 'tix', 'tix3', 'tix5', 'ship', 'book', 'cosm50', 'cosm1' );
+		foreach ( $cfg['boxes'] as $b ) {
+			$e = array(); if ( (int) $b['packs'] < 1 ) { $e[] = 'packs < 1'; } if ( (float) $b['pct'] <= 0 || (float) $b['pct'] >= 100 ) { $e[] = 'pct извън (0,100)'; } foreach ( $b['rw'] as $r ) { if ( ! in_array( $r, $rw_ok, true ) ) { $e[] = 'непозната награда ' . $r; } } if ( ( in_array( 'cosm1', $b['rw'], true ) || in_array( 'cosm50', $b['rw'], true ) ) && null === $b['cosm_pay'] ) { $e[] = 'има сет без cosm_pay'; }
+			$c( 'box_' . $b['id'], $e ? 'bad' : 'ok', $b['ic'] . ' ' . $b['name'] . ': ' . $b['packs'] . ' опак. · −' . $b['pct'] . '% · ' . $b['tickets'] . ' билета · ' . implode( '+', $b['rw'] ) . ( $e ? ' — ' . implode( '; ', $e ) : '' ) );
+		}
+		/* 4–5. книга и сет */
+		$needs_book = (bool) array_filter( $cfg['boxes'], function ( $b ) { return in_array( 'book', $b['rw'], true ); } ); $bp = ! empty( $cfg['rewards']['book']['product_id'] ) && function_exists( 'wc_get_product' ) ? wc_get_product( (int) $cfg['rewards']['book']['product_id'] ) : null;
+		if ( $needs_book ) { $c( 'book', $bp && $bp->is_purchasable() ? 'ok' : 'bad', $bp ? 'Книга: #' . $bp->get_id() . ' ' . $bp->get_name() . ( $bp->is_purchasable() ? '' : ' — НЕ е purchasable' ) . ( $bp->is_downloadable() ? ' · downloadable (WC праща файла)' : ( $cfg['rewards']['book']['url'] ? ' · PDF линк по имейл' : ' · без PDF линк (само физически подарък)' ) ) : 'Кутия има „книга“, но rewards.book.product_id не е избран (книгата няма да влезе в количката на €0).' ); }
+		$needs_cosm = (bool) array_filter( $cfg['boxes'], function ( $b ) { return null !== $b['cosm_pay']; } ); $cp = ! empty( $cfg['rewards']['cosm']['product_id'] ) && function_exists( 'wc_get_product' ) ? wc_get_product( (int) $cfg['rewards']['cosm']['product_id'] ) : null;
+		if ( $needs_cosm ) { $c( 'cosm', 'info', $cp ? 'Сет: #' . $cp->get_id() . ' ' . $cp->get_name() . ' · видимост ' . $cp->get_catalog_visibility() . ' (ваучер по имейл при „Изпълнена“)' : 'Сетът няма WC продукт — не е нужен за ваучера (само за справка).' ); }
+		/* 6. gateways */
+		if ( function_exists( 'WC' ) && WC()->payment_gateways() ) { $gws = WC()->payment_gateways()->payment_gateways(); foreach ( array( 'card_gateway' => 'карта', 'cod_gateway' => 'наложен платеж' ) as $k => $l ) { $id = $cfg['checkout'][ $k ]; if ( 'cod_gateway' === $k && '' === $id ) { $c( $k, 'info', 'Наложен платеж е изключен в играта.' ); continue; } $ok = isset( $gws[ $id ] ) && 'yes' === $gws[ $id ]->enabled; $c( $k, $ok ? 'ok' : 'bad', 'Gateway за ' . $l . ': ' . $id . ( $ok ? ' ✓' : ( isset( $gws[ $id ] ) ? ' — ИЗКЛЮЧЕН в WooCommerce' : ' — НЯМА такъв gateway' ) ) ); } }
+		/* 7. срок / включено */
+		$ts = Config::deadline_ts( $cfg ); if ( $ts && $ts < time() ) { $c( 'deadline', 'warn', 'Срокът ' . $cfg['deadline'] . ' е минал — страницата показва „скоро“.' ); } elseif ( ! $ts ) { $c( 'deadline', 'warn', 'Няма срок (deadline) — таймерът и „само до …“ са празни.' ); }
+		if ( empty( $cfg['enabled'] ) ) { $c( 'enabled', 'warn', 'Играта е изключена — публикуването записва текстовете, но публичната страница остава „скоро“' . ( ! empty( $cfg['preview']['enabled'] ) ? ' (прегледът с парола показва черновата)' : '' ) . '.' ); }
+		/* 8. копи */
+		$bad = array(); foreach ( $cfg['copy'] as $k => $v ) { foreach ( Copy::validate( $v ) as $e ) { $bad[] = $k . ': ' . $e; } } $c( 'copy', $bad ? 'bad' : 'ok', $bad ? implode( '; ', array_slice( $bad, 0, 8 ) ) : count( $cfg['copy'] ) . ' променени текста, всички валидни' );
+		/* 9. Shrine */
+		if ( Plugin::shrine_version() ) { $c( 'shrine', Plugin::shrine_promo_module_loaded() ? 'bad' : 'ok', 'ansa™ Shrine ' . Plugin::shrine_version() . ( Plugin::shrine_promo_module_loaded() ? ' — промо модулът му Е ЗАРЕДЕН (конфликт)' : ' — промо модулът му не е зареден' ) ); }
+		/* 10. билети */
+		$c( 'tickets', 'ok', 'Тайна за билетите: ' . ( ! empty( $cfg['tickets']['secret'] ) ? 'от конфига' : 'автоматична' ) . ' · портал: ' . ( $cfg['tickets']['portal_url'] ?: 'промо страницата (?ticket=)' ) );
+		/* 11. проблеми и FIT */
+		$keys = array_column( $cfg['products'], 'key' ); $pe = array(); foreach ( $cfg['problems'] as $x ) { if ( ! in_array( $x['key'], $keys, true ) || ! isset( $live[ $x['key'] ] ) ) { $pe[] = $x['t'] . ' → ' . $x['key']; } } if ( $pe ) { $c( 'problems', 'bad', 'Проблем сочи към продукт извън страницата: ' . implode( '; ', $pe ) ); }
+		$fe = array(); foreach ( $cfg['fit'] as $k => $ks ) { foreach ( $ks as $x ) { if ( ! isset( $live[ $x ] ) ) { $fe[] = $k . '→' . $x; } } } if ( $fe ) { $c( 'fit', 'warn', 'FIT сочи към продукт извън страницата: ' . implode( ', ', $fe ) ); }
+		/* 12. кеш */
+		$cache = array(); if ( class_exists( '\\FlyingPress\\Purge' ) ) { $cache[] = 'FlyingPress'; } if ( defined( 'WP_ROCKET_VERSION' ) ) { $cache[] = 'WP Rocket'; } if ( defined( 'LSCWP_V' ) ) { $cache[] = 'LiteSpeed'; }
+		if ( $cache ) { $c( 'cache', 'info', implode( ', ', $cache ) . ': изключи от минификация/отлагане promo.js и admin-ajax; страницата се purge-ва при публикуване, runtime JSON-ът се опреснява през ajax.' ); }
+		return $out;
+	}
+
 	/** $structured=true → [{id,title,status,url}], иначе списък от редове за отчета. */
 	public static function pages_with_shortcode( $structured = false ) {
 		global $wpdb;

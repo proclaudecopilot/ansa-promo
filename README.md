@@ -23,7 +23,9 @@ includes/class-frontend.php  [ansa_promo] (init 20), enqueue, runtime JSON (wind
 includes/class-leads.php     gate имейл → таблица leads (ajax ansa_promo_lead, nonce + rate limit), cron 180 дни
 includes/class-seed.php      началната чернова от мокъпа (продукти, FIT, проблеми); product_id по име в WC
 includes/class-admin.php     меню „🎁 ansa Промо“: Състояние · 🧰 Инструменти (страница, игра, срок, gate, публикуване, история, seed) · JSON
-includes/class-doctor.php    env() — редовете на екрана „Състояние“; Фаза 2 добавя checks()
+includes/class-doctor.php    env() — редовете на екрана „Състояние“; checks() — publish gate-ът (план §7)
+includes/class-editor.php    Фаза 2: страницата ✏️ Редактор + ajax get/save/publish/discard/restore/doctor
+assets/editor.js / .css      редакторът: рейл · канвас (iframe + postMessage) · инспектор · ⚙️ Двигател · Doctor · История · JSON
 includes/class-cart.php      Фаза 3: ansa_promo_add, цени/заключване/доставка/купони, чекаут ред + ☑ сетът, order meta, благодаря
 includes/class-tickets.php   Фаза 4: билети (HMAC кодове), QR endpoint, REST за портала, ваучер/книга по имейл, void, 🎟️ Поръчки, стикер
 includes/class-qr.php        QR код в чист PHP (v1–10, L/M/Q/H, RS, маски) → PNG (GD) / SVG
@@ -48,7 +50,7 @@ docs/                        планът + мокъпът + port-css.py + shots
 |------|--------|-------|--------|
 | 0 | 1.0.0 · 1.0.1 | репо, скелет, updater, таблици, guard в Shrine 6.19.22; 1.0.1 = LOGADOR updater 1.1.2 (поглъща форка на Partner) | `snippets/phase-0.php` — отчет за средата |
 | 1 | 1.0.2 … 1.0.53 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax; 1.0.3 = цял екран, WC снимки, бадж с цена, таб 📦 Продукти | `snippets/phase-1.php` |
-| 2 | 1.0.3 | визуалният редактор | — |
+| 2 | 1.4.0 | визуалният редактор + Doctor publish gate (`class-editor.php`, `assets/editor.js/.css`) | Playwright (tests/e2e) |
 | 3 | 1.1.0 | количка и чекаут (`includes/class-cart.php`) | probe suite `promo-cart` |
 | 4 | 1.2.0 | награди: билети, QR, REST за портала, ваучер, книга, 🎟️ Поръчки (`class-tickets.php`, `class-qr.php`) | probe suite `promo-tickets` |
 | 5 | 1.3.0 | Insights (фуния) + мост към ansa Partner (`class-insights.php`, `class-partner.php`) | probe suite `promo-insights` |
@@ -81,6 +83,16 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### Фаза 2 (1.4.0) — визуалният редактор · Doctor publish gate
+**Какво има:** страница **🎁 ansa Промо → ✏️ Редактор** (`includes/class-editor.php`, `assets/editor.js`, `assets/editor.css`; пълен екран, план §5):
+- **Ляв рейл:** 14-те региона на копи-регистъра в реда на екраните с брой ключове и променени (●); търсене в текстовете; „само променените“; ⚙️ Двигател (🎮 Играта, 📦 Кутиите, 🎁 Наградите, 💳 Плащане, 🎟️ Билети, 🔗 FIT · проблеми; 📦 Продукти остава в стария таб); 🧰 Doctor · История · JSON.
+- **Канвас:** iframe със самата страница (`?ansa_promo=draft&ansa_editor=1` — черновата + регистърът, nocache/noindex; никакъв втори рендер). Лента за сценарий: UTM · кутия · екран (попъп, кутиите, напълни, честито, таблото, селектор, продукт, сигурна ли си, смяна, любимци, поръчка, как работи) · пълна кутия; 💻 1280 / 📱 390 с автоматично мащабиране. Хотспотове: всеки елемент от `T()` носи `data-ck`; hover = пунктир, избран = оранжева рамка, променен = лента вляво (`promo-extra.css`); клик праща ключа към редактора (`postMessage ck`), редакторът връща `copy` (живо, 150 ms), `cfg` (двигателят), `scenario`, `mark`, `changed`.
+- **Инспектор:** регион + ключ, къде се вижда, textarea (auto-grow, Ctrl+Enter), чипове с плейсхолдърите на текста (+ всички), дефолтът, „⟲ Върни дефолта“, предишен/следващ; за текстове извън канваса (чекаут, имейли, съобщения) — преглед с примерни стойности. Валидация: небалансирани `{{ }}` и непознат плейсхолдър — червено и ● в рейла; сървърът проверява пак (`Copy::validate`).
+- **Горна лента:** статус (незаписани · N променени · запазена HH:MM · публикувано vN · на живо/изключена), 💾 Запази (Ctrl+S; автозапис 20 с), 🚀 Публикувай (Doctor: ⛔ спира, модал с „въпреки това“), 🩺, ↶ Откажи черновата; „напускаш със незаписани промени“ предупреждение.
+- **Данни:** `ansa_promo_editor_get/save/publish/discard/restore/doctor` (manage_woocommerce + nonce). Записът е цялата чернова → `Config::save_draft` (normalize) → връща записаното (UI-ят не дрейфва); празни асоциативни масиви се връщат като `{}`. Публикуването: `Doctor::checks()` → `Config::publish()` (версия +1, история 10, purge на runtime transient и страницата).
+- **Doctor (publish gate, план §7)** — `Doctor::checks($cfg)`: страница с shortcode (⛔), продукти с WC ред/цена (⛔; без снимка/изчерпани ⚠), кутии (packs, pct, награди, cosm_pay ⛔), книга (⛔ ако кутия я има без продукт), сет (ℹ), gateways включени (⛔), срок/включено (⚠), копи плейсхолдъри (⛔), guard-ът на Shrine (⛔), тайна за билетите, проблеми (⛔)/FIT (⚠) към продукти извън страницата, кеш плъгин (ℹ с изключенията).
+**Проверено локално** (Playwright, вход в wp-admin): рейл 25 реда, канвас 128 хотспота, клик на хотспот → инспекторът избира ключа, писане → канвасът се сменя живо, грешен плейсхолдър → червено, Ctrl+S → записано, 📦 Кутиите pct → runtime-ът на канваса се сменя без презареждане, сценарий „поръчка“ на 📱 → екран 5, Doctor 14 реда, 🚀 → версия +1 и публикуваният runtime носи редакцията, История 2 версии, „⟲ Върни дефолта“.
 
 ### Фаза 5 (1.3.0) — Insights · мост към ansa Partner
 **Insights** (`includes/class-insights.php`): без суров лог — дневен rollup `{prefix}ansa_promo_stats` (day, step, box, utm, n; DB ver 2, dbDelta при boot). Клиентските стъпки идват от `promo.js` през ajax `ansa_promo_beacon` (nonce + 60/мин/IP; всяка стъпка веднъж на сесия, `sendBeacon` за `add` преди пренасочването; черновата и редакторът не броят): `view` → `gate` → `box` → `full` → `order` → `add`. Сървърните: `created` (поръчка), `paid` (издаден билет), `activated` (портал). Таб **📈 Insights**: фуния по стъпка с % от видели и по кутия, по UTM (конверсия paid/view), по дни; период 7/30/90/всичко; CSV. Doctor: ред „Insights (30 дни)“. Pixel Manager/GA4/Metorik не се дублират.
