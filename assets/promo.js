@@ -125,7 +125,7 @@
       +((A.gate&&A.gate.required)?'':'<button class="lnk gskip" id="gSkip"'+ck('gate.skip')+'>'+T('gate.skip')+'</button>')+'</div>'
       +'<div class="g2ft"'+ck('gate.foot')+'>'+T('gate.foot')+'</div></div>';
     $('apOv').classList.remove('off');S._lockOv=!!(A.gate&&A.gate.required);
-    function done(){S.emailDone=true;S._lockOv=false;gateMark();closeInfo();saveS()}
+    function done(){S.emailDone=true;S._lockOv=false;gateMark();closeInfo();saveS();beacon('gate')}
     $('gGo').onclick=function(){var v=$('gEmail').value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$('gEmail').classList.add('err');$('gEmail').focus();toast(T('gate.err'),true);return}S.email=v;sendLead(v,$('gOk')&&$('gOk').checked);done();toast(T('gate.saved'),false)};
     var sk=$('gSkip');if(sk)sk.onclick=done;
   }
@@ -135,9 +135,16 @@
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(r&&r.success&&r.data&&r.data.lead){S.lead=r.data.lead;saveS()}}).catch(function(){});
   }
 
+  /* ── Insights (v1.3.0): всяка стъпка се праща веднъж на сесия (view/gate/box/full/order/add); черновата и редакторът не броят ── */
+  function beacon(step){
+    if(!A.ajax||A.editor||A.draft)return;var k='ansa_promo_bc_'+A.id+'_'+step;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}
+    var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('step',step);fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');
+    try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
+    fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
+  }
   /* ── навигация ── */
   function go(n){
-    S.screen=n;if(n===1&&!S.emailDone&&!gateSeen())setTimeout(emailGate,250);
+    S.screen=n;if(n===5)beacon('order');if(n===1&&!S.emailDone&&!gateSeen())setTimeout(emailGate,250);
     [1,2,4,5].forEach(function(i){var e=$('apS'+i);if(e)e.classList.toggle('on',i===n)});
     $('apHdr').classList.toggle('builder',n===2);
     if(n!==2)$('apStrip').innerHTML='';
@@ -212,7 +219,7 @@
   (function(){var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){if($('apOv').classList.contains('off')||!document.querySelector('#apDc .fp2'))return;if(S._fillMob!==MOBF())fillPopup()},150)})})();
 
   /* ── честито ── */
-  function celebrate(){
+  function celebrate(){beacon('full');
     var b=BX();if(!b)return;var conf='';for(var ci=0;ci<18;ci++)conf+='<i style="left:'+(ci*5.5+2)+'%;animation-delay:'+(ci*.11)+'s;background:'+['#e8722a','#f59e0b','#16a34a','#6366f1','#e0507a'][ci%5]+'"></i>';
     var dc=$('apDc');dc.className='dc wide';dc.scrollTop=0;
     /* наградите — всяка с пълното си име; яхтата и сетът са героите */
@@ -255,7 +262,7 @@
   }
   function removeSlot(i,isUndo){if(S.slots[i]==null)return;S.slots[i]=null;S.slots=S.slots.filter(Boolean);while(S.slots.length<BX().packs)S.slots.push(null);if(isUndo)toast(T('ms.undone'),true);render();saveS()}
   function removeOne(k){var i=S.slots.lastIndexOf(k);if(i>=0)removeSlot(i)}
-  function chooseBox(bi,keep){
+  function chooseBox(bi,keep){setTimeout(function(){beacon('box')},0);
     S.box=bi;var b=BOXES[bi];
     var kept=keep?S.slots.filter(Boolean):[];
     if(!keep&&S.core)kept=[S.core];
@@ -645,7 +652,7 @@
       fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
       /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
       var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
-        if(r&&r.success&&r.data&&r.data.checkoutUrl){window.location.href=r.data.checkoutUrl;return}
+        if(r&&r.success&&r.data&&r.data.checkoutUrl){beacon('add');window.location.href=r.data.checkoutUrl;return}
         if(retry&&r&&r.data&&r.data.code==='nonce'){return fetch(A.ajax+'?action=ansa_promo_runtime',{credentials:'same-origin'}).then(function(x){return x.json()}).then(function(x){if(x&&x.success&&x.data&&x.data.nonce)A.nonce=x.data.nonce;return send(false)})}
         btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast((r&&r.data&&r.data.msg)||T('or.err'),true);
       })};
@@ -722,5 +729,5 @@
   var restored=restoreS();
   if(A.editor){S.emailDone=true;A.editorNoGate=true;go(1)}
   else{go(S.screen===2&&restored?2:1);if(restored&&full()){toast(T('ms.restored'),false)}else if(restored&&!full()){S._fillPending=false;fillModePopup()}}
-  refreshRuntime();
+  refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
 })();

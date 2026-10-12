@@ -4,6 +4,7 @@
  *
  * {prefix}ansa_promo_tickets — един ред на поръчка: код за QR, брой билети, статус.
  * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия.
+ * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
  *
  * Създават се при активация и при смяна на ANSA_PROMO_DB_VER (ъпдейт през updater-а НЕ
  * пуска activation hook, затова maybe_upgrade() на всеки boot).
@@ -25,7 +26,7 @@ final class Schema {
 	}
 
 	public static function tables() {
-		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ) );
+		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ) );
 	}
 
 	/** SQL за dbDelta (формат: два интервала преди PRIMARY KEY, KEY на отделен ред). */
@@ -63,6 +64,17 @@ final class Schema {
   KEY email (email),
   KEY created_at (created_at),
   KEY converted_order_id (converted_order_id)
+) $collate;",
+			"CREATE TABLE {$t['stats']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  day date NOT NULL,
+  step varchar(16) NOT NULL,
+  box varchar(8) NOT NULL DEFAULT '',
+  utm varchar(64) NOT NULL DEFAULT '',
+  n int(10) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY  (id),
+  UNIQUE KEY cell (day,step,box,utm),
+  KEY day (day)
 ) $collate;",
 		);
 	}
