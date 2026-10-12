@@ -58,6 +58,7 @@ jobs:
       # а 1.1.3 (носи го 1.0.53) търси <slug>.zip — така и старият updater никога не слага probe-а на мястото на промото.
       - name: Attach ansa-probe.zip
         if: steps.v.outputs.exists == '0'
+        continue-on-error: true   # probe-ът е същият от 1.0.53; мрежова грешка на GitHub тук не бива да спира ping-а на сайта
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.ver }}
