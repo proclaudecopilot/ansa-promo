@@ -265,7 +265,7 @@ final class Frontend {
 			'live'      => Config::is_live( $cfg ),
 			'draft'     => (bool) $draft,
 			'editor'    => $editor,
-			'cart'      => false, /* Фаза 3 → true: „Завърши поръчката“ вика ansa_promo_add */
+			'cart'      => true, /* Фаза 3: „Завърши поръчката“ вика ansa_promo_add (Cart::ajax_add) */
 			'refresh'   => true,
 			'checkout'  => array( 'cod' => ! empty( $cfg['checkout']['cod_gateway'] ) ),
 			'products'  => (object) $prods,

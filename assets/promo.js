@@ -643,10 +643,13 @@
       var btn=$('finish');btn.disabled=true;btn.innerHTML=T('or.sending');
       var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay);fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);if(A.draft)fd.append('draft','1');
       fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
-      fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
+      /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
+      var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
         if(r&&r.success&&r.data&&r.data.checkoutUrl){window.location.href=r.data.checkoutUrl;return}
+        if(retry&&r&&r.data&&r.data.code==='nonce'){return fetch(A.ajax+'?action=ansa_promo_runtime',{credentials:'same-origin'}).then(function(x){return x.json()}).then(function(x){if(x&&x.success&&x.data&&x.data.nonce)A.nonce=x.data.nonce;return send(false)})}
         btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast((r&&r.data&&r.data.msg)||T('or.err'),true);
-      }).catch(function(){btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast(T('or.err'),true)});
+      })};
+      send(true).catch(function(){btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast(T('or.err'),true)});
     };
   }
   /* v1.0.24: плаващата яхта (телефон, само на екрана с кутиите): картинка + „Томбола“; при докосване се разгъва с текста на лентата
@@ -673,7 +676,7 @@
   function refreshRuntime(){
     if(!A.ajax||A.editor||A.draft||!A.refresh)return;
     fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||''),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
-      if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;
+      if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce; /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       Object.keys(d.products).forEach(function(k){if(!PROD[k]||PROD[k].price!==d.products[k].price||PROD[k].stock!==d.products[k].stock)changed=true});
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render()}
