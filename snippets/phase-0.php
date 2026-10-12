@@ -131,20 +131,20 @@ function ansa_promo_snippet0_report() {
 		else { $b = (string) wp_remote_retrieve_body( $r ); $p( 'anonymous fetch', 'HTTP ' . wp_remote_retrieve_response_code( $r ) . ' · ' . strlen( $b ) . 'B · root div=' . $yn( false !== strpos( $b, 'id="ansaPromo"' ) ) . ' · „скоро“=' . $yn( false !== strpos( $b, 'ansa-promo-soon' ) ) . ' · admin note leaked=' . $yn( false !== strpos( $b, 'ansa-promo-admin-note' ) ) . ' · x-cache=' . ( wp_remote_retrieve_header( $r, 'x-flying-press-cache' ) ?: wp_remote_retrieve_header( $r, 'cf-cache-status' ) ?: '—' ) ); }
 	}
 
-	$h( 'LOGADOR GitHub Updater' );
-	$mud = ( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ) . '/logador-github-updater.php';
+	$h( 'proclaudecopilot GitHub Updater' );
+	$mud = ( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ) . '/proclaudecopilot-github-updater.php';
 	$p( 'mu файл', is_file( $mud ) ? 'има · ' . ( preg_match( '/\*\s*Version:\s*([0-9.]+)/', (string) file_get_contents( $mud ), $m ) ? $m[1] : '?' ) : 'ЛИПСВА' );
-	$p( 'зареден (константа)', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? LOGADOR_GH_UPDATER_VERSION : 'no' );
+	$p( 'зареден (константа)', defined( 'PCC_GH_UPDATER_VERSION' ) ? PCC_GH_UPDATER_VERSION : 'no' );
 	$pccf = ( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ) . '/proclaudecopilot-github-updater.php';
 	$p( 'PCC форк (Partner)', ( is_file( $pccf ) ? 'файлът има' : 'файлът липсва' ) . ' · PCC_GH_UPDATER_VERSION=' . ( defined( 'PCC_GH_UPDATER_VERSION' ) ? PCC_GH_UPDATER_VERSION : '—' ) . ' · форкът закачен=' . $yn( has_action( 'admin_post_pcc_gh_save' ) ) . ' (трябва: константа 0, закачен no)' );
-	if ( class_exists( 'LOGADOR_GitHub_Updater' ) ) {
-		$p( 'token', \LOGADOR_GitHub_Updater::token() ? 'има (' . strlen( \LOGADOR_GitHub_Updater::token() ) . ' знака)' : 'НЯМА' );
-		$tr = \LOGADOR_GitHub_Updater::tracked(); foreach ( $tr as $file => $t ) $p( 'следи ' . $file, $t['repo'] . ' · локално ' . $t['version'] );
+	if ( class_exists( 'PCC_GitHub_Updater' ) ) {
+		$p( 'token', \PCC_GitHub_Updater::token() ? 'има (' . strlen( \PCC_GitHub_Updater::token() ) . ' знака)' : 'НЯМА' );
+		$tr = \PCC_GitHub_Updater::tracked(); foreach ( $tr as $file => $t ) $p( 'следи ' . $file, $t['repo'] . ' · локално ' . $t['version'] );
 		foreach ( array( 'proclaudecopilot/ansa-promo', 'proclaudecopilot/ansa-shrine' ) as $repo ) {
-			$rel = \LOGADOR_GitHub_Updater::release( $repo, true );
+			$rel = \PCC_GitHub_Updater::release( $repo, true );
 			$p( 'GitHub ' . $repo, ! empty( $rel['data'] ) ? 'latest ' . $rel['data']['version'] . ' · zip=' . $yn( false !== strpos( (string) $rel['data']['package'], '.zip' ) ) . ' · ' . $rel['data']['published'] : 'грешка: ' . ( $rel['error'] ?: '?' ) );
 		}
-		$p( 'webhook url', \LOGADOR_GitHub_Updater::hook_url() );
+		$p( 'webhook url', \PCC_GitHub_Updater::hook_url() );
 	}
 	$up = get_site_transient( 'update_plugins' );
 	$p( 'WP вижда ъпдейт за ansa-promo', isset( $up->response['ansa-promo/ansa-promo.php'] ) ? 'yes → ' . $up->response['ansa-promo/ansa-promo.php']->new_version : 'no' );

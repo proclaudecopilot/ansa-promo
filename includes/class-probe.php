@@ -1,9 +1,9 @@
 <?php
 /**
- * ansa™ Промо — проверките за LOGADOR Probe (вместо снипети).
+ * ansa™ Промо — проверките за ansa™ Probe (вместо снипети).
  *
- * Плъгинът LOGADOR Probe (probe/ansa-probe, качва се веднъж) дава REST с token и пуска „suites“, регистрирани през
- * filter `logador_probe_suites`. Тук са нашите: env (Doctor), page (страницата като анонимен посетител), cart (Фаза 3).
+ * Плъгинът ansa™ Probe (probe/ansa-probe, качва се веднъж) дава REST с token и пуска „suites“, регистрирани през
+ * filter `ansa_probe_suites`. Тук са нашите: env (Doctor), page (страницата като анонимен посетител), cart (Фаза 3).
  * Всяка suite получава $t (ok/eq/note) и параметрите на заявката; хвърлено изключение = провалена suite, не 500.
  *
  * @package AnsaPromo
@@ -16,8 +16,8 @@ defined( 'ABSPATH' ) || exit;
 final class Probe {
 
 	public static function register() {
-		add_filter( 'logador_probe_suites', array( __CLASS__, 'suites' ) );
-		add_filter( 'logador_probe_env', array( __CLASS__, 'env' ) );
+		add_filter( 'ansa_probe_suites', array( __CLASS__, 'suites' ) );
+		add_filter( 'ansa_probe_env', array( __CLASS__, 'env' ) );
 	}
 
 	public static function suites( $s ) {
@@ -61,7 +61,7 @@ final class Probe {
 		if ( empty( $pub['page_id'] ) ) { $t->ok( 'страница', false, 'няма page_id в публикувания конфиг' ); return null; }
 		$url = get_permalink( (int) $pub['page_id'] ); $t->note( 'url', $url );
 		$hdr = array();
-		$get = function ( $u, $cookie = '' ) use ( &$hdr ) { $a = array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (LOGADOR Probe) Chrome', 'Cache-Control' => 'no-cache' ) ); if ( $cookie ) { $a['headers']['Cookie'] = $cookie; } $r = wp_remote_get( $u, $a ); if ( is_wp_error( $r ) ) { return array( 0, '', $r->get_error_message() ); } $h = wp_remote_retrieve_headers( $r ); $hdr = array(); foreach ( array( 'x-flying-press-cache', 'x-flying-press-source', 'cf-cache-status', 'x-litespeed-cache', 'cache-control' ) as $k ) { if ( isset( $h[ $k ] ) ) { $hdr[ $k ] = is_array( $h[ $k ] ) ? implode( ',', $h[ $k ] ) : $h[ $k ]; } } return array( (int) wp_remote_retrieve_response_code( $r ), (string) wp_remote_retrieve_body( $r ), '' ); };
+		$get = function ( $u, $cookie = '' ) use ( &$hdr ) { $a = array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' ) ); if ( $cookie ) { $a['headers']['Cookie'] = $cookie; } $r = wp_remote_get( $u, $a ); if ( is_wp_error( $r ) ) { return array( 0, '', $r->get_error_message() ); } $h = wp_remote_retrieve_headers( $r ); $hdr = array(); foreach ( array( 'x-flying-press-cache', 'x-flying-press-source', 'cf-cache-status', 'x-litespeed-cache', 'cache-control' ) as $k ) { if ( isset( $h[ $k ] ) ) { $hdr[ $k ] = is_array( $h[ $k ] ) ? implode( ',', $h[ $k ] ) : $h[ $k ]; } } return array( (int) wp_remote_retrieve_response_code( $r ), (string) wp_remote_retrieve_body( $r ), '' ); };
 		list( $code, $body, $err ) = $get( $url );
 		$t->ok( 'HTTP 200', 200 === $code, $code . ' ' . $err . ' · ' . wp_json_encode( $hdr ) );
 		$t->ok( 'има #ansaPromo', false !== strpos( $body, 'id="ansaPromo"' ) );
@@ -192,7 +192,7 @@ final class Probe {
 	/** Поръчка от текущата количка през WC_Checkout::create_order (COD), както би я направил чекаутът. Връща order id или 0. */
 	private static function make_order( $t, $label, $box, $cfg ) {
 		try {
-			$data = array( 'billing_first_name' => 'Probe', 'billing_last_name' => 'Тест', 'billing_email' => 'probe@example.com', 'billing_phone' => '0888000000', 'billing_country' => 'BG', 'billing_city' => 'София', 'billing_postcode' => '1000', 'billing_address_1' => 'ул. Тест 1', 'shipping_country' => 'BG', 'shipping_city' => 'София', 'shipping_postcode' => '1000', 'shipping_address_1' => 'ул. Тест 1', 'shipping_first_name' => 'Probe', 'shipping_last_name' => 'Тест', 'payment_method' => $cfg['checkout']['cod_gateway'] ?: 'cod', 'ship_to_different_address' => false, 'order_comments' => 'LOGADOR Probe — тестова поръчка', 'shipping_method' => array() );
+			$data = array( 'billing_first_name' => 'Probe', 'billing_last_name' => 'Тест', 'billing_email' => 'probe@example.com', 'billing_phone' => '0888000000', 'billing_country' => 'BG', 'billing_city' => 'София', 'billing_postcode' => '1000', 'billing_address_1' => 'ул. Тест 1', 'shipping_country' => 'BG', 'shipping_city' => 'София', 'shipping_postcode' => '1000', 'shipping_address_1' => 'ул. Тест 1', 'shipping_first_name' => 'Probe', 'shipping_last_name' => 'Тест', 'payment_method' => $cfg['checkout']['cod_gateway'] ?: 'cod', 'ship_to_different_address' => false, 'order_comments' => 'ansa™ Probe — тестова поръчка', 'shipping_method' => array() );
 			$packages = WC()->cart->get_shipping_packages(); if ( $packages ) { $calc = WC()->shipping()->calculate_shipping( $packages ); $first = array_key_first( (array) ( $calc[0]['rates'] ?? array() ) ); if ( $first ) { $data['shipping_method'] = array( $first ); WC()->session->set( 'chosen_shipping_methods', array( $first ) ); } }
 			$_POST['ansa_promo_cosm_seen'] = '1'; $_POST['ansa_promo_cosm'] = '1';
 			WC()->cart->calculate_totals();
@@ -220,7 +220,7 @@ final class Probe {
 			$cid = WC()->session->get_customer_id(); $exp = time() + 2 * DAY_IN_SECONDS; $expiring = $exp - HOUR_IN_SECONDS; /* бисквитката носи само hash(customer_id|exp); редът в DB е записан от save_data() */
 			$to_hash = $cid . '|' . $exp; $hash = hash_hmac( 'md5', $to_hash, wp_hash( $to_hash ) );
 			$cookie = 'wp_woocommerce_session_' . COOKIEHASH . '=' . rawurlencode( $cid . '||' . $exp . '||' . $expiring . '||' . $hash );
-			$r = wp_remote_get( $url, array( 'timeout' => 40, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'Cookie' => $cookie, 'User-Agent' => 'Mozilla/5.0 (LOGADOR Probe) Chrome', 'Cache-Control' => 'no-cache' ) ) );
+			$r = wp_remote_get( $url, array( 'timeout' => 40, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'Cookie' => $cookie, 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' ) ) );
 			if ( is_wp_error( $r ) ) { $out['err'] = $r->get_error_message(); return $out; }
 			$out['code'] = (int) wp_remote_retrieve_response_code( $r ); $out['body'] = (string) wp_remote_retrieve_body( $r ); $out['bytes'] = strlen( $out['body'] ); $out['wfacp'] = false !== strpos( $out['body'], 'wfacp' );
 		} catch ( \Throwable $e ) { $out['err'] = $e->getMessage(); }

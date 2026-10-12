@@ -53,7 +53,7 @@ final class Doctor {
 		$st = Insights::report( 30 )['by_step']; $add( 'Insights (30 дни)', 'view ' . (int) $st['view'] . ' · box ' . (int) $st['box'] . ' · full ' . (int) $st['full'] . ' · add ' . (int) $st['add'] . ' · created ' . (int) $st['created'] . ' · paid ' . (int) $st['paid'] . ' · ansa Partner: ' . ( Partner::available() ? 'има (мостът е активен)' : 'няма' ), 'info' );
 		$add( 'Билети', Tickets::count( 'issued' ) . ' издадени (' . Tickets::sum( 'issued' ) . ' бр.) · ' . Tickets::count( 'activated' ) . ' активирани · ' . Tickets::count( 'void' ) . ' анулирани · портал: ' . ( $draft['tickets']['portal_url'] ?: 'няма (QR → промо страницата)' ), 'info' );
 
-		$add( 'LOGADOR GitHub Updater', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? LOGADOR_GH_UPDATER_VERSION . ( class_exists( 'LOGADOR_GitHub_Updater' ) && \LOGADOR_GitHub_Updater::token() ? ' · token има' : ' · БЕЗ token' ) : 'не е зареден (mu-plugin)', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? 'ok' : 'warn' );
+		$add( 'proclaudecopilot GitHub Updater', defined( 'PCC_GH_UPDATER_VERSION' ) ? PCC_GH_UPDATER_VERSION . ( class_exists( 'PCC_GitHub_Updater' ) && \PCC_GitHub_Updater::token() ? ' · token има' : ' · БЕЗ token' ) : 'не е зареден (mu-plugin)', defined( 'PCC_GH_UPDATER_VERSION' ) ? 'ok' : 'warn' );
 
 		$pages = self::pages_with_shortcode();
 		$add( 'Страници с [ansa_promo]', $pages ? implode( '; ', $pages ) : 'няма', $pages ? 'ok' : 'warn' );
