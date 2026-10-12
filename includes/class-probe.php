@@ -307,7 +307,7 @@ final class Probe {
 		/* чистим пробните редове */
 		$wpdb->delete( Schema::table( 'stats' ), array( 'utm' => 'probe' ), array( '%s' ) );
 		/* ── партньорски купон ── */
-		$t->note( 'ansa Partner', Partner::available() ? 'има (AP_Coupons) · бонус ' . (int) Config::get_published()['tickets']['partner_bonus'] : 'няма — мостът се проверява със симулиран партньорски код' );
+		$t->note( 'ansa Partner', Partner::available() ? 'има (AP_Coupons' . ( is_callable( array( 'AP_Coupons', 'promo_bonus_tickets' ) ) ? ', билети по код' : ', без promo_bonus_tickets — стар Partner' ) . ') · глобален бонус ' . (int) Config::get_published()['tickets']['partner_bonus'] : 'няма — мостът се проверява със симулиран партньорски код' );
 		if ( ! function_exists( 'WC' ) ) { return null; }
 		if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
 		if ( ! WC()->cart ) { $t->ok( 'WC количка', false ); return null; }
@@ -333,7 +333,7 @@ final class Probe {
 		$t->ok( 'отстъпката му е 0 (не се стаква)', abs( $tot1 - $tot0 ) < 0.011 && (float) WC()->cart->get_discount_total() < 0.011, 'total ' . $tot0 . ' → ' . $tot1 . ' · discount ' . WC()->cart->get_discount_total() );
 		$packages = WC()->cart->get_shipping_packages(); $rates = array(); if ( $packages ) { $calc = WC()->shipping()->calculate_shipping( $packages ); foreach ( (array) ( $calc[0]['rates'] ?? array() ) as $rid => $rate ) { $rates[ $rid ] = (float) $rate->get_cost(); } }
 		$free = in_array( 'ship', $box['rw'], true ); if ( $rates ) { $t->ok( 'доставката остава по кутията (free_shipping на купона не важи)', $free ? max( $rates ) <= 0.0 : min( $rates ) > 0.0, wp_json_encode( $rates ) ); }
-		$meta = Cart::build_meta( true ); $bonus = (int) $cfg['tickets']['partner_bonus'];
+		$meta = Cart::build_meta( true ); $bonus = Partner::bonus_for_code( $code, $cfg ); /* Partner ≥ 5.9: кодът за играта носи своя брой */
 		$t->ok( 'order meta: tickets.partner + bonus', ! empty( $meta['tickets']['partner'] ) && (int) ( $meta['tickets']['bonus'] ?? -1 ) === $bonus && ( $meta['tickets']['partner_code'] ?? '' ) === wc_format_coupon_code( $code ), wp_json_encode( $meta['tickets'] ) );
 		if ( '' !== $pcode ) { $co = self::fetch_as_session( Cart::checkout_url() ); $t->ok( 'чекаутът показва реда за партньора', $bonus <= 0 || ( 200 === $co['code'] && false !== strpos( $co['body'], '🤝' ) ), 'HTTP ' . $co['code'] . ( $bonus <= 0 ? ' · бонусът е 0' : '' ) ); }
 		else { $t->note( 'чекаутът с реда за партньора', 'само с истински код (?pcode=КОД) — симулираният живее само в тази заявка' ); }
