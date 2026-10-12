@@ -18,7 +18,7 @@
 | D5 | No coupons in promo checkout (filter stays for ansa Partner attribution, see §6.4). Card + COD. FunnelKit checkout. Launch on ansa.bg only, 16.10.2026 → 31.12.2026. | promo-board 24–25 Sep |
 | D6 | Cosmetics set = hidden WC product; reservation automatic with the order (☑ on checkout, default on); voucher emailed at `completed`. Book = WC product delivered by email, €0 line. | promo-board 24–25 Sep |
 | D7 | Editor must be a Proof-Shrine-class visual editor: copy registry with `{{placeholders}}`, draft/publish, regions + live canvas + inspector. | promo-board 25 Sep |
-| D8 | Delivery = GitHub repo `proclaudecopilot/ansa-promo` (private) + LOGADOR GitHub Updater mu-plugin, exactly like `proclaudecopilot/ansa-shrine`. Release = bump version in two places + push `main`. No zips after the first install. | ways-of-working 29 Sep |
+| D8 | Delivery = GitHub repo `proclaudecopilot/ansa-promo` (private) + proclaudecopilot GitHub Updater mu-plugin, exactly like `proclaudecopilot/ansa-shrine`. Release = bump version in two places + push `main`. No zips after the first install. | ways-of-working 29 Sep |
 | D9 | Testing: user never tests manually. Every phase ships with a Code Snippet that self-checks on the live site and prints a report; user pastes it back. | ways-of-working 25 Sep |
 | D10 | Pricing is server-side only. Client sends IDs and quantities, never prices/percentages. | technical-rules |
 | D11 | Frontend copy rules: със/с, във/в by next word; never "Козм. сет"; set always "Новият козметичен сет на ansa™" + "5 уникални продукта на стойност €129. Стартира през 2027 година." + price as badge ~~€129~~ €1/€64,50, never inline; yacht = "5 дни почивка с яхта в Гърция за теб и 4 твои близки, с включена храна и напитки, стойност €8 800", never "за €8 800". "всички награди отключени" only for Голяма. | promo-board |
@@ -80,7 +80,7 @@ Runtime objects (not in the option):
 ansa-promo/
 ├─ ansa-promo.php                 // header (Version + GitHub Plugin URI), ANSA_PROMO_VER, ANSA_PROMO_PLUGIN_VER, autoloader,
 │                                 //   cache-flush-on-version-change block (copied from Shrine), mu-updater installer (from the
-│                                 //   LOGADOR instruction, 1:1), requires WC check (admin notice + bail if WC missing)
+│                                 //   instruction, 1:1), requires WC check (admin notice + bail if WC missing)
 ├─ includes/
 │  ├─ class-plugin.php            // boot: load config, register frontend/cart/admin/rest/cron; activation: create tables, seed draft
 │  ├─ class-config.php            // store, normalize, draft/publish/discard, history (last 10 published), import/export JSON
@@ -96,7 +96,7 @@ ansa-promo/
 │  ├─ class-doctor.php            // publish gate checks (see §7)
 │  ├─ class-insights.php          // Phase 5: funnel counters (gate shown/email/box/fill/celeb/checkout/order per box, per utm)
 │  ├─ class-partner.php           // Phase 5: ansa Partner hook (+1 ticket when partner coupon/ref present)
-│  └─ mu/logador-github-updater.php
+│  └─ mu/proclaudecopilot-github-updater.php
 ├─ assets/
 │  ├─ promo.css / promo.js        // the v73 port, scoped under .ansa-promo, every string via T(key)
 │  ├─ editor.css / editor.js      // the visual editor (§5)
@@ -106,7 +106,7 @@ ansa-promo/
 │  ├─ email-book.php, email-voucher.php, email-ticket.php
 │  └─ checkout-rewards.php        // FunnelKit review-order rows
 ├─ snippets/                      // the Code Snippets the user uploads — one per phase, see §8
-├─ .github/workflows/release.yml  // from the LOGADOR instruction, with ansa-promo.php / ANSA_PROMO_VER / ansa-promo
+├─ .github/workflows/release.yml  // from the instruction, with ansa-promo.php / ANSA_PROMO_VER / ansa-promo
 ├─ .gitignore, README.md
 ```
 

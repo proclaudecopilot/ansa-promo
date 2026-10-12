@@ -4,7 +4,7 @@
  *
  * Трие опциите, transient-ите и крона на плъгина. Таблиците (билети, leads, Insights) и order meta-та на поръчките ОСТАВАТ —
  * те са бизнес данни (кой билет на коя поръчка). За пълно изтриване: define( 'ANSA_PROMO_UNINSTALL_DROP', true ) в wp-config.php
- * преди изтриването. LOGADOR GitHub Updater (mu-plugin) е общ за плъгините на LOGADOR и не се пипа.
+ * преди изтриването. proclaudecopilot GitHub Updater (mu-plugin) е общ за плъгините на ansa и не се пипа.
  *
  * @package AnsaPromo
  * @since 1.4.1

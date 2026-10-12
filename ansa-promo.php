@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.5.4
+ * Version:     1.5.5
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.5.4' );
+define( 'ANSA_PROMO_VER', '1.5.5' );
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
@@ -73,12 +73,12 @@ add_action( 'plugins_loaded', function () {
 	\AnsaPromo\Plugin::instance()->boot();
 }, 5 );
 
-/* LOGADOR GitHub Updater — общ за всички плъгини на LOGADOR: копира се в wp-content/mu-plugins, ако липсва или е по-стар. */
+/* proclaudecopilot GitHub Updater — общ за всички плъгини на ansa: копира се в wp-content/mu-plugins, ако липсва или е по-стар. */
 add_action( 'admin_init', function () {
 	if ( ! current_user_can( 'activate_plugins' ) ) return;
-	$src = plugin_dir_path( __FILE__ ) . 'includes/mu/logador-github-updater.php';
+	$src = plugin_dir_path( __FILE__ ) . 'includes/mu/proclaudecopilot-github-updater.php';
 	$dir = defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins';
-	$dst = $dir . '/logador-github-updater.php';
+	$dst = $dir . '/proclaudecopilot-github-updater.php';
 	if ( ! is_file( $src ) ) return;
 	$want = preg_match( '/\*\s*Version:\s*([0-9.]+)/', (string) file_get_contents( $src ), $m ) ? $m[1] : '0';
 	$have = is_file( $dst ) && preg_match( '/\*\s*Version:\s*([0-9.]+)/', (string) file_get_contents( $dst ), $m2 ) ? $m2[1] : '0';
@@ -86,11 +86,12 @@ add_action( 'admin_init', function () {
 	if ( ! is_dir( $dir ) ) @wp_mkdir_p( $dir );
 	if ( ! is_dir( $dir ) || ! is_writable( $dir ) || ! @copy( $src, $dst ) ) {
 		add_action( 'admin_notices', function () use ( $src, $dir ) {
-			echo '<div class="notice notice-warning"><p><b>ansa™ Промо:</b> не мога да запиша <code>logador-github-updater.php</code> в <code>' . esc_html( $dir ) . '</code> (права). Копирай го ръчно от <code>' . esc_html( $src ) . '</code>.</p></div>';
+			echo '<div class="notice notice-warning"><p><b>ansa™ Промо:</b> не мога да запиша <code>proclaudecopilot-github-updater.php</code> в <code>' . esc_html( $dir ) . '</code> (права). Копирай го ръчно от <code>' . esc_html( $src ) . '</code>.</p></div>';
 		} );
 		return;
 	}
+	@unlink( $dir . '/logador-github-updater.php' ); // старото име на updater-а (до 1.1.5)
 	add_action( 'admin_notices', function () use ( $want ) {
-		echo '<div class="notice notice-success is-dismissible"><p><b>LOGADOR GitHub Updater ' . esc_html( $want ) . '</b> е инсталиран. Token-ът се слага веднъж в <a href="' . esc_url( admin_url( 'options-general.php?page=logador-github' ) ) . '">Settings → GitHub ъпдейти</a>.</p></div>';
+		echo '<div class="notice notice-success is-dismissible"><p><b>proclaudecopilot GitHub Updater ' . esc_html( $want ) . '</b> е инсталиран. Token-ът се слага веднъж в <a href="' . esc_url( admin_url( 'options-general.php?page=pcc-github' ) ) . '">Settings → GitHub ъпдейти</a>.</p></div>';
 	} );
 } );
