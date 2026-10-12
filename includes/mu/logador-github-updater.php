@@ -2,12 +2,16 @@
 /**
  * Plugin Name: LOGADOR GitHub Updater
  * Description: Един token за сайта; всеки плъгин с ред „GitHub Plugin URI: owner/repo“ в header-а си се обновява от GitHub Releases през стандартния WP ъпдейт (Update now / auto-updates). Webhook: GitHub Action-ът пингва сайта при release и той се обновява веднага. Инсталира се сам от плъгините на LOGADOR (mu-plugins).
- * Version: 1.1.4
+ * Version: 1.1.5
  * Author: LOGADOR
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 if ( defined( 'LOGADOR_GH_UPDATER_VERSION' ) ) return; // вече е зареден (от друго копие)
-define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.4' );
+define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.5' );
+/* v1.1.5: един release може да носи няколко плъгина с различни версии. Плъгинът избира своя zip по header „GitHub Release Asset: <база>“
+   (по подразбиране slug-ът): <база>.zip или <база>-X.Y.Z.zip; версията за сравнение е от името на файла, ако я има, иначе от тага.
+   Така ansa-shrine (таг vX.Y.Z, ansa-shrine.zip) и ansa-checkout-reskin (logador-checkout-reskin-12.1.2.zip) живеят в едно репо.
+   Плъгин с изричен asset, който липсва в последния release, е „актуален“ (няма update), не взема чужд zip. */
 /* v1.1.2: ANSA Partner ≤ 5.8.5 носи форк на същия updater под друго име
    (proclaudecopilot-github-updater.php, клас PCC_GitHub_Updater, страница pcc-github).
    Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки към GitHub.
@@ -30,7 +34,7 @@ final class LOGADOR_GitHub_Updater {
 		add_filter( 'plugins_api', array( $this, 'info' ), 20, 3 );
 		add_filter( 'upgrader_source_selection', array( $this, 'fix_folder' ), 10, 4 );
 		add_filter( 'http_request_args', array( $this, 'auth' ), 10, 2 );
-		add_filter( 'extra_plugin_headers', function ( $h ) { $h[] = 'GitHub Plugin URI'; return $h; } );
+		add_filter( 'extra_plugin_headers', function ( $h ) { $h[] = 'GitHub Plugin URI'; $h[] = 'GitHub Release Asset'; return $h; } );
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'admin_init', function () { // v1.1.2: старите линкове на Partner към страницата на форка водят тук
 			if ( isset( $_GET['page'] ) && 'pcc-github' === $_GET['page'] ) { wp_safe_redirect( admin_url( 'options-general.php?page=logador-github' ) ); exit; }
@@ -50,7 +54,7 @@ final class LOGADOR_GitHub_Updater {
 			$repo = trim( (string) ( $h['GitHub Plugin URI'] ?? '' ) );
 			$repo = preg_replace( '#^https?://github\.com/#', '', $repo ); $repo = rtrim( $repo, '/' ); $repo = preg_replace( '/\.git$/', '', $repo );
 			if ( ! preg_match( '#^[\w.-]+/[\w.-]+$#', $repo ) ) continue;
-			$out[ $file ] = array( 'file' => $file, 'slug' => dirname( $file ), 'name' => $h['Name'], 'version' => $h['Version'], 'repo' => $repo );
+			$out[ $file ] = array( 'file' => $file, 'slug' => dirname( $file ), 'name' => $h['Name'], 'version' => $h['Version'], 'repo' => $repo, 'asset' => trim( (string) ( $h['GitHub Release Asset'] ?? '' ) ) );
 		}
 		return $out;
 	}
@@ -89,13 +93,27 @@ final class LOGADOR_GitHub_Updater {
 		return $row;
 	}
 
+	/** v1.1.5: zip-ът и версията за ТОЗИ плъгин от release-а: <база>.zip / <база>-X.Y.Z.zip (база = header „GitHub Release Asset“ или slug-ът). */
+	public static function pick_asset( $d, $p ) {
+		if ( ! is_array( $d ) ) return null;
+		$base = ! empty( $p['asset'] ) ? $p['asset'] : $p['slug']; $best = null;
+		foreach ( (array) ( $d['assets'] ?? array() ) as $name => $a ) {
+			if ( ! preg_match( '/^' . preg_quote( $base, '/' ) . '(?:-(\d+(?:\.\d+)+))?\.zip$/i', $name, $m ) ) continue;
+			$ver = ( isset( $m[1] ) && '' !== $m[1] ) ? $m[1] : $d['version'];
+			if ( ! $best || version_compare( $ver, $best['version'], '>' ) ) $best = array( 'package' => $a['package'], 'api' => $a['api'], 'version' => $ver, 'name' => $name );
+		}
+		/* без изричен asset и без <slug>.zip — както досега: първият zip / zipball с версията на тага */
+		if ( ! $best && empty( $p['asset'] ) ) $best = array( 'package' => $d['package'], 'api' => $d['asset_api'], 'version' => $d['version'], 'name' => '' );
+		return $best;
+	}
+
 	/* ---------- WP ъпдейт механизъм ---------- */
 	public function inject( $t ) {
 		if ( ! is_object( $t ) ) $t = new stdClass();
 		foreach ( self::tracked() as $file => $p ) {
-			$r = self::release( $p['repo'] ); $d = $r['data'] ?? null;
+			$r = self::release( $p['repo'] ); $d = $r['data'] ?? null; $a = self::pick_asset( $d, $p );
 			$item = array( 'id' => 'github.com/' . $p['repo'], 'slug' => $p['slug'], 'plugin' => $file, 'new_version' => $p['version'], 'url' => 'https://github.com/' . $p['repo'], 'package' => '', 'icons' => array(), 'banners' => array(), 'banners_rtl' => array(), 'tested' => '', 'requires_php' => '7.4', 'compatibility' => new stdClass() );
-			if ( ! $d || version_compare( $d['version'], $p['version'], '<=' ) ) {
+			if ( ! $d || ! $a || version_compare( $a['version'], $p['version'], '<=' ) ) {
 				// Актуален: казваме го на WP през no_update — само така показва „Enable auto-updates“ и „Виж детайли“.
 				unset( $t->response[ $file ] );
 				if ( ! isset( $t->no_update ) || ! is_array( $t->no_update ) ) $t->no_update = array();
@@ -103,9 +121,8 @@ final class LOGADOR_GitHub_Updater {
 				continue;
 			}
 			if ( isset( $t->no_update[ $file ] ) ) unset( $t->no_update[ $file ] );
-			$item['new_version'] = $d['version']; $item['url'] = $d['html_url'];
-			$pkg = $d['package']; $api = $d['asset_api'];
-			if ( ! empty( $d['assets'][ $p['slug'] . '.zip' ] ) ) { $pkg = $d['assets'][ $p['slug'] . '.zip' ]['package']; $api = $d['assets'][ $p['slug'] . '.zip' ]['api']; }
+			$item['new_version'] = $a['version']; $item['url'] = $d['html_url'];
+			$pkg = $a['package']; $api = $a['api'];
 			$item['package'] = ( self::token() && $api ) ? $api : $pkg;
 			$t->response[ $file ] = (object) $item;
 		}
@@ -116,7 +133,8 @@ final class LOGADOR_GitHub_Updater {
 		foreach ( self::tracked() as $p ) {
 			if ( $p['slug'] !== $args->slug ) continue;
 			$d = self::release( $p['repo'] )['data'] ?? null; if ( ! $d ) return $res;
-			return (object) array( 'name' => $p['name'], 'slug' => $p['slug'], 'version' => $d['version'], 'author' => 'LOGADOR', 'homepage' => 'https://github.com/' . $p['repo'], 'download_link' => $d['package'], 'last_updated' => $d['published'],
+			$a = self::pick_asset( $d, $p ) ?: array( 'version' => $d['version'], 'package' => $d['package'] );
+			return (object) array( 'name' => $p['name'], 'slug' => $p['slug'], 'version' => $a['version'], 'author' => 'LOGADOR', 'homepage' => 'https://github.com/' . $p['repo'], 'download_link' => $a['package'], 'last_updated' => $d['published'],
 				'sections' => array( 'changelog' => nl2br( esc_html( $d['notes'] ?: 'Виж release-а в GitHub.' ) ) ) );
 		}
 		return $res;
@@ -258,7 +276,7 @@ final class LOGADOR_GitHub_Updater {
 		foreach ( $tr as $file => $p ) {
 			$d   = self::release( $p['repo'] )['data'] ?? null;
 			$row = array( 'plugin' => $p['name'], 'file' => $file, 'repo' => $p['repo'], 'before' => $p['version'], 'after' => $after[ $file ]['version'] ?? $p['version'],
-				'github' => $d ? $d['version'] : null, 'auto_updates' => in_array( $file, $auto, true ), 'updated' => false );
+				'github' => $d ? ( ( self::pick_asset( $d, $p ) ?: array( 'version' => $d['version'] ) )['version'] ) : null, 'auto_updates' => in_array( $file, $auto, true ), 'updated' => false );
 			$row['updated'] = version_compare( $row['after'], $row['before'], '>' );
 			if ( isset( $pending[ $file ] ) && ! $row['updated'] ) {
 				$rep['ok'] = false;
@@ -292,9 +310,9 @@ final class LOGADOR_GitHub_Updater {
 		echo '<h2>Следени плъгини</h2><table class="widefat striped"><thead><tr><th>Плъгин</th><th>Репо</th><th>Тук</th><th>В GitHub</th><th>Състояние</th></tr></thead><tbody>';
 		if ( ! $tr ) echo '<tr><td colspan="5">Няма плъгин с „GitHub Plugin URI“ в header-а.</td></tr>';
 		foreach ( $tr as $p ) {
-			$r = self::release( $p['repo'] ); $d = $r['data'] ?? null;
-			$st = $d ? ( version_compare( $d['version'], $p['version'], '>' ) ? '<b style="color:#b8481c">нова версия → Plugins → Update now</b>' : '<span style="color:#1f7a4d">актуален</span>' ) : '<b style="color:#d64545">' . esc_html( $r['error'] ?: 'няма данни' ) . '</b>';
-			echo '<tr><td><b>' . esc_html( $p['name'] ) . '</b></td><td><a href="https://github.com/' . esc_attr( $p['repo'] ) . '/releases" target="_blank">' . esc_html( $p['repo'] ) . '</a></td><td>' . esc_html( $p['version'] ) . '</td><td>' . esc_html( $d['version'] ?? '—' ) . '</td><td>' . $st . '</td></tr>';
+			$r = self::release( $p['repo'] ); $d = $r['data'] ?? null; $a = self::pick_asset( $d, $p ); $gv = $a['version'] ?? ( $d['version'] ?? null );
+			$st = $d ? ( ( $gv && version_compare( $gv, $p['version'], '>' ) ) ? '<b style="color:#b8481c">нова версия → Plugins → Update now</b>' : '<span style="color:#1f7a4d">актуален</span>' ) : '<b style="color:#d64545">' . esc_html( $r['error'] ?: 'няма данни' ) . '</b>';
+			echo '<tr><td><b>' . esc_html( $p['name'] ) . '</b></td><td><a href="https://github.com/' . esc_attr( $p['repo'] ) . '/releases" target="_blank">' . esc_html( $p['repo'] ) . '</a></td><td>' . esc_html( $p['version'] ) . '</td><td>' . esc_html( $gv ?? '—' ) . '</td><td>' . $st . '</td></tr>';
 		}
 		echo '</tbody></table><p><a class="button button-primary" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=logador_gh_check' ), 'logador_gh_check' ) ) . '">Провери и обнови сега</a> &nbsp; <span class="description">Същото като webhook-а: дърпа release-ите и обновява плъгините с включени auto-updates. Иначе се проверява на 6 ч. Auto-updates се включват от Plugins → „Enable auto-updates“ за всеки плъгин.</span></p></div>';
 	}
