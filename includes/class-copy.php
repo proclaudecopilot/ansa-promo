@@ -434,7 +434,8 @@ final class Copy {
 				'co.free'            => 'подарък',
 				'co.rewards.h'       => '🎁 Твоята кутия и твоите награди',
 				'co.cosm.ic'         => '🌸',
-				'co.cosm.label'      => 'Запазвам новия козметичен сет на ansa™ (5 продукта) за <s>€{{cosm_value}}</s> <b>€{{cosm_pay}}</b>',
+				'co.cosm.label'      => 'Запазвам новия козметичен сет на ansa™ (5 продукта)',
+				'co.cosm.price'      => '<s>€{{cosm_value}}</s> <b>€{{cosm_pay}}</b> <em>спестяваш €{{cosm_save}}</em>',
 				'co.cosm.sub'        => 'днес не плащаш нищо · ваучерът идва по имейл · плащаш при получаване (2027)',
 				'co.ship.free'       => 'безплатна с кутията 🎁',
 				'co.partner'         => '🤝 +{{bonus}} {{bonus_bileta}} от твоя партньорски код — отстъпката му не се стаква с кутията',
@@ -490,7 +491,7 @@ final class Copy {
 	public static function vars() {
 		return array(
 			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi', 'box_u', 'gift',
-			'yacht', 'ship', 'book_value', 'cosm_value', 'cosm_pay_m', 'cosm_pay_l', 'cosm_min', 'deadline', 'max_pct', 'pct_s', 'pct_m', 'pct_l',
+			'yacht', 'ship', 'book_value', 'cosm_value', 'cosm_save', 'cosm_pay_m', 'cosm_pay_l', 'cosm_min', 'deadline', 'max_pct', 'pct_s', 'pct_m', 'pct_l',
 			'tickets_s', 'tickets_m', 'tickets_l', 'name', 'n', 'need', 'rest', 'opk_rest', 'save', 'pay', 'value', 'from', 'a', 'b', 'diff', 'prod_diff',
 			'opk_diff', 'delyat', 'box_t', 'box_t_l', 'box_t_ic', 'pct_t', 'save_t', 's_box_t', 'save_l', 'save_prod', 'on', 'total', 'pos', 'mmss',
 			'cart', 'lyubimci', 'stay_what', 'full_msg', 'secret_pct', 'url', 'produkt', 'q', 'same', 't', 'podar', 'bileta', 'pg', 'pages',
