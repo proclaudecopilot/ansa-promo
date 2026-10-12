@@ -122,7 +122,7 @@ final class Tombola {
 	}
 	private static function css() {
 		return '<style id="ansa-tb-css">.ansa-tb{width:100%;max-width:520px;margin:0 auto;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e}'
-			. '.ansa-tb__card{background:#fff;border:1.5px solid rgba(232,114,42,.25);border-radius:22px;padding:26px 22px;box-shadow:0 14px 40px rgba(232,114,42,.12)}'
+			. '.ansa-tb__card{--tbx:22px;--tbb:26px;background:#fff;border:1.5px solid rgba(232,114,42,.25);border-radius:22px;padding:26px var(--tbx) var(--tbb);box-shadow:0 14px 40px rgba(232,114,42,.12)}'
 			. '.ansa-tb__brand{font-weight:900;color:#e8722a;font-size:22px}.ansa-tb h1{margin:6px 0 6px;font-size:26px;line-height:1.15;font-weight:900;letter-spacing:-.02em}.ansa-tb__sub{margin:0 0 18px;font-size:14.5px;color:#6b5f58;font-weight:600;line-height:1.45}'
 			. '.ansa-tb__form label{display:block;margin-bottom:12px}.ansa-tb__form label span{display:block;font-size:12.5px;font-weight:800;color:#7a6a62;margin:0 0 5px 2px;text-transform:uppercase;letter-spacing:.04em}'
 			. '.ansa-tb__form input{width:100%;box-sizing:border-box;font:inherit;font-size:17px;font-weight:700;padding:13px 14px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;background:#fff;color:#1a1a2e;outline:none}.ansa-tb__form input:focus{border-color:#e8722a;box-shadow:0 0 0 3px rgba(232,114,42,.15)}'
@@ -130,12 +130,15 @@ final class Tombola {
 			. '.ansa-tb__err{color:#b91c1c;font-weight:800;margin:12px 0 0;font-size:14px;line-height:1.45}.ansa-tb__foot{margin:18px 0 0;font-size:12.5px;color:#a88a75;font-weight:600;text-align:center;line-height:1.45}'
 			. '.ansa-tb__ok{text-align:center}.ansa-tb__ok h2{margin:4px 0 6px;font-size:24px;font-weight:900;line-height:1.2}.ansa-tb__ok .big{font-size:46px;font-weight:900;color:#e8722a;line-height:1;margin:10px 0 2px;letter-spacing:-1px}.ansa-tb__ok .big small{font-size:18px;color:#1a1a2e;letter-spacing:0}'
 			. '.ansa-tb__ok p{margin:8px 0;font-size:15px;line-height:1.45;font-weight:600}.ansa-tb__list{list-style:none;margin:14px 0 0;padding:0;text-align:left}.ansa-tb__list li{display:flex;gap:10px;align-items:center;font-size:14px;font-weight:700;padding:8px 10px;border-radius:12px;background:#fff8f1;border:1px solid #f3cdb8;margin-bottom:6px;line-height:1.35}.ansa-tb__list li i{flex:none;font-style:normal;width:30px;height:30px;border-radius:10px;background:#fff;border:1px solid #f3cdb8;display:inline-flex;align-items:center;justify-content:center;font-size:16px}'
-			. '.ansa-tb__vou{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fff7f3,#fff1f6);border:1.5px solid #f6c9d6;font-size:14px;font-weight:700;line-height:1.45;text-align:left}.ansa-tb__vou b{color:#e8722a;font-size:16px}'
-			. '.ansa-tb__ref{margin:18px 0 0;padding:16px 14px;border-radius:16px;background:linear-gradient(135deg,#fff8f1,#fff3f6);border:1.5px solid #f3cdb8;text-align:left}.ansa-tb__ref h3{margin:0 0 6px;font-size:17px;font-weight:900;line-height:1.25}.ansa-tb__ref p{margin:0 0 12px;font-size:14px;font-weight:600;line-height:1.45;color:#4a3f3a}'
-			. '.ansa-tb__link{display:flex;gap:6px;align-items:center}.ansa-tb__link input{flex:1;min-width:0;font:inherit;font-size:13.5px;font-weight:800;padding:11px 12px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;background:#fff;color:#1a1a2e}.ansa-tb__link button,.ansa-tb__share{font:inherit;font-size:14px;font-weight:900;border:none;border-radius:12px;padding:11px 14px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ef8c4f,#e8722a 50%,#e56b50);white-space:nowrap}.ansa-tb__share{width:100%;margin-top:8px;min-height:46px}'
+			. '.ansa-tb__sec{border:1px solid #f3cdb8;border-radius:14px;background:#fff8f1;margin:10px 0 0;text-align:left}.ansa-tb__sec summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 14px;font-size:15px;line-height:1.3;user-select:none}.ansa-tb__sec summary::-webkit-details-marker{display:none}.ansa-tb__sec summary b{font-weight:900}.ansa-tb__sec summary small{font-weight:700;color:#a88a75;font-size:12.5px;margin-left:auto;white-space:nowrap}.ansa-tb__sec summary i{font-style:normal;color:#e8722a;font-weight:900;transition:transform .2s}.ansa-tb__sec[open] summary i{transform:rotate(180deg)}.ansa-tb__sec>ul,.ansa-tb__sec>div{padding:0 10px 10px}.ansa-tb__sec .ansa-tb__list{margin:0}.ansa-tb__sec .ansa-tb__list li{background:#fff}.ansa-tb__draw{margin:0!important;font-size:13.5px!important;color:#4a3f3a}'
+			. '.ansa-tb__vou{margin:0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fff7f3,#fff1f6);border:1.5px solid #f6c9d6;font-size:14px;font-weight:700;line-height:1.45;text-align:left}.ansa-tb__vou b{color:#e8722a;font-size:16px}'
+			. '.ansa-tb__ref{position:sticky;bottom:0;z-index:5;margin:16px calc(-1*var(--tbx)) calc(-1*var(--tbb));padding:0 var(--tbx) calc(14px + env(safe-area-inset-bottom));border-radius:0 0 22px 22px;background:#fff6ee;border-top:1.5px solid #f3cdb8;box-shadow:0 -10px 24px rgba(232,114,42,.14);text-align:left}'
+			. '.ansa-tb__ref-h{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:13px 0 10px;font:inherit;font-size:16px;font-weight:900;line-height:1.25;color:#1a1a2e;text-align:left;cursor:pointer}.ansa-tb__ref-h i{margin-left:auto;font-style:normal;color:#e8722a;transition:transform .2s}.ansa-tb__ref--closed .ansa-tb__ref-h i{transform:rotate(180deg)}.ansa-tb__ref--closed .ansa-tb__ref-b{display:none}.ansa-tb__ref--closed{padding-bottom:calc(4px + env(safe-area-inset-bottom))}'
+			. '.ansa-tb__ref p{margin:0 0 10px;font-size:13.5px;font-weight:600;line-height:1.45;color:#4a3f3a}'
+			. '.ansa-tb__link{display:flex;gap:6px;align-items:center}.ansa-tb__link input{flex:1;min-width:0;font:inherit;font-size:13.5px;font-weight:800;padding:11px 12px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;background:#fff;color:#1a1a2e}.ansa-tb__link button,.ansa-tb__share{font:inherit;font-size:14px;font-weight:900;border:none;border-radius:12px;padding:11px 14px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ef8c4f,#e8722a 50%,#e56b50);white-space:nowrap}.ansa-tb__share{width:100%;margin-top:8px;min-height:44px}'
 			. '.ansa-tb__again{display:block;margin:16px auto 0;background:none;border:none;font:inherit;font-size:13.5px;font-weight:800;color:#a88a75;text-decoration:underline;cursor:pointer}'
 			. '.ansa-tb__toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:999999;background:#3bb273;color:#fff;font:700 14px/1.45 Nunito,sans-serif;padding:12px 20px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:min(560px,92vw);text-align:center}'
-			. '@media (max-width:480px){.ansa-tb__card{padding:22px 16px;border-radius:18px}.ansa-tb h1{font-size:23px}.ansa-tb__ok .big{font-size:40px}}</style>';
+			. '@media (max-width:480px){.ansa-tb__card{--tbx:16px;--tbb:22px;padding:22px var(--tbx) var(--tbb);border-radius:18px}.ansa-tb__ref{border-radius:0 0 18px 18px}.ansa-tb h1{font-size:23px}.ansa-tb__ok .big{font-size:40px}}</style>';
 	}
 	private static function js() {
 		return '(function(){var R=window.AnsaTombola||{},T=R.texts||{},f=document.getElementById("ansaTbForm"),err=document.getElementById("ansaTbErr"),res=document.getElementById("ansaTbResult");if(!f)return;'
@@ -147,9 +150,11 @@ final class Tombola {
 			. 'res.innerHTML=d.data.html;f.hidden=true;res.hidden=false;try{res.scrollIntoView({behavior:"smooth",block:"start"})}catch(e){}wire()})'
 			. '.catch(function(){btn.disabled=false;btn.textContent=cta;show(err,T["tb.err.net"]||"Грешка — опитай пак.")})});'
 			. 'function wire(){var a=res.querySelector(".ansa-tb__again");if(a)a.onclick=function(){res.hidden=true;f.hidden=false;show(err,"")};'
+			. 'var rh=res.querySelector(".ansa-tb__ref-h");if(rh)rh.onclick=function(){var b=rh.parentNode,c=b.classList.toggle("ansa-tb__ref--closed");rh.setAttribute("aria-expanded",c?"false":"true")};'
 			. 'var c=res.querySelector("[data-copy]"),inp=res.querySelector(".ansa-tb__link input");if(c&&inp)c.onclick=function(){var v=inp.value;function ok(){c.textContent=T["tb.ref.copied"]||"✓";setTimeout(function(){c.textContent=T["tb.ref.copy"]||"Копирай"},2500)}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(ok,function(){inp.select();try{document.execCommand("copy")}catch(e){}ok()})}else{inp.select();try{document.execCommand("copy");ok()}catch(e){}}};'
 			. 'var s=res.querySelector(".ansa-tb__share");if(s){if(!navigator.share){s.onclick=function(){var m=s.getAttribute("data-msg")||"";window.open("https://wa.me/?text="+encodeURIComponent(m),"_blank")}}else{s.onclick=function(){navigator.share({text:s.getAttribute("data-msg")||"",url:inp?inp.value:location.href}).catch(function(){})}}}}'
 			/* кацане с ?r=КОД на страницата на томболата (кеширана страница → JS → ajax → сесия + бисквитка) */
+			. 'if(res.innerHTML.replace(/\\s/g,""))wire();'
 			. 'var m=location.search.match(new RegExp("[?&]"+(R.ref_param||"r")+"=([^&#]+)"));if(m&&R.live){var fd2=new FormData();fd2.append("action","ansa_promo_ref");fd2.append("code",decodeURIComponent(m[1]));'
 			. 'var done=function(d){if(d&&d.ok&&d.message){var t=document.createElement("div");t.className="ansa-tb__toast";t.innerHTML=d.message;document.body.appendChild(t);setTimeout(function(){t.style.transition="opacity .5s";t.style.opacity="0";setTimeout(function(){t.remove()},600)},9000)}};'
 			. 'fetch(R.wcajax,{method:"POST",body:fd2,credentials:"same-origin"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(done).catch(function(){fetch(R.ajax,{method:"POST",body:fd2,credentials:"same-origin"}).then(function(r){return r.json()}).then(done).catch(function(){})})}'
@@ -325,22 +330,32 @@ final class Tombola {
 	public static function result_html( $r, $cfg ) {
 		$v = self::base_vars( $cfg ); $v['tickets'] = (int) $r['total']; $v['bileta'] = 1 === $v['tickets'] ? 'билет' : 'билета'; $v['ref_link'] = esc_url( $r['ref_link'] ); $v['ref_code'] = $r['ref_code'];
 		$bil = function ( $n ) { return 1 === (int) $n ? 'билет' : 'билета'; };
-		$h = '<div class="ansa-tb__ok"><h2>' . wp_kses_post( self::copy( $cfg, 'tb.ok.h', $v ) ) . '</h2><div class="big">' . (int) $r['total'] . ' <small>' . esc_html( $v['bileta'] ) . '</small></div><p>' . wp_kses_post( self::copy( $cfg, 'tb.ok.p', $v ) ) . '</p><ul class="ansa-tb__list">';
+		$no = count( $r['orders'] );
+		$h = '<div class="ansa-tb__ok"><h2>' . wp_kses_post( self::copy( $cfg, 'tb.ok.h', $v ) ) . '</h2><div class="big">' . (int) $r['total'] . ' <small>' . esc_html( $v['bileta'] ) . '</small></div><p>' . wp_kses_post( self::copy( $cfg, 'tb.ok.p', $v ) ) . '</p>';
+		/* секции с разгъни/свий (<details>): откъде са билетите (отворена), ваучерът (свита — кодът е в заглавието) */
+		$h .= '<details class="ansa-tb__sec" open><summary><b>' . wp_kses_post( self::copy( $cfg, 'tb.sec.orders', $v ) ) . '</b><small>' . $no . ' ' . ( 1 === $no ? 'поръчка' : 'поръчки' ) . '</small><i>▾</i></summary><ul class="ansa-tb__list">';
 		foreach ( $r['orders'] as $o ) {
 			$h .= '<li><i>📦</i> ' . wp_kses_post( self::copy( $cfg, 'tb.ok.order', array_merge( $v, array( 'order' => $o['number'], 'box' => $o['box'], 'box_ic' => $o['box_ic'], 'tickets' => $o['allowance'] ?: $o['tickets'], 'bileta' => $bil( $o['allowance'] ?: $o['tickets'] ) ) ) ) ) . '</li>';
 			if ( $o['partner'] > 0 ) { $h .= '<li><i>🤝</i> ' . wp_kses_post( self::copy( $cfg, 'tb.ok.partner', array_merge( $v, array( 'bonus' => $o['partner'], 'bonus_bileta' => $bil( $o['partner'] ) ) ) ) ) . '</li>'; }
 			if ( $o['gift'] > 0 ) { $h .= '<li><i>🎁</i> ' . wp_kses_post( self::copy( $cfg, 'tb.ok.gift', array_merge( $v, array( 'bonus' => $o['gift'], 'bonus_bileta' => $bil( $o['gift'] ) ) ) ) ) . '</li>'; }
 			if ( $o['bonus'] > 0 ) { $h .= '<li><i>💞</i> ' . wp_kses_post( self::copy( $cfg, 'tb.ok.refs', array_merge( $v, array( 'bonus' => $o['bonus'], 'bonus_bileta' => $bil( $o['bonus'] ), 'n' => $o['refs'], 'n_word' => 1 === (int) $o['refs'] ? 'близък човек' : 'близки хора' ) ) ) ) . '</li>'; }
 		}
-		$h .= '</ul>';
-		foreach ( $r['voucher'] as $vo ) { $vv = array_merge( $v, array( 'cosm_pay' => str_replace( '.', ',', rtrim( rtrim( number_format( $vo['pay'], 2, '.', '' ), '0' ), '.' ) ), 'voucher' => $vo['code'], 'order' => $vo['order'] ) ); $h .= '<div class="ansa-tb__vou">' . wp_kses_post( self::copy( $cfg, $vo['code'] ? 'tb.voucher' : 'tb.voucher.soon', $vv ) ) . '</div>'; }
+		$h .= '</ul></details>';
+		if ( $r['voucher'] ) {
+			$codes = implode( ', ', array_filter( array_map( function ( $x ) { return $x['code']; }, $r['voucher'] ) ) );
+			$h .= '<details class="ansa-tb__sec"><summary><b>' . wp_kses_post( self::copy( $cfg, 'tb.sec.voucher', $v ) ) . '</b><small>' . esc_html( $codes ) . '</small><i>▾</i></summary><div>';
+			foreach ( $r['voucher'] as $vo ) { $vv = array_merge( $v, array( 'cosm_pay' => str_replace( '.', ',', rtrim( rtrim( number_format( $vo['pay'], 2, '.', '' ), '0' ), '.' ) ), 'voucher' => $vo['code'], 'order' => $vo['order'] ) ); $h .= '<div class="ansa-tb__vou">' . wp_kses_post( self::copy( $cfg, $vo['code'] ? 'tb.voucher' : 'tb.voucher.soon', $vv ) ) . '</div>'; }
+			$h .= '</div></details>';
+		}
+		$h .= '<details class="ansa-tb__sec"><summary><b>' . wp_kses_post( self::copy( $cfg, 'tb.sec.draw', $v ) ) . '</b><small>' . esc_html( $v['draw'] ) . '</small><i>▾</i></summary><div><p class="ansa-tb__draw">' . wp_kses_post( self::copy( $cfg, 'tb.foot', $v ) ) . '</p></div></details>';
+		$h .= '<button type="button" class="ansa-tb__again">' . esc_html( self::copy( $cfg, 'tb.again' ) ) . '</button></div>';
+		/* „Препоръчай на близък човек“ — залепен в дъното на екрана (sticky), със свиване до заглавието */
 		if ( $r['ref_link'] && (int) $cfg['tombola']['ref_mult'] > 1 ) {
 			$msg = wp_strip_all_tags( self::copy( $cfg, 'tb.ref.msg', $v ) );
-			$h .= '<div class="ansa-tb__ref"><h3>' . wp_kses_post( self::copy( $cfg, 'tb.ref.h', $v ) ) . '</h3><p>' . wp_kses_post( self::copy( $cfg, 'tb.ref.p', $v ) ) . '</p>'
+			$h .= '<div class="ansa-tb__ref"><button type="button" class="ansa-tb__ref-h" aria-expanded="true"><span>' . wp_kses_post( self::copy( $cfg, 'tb.ref.h', $v ) ) . '</span><i>▾</i></button><div class="ansa-tb__ref-b"><p>' . wp_kses_post( self::copy( $cfg, 'tb.ref.p', $v ) ) . '</p>'
 				. '<div class="ansa-tb__link"><input type="text" readonly value="' . esc_attr( $r['ref_link'] ) . '" onclick="this.select()"><button type="button" data-copy>' . esc_html( self::copy( $cfg, 'tb.ref.copy' ) ) . '</button></div>'
-				. '<button type="button" class="ansa-tb__share" data-msg="' . esc_attr( $msg ) . '">' . esc_html( self::copy( $cfg, 'tb.ref.share' ) ) . '</button></div>';
+				. '<button type="button" class="ansa-tb__share" data-msg="' . esc_attr( $msg ) . '">' . esc_html( self::copy( $cfg, 'tb.ref.share' ) ) . '</button></div></div>';
 		}
-		$h .= '<button type="button" class="ansa-tb__again">' . esc_html( self::copy( $cfg, 'tb.again' ) ) . '</button></div>';
 		return apply_filters( 'ansa_promo_tombola_result_html', $h, $r, $cfg );
 	}
 
