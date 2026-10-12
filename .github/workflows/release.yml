@@ -42,9 +42,11 @@ jobs:
           rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
           cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
           unzip -l ansa-promo.zip | tail -1
-          # LOGADOR Probe — отделен плъгин (качва се веднъж, ръчно); същият release го носи като ansa-probe.zip
-          cp -r probe/ansa-probe build/ansa-probe && cd build && zip -qr ../ansa-probe.zip ansa-probe && cd ..
-          unzip -l ansa-probe.zip | tail -1
+          # LOGADOR Probe — отделен плъгин (качва се веднъж, ръчно); същият release го носи като logador-probe.zip.
+          # ИМЕТО Е ВАЖНО: GitHub подрежда asset-ите по име и updater ≤ 1.1.2 взема ПЪРВИЯ zip — „ansa-probe.zip“ стоеше преди
+          # „ansa-promo.zip“ и 1.0.53 инсталира probe-а на мястото на промото. „logador-…“ е след „ansa-…“; 1.1.3+ търси <slug>.zip.
+          cp -r probe/ansa-probe build/ansa-probe && cd build && zip -qr ../logador-probe.zip ansa-probe && cd ..
+          unzip -l logador-probe.zip | tail -1
       - name: Release v${{ steps.v.outputs.ver }}
         if: steps.v.outputs.exists == '0'
         uses: softprops/action-gh-release@v2
@@ -54,15 +56,13 @@ jobs:
           name: v${{ steps.v.outputs.ver }}
           files: ansa-promo.zip
           generate_release_notes: true
-      # Probe-ът се качва като ВТОРИ asset чак след ansa-promo.zip: updater ≤ 1.1.2 на сайта взема първия zip в release-а,
-      # а 1.1.3 (носи го 1.0.53) търси <slug>.zip — така и старият updater никога не слага probe-а на мястото на промото.
-      - name: Attach ansa-probe.zip
+      - name: Attach logador-probe.zip
         if: steps.v.outputs.exists == '0'
-        continue-on-error: true   # probe-ът е същият от 1.0.53; мрежова грешка на GitHub тук не бива да спира ping-а на сайта
+        continue-on-error: true   # мрежова грешка на GitHub тук не бива да спира ping-а на сайта
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.ver }}
-          files: ansa-probe.zip
+          files: logador-probe.zip
       - name: Ping сайта → обнови се сега
         # ръчно пускане (workflow_dispatch) винаги пингва — за „обнови сайта сега“ към вече качен release
         if: steps.v.outputs.exists == '0' || github.event_name == 'workflow_dispatch'
@@ -84,7 +84,10 @@ jobs:
               echo "→ $URL (опит $i)"
               out=$(curl -sS -m 280 -X POST "$URL" -H "X-Logador-Secret: $SECRET" --data-urlencode "repo=$REPO" -w '\nHTTP %{http_code}' || true)
               echo "$out"
-              case "$out" in *"HTTP 200"*) ok=1; break;; esac
+              # успех = HTTP 200 И сайтът докладва ТОЧНО тази версия за това репо (иначе „ок“ може да е празно — плъгинът да липсва)
+              case "$out" in *"HTTP 200"*)
+                good=$(printf '%s' "$out" | head -n1 | REPO="$REPO" VER="$VER" python3 -c 'import sys,json,os; d=json.load(sys.stdin); print(1 if any(p.get("repo")==os.environ["REPO"] and p.get("after")==os.environ["VER"] for p in d.get("plugins",[])) else 0)' 2>/dev/null || echo 0)
+                if [ "$good" = 1 ]; then ok=1; break; else echo "::warning::Отговорът е 200, но сайтът не докладва $REPO на версия $VER (плъгинът липсва или не се е обновил)"; fi;; esac
               sleep $((i*20))
             done
             [ "$ok" = 1 ] || { echo "::error::$URL не се обнови до v$VER — виж отговора горе (auto-updates за плъгина трябва да са включени)."; fail=1; }
