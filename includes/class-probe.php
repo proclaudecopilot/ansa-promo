@@ -131,7 +131,9 @@ final class Probe {
 			$has_book = in_array( 'book', $box['rw'], true ) && ! empty( $cfg['rewards']['book']['product_id'] );
 			if ( $has_book ) { $bk = $g['book'] ? WC()->cart->get_cart_item( $g['book'] ) : null; $t->ok( $label . ' · книгата е в количката на €0', $bk && 0.0 === (float) $bk['data']->get_price(), $bk ? 'цена ' . $bk['data']->get_price() : 'няма ред book' ); }
 			else { $t->ok( $label . ' · без книга', empty( $g['book'] ), in_array( 'book', $box['rw'], true ) ? 'кутията има book, но rewards.book.product_id е 0' : '' ); }
-			$t->ok( $label . ' · нищо чуждо в количката', empty( $g['foreign'] ), $g['foreign'] ? count( $g['foreign'] ) . ' чужди реда (подарък на Shrine?)' : '' );
+			/* v1.5.3: чуждите редове се описват с името и cart item data ключовете им → вижда се кой плъгин ги добавя (fkcart* = FunnelKit Cart Rewards, _ansa_shrine_gift = Shrine) */
+			$fd = array(); foreach ( (array) $g['foreign'] as $fk ) { $fi = WC()->cart->get_cart_item( $fk ); if ( ! $fi ) { continue; } $fd[] = ( is_object( $fi['data'] ) ? $fi['data']->get_name() : $fk ) . ' [' . implode( ',', array_diff( array_keys( $fi ), array( 'key', 'product_id', 'variation_id', 'variation', 'quantity', 'data', 'data_hash', 'line_tax_data', 'line_subtotal', 'line_subtotal_tax', 'line_total', 'line_tax' ) ) ) . ']'; }
+			$t->ok( $label . ' · нищо чуждо в количката', empty( $g['foreign'] ), $g['foreign'] ? count( $g['foreign'] ) . ' чужди реда: ' . implode( '; ', $fd ) : '' );
 			/* доставка */
 			$packages = WC()->cart->get_shipping_packages(); $rates = array();
 			if ( $packages ) { $calc = WC()->shipping()->calculate_shipping( $packages ); foreach ( (array) ( $calc[0]['rates'] ?? array() ) as $rid => $rate ) { $rates[ $rid ] = (float) $rate->get_cost(); } }
