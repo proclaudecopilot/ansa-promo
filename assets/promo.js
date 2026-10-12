@@ -717,7 +717,9 @@
     [root,portal].forEach(function(r){r.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true)});
     window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;
       if(d.ansaPromo==='copy'){if(d.key){A.copy[d.key]=d.value}else{A.copy=Object.assign({},A.copy,d.copy||{})}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
-      else if(d.ansaPromo==='cfg'&&d.runtime){Object.assign(A,d.runtime);bind();render()}
+      else if(d.ansaPromo==='cfg'&&d.runtime){if(d.runtime.gate)d.runtime.gate=Object.assign({},A.gate,d.runtime.gate);Object.assign(A,d.runtime);bind();render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
+      else if(d.ansaPromo==='mark'){document.querySelectorAll('[data-ck].ck-on').forEach(function(x){x.classList.remove('ck-on')});document.querySelectorAll('[data-ck="'+d.key+'"]').forEach(function(x){x.classList.add('ck-on');if(d.scroll)try{x.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}})}
+      else if(d.ansaPromo==='changed'){var ch=d.keys||{};document.querySelectorAll('[data-ck]').forEach(function(x){x.classList.toggle('ck-ch',!!ch[x.dataset.ck])})}
       else if(d.ansaPromo==='scenario'){scenario(d)}
       else if(d.ansaPromo==='goto'){scenario({screen:d.screen})}
     });

@@ -1322,3 +1322,9 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .ov.ovfpm{touch-action:none;overflow:hidden}
 .ansa-promo .dc .fqz{overflow-x:hidden;touch-action:pan-y}
 }
+
+/* v1.4.0: редакторът — хотспотове (само с ?ansa_editor=1) */
+[data-editor] [data-ck]{cursor:pointer;outline:1px dashed transparent;outline-offset:2px;transition:outline-color .12s}
+[data-editor] [data-ck]:hover{outline-color:#e8722a;background:rgba(232,114,42,.06)}
+[data-editor] [data-ck].ck-on{outline:2px solid #e8722a;background:rgba(232,114,42,.1)}
+[data-editor] [data-ck].ck-ch{box-shadow:inset 3px 0 0 #e8722a}

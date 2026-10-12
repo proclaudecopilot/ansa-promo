@@ -131,11 +131,11 @@ final class Admin {
 		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'insights' => '📈 Insights', 'json' => 'JSON' );
 		?>
 		<div class="wrap">
-			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 5</small></h1>
+			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?></small></h1>
 			<?php if ( $msg ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
 			<nav class="nav-tab-wrapper">
 				<?php foreach ( $tabs as $k => $label ) : ?><a class="nav-tab<?php echo $k === $tab ? ' nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
-				<span class="nav-tab" style="opacity:.5">✏️ Редактор · Фаза 2</span>
+				<a class="nav-tab" href="<?php echo esc_url( Editor::url() ); ?>">✏️ Редактор</a>
 			</nav>
 			<?php if ( 'status' === $tab ) : ?>
 				<p style="margin-top:14px">Чернова: <b><?php echo count( $draft['products'] ); ?> продукта</b> (<?php echo count( array_filter( $draft['products'], function ( $p ) { return $p['product_id'] > 0; } ) ); ?> с WC продукт) · Публикувано: <b>версия <?php echo (int) Config::version(); ?></b><?php echo Config::has_published() ? ' от ' . esc_html( date_i18n( 'd.m.Y H:i', Config::published_at() ) ) : ' (още няма)'; ?> · играта е <b><?php echo Config::is_live( $pub ) ? 'ВКЛЮЧЕНА' : 'изключена'; ?></b>
