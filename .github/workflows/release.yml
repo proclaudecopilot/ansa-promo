@@ -1,6 +1,6 @@
 # Автоматичен Release: при всеки push в main чете версията от ansa-promo.php.
 # Ако таг vX.Y.Z за нея още няма — прави ansa-promo.zip (папка ansa-promo/
-# вътре, както WP го очаква), създава тага и Release-а. Плъгинът на сайта вижда
+# вътре, както WP го очаква) и ansa-probe.zip (LOGADOR Probe, probe/), създава тага и Release-а. Плъгинът на сайта вижда
 # новия release и предлага Update (или се обновява сам с auto-updates).
 # Т.е. „нова версия“ = вдигни версията в ansa-promo.php и push-ни. Нищо друго.
 # След release-а пингва сайта (LOGADOR GitHub Updater 1.1+ webhook) и той се обновява веднага —
@@ -39,9 +39,12 @@ jobs:
         if: steps.v.outputs.exists == '0'
         run: |
           mkdir -p build/ansa-promo
-          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude 'tests' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
           cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
           unzip -l ansa-promo.zip | tail -1
+          # LOGADOR Probe — отделен плъгин (качва се веднъж, ръчно); същият release го носи като ansa-probe.zip
+          cp -r probe/ansa-probe build/ansa-probe && cd build && zip -qr ../ansa-probe.zip ansa-probe && cd ..
+          unzip -l ansa-probe.zip | tail -1
       - name: Release v${{ steps.v.outputs.ver }}
         if: steps.v.outputs.exists == '0'
         uses: softprops/action-gh-release@v2
@@ -51,6 +54,14 @@ jobs:
           name: v${{ steps.v.outputs.ver }}
           files: ansa-promo.zip
           generate_release_notes: true
+      # Probe-ът се качва като ВТОРИ asset чак след ansa-promo.zip: updater ≤ 1.1.2 на сайта взема първия zip в release-а,
+      # а 1.1.3 (носи го 1.0.53) търси <slug>.zip — така и старият updater никога не слага probe-а на мястото на промото.
+      - name: Attach ansa-probe.zip
+        if: steps.v.outputs.exists == '0'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.ver }}
+          files: ansa-probe.zip
       - name: Ping сайта → обнови се сега
         # ръчно пускане (workflow_dispatch) винаги пингва — за „обнови сайта сега“ към вече качен release
         if: steps.v.outputs.exists == '0' || github.event_name == 'workflow_dispatch'

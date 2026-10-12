@@ -2,12 +2,12 @@
 /**
  * Plugin Name: LOGADOR GitHub Updater
  * Description: Един token за сайта; всеки плъгин с ред „GitHub Plugin URI: owner/repo“ в header-а си се обновява от GitHub Releases през стандартния WP ъпдейт (Update now / auto-updates). Webhook: GitHub Action-ът пингва сайта при release и той се обновява веднага. Инсталира се сам от плъгините на LOGADOR (mu-plugins).
- * Version: 1.1.2
+ * Version: 1.1.3
  * Author: LOGADOR
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 if ( defined( 'LOGADOR_GH_UPDATER_VERSION' ) ) return; // вече е зареден (от друго копие)
-define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.2' );
+define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.3' );
 /* v1.1.2: ANSA Partner ≤ 5.8.5 носи форк на същия updater под друго име
    (proclaudecopilot-github-updater.php, клас PCC_GitHub_Updater, страница pcc-github).
    Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки към GitHub.
@@ -75,9 +75,10 @@ final class LOGADOR_GitHub_Updater {
 			$code = (int) wp_remote_retrieve_response_code( $res );
 			$body = json_decode( (string) wp_remote_retrieve_body( $res ), true );
 			if ( 200 === $code && is_array( $body ) && ! empty( $body['tag_name'] ) ) {
-				$pkg = ''; $api = '';
-				foreach ( (array) ( $body['assets'] ?? array() ) as $a ) { if ( preg_match( '/\.zip$/i', (string) ( $a['name'] ?? '' ) ) ) { $pkg = (string) $a['browser_download_url']; $api = (string) $a['url']; break; } }
-				$row['data'] = array( 'version' => ltrim( (string) $body['tag_name'], 'vV' ), 'tag' => (string) $body['tag_name'], 'package' => $pkg ?: (string) ( $body['zipball_url'] ?? '' ), 'asset_api' => $api,
+				/* v1.1.3: един release може да носи няколко zip-а (ansa-promo.zip + ansa-probe.zip) — пазим всички; inject() взема <slug>.zip, иначе първия */
+				$pkg = ''; $api = ''; $assets = array();
+				foreach ( (array) ( $body['assets'] ?? array() ) as $a ) { $n = (string) ( $a['name'] ?? '' ); if ( preg_match( '/\.zip$/i', $n ) ) { $assets[ $n ] = array( 'package' => (string) $a['browser_download_url'], 'api' => (string) $a['url'] ); if ( '' === $pkg ) { $pkg = (string) $a['browser_download_url']; $api = (string) $a['url']; } } }
+				$row['data'] = array( 'version' => ltrim( (string) $body['tag_name'], 'vV' ), 'tag' => (string) $body['tag_name'], 'package' => $pkg ?: (string) ( $body['zipball_url'] ?? '' ), 'asset_api' => $api, 'assets' => $assets,
 					'notes' => (string) ( $body['body'] ?? '' ), 'published' => (string) ( $body['published_at'] ?? '' ), 'html_url' => (string) ( $body['html_url'] ?? '' ) );
 			} elseif ( 404 === $code ) {
 				$row['error'] = self::token() ? 'HTTP 404 — token-ът няма достъп до ' . $repo . ' (частно репо: Fine-grained token с „Only select repositories“ → това репо, Contents: Read; за организация — одобрен от owner-а) или още няма Release.' : 'HTTP 404 — репото е частно (трябва token) или няма Release.';
@@ -103,7 +104,9 @@ final class LOGADOR_GitHub_Updater {
 			}
 			if ( isset( $t->no_update[ $file ] ) ) unset( $t->no_update[ $file ] );
 			$item['new_version'] = $d['version']; $item['url'] = $d['html_url'];
-			$item['package'] = ( self::token() && $d['asset_api'] ) ? $d['asset_api'] : $d['package'];
+			$pkg = $d['package']; $api = $d['asset_api'];
+			if ( ! empty( $d['assets'][ $p['slug'] . '.zip' ] ) ) { $pkg = $d['assets'][ $p['slug'] . '.zip' ]['package']; $api = $d['assets'][ $p['slug'] . '.zip' ]['api']; }
+			$item['package'] = ( self::token() && $api ) ? $api : $pkg;
 			$t->response[ $file ] = (object) $item;
 		}
 		return $t;
