@@ -151,7 +151,9 @@ final class Probe {
 			$r2 = Cart::perform_add( array_merge( $base, array( 'box' => $box['id'], 'items' => $ids( $pick ), 'secret' => array() ) ) );
 			$t->ok( $label . ' · повторно add = същата група', ! empty( $r2['ok'] ) && ! empty( $r2['idempotent'] ) && $r2['group'] === $g['group'], wp_json_encode( array( 'idempotent' => $r2['idempotent'] ?? null, 'group' => $r2['group'] ?? null ) ) );
 			/* чекаут HTML с тази сесия */
-			if ( $do_checkout ) { $co = self::fetch_as_session( Cart::checkout_url() ); $t->ok( $label . ' · чекаутът показва наградите', 200 === $co['code'] && false !== strpos( $co['body'], 'ansa-promo-co__box' ), 'HTTP ' . $co['code'] . ' · ' . $co['bytes'] . ' B' . ( $co['err'] ? ' · ' . $co['err'] : '' ) . ( false !== strpos( $co['body'], 'name="ansa_promo_cosm"' ) ? ' · ☑ сетът' : '' ) . ( $co['wfacp'] ? ' · FunnelKit' : ' · WC' ) ); }
+			if ( $do_checkout ) { $co = self::fetch_as_session( Cart::checkout_url() ); $t->ok( $label . ' · чекаутът показва наградите', 200 === $co['code'] && false !== strpos( $co['body'], 'ansa-promo-co__box' ), 'HTTP ' . $co['code'] . ' · ' . $co['bytes'] . ' B' . ( $co['err'] ? ' · ' . $co['err'] : '' ) . ( false !== strpos( $co['body'], 'name="ansa_promo_cosm"' ) ? ' · ☑ сетът' : '' ) . ( $co['wfacp'] ? ' · FunnelKit' : ' · WC' ) );
+				/* ?snippet=1 → парчета от HTML-а около нашите блокове (за стилизиране срещу истинския DOM на чекаута) */
+				if ( ! empty( $params['snippet'] ) && ! isset( $result['_snippets'] ) ) { $result['_snippets'] = array(); foreach ( array( 'ansa-promo-cosm', 'ansa-promo-co__box', 'order-total', 'place_order' ) as $needle ) { $pos = strpos( $co['body'], $needle ); $result['_snippets'][ $needle ] = false === $pos ? null : substr( $co['body'], max( 0, $pos - 2500 ), 5000 ); } $result['_classes'] = preg_match( '/<body[^>]*class="([^"]*)"/', $co['body'], $bm ) ? $bm[1] : ''; $result['_styles'] = array_slice( array_unique( preg_match_all( '#<link[^>]+href="([^"]+\.css[^"]*)"#', $co['body'], $lm ) ? $lm[1] : array() ), 0, 40 ); } }
 			/* поръчка (COD, програмно) */
 			$oid = self::make_order( $t, $label, $box, $cfg );
 			if ( $oid ) { $order_ids[] = $oid; }
