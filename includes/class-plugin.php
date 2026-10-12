@@ -40,6 +40,7 @@ final class Plugin {
 		Catalog::register();
 		Frontend::register();
 		Leads::register();
+		Probe::register();
 		if ( is_admin() ) { Admin::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );

@@ -24,6 +24,8 @@ includes/class-leads.php     gate имейл → таблица leads (ajax ansa
 includes/class-seed.php      началната чернова от мокъпа (продукти, FIT, проблеми); product_id по име в WC
 includes/class-admin.php     меню „🎁 ansa Промо“: Състояние · 🧰 Инструменти (страница, игра, срок, gate, публикуване, история, seed) · JSON
 includes/class-doctor.php    env() — редовете на екрана „Състояние“; Фаза 2 добавя checks()
+includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page (+ promo-cart от Фаза 3)
+probe/ansa-probe/            LOGADOR Probe — отделен плъгин (ansa-probe.zip в release-а), REST с token за проверки/лог/поръчки/ъпдейт
 includes/mu/                 LOGADOR GitHub Updater (копира се в mu-plugins)
 assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
 assets/promo-extra.css       добавките на плъгина върху порта: WC снимки, z-index над темата, бадж/цени в пълненето, цял екран, снимки в попъпа
@@ -40,7 +42,7 @@ docs/                        планът + мокъпът + port-css.py + shots
 | Фаза | Версия | Какво | Снипет |
 |------|--------|-------|--------|
 | 0 | 1.0.0 · 1.0.1 | репо, скелет, updater, таблици, guard в Shrine 6.19.22; 1.0.1 = LOGADOR updater 1.1.2 (поглъща форка на Partner) | `snippets/phase-0.php` — отчет за средата |
-| 1 | 1.0.2 … 1.0.52 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax; 1.0.3 = цял екран, WC снимки, бадж с цена, таб 📦 Продукти | `snippets/phase-1.php` |
+| 1 | 1.0.2 … 1.0.53 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax; 1.0.3 = цял екран, WC снимки, бадж с цена, таб 📦 Продукти | `snippets/phase-1.php` |
 | 2 | 1.0.3 | визуалният редактор | — |
 | 3 | 1.1.0 | количка и чекаут | — |
 | 4 | 1.2.0 | награди: билети, QR, REST, ваучер, книга | — |
@@ -74,6 +76,14 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### LOGADOR Probe (1.0.53) — проверките без снипети
+**Какво има:** отделен плъгин **LOGADOR Probe** (`probe/ansa-probe/`, в release-а като `ansa-probe.zip`; качва се **веднъж** ръчно, няма GitHub Plugin URI и не се обновява сам). Дава REST `wp-json/logador-probe/v1/*` с token (header `X-Probe-Token`; Tools → LOGADOR Probe показва адреса и token-а):
+`ping` · `env` (WP/PHP/WC/HPOS/gateways/зони/FunnelKit/плъгини) · `plugins` · `log` (опашката на debug.log, `?grep=`) · `option?name=` · `page?url=` (сървърът тегли своя страница като анонимен и я анализира: root, runtime JSON, `{{`, скриптове, кеш заглавки) · `suites` / `run?suite=a,b` (проверките на плъгините) · `report` (среда + всички проверки + лог; `?push=1` го записва в GitHub) · `update?plugin=ansa-promo` (POST — чисти кеша на updater-а и обновява плъгина сега) · `sql?q=` (само SELECT/SHOW) · `wc/orders`, `wc/order?id=`, `wc/product?id|sku=`.
+Отчетите могат да се записват в GitHub като `reports/<дата>-v<версия>.json` в branch `probe-reports` (token с Contents: Read and write, въвежда се в Tools → LOGADOR Probe; иначе бутонът „Пусни всички проверки“ дава JSON за копиране в чата). След всеки ъпдейт на плъгин `ansa-*` probe-ът сам пуска отчет (20 с по-късно, WP-Cron) и го записва, ако има token.
+**ansa™ Промо** регистрира своите проверки през filter `logador_probe_suites` (`includes/class-probe.php`): `promo-env` (редовете на Doctor + продукт по продукт: WC ред, цена, наличност; наградите; guard-ът на Shrine) и `promo-page` (страницата като анонимен: 200, `#ansaPromo`, формата за парола + с бисквитка → играта, runtime JSON с `ver` = плъгина, без `{{`, promo.js с правилния `?ver=`, ajax `ansa_promo_runtime`). Фаза 3 добавя `promo-cart`. Това замества `snippets/phase-N.php` — снипетите остават само за история.
+**LOGADOR GitHub Updater 1.1.3:** един release може да носи няколко zip-а; за всеки плъгин се взема `<slug>.zip` (иначе първият). `release.yml` качва `ansa-probe.zip` като втори asset чак след `ansa-promo.zip` и ping-а, за да не го хване стар updater.
+**Локална среда за разработка (в сесията на LOGADOR, не на сайта):** WordPress 7.1.3 + WooCommerce 11.1.0 върху SQLite (`wp-content/db.php`), PHP 8.3, 10 variable продукта с вариация „1 опаковка“ (SKU-тата от `Seed`), книга (`BOOK`) и сет (`COSM`), зона BG с два flat_rate (€2,55 / €3,80), ДДС 20 % (цените с включен), COD + `cheque` като „карта“, страница `/promo/` с `[ansa_promo]`. ansa™ Shrine 6.19.22 е активен до промото. Всичко във Фаза 3+ се проверява първо там (количка, чекаут, поръчка), после с `promo-cart` на живо.
 
 ### Фаза 0 (1.0.0)
 **Какво има:** главен файл с header + `GitHub Plugin URI`, autoloader (`AnsaPromo\Foo_Bar` → `includes/class-foo-bar.php`), OPcache/object-cache flush при смяна на версията (от Shrine v6.12), HPOS compat декларация, mu-updater инсталатор (LOGADOR 1.1.1 — с webhook), таблици `tickets` и `leads`, top-level меню „🎁 ansa Промо“ с екран „Състояние“, `[ansa_promo]` → „ansa™ Промо — скоро.“ (+ един ред бележка само за админи). Option `ansa_promo_store` НЕ се пипа — Фаза 1 я чете/нормализира (съществуваща чернова от Shrine мигрира).
