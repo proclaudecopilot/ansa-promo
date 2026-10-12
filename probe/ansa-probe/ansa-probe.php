@@ -2,13 +2,13 @@
 /**
  * Plugin Name: LOGADOR Probe
  * Description: Диагностичен канал към сайта за екипа на LOGADOR: REST с token (среда, лог, страница, проверки на плъгините, поръчки, SELECT), „обнови сега“ и отчет, който се записва и в GitHub. Качва се веднъж; проверките на всеки плъгин пътуват със самия плъгин (filter logador_probe_suites).
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      LOGADOR
  * Requires PHP: 7.4
  */
 defined( 'ABSPATH' ) || exit;
 if ( defined( 'LOGADOR_PROBE_VERSION' ) ) return;
-define( 'LOGADOR_PROBE_VERSION', '1.0.0' );
+define( 'LOGADOR_PROBE_VERSION', '1.0.1' );
 define( 'LOGADOR_PROBE_FILE', __FILE__ );
 
 final class LOGADOR_Probe {
@@ -60,6 +60,7 @@ final class LOGADOR_Probe {
 		$r( '/run', 'r_run', 'GET,POST' );
 		$r( '/report', 'r_report', 'GET,POST' );
 		$r( '/update', 'r_update', 'POST' );
+		$r( '/install', 'r_install', 'POST' );
 		$r( '/sql', 'r_sql', 'GET,POST' );
 		$r( '/wc/orders', 'r_orders' );
 		$r( '/wc/order', 'r_order' );
@@ -220,6 +221,31 @@ final class LOGADOR_Probe {
 		wp_clean_plugins_cache( true ); $after = get_plugins()[ $file ]['Version'] ?? $before;
 		if ( function_exists( 'opcache_reset' ) ) { @opcache_reset(); }
 		return array( 'plugin' => $file, 'version' => $before, 'available' => $avail, 'updated' => true === $r && $after !== $before, 'now' => $after, 'errors' => $skin->get_errors()->get_error_messages(), 'messages' => $skin->get_upgrade_messages() );
+	}
+
+	/** POST /install?repo=owner/name&slug=ansa-promo[&tag=v1.4.1] — инсталира/презаписва плъгин от GitHub release (asset <slug>.zip) с token-а
+	 *  на LOGADOR updater-а. За възстановяване, когато папката на плъгина е счупена/липсва (updater-ът работи само с налични плъгини). */
+	public function r_install( $req ) {
+		$repo = (string) $req->get_param( 'repo' ); $slug = sanitize_key( (string) $req->get_param( 'slug' ) ); $tag = sanitize_text_field( (string) $req->get_param( 'tag' ) );
+		if ( ! preg_match( '#^[\w.-]+/[\w.-]+$#', $repo ) || '' === $slug ) { return new WP_Error( 'probe_bad', 'repo=owner/name и slug са задължителни', array( 'status' => 400 ) ); }
+		$token = class_exists( 'LOGADOR_GitHub_Updater' ) ? LOGADOR_GitHub_Updater::token() : ''; if ( '' === $token ) { $token = self::gh_token(); }
+		$h = array( 'Accept' => 'application/vnd.github+json', 'User-Agent' => 'logador-probe/' . LOGADOR_PROBE_VERSION ); if ( $token ) { $h['Authorization'] = 'Bearer ' . $token; }
+		$r = wp_remote_get( 'https://api.github.com/repos/' . $repo . '/releases/' . ( $tag ? 'tags/' . rawurlencode( $tag ) : 'latest' ), array( 'timeout' => 20, 'headers' => $h ) );
+		if ( is_wp_error( $r ) ) { return new WP_Error( 'probe_gh', $r->get_error_message(), array( 'status' => 502 ) ); }
+		$rel = json_decode( (string) wp_remote_retrieve_body( $r ), true ); $asset = null;
+		foreach ( (array) ( $rel['assets'] ?? array() ) as $a ) { if ( ( $a['name'] ?? '' ) === $slug . '.zip' ) { $asset = $a; break; } }
+		if ( ! $asset ) { return new WP_Error( 'probe_asset', 'няма asset ' . $slug . '.zip в release ' . ( $rel['tag_name'] ?? '?' ) . ' (HTTP ' . wp_remote_retrieve_response_code( $r ) . ')', array( 'status' => 404 ) ); }
+		require_once ABSPATH . 'wp-admin/includes/file.php'; require_once ABSPATH . 'wp-admin/includes/plugin.php'; require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$dl = wp_remote_get( $asset['url'], array( 'timeout' => 120, 'stream' => true, 'filename' => wp_tempnam( $slug . '.zip' ), 'headers' => array_merge( $h, array( 'Accept' => 'application/octet-stream' ) ) ) );
+		if ( is_wp_error( $dl ) ) { return new WP_Error( 'probe_dl', $dl->get_error_message(), array( 'status' => 502 ) ); }
+		$file = $dl['filename']; if ( 200 !== (int) wp_remote_retrieve_response_code( $dl ) || ! is_file( $file ) || filesize( $file ) < 1000 ) { @unlink( $file ); return new WP_Error( 'probe_dl', 'свалянето не успя: HTTP ' . wp_remote_retrieve_response_code( $dl ), array( 'status' => 502 ) ); }
+		$was_active = false; foreach ( get_plugins() as $pf => $hh ) { if ( dirname( $pf ) === $slug && is_plugin_active( $pf ) ) { $was_active = true; } }
+		$skin = new WP_Ajax_Upgrader_Skin(); $up = new Plugin_Upgrader( $skin );
+		$res = $up->install( $file, array( 'overwrite_package' => true ) ); @unlink( $file ); wp_clean_plugins_cache( true );
+		$main = ''; foreach ( get_plugins() as $pf => $hh ) { if ( dirname( $pf ) === $slug && ! empty( $hh['Version'] ) && ( '' === $main || basename( $pf ) === $slug . '.php' ) ) { $main = $pf; } }
+		$act = null; if ( $main && ( $was_active || $req->get_param( 'activate' ) ) ) { $act = activate_plugin( $main ); }
+		if ( function_exists( 'opcache_reset' ) ) { @opcache_reset(); }
+		return array( 'installed' => true === $res, 'release' => $rel['tag_name'] ?? '', 'plugin' => $main, 'version' => $main ? get_plugins()[ $main ]['Version'] : null, 'activated' => $main ? is_plugin_active( $main ) : false, 'activate_error' => is_wp_error( $act ) ? $act->get_error_message() : null, 'errors' => $skin->get_errors()->get_error_messages(), 'messages' => $skin->get_upgrade_messages() );
 	}
 
 	/* ───────── SQL (само четене) ───────── */
