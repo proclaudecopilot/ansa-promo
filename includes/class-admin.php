@@ -76,7 +76,14 @@ final class Admin {
 				$cfg['bgn']['show'] = ! empty( $_POST['bgn_show'] );
 				$cfg['theme']['hide'] = ! empty( $_POST['theme_hide'] ); $cfg['theme']['selectors'] = (string) wp_unslash( $_POST['theme_selectors'] ?? '' );
 				$cfg['preview']['enabled'] = ! empty( $_POST['preview_enabled'] ); $cfg['preview']['password'] = trim( wp_strip_all_tags( (string) wp_unslash( $_POST['preview_password'] ?? '' ) ) );
+				/* v1.2.0: билети и награди */
+				$cfg['tickets']['portal_url'] = esc_url_raw( (string) wp_unslash( $_POST['portal_url'] ?? '' ) ); $cfg['tickets']['email'] = ! empty( $_POST['ticket_email'] ); $cfg['tickets']['partner_bonus'] = (int) ( $_POST['partner_bonus'] ?? 1 );
+				$cfg['rewards']['book']['product_id'] = (int) ( $_POST['book_product_id'] ?? 0 ); $cfg['rewards']['book']['url'] = esc_url_raw( (string) wp_unslash( $_POST['book_url'] ?? '' ) ); $cfg['rewards']['cosm']['product_id'] = (int) ( $_POST['cosm_product_id'] ?? 0 );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
+			case 'export_orders':
+				$rows = Tickets::orders( array( 'limit' => 2000 ) );
+				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-orders-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
+				echo Tickets::csv( $rows ); exit;
 			case 'products':
 				$cfg = Config::get_draft(); $rows = (array) ( $_POST['p'] ?? array() ); $new = array();
 				foreach ( $rows as $r ) {
@@ -117,10 +124,10 @@ final class Admin {
 		$col  = array( 'ok' => '#1a7f37', 'warn' => '#9a6700', 'bad' => '#cf222e', 'info' => '#57606a' );
 		$draft = Config::get_draft(); $pub = Config::get_published();
 		$page_url = $draft['page_id'] ? get_permalink( $draft['page_id'] ) : '';
-		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'json' => 'JSON' );
+		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'json' => 'JSON' );
 		?>
 		<div class="wrap">
-			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 3</small></h1>
+			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 4</small></h1>
 			<?php if ( $msg ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
 			<nav class="nav-tab-wrapper">
 				<?php foreach ( $tabs as $k => $label ) : ?><a class="nav-tab<?php echo $k === $tab ? ' nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
@@ -179,6 +186,13 @@ final class Admin {
 							<label><input type="checkbox" name="preview_enabled" value="1"<?php checked( ! empty( $draft['preview']['enabled'] ) ); ?>> докато играта не е пусната, страницата показва форма за парола; с правилна парола се вижда <b>черновата</b> (за екипа и избрани клиенти, без вход в сайта)</label>
 							<p><input type="text" name="preview_password" class="regular-text code" value="<?php echo esc_attr( $draft['preview']['password'] ); ?>" placeholder="парола"> <span class="description">паролата се помни в браузъра 30 дни; смяната ѝ изхвърля всички</span></p>
 							<?php $pl = Frontend::preview_link(); if ( $pl ) : ?><p class="description">Линк за екипа (отваря и записва паролата): <code><?php echo esc_html( $pl ); ?></code></p><?php else : ?><p class="description">Избери страницата по-горе, за да видиш линка за екипа.</p><?php endif; ?>
+						</td></tr>
+						<tr><th>🎟️ Билети и награди</th><td>
+							<p><label>Портал за билетите (URL в QR кода; празно = промо страницата с <code>?ticket=КОД</code>)<br><input type="url" name="portal_url" class="regular-text code" value="<?php echo esc_attr( $draft['tickets']['portal_url'] ); ?>" placeholder="https://portal.ansa.bg/"></label></p>
+							<p><label><input type="checkbox" name="ticket_email" value="1"<?php checked( ! empty( $draft['tickets']['email'] ) ); ?>> и имейл с кода при издаване на билета (QR кодът е в пратката така или иначе)</label> &nbsp; <label>бонус билети за ansa Partner: <input type="number" name="partner_bonus" min="0" max="5" value="<?php echo (int) $draft['tickets']['partner_bonus']; ?>" style="width:60px"></label></p>
+							<p><label>Книга — WC продукт ID (влиза в количката на €0): <input type="number" name="book_product_id" value="<?php echo (int) $draft['rewards']['book']['product_id']; ?>" style="width:90px"></label> &nbsp; <label>линк към PDF-а (имейл при „Изпълнена“, ако продуктът не е downloadable): <input type="url" name="book_url" class="regular-text code" value="<?php echo esc_attr( $draft['rewards']['book']['url'] ); ?>"></label></p>
+							<p><label>Козметичен сет — WC продукт ID (само за справка/ваучера): <input type="number" name="cosm_product_id" value="<?php echo (int) $draft['rewards']['cosm']['product_id']; ?>" style="width:90px"></label></p>
+							<p class="description">Билетът се издава при „Обработва се“/„Изпълнена“; QR за стикера е в поръчката (meta box „🎁 ansa™ Промо“ → „Стикер за пратката“). Ваучерът за сета и книгата тръгват при „Изпълнена“. Текстовете са в регистъра, група „14 · Имейли · стикер“.</p>
 						</td></tr>
 						<tr><th>Цял екран</th><td>
 							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>
@@ -272,6 +286,21 @@ final class Admin {
 					});
 				})();
 				</script>
+			<?php elseif ( 'orders' === $tab ) : ?>
+				<?php $rows = Tickets::orders( array( 'limit' => 200 ) ); $f = sanitize_key( (string) ( $_GET['f'] ?? '' ) ); if ( $f ) { $rows = array_values( array_filter( $rows, function ( $r ) use ( $f ) { $ts = $r['ticket'] ? $r['ticket']['status'] : 'none'; return 'invalid' === $f ? ! $r['valid'] : $ts === $f; } ) ); } ?>
+				<p style="margin-top:14px">Промо поръчки: <b><?php echo count( $rows ); ?></b> (последните 200) · билети: издадени <b><?php echo (int) Tickets::count( 'issued' ); ?></b> (<?php echo (int) Tickets::sum( 'issued' ); ?> бр.), активирани <b><?php echo (int) Tickets::count( 'activated' ); ?></b> (<?php echo (int) Tickets::sum( 'activated' ); ?> бр.), анулирани <?php echo (int) Tickets::count( 'void' ); ?>
+					&nbsp; · филтър: <?php foreach ( array( '' => 'всички', 'issued' => 'издаден', 'activated' => 'активиран', 'void' => 'анулиран', 'none' => 'без билет', 'invalid' => 'непълна кутия' ) as $k => $l ) : ?><a href="<?php echo esc_url( self::url( array( 'tab' => 'orders', 'f' => $k ) ) ); ?>"<?php echo $k === $f ? ' style="font-weight:700"' : ''; ?>><?php echo esc_html( $l ); ?></a> <?php endforeach; ?>
+					&nbsp; <?php self::form_open( 'export_orders', 'orders' ); ?><button class="button">⬇ CSV</button></form></p>
+				<table class="widefat striped"><thead><tr><th>поръчка</th><th>дата</th><th>статус</th><th>клиент</th><th>кутия</th><th>билети</th><th>код</th><th>билет</th><th>сет</th><th>книга</th><th>UTM</th><th>сума</th></tr></thead><tbody>
+				<?php foreach ( $rows as $r ) : ?>
+					<tr><td><a href="<?php echo esc_url( $r['edit'] ); ?>">#<?php echo esc_html( $r['number'] ); ?></a><?php echo $r['partner'] ? ' 🤝' : ''; ?></td><td><?php echo esc_html( $r['date'] ); ?></td><td><?php echo esc_html( wc_get_order_status_name( $r['status'] ) ); ?></td><td><?php echo esc_html( $r['name'] ); ?><br><small><?php echo esc_html( $r['email'] ); ?></small></td>
+						<td><?php echo esc_html( $r['box'] . ' · ' . $r['packs'] . ' · −' . $r['pct'] . '%' ); ?><?php echo $r['valid'] ? '' : ' <span style="color:#cf222e">непълна</span>'; ?></td><td><?php echo $r['ticket'] ? (int) $r['ticket']['tickets'] : (int) $r['allowance'] . ' <small>(очаква)</small>'; ?></td>
+						<td><?php echo $r['ticket'] ? '<code>' . esc_html( $r['ticket']['code'] ) . '</code> <a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_print&order=' . (int) $r['id'] ), 'ansa_promo_ticket_print' ) ) . '" target="_blank" title="стикер">🖨</a>' : '—'; ?></td>
+						<td><?php echo $r['ticket'] ? esc_html( $r['ticket']['status'] ) . ( $r['ticket']['activated_at'] ? '<br><small>' . esc_html( $r['ticket']['activated_at'] . ' · ' . $r['ticket']['portal_user'] ) . '</small>' : '' ) : '—'; ?></td>
+						<td><?php echo esc_html( $r['cosm'] ?: '—' ); ?><?php echo $r['voucher'] ? '<br><code>' . esc_html( $r['voucher'] ) . '</code>' : ''; ?></td><td><?php echo $r['book'] ? ( $r['book_sent'] ? '✓ ' . esc_html( $r['book_sent'] ) : 'при изпълнена' ) : '—'; ?></td><td><?php echo esc_html( $r['utm'] ); ?></td><td><?php echo wp_kses_post( wc_price( $r['total'] ) ); ?></td></tr>
+				<?php endforeach; ?>
+				<?php if ( ! $rows ) : ?><tr><td colspan="12">Още няма промо поръчки.</td></tr><?php endif; ?>
+				</tbody></table>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<?php self::form_open( 'import', 'json', ' style="display:block;max-width:900px;margin-top:14px"' ); ?>
 					<p>Черновата като JSON. Редактирай и „Внеси“ — записва се като чернова (минава през normalize), публикуваш от 🧰 Инструменти.</p>

@@ -25,7 +25,9 @@ includes/class-seed.php      началната чернова от мокъпа
 includes/class-admin.php     меню „🎁 ansa Промо“: Състояние · 🧰 Инструменти (страница, игра, срок, gate, публикуване, история, seed) · JSON
 includes/class-doctor.php    env() — редовете на екрана „Състояние“; Фаза 2 добавя checks()
 includes/class-cart.php      Фаза 3: ansa_promo_add, цени/заключване/доставка/купони, чекаут ред + ☑ сетът, order meta, благодаря
-includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page, promo-cart
+includes/class-tickets.php   Фаза 4: билети (HMAC кодове), QR endpoint, REST за портала, ваучер/книга по имейл, void, 🎟️ Поръчки, стикер
+includes/class-qr.php        QR код в чист PHP (v1–10, L/M/Q/H, RS, маски) → PNG (GD) / SVG
+includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page, promo-cart, promo-tickets
 probe/ansa-probe/            LOGADOR Probe — отделен плъгин (ansa-probe.zip в release-а), REST с token за проверки/лог/поръчки/ъпдейт
 includes/mu/                 LOGADOR GitHub Updater (копира се в mu-plugins)
 assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
@@ -46,7 +48,7 @@ docs/                        планът + мокъпът + port-css.py + shots
 | 1 | 1.0.2 … 1.0.53 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax; 1.0.3 = цял екран, WC снимки, бадж с цена, таб 📦 Продукти | `snippets/phase-1.php` |
 | 2 | 1.0.3 | визуалният редактор | — |
 | 3 | 1.1.0 | количка и чекаут (`includes/class-cart.php`) | probe suite `promo-cart` |
-| 4 | 1.2.0 | награди: билети, QR, REST, ваучер, книга | — |
+| 4 | 1.2.0 | награди: билети, QR, REST за портала, ваучер, книга, 🎟️ Поръчки (`class-tickets.php`, `class-qr.php`) | probe suite `promo-tickets` |
 | 5 | 1.3.0 | Insights + ansa Partner | — |
 | 6 | 1.3.x | hardening | — |
 
@@ -77,6 +79,16 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### Фаза 4 (1.2.0) — награди: билети · QR · портал · имейли · 🎟️ Поръчки
+**Какво има:** `includes/class-tickets.php` (`AnsaPromo\Tickets`) + `includes/class-qr.php` (`AnsaPromo\QR`):
+- **Издаване:** при `processing`/`completed` (веднъж; guard `_ansa_promo_ticket_id`) за валидна промо поръчка с allowance > 0 → ред в `{prefix}ansa_promo_tickets` (order_id, code, tickets, box, status=issued). Кодът е 12 знака — 8 случайни + 4 контролни (HMAC-SHA256 с тайна `ansa_promo_ticket_secret`, генерира се сама; `tickets.secret` в конфига я замества), азбука без 0/O/1/I, показва се като `XXXX-XXXX-XXXX`; сгрешен код се отхвърля без DB. В поръчката: `_ansa_promo_ticket_code`, `_ansa_promo_qr_url`, бележка с кода и QR линка; при запазен сет — ваучер `_ansa_promo_voucher`. `cancelled`/`refunded` → `void` (бележка); обратно в `processing` → `issued`. Изтриване на поръчката трие реда. Дневен крон анулира билети на отменени поръчки (застраховка).
+- **QR (чист PHP):** byte mode, версии 1–10, L/M/Q/H, Reed–Solomon, 8 маски с наказателни правила; PNG през GD или SVG. Проверен с jsQR (`tests/qr/gen.php` + `decode.js`: 19/19). Съдържание: `tickets.portal_url?t=КОД` или промо страницата `?ticket=КОД` (filter `ansa_promo_ticket_url`). `GET /wp-json/ansa-promo/v1/order/{id}/qr.png|svg` — `manage_woocommerce` или подписан `?key=` (HMAC на order id) → за складовия плъгин/стикера; `?scale=`.
+- **Портал (REST, без вход, 30/мин/IP, CORS за origin-а на `portal_url`):** `GET /ansa-promo/v1/ticket/{code}` → `{valid, code, count, box, status, activated, activated_at, issued_at}` (404 при невалиден код, без DB); `POST …/ticket/{code}/activate` `{email|phone}` → `activated` (веднъж; повторно → `already:true`; `void` → 410), бележка към поръчката, hook `ansa_promo_ticket_activated($row, $user)`.
+- **Имейли (WC mailer, текстове в регистъра, група „14 · Имейли · стикер“):** при `completed` — ваучерът за сета (`em.voucher.*`, `_ansa_promo_cosm_status = voucher_sent`) и книгата (`em.book.*` с `rewards.book.url`, само ако WC не я дава като download; иначе `_ansa_promo_book_sent = wc-download`); по избор имейл с кода при издаване (`tickets.email`, `em.ticket.*`). Filter `ansa_promo_email_html`.
+- **Админ:** таб **🎟️ Поръчки** (последните 200 промо поръчки: кутия, билети, код + 🖨 стикер, статус на билета/активиране, сет/ваучер, книга, UTM, сума; филтри; **CSV**), meta box „🎁 ansa™ Промо“ в поръчката (QR, код, статус, „Стикер за пратката“ → печатна страница 100 mm с QR + код + `st.*` текстове, „Издай билет сега“), 🧰 Инструменти → „Билети и награди“ (портал URL, имейл с кода, бонус за Partner, книга/сет продукт ID, PDF линк). Doctor: ред „Билети“.
+**Проверено локално:** probe suite `promo-tickets` — 34/34 (кодове, QR PNG/SVG, поръчка → processing → билет/ваучер/meta, идемпотентно, REST valid/404/activate/already, QR auth, completed → ваучер по имейл, cancel → void → processing → issued, изтриване). Стикерът и meta box-ът рендират; QR от REST се чете с jsQR.
+**Въпроси (с дефолт):** (P4) домейн на портала — `tickets.portal_url` (празно = промо страницата с `?ticket=`); порталът е извън обхвата, API-то е готово. (P4) складовият плъгин — стикерът е в поръчката (meta box) + `_ansa_promo_qr_url` за шаблоните на опаковъчния лист.
 
 ### Фаза 3 (1.1.0) — количка и чекаут
 **Какво има:** `includes/class-cart.php` (`AnsaPromo\Cart`) — порт на пенсионирания `Ansa_Promo_Cart` от Shrine 6.19 с поправките от плана §6.1–6.3:

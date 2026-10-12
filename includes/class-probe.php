@@ -24,6 +24,7 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-env',  'label' => 'ansa™ Промо · среда (Doctor)',       'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_env' ) );
 		$s[] = array( 'id' => 'promo-page', 'label' => 'ansa™ Промо · страницата на живо',   'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_page' ) );
 		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут',     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
+		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
 		return $s;
 	}
 
@@ -214,5 +215,70 @@ final class Probe {
 			$out['code'] = (int) wp_remote_retrieve_response_code( $r ); $out['body'] = (string) wp_remote_retrieve_body( $r ); $out['bytes'] = strlen( $out['body'] ); $out['wfacp'] = false !== strpos( $out['body'], 'wfacp' );
 		} catch ( \Throwable $e ) { $out['err'] = $e->getMessage(); }
 		return $out;
+	}
+
+	/* ── tickets: Фаза 4 — поръчка → processing → билет (HMAC код, QR, REST), activate, completed → имейли, cancel → void. ?keep=1 оставя поръчката. */
+	public static function suite_tickets( $t, $params ) {
+		if ( ! function_exists( 'WC' ) ) { $t->ok( 'WooCommerce', false ); return null; }
+		if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
+		if ( ! WC()->cart || ! WC()->session ) { $t->ok( 'WC количка', false ); return null; }
+		$pub = Config::get_published(); $draft = ! Config::is_live( $pub ); $cfg = $draft ? Config::get_draft() : $pub; $keep = ! empty( $params['keep'] );
+		/* кодове */
+		$code = Tickets::generate(); $t->ok( 'код: 12 знака с валидна контрола', 12 === strlen( $code ) && Tickets::normalize( $code ) === $code, Tickets::pretty( $code ) );
+		$t->ok( 'код: приема тирета/малки букви', Tickets::normalize( strtolower( Tickets::pretty( $code ) ) ) === $code );
+		$bad = substr( $code, 0, 11 ) . ( 'A' === $code[11] ? 'B' : 'A' ); $t->ok( 'код: сгрешен знак → невалиден без DB', '' === Tickets::normalize( $bad ) );
+		/* QR */
+		$url = Tickets::ticket_url( $code ); $png = QR::png( $url ); $svg = QR::svg( $url );
+		$t->ok( 'QR PNG' . ( function_exists( 'imagecreatetruecolor' ) ? '' : ' (без GD → SVG)' ), function_exists( 'imagecreatetruecolor' ) ? strlen( $png ) > 200 && "\x89PNG" === substr( $png, 0, 4 ) : '' !== $svg, strlen( $png ) . ' B · ' . $url );
+		$t->ok( 'QR SVG', false !== strpos( $svg, '<svg' ), strlen( $svg ) . ' B' );
+		/* поръчка */
+		$live = Frontend::products( $cfg ); $ok_keys = array(); foreach ( $live as $k => $p ) { if ( $p['stock'] ) { $ok_keys[] = $k; } }
+		$box = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][ count( $cfg['boxes'] ) - 1 ]; $n = (int) $box['packs'];
+		if ( count( $ok_keys ) < 1 ) { $t->ok( 'налични продукти', false ); return null; }
+		$pick = array(); for ( $i = 0; $i < $n; $i++ ) { $pick[] = $ok_keys[ $i % count( $ok_keys ) ]; }
+		WC()->customer->set_billing_country( 'BG' ); WC()->customer->set_shipping_country( 'BG' ); WC()->customer->set_shipping_postcode( '1000' );
+		$r = Cart::perform_add( array( 'trusted' => true, 'draft' => $draft, 'box' => $box['id'], 'items' => array_map( function ( $k ) use ( $live ) { return (int) $live[ $k ]['id']; }, $pick ), 'pay' => 'cod', 'email' => 'probe@example.com', 'cosm' => true ) );
+		if ( ! $t->ok( 'add ' . $box['name'], ! empty( $r['ok'] ), $r['msg'] ?? '' ) ) { return null; }
+		$oid = self::make_order( $t, $box['ic'] . ' ' . $box['name'], $box, $cfg ); WC()->cart->empty_cart(); Cart::clear_ctx();
+		if ( ! $oid ) { return null; }
+		$o = wc_get_order( $oid ); $m = $o->get_meta( '_ansa_promo' );
+		/* имейлите се прихващат */
+		$mails = array(); $hook = function ( $pre, $atts ) use ( &$mails ) { $mails[] = array( 'to' => $atts['to'], 'subject' => $atts['subject'], 'bytes' => strlen( (string) $atts['message'] ) ); return true; };
+		add_filter( 'pre_wp_mail', $hook, 10, 2 );
+		$t->ok( 'преди processing няма билет', ! Tickets::for_order( $oid ) );
+		$o->update_status( 'processing', 'probe' ); $row = Tickets::for_order( $oid );
+		$t->ok( 'processing → билет', (bool) $row, $row ? Tickets::pretty( $row['code'] ) . ' · ' . $row['tickets'] . ' бр. · ' . $row['status'] : 'няма ред' );
+		if ( ! $row ) { remove_filter( 'pre_wp_mail', $hook, 10 ); if ( ! $keep ) { $o->delete( true ); } return null; }
+		$t->eq( 'билети = allowance', (int) $m['tickets']['allowance'], (int) $row['tickets'] );
+		$t->ok( 'кодът е валиден', Tickets::normalize( $row['code'] ) === $row['code'] );
+		$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code/qr_url', $o->get_meta( '_ansa_promo_ticket_code' ) === $row['code'] && '' !== $o->get_meta( '_ansa_promo_qr_url' ), (string) $o->get_meta( '_ansa_promo_qr_url' ) );
+		$t->ok( 'ваучер при запазен сет', null === $box['cosm_pay'] || '' !== (string) $o->get_meta( '_ansa_promo_voucher' ), (string) $o->get_meta( '_ansa_promo_voucher' ) );
+		$o->update_status( 'processing', 'probe пак' ); $t->ok( 'повторно processing → същият билет', Tickets::for_order( $oid )['id'] === $row['id'] && 1 === (int) count( array_filter( (array) \wc_get_order_notes( array( 'order_id' => $oid ) ), function ( $n ) { return false !== strpos( $n->content, 'издаден билет' ); } ) ) );
+		/* REST */
+		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/ticket/' . Tickets::pretty( $row['code'] ) ); $res = rest_do_request( $req ); $d = $res->get_data();
+		$t->ok( 'GET ticket/{code} → valid', 200 === $res->get_status() && ! empty( $d['valid'] ) && (int) $d['count'] === (int) $row['tickets'] && empty( $d['activated'] ), wp_json_encode( $d, JSON_UNESCAPED_UNICODE ) );
+		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/ticket/' . $bad ); $res = rest_do_request( $req ); $t->eq( 'GET невалиден код → 404', 404, $res->get_status() );
+		$req = new \WP_REST_Request( 'POST', '/' . Tickets::NS . '/ticket/' . $row['code'] . '/activate' ); $req->set_param( 'email', 'portal@example.com' ); $res = rest_do_request( $req ); $d = $res->get_data();
+		$t->ok( 'POST activate → activated', 200 === $res->get_status() && ! empty( $d['activated'] ) && empty( $d['already'] ), wp_json_encode( $d, JSON_UNESCAPED_UNICODE ) );
+		$res = rest_do_request( $req ); $d = $res->get_data(); $t->ok( 'POST activate пак → already', 200 === $res->get_status() && ! empty( $d['already'] ) );
+		$t->eq( 'редът е activated', 'activated', Tickets::for_order( $oid )['status'] );
+		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/order/' . $oid . '/qr.svg' ); $req->set_param( 'key', 'wrong' ); $res = rest_do_request( $req ); $t->ok( 'QR с грешен key → 401/403', in_array( $res->get_status(), array( 401, 403 ), true ), (string) $res->get_status() );
+		$t->ok( 'QR auth с подписан key', true === Tickets::qr_auth( ( function () use ( $oid ) { $q = new \WP_REST_Request( 'GET', '/' ); $q['id'] = $oid; $q->set_param( 'key', Tickets::qr_key( $oid ) ); return $q; } )() ) );
+		/* completed → имейли */
+		$o = wc_get_order( $oid ); $o->update_status( 'completed', 'probe' ); $o = wc_get_order( $oid );
+		$subjects = array_map( function ( $x ) { return $x['subject']; }, $mails );
+		if ( null !== $box['cosm_pay'] ) { $t->ok( 'completed → ваучер по имейл', 'voucher_sent' === $o->get_meta( '_ansa_promo_cosm_status' ) && (bool) array_filter( $subjects, function ( $s ) { return false !== mb_stripos( $s, 'ваучер' ); } ), 'cosm_status=' . $o->get_meta( '_ansa_promo_cosm_status' ) . ' · имейли: ' . implode( ' | ', $subjects ) ); }
+		else { $t->note( 'completed → ваучер', 'кутията няма сет' ); }
+		$t->note( 'completed → книга', (string) $o->get_meta( '_ansa_promo_book_sent' ) ?: ( ! empty( $m['book'] ) ? 'не е изпратена (няма rewards.book.url и продуктът не е downloadable)' : 'кутията няма книга' ) );
+		$t->note( 'имейли общо (WC + промо)', count( $mails ) . ': ' . implode( ' | ', $subjects ) );
+		/* cancel → void → processing → issued */
+		$o->update_status( 'cancelled', 'probe' ); $t->eq( 'cancelled → void', 'void', Tickets::for_order( $oid )['status'] );
+		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/ticket/' . $row['code'] ); $d = rest_do_request( $req )->get_data(); $t->ok( 'GET void → valid=false', empty( $d['valid'] ) && 'void' === ( $d['status'] ?? '' ) );
+		$o = wc_get_order( $oid ); $o->update_status( 'processing', 'probe' ); $t->eq( 'пак processing → issued', 'issued', Tickets::for_order( $oid )['status'] );
+		remove_filter( 'pre_wp_mail', $hook, 10 );
+		/* стикерът */
+		$t->ok( 'данни за стикера', ! empty( Tickets::ticket_url( $row['code'] ) ) && (bool) Tickets::for_order( $oid ) );
+		if ( ! $keep ) { $o = wc_get_order( $oid ); $o->delete( true ); $t->ok( 'изтриване на поръчката трие билета', ! Tickets::for_order( $oid ) ); $t->note( 'тестова поръчка', '#' . $oid . ' изтрита (?keep=1 я оставя)' ); } else { $t->note( 'тестова поръчка (оставена)', '#' . $oid ); }
+		return array( 'order' => $oid, 'code' => Tickets::pretty( $row['code'] ), 'mails' => $mails );
 	}
 }
