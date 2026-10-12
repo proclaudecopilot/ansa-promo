@@ -44,6 +44,7 @@ final class Plugin {
 		Tickets::register();
 		Insights::register();
 		Partner::register();
+		Tombola::register();
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); Editor::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
