@@ -2,12 +2,12 @@
 /**
  * Plugin Name: LOGADOR GitHub Updater
  * Description: Един token за сайта; всеки плъгин с ред „GitHub Plugin URI: owner/repo“ в header-а си се обновява от GitHub Releases през стандартния WP ъпдейт (Update now / auto-updates). Webhook: GitHub Action-ът пингва сайта при release и той се обновява веднага. Инсталира се сам от плъгините на LOGADOR (mu-plugins).
- * Version: 1.1.3
+ * Version: 1.1.4
  * Author: LOGADOR
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 if ( defined( 'LOGADOR_GH_UPDATER_VERSION' ) ) return; // вече е зареден (от друго копие)
-define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.3' );
+define( 'LOGADOR_GH_UPDATER_VERSION', '1.1.4' );
 /* v1.1.2: ANSA Partner ≤ 5.8.5 носи форк на същия updater под друго име
    (proclaudecopilot-github-updater.php, клас PCC_GitHub_Updater, страница pcc-github).
    Двата заедно = две менюта „GitHub ъпдейти“ и двойни заявки към GitHub.
@@ -249,6 +249,9 @@ final class LOGADOR_GitHub_Updater {
 			}
 		}
 
+		/* v1.1.4: след ъпдейт през webhook-а никой не минава през админа → OPcache може да върти стария код в някои worker-и (видяно на ansa.bg: REST докладваше старата версия). */
+		if ( $pending && function_exists( 'opcache_reset' ) ) { @opcache_reset(); }
+		if ( $pending && function_exists( 'wp_cache_flush' ) ) { wp_cache_flush(); }
 		/* 4. Отчет — какво е тук, какво е в GitHub, обнови ли се. */
 		wp_clean_plugins_cache( false );
 		$after = self::tracked();
