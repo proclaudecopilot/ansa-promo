@@ -2,7 +2,7 @@
 /**
  * Plugin Name: proclaudecopilot GitHub Updater
  * Description: Един token за сайта; всеки плъгин с ред „GitHub Plugin URI: owner/repo“ в header-а си се обновява от GitHub Releases през стандартния WP ъпдейт (Update now / auto-updates). Webhook: GitHub Action-ът пингва сайта при release и той се обновява веднага. Инсталира се сам от плъгините на ansa (mu-plugins).
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: proclaudecopilot
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -11,16 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
    guard-ът пуска, когато константата е '0'. Старото копие се зарежда преди нас по азбучен ред; в ТАЗИ заявка то вече е
    регистрирало hook-овете си, от следващата го няма. */
 if ( defined( 'PCC_GH_UPDATER_VERSION' ) && '0' !== PCC_GH_UPDATER_VERSION ) return; // вече е зареден (от друго копие)
-if ( ! defined( 'PCC_GH_UPDATER_VERSION' ) ) define( 'PCC_GH_UPDATER_VERSION', '1.2.0' );
-define( 'PCC_GH_UPDATER_REAL_VERSION', '1.2.0' );
+if ( ! defined( 'PCC_GH_UPDATER_VERSION' ) ) define( 'PCC_GH_UPDATER_VERSION', '1.2.1' );
+define( 'PCC_GH_UPDATER_REAL_VERSION', '1.2.1' );
 if ( is_file( __DIR__ . '/logador-github-updater.php' ) ) { @unlink( __DIR__ . '/logador-github-updater.php' ); }
 if ( ! defined( 'LOGADOR_GH_UPDATER_VERSION' ) ) define( 'LOGADOR_GH_UPDATER_VERSION', '0' ); // старото копие, ако все пак се зареди след нас, се връща на първия си ред
 /* v1.1.5: един release може да носи няколко плъгина с различни версии. Плъгинът избира своя zip по header „GitHub Release Asset: <база>“
    (по подразбиране slug-ът): <база>.zip или <база>-X.Y.Z.zip; версията за сравнение е от името на файла, ако я има, иначе от тага.
    Така ansa-shrine (таг vX.Y.Z, ansa-shrine.zip) и ansa-checkout-reskin (ansa-checkout-reskin-12.1.2.zip) живеят в едно репо.
    Плъгин с изричен asset, който липсва в последния release, е „актуален“ (няма update), не взема чужд zip. */
-if ( class_exists( 'PCC_GitHub_Updater', false ) ) return;
-
+/* v1.2.1: тук НЯМА class_exists() guard — PHP декларира класа при компилацията на файла, така че проверката беше винаги
+   истина, файлът излизаше преди instance() и нито един hook не се регистрираше (1.2.0: без меню, без token при сваляне). */
 final class PCC_GitHub_Updater {
 	const OPT_TOKEN = 'pcc_github_token';
 	const OPT_SECRET = 'pcc_github_hook_secret'; // v1.1.0: общ secret за webhook-а от GitHub Actions
