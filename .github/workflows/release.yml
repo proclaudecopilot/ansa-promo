@@ -84,10 +84,13 @@ jobs:
               echo "→ $URL (опит $i)"
               out=$(curl -sS -m 280 -X POST "$URL" -H "X-Logador-Secret: $SECRET" --data-urlencode "repo=$REPO" -w '\nHTTP %{http_code}' || true)
               echo "$out"
-              # успех = HTTP 200 И сайтът докладва ТОЧНО тази версия за това репо (иначе „ок“ може да е празно — плъгинът да липсва)
-              case "$out" in *"HTTP 200"*)
-                good=$(printf '%s' "$out" | head -n1 | REPO="$REPO" VER="$VER" python3 -c 'import sys,json,os; d=json.load(sys.stdin); print(1 if any(p.get("repo")==os.environ["REPO"] and p.get("after")==os.environ["VER"] for p in d.get("plugins",[])) else 0)' 2>/dev/null || echo 0)
-                if [ "$good" = 1 ]; then ok=1; break; else echo "::warning::Отговорът е 200, но сайтът не докладва $REPO на версия $VER (плъгинът липсва или не се е обновил)"; fi;; esac
+              # успех = сайтът докладва ТОЧНО тази версия за ТОВА репо. HTTP кодът не е критерий: updater-ът връща 500 с ok:false,
+              # щом КОЙТО И ДА Е следен плъгин не е успял (напр. Shrine с изключени auto-updates) — това се пише като warning, не проваля ping-а.
+              good=$(printf '%s' "$out" | head -n1 | REPO="$REPO" VER="$VER" python3 -c 'import sys,json,os; d=json.load(sys.stdin); print(1 if any(p.get("repo")==os.environ["REPO"] and p.get("after")==os.environ["VER"] for p in d.get("plugins",[])) else 0)' 2>/dev/null || echo 0)
+              others=$(printf '%s' "$out" | head -n1 | REPO="$REPO" python3 -c 'import sys,json,os; d=json.load(sys.stdin); print("; ".join(p.get("plugin","?")+" ("+p.get("repo","")+"): "+p["error"] for p in d.get("plugins",[]) if p.get("error") and p.get("repo")!=os.environ["REPO"]))' 2>/dev/null || true)
+              [ -n "$others" ] && echo "::warning::Други плъгини на сайта не се обновиха: $others"
+              if [ "$good" = 1 ]; then ok=1; break; fi
+              case "$out" in *"HTTP 200"*|*"HTTP 500"*) echo "::warning::Сайтът отговори, но не докладва $REPO на версия $VER (плъгинът липсва или не се е обновил)";; esac
               sleep $((i*20))
             done
             [ "$ok" = 1 ] || { echo "::error::$URL не се обнови до v$VER — виж отговора горе (auto-updates за плъгина трябва да са включени)."; fail=1; }
