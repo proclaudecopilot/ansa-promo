@@ -276,6 +276,35 @@ final class Tombola {
 		$row = Tickets::for_order( (int) $order_id ); $o = wc_get_order( (int) $order_id ); if ( $row && $o && 'void' !== $row['status'] ) { self::on_issued( $row, $o ); }
 	}
 
+	/** Всички поръчки с този billing имейл (до 50; резерва: по клиента, ако нищо не излезе по billing_email). Само с нашия имейл — сравнението е в PHP. */
+	public static function orders_by_email( $email ) {
+		$email = strtolower( trim( (string) $email ) ); if ( '' === $email ) { return array(); }
+		$base = array( 'limit' => 50, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => array_keys( wc_get_order_statuses() ) );
+		$orders = wc_get_orders( array_merge( $base, array( 'billing_email' => $email ) ) );
+		if ( ! $orders ) { $orders = wc_get_orders( array_merge( $base, array( 'customer' => $email ) ) ); }
+		$out = array();
+		foreach ( (array) $orders as $o ) { if ( is_object( $o ) && strtolower( trim( (string) $o->get_billing_email() ) ) === $email ) { $out[] = $o; } }
+		return $out;
+	}
+	/** Диагностика за админа/Probe: защо (не) се хваща всяка поръчка с този имейл → [orders => [ {id, number, status, phones, promo, valid, draft, ticket, phone_ok, delivered, why[]} ], result]. */
+	public static function diagnose( $email, $phone, $cfg = null ) {
+		$cfg = $cfg ?: Config::get_published(); $rows = array();
+		foreach ( self::orders_by_email( $email ) as $o ) {
+			$m = $o->get_meta( '_ansa_promo' ); $t = Tickets::for_order( $o->get_id() ); $why = array();
+			$bp = (string) $o->get_billing_phone(); $sp = (string) $o->get_shipping_phone();
+			$phone_ok = '' !== self::norm_phone( $phone ) && ( self::same_phone( $bp, $phone ) || self::same_phone( $sp, $phone ) );
+			$deliv = self::delivered( $o, $cfg );
+			if ( ! is_array( $m ) ) { $why[] = 'не е промо поръчка (няма _ansa_promo — поръчката не е минала през играта)'; }
+			elseif ( empty( $m['valid'] ) ) { $why[] = 'кутията е била непълна при поръчката (valid=0) — без билети'; }
+			if ( ! $phone_ok ) { $why[] = 'телефонът не съвпада: в поръчката „' . $bp . '“' . ( $sp && $sp !== $bp ? ' / „' . $sp . '“' : '' ) . ' (нормализирано ' . self::norm_phone( $bp ) . '), въведен „' . $phone . '“ (' . self::norm_phone( $phone ) . ')'; }
+			if ( ! $deliv ) { $why[] = 'статусът „' . $o->get_status() . '“ не е сред „получените“ (' . implode( ', ', (array) $cfg['tombola']['statuses'] ) . ')'; }
+			if ( $t && 'void' === $t['status'] ) { $why[] = 'билетът е анулиран'; }
+			if ( ! $t && is_array( $m ) && ! empty( $m['valid'] ) ) { $why[] = 'още няма издаден билет (издава се при проверката, ако кутията носи билети: ' . (int) ( $m['tickets']['allowance'] ?? 0 ) . ')'; }
+			$rows[] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'status' => $o->get_status(), 'date' => $o->get_date_created() ? $o->get_date_created()->date_i18n( 'd.m.Y H:i' ) : '', 'billing_phone' => $bp, 'shipping_phone' => $sp, 'promo' => is_array( $m ), 'valid' => is_array( $m ) && ! empty( $m['valid'] ), 'draft' => is_array( $m ) && ! empty( $m['draft'] ), 'box' => is_array( $m ) ? (string) ( $m['box'] ?? '' ) : '', 'allowance' => is_array( $m ) ? (int) ( $m['tickets']['allowance'] ?? 0 ) : 0, 'ticket' => $t ? Tickets::pretty( $t['code'] ) . ' · ' . $t['status'] . ' · ' . (int) $t['tickets'] . ' бил.' : '', 'phone_ok' => $phone_ok, 'delivered' => $deliv, 'ok' => ! $why, 'why' => $why, 'edit' => $o->get_edit_order_url() );
+		}
+		return array( 'orders' => $rows, 'result' => self::lookup( $email, $phone, $cfg, false ) );
+	}
+
 	/* ── проверката ── */
 	public static function ajax_lookup() {
 		$cfg = Config::get_published(); $v = self::base_vars( $cfg );
@@ -295,12 +324,11 @@ final class Tombola {
 	public static function lookup( $email, $phone, $cfg = null, $activate = true ) {
 		$cfg = $cfg ?: Config::get_published(); $t = $cfg['tombola'];
 		if ( ! function_exists( 'wc_get_orders' ) ) { return array( 'ok' => false, 'code' => 'off' ); }
-		$orders = wc_get_orders( array( 'billing_email' => $email, 'limit' => 50, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => array_keys( wc_get_order_statuses() ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) );
 		$match = array();
-		foreach ( (array) $orders as $o ) {
-			if ( strtolower( trim( (string) $o->get_billing_email() ) ) !== strtolower( trim( $email ) ) ) { continue; }
+		foreach ( self::orders_by_email( $email ) as $o ) {
 			if ( ! self::same_phone( $o->get_billing_phone(), $phone ) && ! self::same_phone( $o->get_shipping_phone(), $phone ) ) { continue; }
-			$m = $o->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) || ! empty( $m['draft'] ) ) { continue; }
+			/* 1.6.1: поръчка от черновата (преглед с парола) е истинска поръчка — брои се */
+			$m = $o->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { continue; }
 			$match[] = $o;
 		}
 		if ( ! $match ) { return array( 'ok' => false, 'code' => 'notfound' ); }
@@ -365,7 +393,7 @@ final class Tombola {
 		$cfg = $cfg ?: Config::get_published(); $out = array();
 		$q = array( 'limit' => $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => array_map( function ( $s ) { return 'wc-' . $s; }, (array) $cfg['tombola']['statuses'] ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' );
 		foreach ( wc_get_orders( $q ) as $o ) {
-			$m = (array) $o->get_meta( '_ansa_promo' ); if ( empty( $m['valid'] ) || ! empty( $m['draft'] ) ) { continue; }
+			$m = (array) $o->get_meta( '_ansa_promo' ); if ( empty( $m['valid'] ) ) { continue; }
 			$row = Tickets::for_order( $o->get_id() ); if ( ! $row || 'void' === $row['status'] ) { continue; }
 			$refs = $row['ref_code'] ? count( self::referrals( $row['ref_code'], 'credited' ) ) : 0;
 			$out[] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'name' => $o->get_formatted_billing_full_name(), 'email' => $o->get_billing_email(), 'phone' => $o->get_billing_phone(), 'box' => (string) $row['box'], 'tickets' => (int) $row['tickets'], 'bonus' => (int) $row['bonus'], 'total' => (int) $row['tickets'] + (int) $row['bonus'], 'status' => $row['status'], 'activated' => (string) $row['activated_at'], 'code' => Tickets::pretty( $row['code'] ), 'ref_code' => (string) $row['ref_code'], 'refs' => $refs, 'gift' => (int) ( $m['tickets']['ref_bonus'] ?? 0 ), 'voucher' => (string) $o->get_meta( '_ansa_promo_voucher' ), 'edit' => $o->get_edit_order_url() );
