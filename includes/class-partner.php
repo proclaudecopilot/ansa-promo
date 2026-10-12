@@ -4,7 +4,9 @@
  *
  * Промото блокира купоните, но партньорският код (AP_Coupons::get_mapping_by_code) МИНАВА — така атрибуцията на Partner
  * (lock при чекаут, комисионна при доставка) оцелява. Отстъпката му в промо количката е 0 (не се стаква с кутията), а
- * клиентът получава +N билета (tickets.partner_bonus). Понеже perform_add() изпразва количката (и купоните с нея),
+ * клиентът получава +N билета. N (1.5.0): Partner ≥ 5.9 го казва за всеки код през AP_Coupons::promo_bonus_tickets()
+ * — кодът за играта носи своя брой, стандартният код на партньор с код за играта носи 0; null (стар Partner или
+ * стандартен код без код за играта) = глобалният tickets.partner_bonus. Понеже perform_add() изпразва количката (и купоните с нея),
  * след добавянето сесийният ref на Partner (?ref=КОД, 48 ч) се прилага отново. Без Partner на сайта — нищо не се закача.
  * Filter `ansa_promo_is_partner_coupon( bool, $code, $coupon )` за други партньорски системи.
  *
@@ -61,12 +63,24 @@ final class Partner {
 		wc_clear_notices();
 	}
 
+	/**
+	 * Бонус билети за даден партньорски код: Partner ≥ 5.9 решава за кода (код за играта → неговият брой; стандартен код
+	 * при наличен код за играта → 0); null/стар Partner → глобалният tickets.partner_bonus. Filter `ansa_promo_partner_bonus`.
+	 */
+	public static function bonus_for_code( $code, $cfg ) {
+		$n = null;
+		if ( '' !== (string) $code && self::available() && is_callable( array( 'AP_Coupons', 'promo_bonus_tickets' ) ) ) {
+			try { $n = \AP_Coupons::promo_bonus_tickets( function_exists( 'wc_format_coupon_code' ) ? wc_format_coupon_code( $code ) : $code ); } catch ( \Throwable $e ) { $n = null; }
+		}
+		if ( null === $n ) { $n = (int) ( $cfg['tickets']['partner_bonus'] ?? 0 ); }
+		return max( 0, (int) apply_filters( 'ansa_promo_partner_bonus', (int) $n, $code, $cfg ) );
+	}
 	/** В _ansa_promo: tickets.partner / bonus / code — Tickets::issue() добавя бонуса. */
 	public static function order_meta( $meta, $g, $cfg ) {
 		$codes = self::applied(); if ( ! $codes ) { return $meta; }
-		$meta['tickets']['partner'] = true; $meta['tickets']['bonus'] = (int) ( $cfg['tickets']['partner_bonus'] ?? 0 ); $meta['tickets']['partner_code'] = $codes[0];
+		$meta['tickets']['partner'] = true; $meta['tickets']['bonus'] = self::bonus_for_code( $codes[0], $cfg ); $meta['tickets']['partner_code'] = $codes[0];
 		return $meta;
 	}
 	/** Бонус билети за текущата количка (за чекаут реда). */
-	public static function bonus_now( $cfg ) { return self::applied() ? (int) ( $cfg['tickets']['partner_bonus'] ?? 0 ) : 0; }
+	public static function bonus_now( $cfg ) { $codes = self::applied(); return $codes ? self::bonus_for_code( $codes[0], $cfg ) : 0; }
 }
