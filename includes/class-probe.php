@@ -60,8 +60,14 @@ final class Probe {
 			$credited = count( Tombola::referrals( $c, 'credited' ) ); $exp = min( $credited, $tb['ref_max'] > 0 ? (int) $tb['ref_max'] : PHP_INT_MAX ) * (int) $row['tickets'] * max( 0, (int) $tb['ref_mult'] - 1 );
 			$t->ok( 'бонусът се преизчислява', Tombola::recompute_bonus( (int) $row['order_id'], $pub ) === $exp, 'credited=' . $credited . ' → bonus ' . $exp );
 		} else { $t->note( 'билети', 'още няма издаден билет — кодовете за препоръка не могат да се проверят' ); }
-		/* истинска проверка по избор */
-		if ( ! empty( $params['email'] ) && ! empty( $params['phone'] ) ) {
+		/* диагностика: ?email= (и по избор &phone=) → всяка поръчка с този имейл и защо (не) се хваща; без активиране */
+		if ( ! empty( $params['email'] ) ) {
+			$dg = Tombola::diagnose( (string) $params['email'], (string) ( $params['phone'] ?? '' ), $pub );
+			$t->note( 'диагностика ' . $params['email'], count( $dg['orders'] ) . ' поръчки · резултат: ' . ( ! empty( $dg['result']['ok'] ) ? 'ok · ' . $dg['result']['total'] . ' билет(а)' : (string) ( $dg['result']['code'] ?? '' ) ) );
+			foreach ( $dg['orders'] as $d ) { $t->note( '  #' . $d['number'] . ' · ' . $d['status'], $d['ok'] ? '✅ хваща се' : implode( ' · ', $d['why'] ) ); }
+		}
+		/* истинска проверка по избор (активира билетите!) */
+		if ( ! empty( $params['email'] ) && ! empty( $params['phone'] ) && ! empty( $params['activate'] ) ) {
 			$x = Tombola::lookup( (string) $params['email'], (string) $params['phone'], $pub, true );
 			$t->ok( 'проверка ' . $params['email'], ! empty( $x['ok'] ), ! empty( $x['ok'] ) ? $x['total'] . ' билет(а) · поръчки ' . count( $x['orders'] ) . ' · ref ' . $x['ref_link'] : (string) ( $x['code'] ?? '' ) );
 			if ( ! empty( $x['ok'] ) ) { $html = Tombola::result_html( $x, $pub ); $t->ok( 'HTML на резултата', false !== strpos( $html, 'ansa-tb__ok' ) && false === strpos( $html, '{{' ), strlen( $html ) . ' B' ); }
