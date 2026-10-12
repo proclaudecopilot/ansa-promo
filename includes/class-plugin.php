@@ -41,6 +41,7 @@ final class Plugin {
 		Frontend::register();
 		Leads::register();
 		Cart::register();
+		Tickets::register();
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );

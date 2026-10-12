@@ -46,13 +46,13 @@ final class Config {
 			'order'     => array( 'desktop' => array( 's', 'l', 'm' ), 'mobile' => array( 'l', 'm', 's' ) ),
 			'rewards'   => array(
 				'yacht' => array( 'value' => 8800 ),
-				'book'  => array( 'product_id' => 0, 'value' => 19 ),
+				'book'  => array( 'product_id' => 0, 'value' => 19, 'url' => '' ), /* url: линк към PDF-а, ако WC продуктът не е downloadable (имейл при „Изпълнена“) */
 				'cosm'  => array( 'product_id' => 0, 'value' => 129 ),
 				'icons' => array( 'tix' => '🎟️', 'tix3' => '🎟️', 'tix5' => '🎟️', 'ship' => '🚚', 'book' => '📖', 'cosm50' => '🌸', 'cosm1' => '👑' ),
 			),
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
 			'checkout'  => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true, 'consent_default' => true ),
-			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1 ),
+			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1, 'email' => false ), /* email: и имейл с кода при издаване (QR-ът е в пратката така или иначе) */
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
 			'preview'   => array( 'enabled' => true, 'password' => 'SD(A0%as09' ),
@@ -235,11 +235,11 @@ final class Config {
 			$out['order'][ $dev ] = count( $ord ) === 3 ? $ord : $d['order'][ $dev ];
 		}
 		$out['rewards']['yacht']['value'] = (float) $out['rewards']['yacht']['value'];
-		$out['rewards']['book']['product_id'] = (int) $out['rewards']['book']['product_id']; $out['rewards']['book']['value'] = (float) $out['rewards']['book']['value'];
+		$out['rewards']['book']['product_id'] = (int) $out['rewards']['book']['product_id']; $out['rewards']['book']['value'] = (float) $out['rewards']['book']['value']; $out['rewards']['book']['url'] = esc_url_raw( (string) ( $out['rewards']['book']['url'] ?? '' ) );
 		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value'];
 		$out['secret']['pct'] = max( 0, min( 90, (float) $out['secret']['pct'] ) ); $out['secret']['count'] = max( 0, min( 6, (int) $out['secret']['count'] ) ); $out['secret']['enabled'] = ! empty( $out['secret']['enabled'] );
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
-		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] );
+		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] );
 		$out['preview']['enabled'] = ! empty( $out['preview']['enabled'] ); $out['preview']['password'] = trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) );
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
