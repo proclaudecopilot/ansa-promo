@@ -281,6 +281,7 @@ final class Frontend {
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
+			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
 			'deadline'  => $deadline,
 			'copy'      => Copy::effective( $cfg['copy'] ),
 			'registry'  => $editor ? array( 'groups' => Copy::groups(), 'keys' => Copy::registry(), 'vars' => Copy::vars() ) : null,

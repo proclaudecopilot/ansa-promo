@@ -43,6 +43,8 @@
     SECRET_PCT=Number(A.secret&&A.secret.pct)||0;SECRET_N=Number(A.secret&&A.secret.count)||0;
   }
   bind();
+  /* v1.4.3: UTM-ът и от адреса — кешът (FlyingPress) връща една и съща страница за ?utm_content=…, със сървърен utm '' */
+  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){qsU=String(qsU).toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(qsU&&PROD[qsU])A.utm=qsU}}catch(e){}
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';

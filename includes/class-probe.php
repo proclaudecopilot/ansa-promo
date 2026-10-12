@@ -60,18 +60,23 @@ final class Probe {
 		$pub = Config::get_published(); $draft = Config::get_draft();
 		if ( empty( $pub['page_id'] ) ) { $t->ok( 'страница', false, 'няма page_id в публикувания конфиг' ); return null; }
 		$url = get_permalink( (int) $pub['page_id'] ); $t->note( 'url', $url );
-		$get = function ( $u, $cookie = '' ) { $a = array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (LOGADOR Probe) Chrome', 'Cache-Control' => 'no-cache' ) ); if ( $cookie ) { $a['headers']['Cookie'] = $cookie; } $r = wp_remote_get( $u, $a ); return is_wp_error( $r ) ? array( 0, '', $r->get_error_message() ) : array( (int) wp_remote_retrieve_response_code( $r ), (string) wp_remote_retrieve_body( $r ), '' ); };
+		$hdr = array();
+		$get = function ( $u, $cookie = '' ) use ( &$hdr ) { $a = array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (LOGADOR Probe) Chrome', 'Cache-Control' => 'no-cache' ) ); if ( $cookie ) { $a['headers']['Cookie'] = $cookie; } $r = wp_remote_get( $u, $a ); if ( is_wp_error( $r ) ) { return array( 0, '', $r->get_error_message() ); } $h = wp_remote_retrieve_headers( $r ); $hdr = array(); foreach ( array( 'x-flying-press-cache', 'x-flying-press-source', 'cf-cache-status', 'x-litespeed-cache', 'cache-control' ) as $k ) { if ( isset( $h[ $k ] ) ) { $hdr[ $k ] = is_array( $h[ $k ] ) ? implode( ',', $h[ $k ] ) : $h[ $k ]; } } return array( (int) wp_remote_retrieve_response_code( $r ), (string) wp_remote_retrieve_body( $r ), '' ); };
 		list( $code, $body, $err ) = $get( $url );
-		$t->ok( 'HTTP 200', 200 === $code, $code . ' ' . $err );
+		$t->ok( 'HTTP 200', 200 === $code, $code . ' ' . $err . ' · ' . wp_json_encode( $hdr ) );
 		$t->ok( 'има #ansaPromo', false !== strpos( $body, 'id="ansaPromo"' ) );
 		$pw = Frontend::preview_available();
 		if ( $pw ) {
 			$t->ok( 'формата за парола е пред анонимния', false !== strpos( $body, 'ansa-promo-pwgate' ), 'preview.enabled=1' );
 			/* с бисквитката — играта (черновата) */
 			$cookie = Frontend::PW_COOKIE . '=' . Frontend::preview_token( $draft['preview']['password'] );
-			list( $c2, $b2 ) = $get( $url, $cookie );
-			$t->ok( 'с парола → играта', 200 === $c2 && false !== strpos( $b2, 'window.AnsaPromoRuntime=' ) && false === strpos( $b2, 'ansa-promo-pwgate' ), 'HTTP ' . $c2 );
-			$body = $b2;
+			list( $c2, $b2 ) = $get( $url, $cookie ); $cached = false !== strpos( $b2, 'ansa-promo-pwgate' ) && ! empty( $hdr['x-flying-press-cache'] ) && 'HIT' === strtoupper( (string) $hdr['x-flying-press-cache'] );
+			if ( $cached ) { $t->note( '⚠ с парола (чист URL)', 'кешът връща формата (' . wp_json_encode( $hdr ) . ') — браузърът презарежда с ?ansa_pw_ok=, както по-долу; страницата трябва да е изключена от кеша (Doctor)' ); }
+			else { $t->ok( 'с парола → играта', 200 === $c2 && false !== strpos( $b2, 'window.AnsaPromoRuntime=' ) && false === strpos( $b2, 'ansa-promo-pwgate' ), 'HTTP ' . $c2 . ' · ' . wp_json_encode( $hdr ) ); }
+			/* както браузърът след приета парола: бисквитка + ?ansa_pw_ok= (параметърът заобикаля кеша) */
+			list( $c3, $b3 ) = $get( add_query_arg( 'ansa_pw_ok', (string) time(), $url ), $cookie );
+			$t->ok( 'с парола + ?ansa_pw_ok → играта', 200 === $c3 && false !== strpos( $b3, 'window.AnsaPromoRuntime=' ) && false === strpos( $b3, 'ansa-promo-pwgate' ), 'HTTP ' . $c3 . ' · ' . wp_json_encode( $hdr ) );
+			$body = $b3;
 		} else {
 			$t->ok( Config::is_live( $pub ) ? 'играта е на екрана' : 'играта е „скоро“', Config::is_live( $pub ) ? false !== strpos( $body, 'window.AnsaPromoRuntime=' ) : false !== strpos( $body, 'ansa-promo-soon' ) );
 		}
@@ -339,7 +344,7 @@ final class Probe {
 			$o->update_status( 'processing', 'probe' ); $row = Tickets::for_order( $oid );
 			$t->ok( 'билети = allowance + бонус', $row && (int) $row['tickets'] === (int) $box['tickets'] + $bonus, $row ? $row['tickets'] . ' = ' . $box['tickets'] . ' + ' . $bonus : 'няма билет' );
 			remove_filter( 'pre_wp_mail', $mails, 10 );
-			$t->ok( 'Insights: created+paid за кутията', ( Insights::report( 1 )['by_box'][ $box['id'] ]['paid'] ?? 0 ) >= 1 );
+			if ( $draft ) { $t->note( 'Insights: created+paid', 'поръчка от чернова — не се брои (по дизайн)' ); } else { $t->ok( 'Insights: created+paid за кутията', ( Insights::report( 1 )['by_box'][ $box['id'] ]['paid'] ?? 0 ) >= 1 ); }
 			if ( ! $keep ) { $o = wc_get_order( $oid ); $o->delete( true ); $t->note( 'тестова поръчка', '#' . $oid . ' изтрита' ); } else { $t->note( 'тестова поръчка (оставена)', '#' . $oid ); }
 		}
 		remove_filter( 'ansa_promo_is_partner_coupon', $sim, 10 ); if ( $cid ) { wp_delete_post( $cid, true ); }
