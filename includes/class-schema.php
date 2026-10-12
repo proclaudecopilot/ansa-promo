@@ -5,6 +5,8 @@
  * {prefix}ansa_promo_tickets — един ред на поръчка: код за QR, брой билети, статус.
  * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия.
  * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
+ * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
+ *                               tickets получава ref_code + bonus).
  *
  * Създават се при активация и при смяна на ANSA_PROMO_DB_VER (ъпдейт през updater-а НЕ
  * пуска activation hook, затова maybe_upgrade() на всеки boot).
@@ -26,7 +28,7 @@ final class Schema {
 	}
 
 	public static function tables() {
-		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ) );
+		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ), 'referrals' => self::table( 'referrals' ) );
 	}
 
 	/** SQL за dbDelta (формат: два интервала преди PRIMARY KEY, KEY на отделен ред). */
@@ -46,10 +48,27 @@ final class Schema {
   activated_at datetime NULL,
   portal_user varchar(191) NULL,
   ip varchar(45) NULL,
+  ref_code varchar(16) NULL,
+  bonus smallint(5) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY  (id),
   UNIQUE KEY code (code),
+  UNIQUE KEY ref_code (ref_code),
   KEY order_id (order_id),
   KEY status (status)
+) $collate;",
+			"CREATE TABLE {$t['referrals']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  ref_code varchar(16) NOT NULL,
+  referrer_order_id bigint(20) unsigned NOT NULL,
+  order_id bigint(20) unsigned NOT NULL,
+  email varchar(191) NOT NULL DEFAULT '',
+  status varchar(16) NOT NULL DEFAULT 'credited',
+  created_at datetime NOT NULL,
+  updated_at datetime NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY order_id (order_id),
+  KEY ref_code (ref_code),
+  KEY referrer_order_id (referrer_order_id)
 ) $collate;",
 			"CREATE TABLE {$t['leads']} (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

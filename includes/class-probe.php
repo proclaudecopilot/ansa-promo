@@ -26,7 +26,47 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут',     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
 		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
 		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
+		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
 		return $s;
+	}
+
+	/* ── tombola (1.6.0): страницата {промо}/tombola, нормализация на телефон, проверка с измислени данни (→ notfound), кодове за препоръка.
+	   ?email=&phone= → проверка с истински данни (активира билетите на тази поръчка!). ── */
+	public static function suite_tombola( $t, $params ) {
+		global $wpdb;
+		$pub = Config::get_published(); $tb = $pub['tombola'];
+		$t->ok( 'таблица referrals', Schema::exists( Schema::table( 'referrals' ) ), Schema::table( 'referrals' ) . ' · DB ver ' . get_option( Schema::OPT_DB_VER ) );
+		$cols = $wpdb->get_col( 'SHOW COLUMNS FROM ' . Schema::table( 'tickets' ) ); $t->ok( 'tickets.ref_code / bonus', in_array( 'ref_code', (array) $cols, true ) && in_array( 'bonus', (array) $cols, true ), implode( ',', (array) $cols ) );
+		$t->ok( 'томболата е включена', Tombola::enabled( $pub ), 'draw=' . $tb['draw'] . ' · statuses=' . implode( ',', (array) $tb['statuses'] ) . ' · ref ?' . $tb['ref_param'] . '= · ×' . $tb['ref_mult'] . ' · max ' . $tb['ref_max'] . ' · gift ' . $tb['ref_gift'] );
+		$url = Tombola::url( $pub ); $t->note( 'url', $url . ' (път: ' . Tombola::path( $pub ) . ')' );
+		$r = wp_remote_get( $url, array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' ) ) );
+		$code = is_wp_error( $r ) ? 0 : (int) wp_remote_retrieve_response_code( $r ); $body = is_wp_error( $r ) ? '' : (string) wp_remote_retrieve_body( $r );
+		$t->ok( 'страницата отговаря 200', 200 === $code, $code . ( is_wp_error( $r ) ? ' ' . $r->get_error_message() : '' ) );
+		$t->ok( 'има #ansaTombola', false !== strpos( $body, 'id="ansaTombola"' ), strlen( $body ) . ' B' . ( preg_match( '/data-ver="([^"]+)"/', $body, $mm ) ? ' · data-ver ' . $mm[1] : '' ) );
+		$t->ok( 'без темата (самостоятелен HTML)', false !== strpos( $body, 'ansa-promo-tombola-page' ) );
+		/* телефон */
+		$t->ok( 'телефон: +359 88 812 3456 ≡ 0888123456', Tombola::same_phone( '+359 88 812 3456', '0888123456' ) );
+		$t->ok( 'телефон: 00359888123456 ≡ 0888 123 456', Tombola::same_phone( '00359888123456', '0888 123 456' ) );
+		$t->ok( 'телефон: различни не съвпадат', ! Tombola::same_phone( '0888123456', '0888123457' ) );
+		/* проверка с измислени данни */
+		$x = Tombola::lookup( 'probe-' . wp_generate_password( 8, false ) . '@example.invalid', '0888000000', $pub, false );
+		$t->ok( 'измислени данни → notfound', empty( $x['ok'] ) && 'notfound' === ( $x['code'] ?? '' ), wp_json_encode( $x ) );
+		/* кодове */
+		$t->ok( 'невалиден код за препоръка → null', null === Tombola::valid_ref( 'ZZZZZZZZ' ) && '' === Tombola::norm_code( 'abc' ) );
+		$row = $wpdb->get_row( 'SELECT * FROM ' . Schema::table( 'tickets' ) . " WHERE status <> 'void' ORDER BY id DESC LIMIT 1", ARRAY_A );
+		if ( $row ) {
+			$c = Tombola::ensure_ref_code( $row ); $found = Tombola::by_ref_code( $c );
+			$t->ok( 'последният билет има код за препоръка', Tombola::CODE_LEN === strlen( $c ) && $found && (int) $found['id'] === (int) $row['id'], $c . ' · поръчка #' . $row['order_id'] . ' · линк ' . Tombola::ref_link( $c, $pub ) );
+			$credited = count( Tombola::referrals( $c, 'credited' ) ); $exp = min( $credited, $tb['ref_max'] > 0 ? (int) $tb['ref_max'] : PHP_INT_MAX ) * (int) $row['tickets'] * max( 0, (int) $tb['ref_mult'] - 1 );
+			$t->ok( 'бонусът се преизчислява', Tombola::recompute_bonus( (int) $row['order_id'], $pub ) === $exp, 'credited=' . $credited . ' → bonus ' . $exp );
+		} else { $t->note( 'билети', 'още няма издаден билет — кодовете за препоръка не могат да се проверят' ); }
+		/* истинска проверка по избор */
+		if ( ! empty( $params['email'] ) && ! empty( $params['phone'] ) ) {
+			$x = Tombola::lookup( (string) $params['email'], (string) $params['phone'], $pub, true );
+			$t->ok( 'проверка ' . $params['email'], ! empty( $x['ok'] ), ! empty( $x['ok'] ) ? $x['total'] . ' билет(а) · поръчки ' . count( $x['orders'] ) . ' · ref ' . $x['ref_link'] : (string) ( $x['code'] ?? '' ) );
+			if ( ! empty( $x['ok'] ) ) { $html = Tombola::result_html( $x, $pub ); $t->ok( 'HTML на резултата', false !== strpos( $html, 'ansa-tb__ok' ) && false === strpos( $html, '{{' ), strlen( $html ) . ' B' ); }
+		}
+		return array( 'url' => $url, 'referrals' => Tombola::count_referrals(), 'credited' => Tombola::count_referrals( 'credited' ) );
 	}
 
 	/** Кратък блок в /env: версия, конфиг, страница. */

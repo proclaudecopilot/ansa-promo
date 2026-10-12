@@ -80,7 +80,17 @@ final class Admin {
 				/* v1.2.0: билети и награди */
 				$cfg['tickets']['portal_url'] = esc_url_raw( (string) wp_unslash( $_POST['portal_url'] ?? '' ) ); $cfg['tickets']['email'] = ! empty( $_POST['ticket_email'] ); $cfg['tickets']['partner_bonus'] = (int) ( $_POST['partner_bonus'] ?? 1 );
 				$cfg['rewards']['book']['product_id'] = (int) ( $_POST['book_product_id'] ?? 0 ); $cfg['rewards']['book']['url'] = esc_url_raw( (string) wp_unslash( $_POST['book_url'] ?? '' ) ); $cfg['rewards']['cosm']['product_id'] = (int) ( $_POST['cosm_product_id'] ?? 0 );
+				/* v1.6.0: томбола */
+				$cfg['tombola']['enabled'] = ! empty( $_POST['tb_enabled'] ); $cfg['tombola']['slug'] = sanitize_title( (string) wp_unslash( $_POST['tb_slug'] ?? 'tombola' ) ); $cfg['tombola']['draw'] = sanitize_text_field( (string) wp_unslash( $_POST['tb_draw'] ?? '' ) );
+				$cfg['tombola']['statuses'] = (string) wp_unslash( $_POST['tb_statuses'] ?? '' ); $cfg['tombola']['ref_param'] = sanitize_key( (string) wp_unslash( $_POST['tb_ref_param'] ?? 'r' ) );
+				$cfg['tombola']['ref_mult'] = (int) ( $_POST['tb_ref_mult'] ?? 2 ); $cfg['tombola']['ref_max'] = (int) ( $_POST['tb_ref_max'] ?? 10 ); $cfg['tombola']['ref_gift'] = (int) ( $_POST['tb_ref_gift'] ?? 1 );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
+			case 'export_tombola':
+				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-tombola-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
+				echo Tombola::csv( Tombola::entries() ); exit;
+			case 'draw':
+				$win = Tombola::draw( Tombola::entries(), sanitize_text_field( (string) wp_unslash( $_POST['label'] ?? '' ) ) );
+				$msg = $win ? sprintf( '🎲 Изтеглен: поръчка #%s · %s · %s · %d билет(а). Записано в дневника на тегленията.', $win['number'], $win['name'], $win['email'], $win['total'] ) : 'Няма участници с билети.'; break;
 			case 'export_stats':
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-insights-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 				echo Insights::csv( (int) ( $_POST['days'] ?? 30 ) ); exit;
@@ -128,7 +138,7 @@ final class Admin {
 		$col  = array( 'ok' => '#1a7f37', 'warn' => '#9a6700', 'bad' => '#cf222e', 'info' => '#57606a' );
 		$draft = Config::get_draft(); $pub = Config::get_published();
 		$page_url = $draft['page_id'] ? get_permalink( $draft['page_id'] ) : '';
-		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'insights' => '📈 Insights', 'json' => 'JSON' );
+		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'tombola' => '🎲 Томбола', 'insights' => '📈 Insights', 'json' => 'JSON' );
 		?>
 		<div class="wrap">
 			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?></small></h1>
@@ -197,6 +207,13 @@ final class Admin {
 							<p><label>Книга — WC продукт ID (влиза в количката на €0): <input type="number" name="book_product_id" value="<?php echo (int) $draft['rewards']['book']['product_id']; ?>" style="width:90px"></label> &nbsp; <label>линк към PDF-а (имейл при „Изпълнена“, ако продуктът не е downloadable): <input type="url" name="book_url" class="regular-text code" value="<?php echo esc_attr( $draft['rewards']['book']['url'] ); ?>"></label></p>
 							<p><label>Козметичен сет — WC продукт ID (само за справка/ваучера): <input type="number" name="cosm_product_id" value="<?php echo (int) $draft['rewards']['cosm']['product_id']; ?>" style="width:90px"></label></p>
 							<p class="description">Билетът се издава при „Обработва се“/„Изпълнена“; QR за стикера е в поръчката (meta box „🎁 ansa™ Промо“ → „Стикер за пратката“). Ваучерът за сета и книгата тръгват при „Изпълнена“. Текстовете са в регистъра, група „14 · Имейли · стикер“.</p>
+						</td></tr>
+						<tr><th>🎲 Томбола</th><td>
+							<?php $tb = $draft['tombola']; $tb_url = Tombola::url( $draft ); ?>
+							<p><label><input type="checkbox" name="tb_enabled" value="1"<?php checked( ! empty( $tb['enabled'] ) ); ?>> страницата за проверка на билетите е включена</label> &nbsp; <label>път: <code><?php echo esc_html( trim( (string) wp_parse_url( Cart::promo_url( $draft ), PHP_URL_PATH ), '/' ) ); ?>/</code><input type="text" name="tb_slug" value="<?php echo esc_attr( $tb['slug'] ); ?>" style="width:110px" class="code"></label> → <a href="<?php echo esc_url( $tb_url ); ?>" target="_blank"><?php echo esc_html( $tb_url ); ?></a> <small>(това е линкът за SMS-а при доставка; работи и <code>[ansa_promo_tombola]</code> на отделна страница)</small></p>
+							<p><label>Теглене на: <input type="text" name="tb_draw" value="<?php echo esc_attr( $tb['draw'] ); ?>" style="width:120px" placeholder="2027-01-25"></label> &nbsp; <label>„получена“ поръчка = статуси: <input type="text" name="tb_statuses" value="<?php echo esc_attr( implode( ', ', (array) $tb['statuses'] ) ); ?>" class="regular-text code"></label> <small>без „wc-“; налични: <?php echo esc_html( implode( ', ', array_map( function ( $s ) { return preg_replace( '/^wc-/', '', $s ); }, array_keys( wc_get_order_statuses() ) ) ) ); ?></small></p>
+							<p><label>Препоръка — параметър в линка: <code>?</code><input type="text" name="tb_ref_param" value="<?php echo esc_attr( $tb['ref_param'] ); ?>" style="width:50px" class="code"><code>=КОД</code></label> &nbsp; <label>множител ×<input type="number" name="tb_ref_mult" min="1" max="10" value="<?php echo (int) $tb['ref_mult']; ?>" style="width:55px"></label> &nbsp; <label>най-много броени препоръки: <input type="number" name="tb_ref_max" min="0" max="1000" value="<?php echo (int) $tb['ref_max']; ?>" style="width:65px"></label> <small>(0 = без лимит)</small> &nbsp; <label>подарък за новия клиент: <input type="number" name="tb_ref_gift" min="0" max="10" value="<?php echo (int) $tb['ref_gift']; ?>" style="width:55px"> билет(а)</label></p>
+							<p class="description">Клиентът въвежда телефон + имейл от поръчката; при „получена“ поръчка вижда билетите си (активират се), датата на тегленето, ваучера за сета и личния си линк <code><?php echo esc_html( Cart::promo_url( $draft ) ); ?>?<?php echo esc_html( $tb['ref_param'] ); ?>=КОД</code>. Приятел, който поръча през линка, получава +подаръка в поръчката си; първата платена препоръка умножава билетите на препоръчалия ×<?php echo (int) $tb['ref_mult']; ?>, всяка следваща добавя още толкова (до лимита). Същият имейл/телефон не се брои. Текстовете са в регистъра, група „15 · Томбола“. <code>?ref=</code> е зает от ansa Partner.</p>
 						</td></tr>
 						<tr><th>Цял екран</th><td>
 							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>
@@ -298,12 +315,25 @@ final class Admin {
 				<table class="widefat striped"><thead><tr><th>поръчка</th><th>дата</th><th>статус</th><th>клиент</th><th>кутия</th><th>билети</th><th>код</th><th>билет</th><th>сет</th><th>книга</th><th>UTM</th><th>сума</th></tr></thead><tbody>
 				<?php foreach ( $rows as $r ) : ?>
 					<tr><td><a href="<?php echo esc_url( $r['edit'] ); ?>">#<?php echo esc_html( $r['number'] ); ?></a><?php echo $r['partner'] ? ' 🤝' : ''; ?></td><td><?php echo esc_html( $r['date'] ); ?></td><td><?php echo esc_html( wc_get_order_status_name( $r['status'] ) ); ?></td><td><?php echo esc_html( $r['name'] ); ?><br><small><?php echo esc_html( $r['email'] ); ?></small></td>
-						<td><?php echo esc_html( $r['box'] . ' · ' . $r['packs'] . ' · −' . $r['pct'] . '%' ); ?><?php echo $r['valid'] ? '' : ' <span style="color:#cf222e">непълна</span>'; ?></td><td><?php echo $r['ticket'] ? (int) $r['ticket']['tickets'] : (int) $r['allowance'] . ' <small>(очаква)</small>'; ?></td>
+						<td><?php echo esc_html( $r['box'] . ' · ' . $r['packs'] . ' · −' . $r['pct'] . '%' ); ?><?php echo $r['valid'] ? '' : ' <span style="color:#cf222e">непълна</span>'; ?></td><td><?php echo $r['ticket'] ? (int) $r['ticket']['tickets'] . ( $r['ticket']['bonus'] ? ' <b title="бонус от препоръки">+' . (int) $r['ticket']['bonus'] . '</b>' : '' ) : (int) $r['allowance'] . ' <small>(очаква)</small>'; ?><?php echo $r['ref_gift'] ? ' <small title="по препоръка ' . esc_attr( $r['ref_from'] ) . '">🎁</small>' : ''; ?></td>
 						<td><?php echo $r['ticket'] ? '<code>' . esc_html( $r['ticket']['code'] ) . '</code> <a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_print&order=' . (int) $r['id'] ), 'ansa_promo_ticket_print' ) ) . '" target="_blank" title="стикер">🖨</a>' : '—'; ?></td>
 						<td><?php echo $r['ticket'] ? esc_html( $r['ticket']['status'] ) . ( $r['ticket']['activated_at'] ? '<br><small>' . esc_html( $r['ticket']['activated_at'] . ' · ' . $r['ticket']['portal_user'] ) . '</small>' : '' ) : '—'; ?></td>
 						<td><?php echo esc_html( $r['cosm'] ?: '—' ); ?><?php echo $r['voucher'] ? '<br><code>' . esc_html( $r['voucher'] ) . '</code>' : ''; ?></td><td><?php echo $r['book'] ? ( $r['book_sent'] ? '✓ ' . esc_html( $r['book_sent'] ) : 'при изпълнена' ) : '—'; ?></td><td><?php echo esc_html( $r['utm'] ); ?></td><td><?php echo wp_kses_post( wc_price( $r['total'] ) ); ?></td></tr>
 				<?php endforeach; ?>
 				<?php if ( ! $rows ) : ?><tr><td colspan="12">Още няма промо поръчки.</td></tr><?php endif; ?>
+				</tbody></table>
+			<?php elseif ( 'tombola' === $tab ) : ?>
+				<?php $ent = Tombola::entries( $pub ); $tot = 0; $act = 0; $refs = 0; $bon = 0; foreach ( $ent as $e ) { $tot += $e['total']; $bon += $e['bonus']; $refs += $e['refs']; if ( 'activated' === $e['status'] ) { $act++; } } $boxes = array(); foreach ( $pub['boxes'] as $b ) { $boxes[ $b['id'] ] = $b['ic'] . ' ' . $b['name']; } $draws = (array) get_option( 'ansa_promo_tombola_draws', array() ); ?>
+				<p style="margin-top:14px">Страница: <a href="<?php echo esc_url( Tombola::url( $pub ) ); ?>" target="_blank"><?php echo esc_html( Tombola::url( $pub ) ); ?></a> · теглене <b><?php echo esc_html( Tombola::draw_label( $pub ) ); ?></b> · „получена“ = <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?><?php echo Tombola::enabled( $pub ) ? '' : ' · <b style="color:#cf222e">ИЗКЛЮЧЕНА</b>'; ?></p>
+				<p>Участници (получени поръчки с билет): <b><?php echo count( $ent ); ?></b> · билети общо <b><?php echo (int) $tot; ?></b> (от тях <?php echo (int) $bon; ?> бонус от препоръки) · проверили се на страницата: <b><?php echo (int) $act; ?></b> · броени препоръки: <b><?php echo (int) $refs; ?></b> (всички редове: <?php echo (int) Tombola::count_referrals(); ?> · self <?php echo (int) Tombola::count_referrals( 'self' ); ?> · dup <?php echo (int) Tombola::count_referrals( 'dup' ); ?> · void <?php echo (int) Tombola::count_referrals( 'void' ); ?>)
+					&nbsp; <?php self::form_open( 'export_tombola', 'tombola' ); ?><button class="button">⬇ CSV на участниците</button></form>
+					&nbsp; <?php self::form_open( 'draw', 'tombola', ' onsubmit="return confirm(\'Да изтегля ли случаен участник (тежест = билетите му)? Резултатът се записва в дневника.\')"' ); ?><input type="text" name="label" placeholder="етикет, напр. „Яхта – финал“" style="width:200px"> <button class="button button-primary">🎲 Изтегли печеливш</button></form></p>
+				<?php if ( $draws ) : ?><h3>Дневник на тегленията</h3><ul><?php foreach ( $draws as $d ) : ?><li><?php echo esc_html( $d['at'] ); ?> · <?php echo esc_html( $d['label'] ?: '—' ); ?> → <b>поръчка #<?php echo esc_html( $d['order'] ); ?></b> · <?php echo esc_html( $d['email'] ); ?> · <?php echo (int) $d['tickets']; ?> билет(а) · жребий <?php echo (int) $d['pick']; ?> от <?php echo (int) $d['pool']; ?> (<?php echo (int) $d['entries']; ?> участници)</li><?php endforeach; ?></ul><?php endif; ?>
+				<table class="widefat striped"><thead><tr><th>поръчка</th><th>клиент</th><th>телефон</th><th>кутия</th><th>билети</th><th>бонус (препоръки)</th><th>общо</th><th>билет</th><th>код за препоръка</th><th>препоръки</th><th>по препоръка</th><th>ваучер</th></tr></thead><tbody>
+				<?php foreach ( $ent as $e ) : ?>
+					<tr><td><a href="<?php echo esc_url( $e['edit'] ); ?>">#<?php echo esc_html( $e['number'] ); ?></a></td><td><?php echo esc_html( $e['name'] ); ?><br><small><?php echo esc_html( $e['email'] ); ?></small></td><td><?php echo esc_html( $e['phone'] ); ?></td><td><?php echo esc_html( $boxes[ $e['box'] ] ?? $e['box'] ); ?></td><td><?php echo (int) $e['tickets']; ?></td><td><?php echo (int) $e['bonus']; ?></td><td><b><?php echo (int) $e['total']; ?></b></td><td><code><?php echo esc_html( $e['code'] ); ?></code><br><small><?php echo esc_html( $e['status'] . ( $e['activated'] ? ' · ' . $e['activated'] : '' ) ); ?></small></td><td><code><?php echo esc_html( $e['ref_code'] ?: '—' ); ?></code></td><td><?php echo (int) $e['refs']; ?></td><td><?php echo $e['gift'] ? '🎁 +' . (int) $e['gift'] : '—'; ?></td><td><?php echo esc_html( $e['voucher'] ?: '—' ); ?></td></tr>
+				<?php endforeach; ?>
+				<?php if ( ! $ent ) : ?><tr><td colspan="12">Още няма получени промо поръчки с билет (статуси: <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?>).</td></tr><?php endif; ?>
 				</tbody></table>
 			<?php elseif ( 'insights' === $tab ) : ?>
 				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); ?>

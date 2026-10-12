@@ -53,6 +53,10 @@ final class Config {
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
 			'checkout'  => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true, 'consent_default' => true ),
 			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1, 'email' => false ), /* email: и имейл с кода при издаване (QR-ът е в пратката така или иначе) */
+			/* v1.6.0: томболата — страницата {промо}/tombola (проверка по телефон + имейл), тегленето, „доставен“ статуси, препоръка (?r=КОД):
+			   ref_mult = множител на билетите на препоръчалия при първа платена препоръка (всяка следваща добавя още толкова), ref_max = най-много
+			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
+			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'completed', 'delivered' ), 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
 			'preview'   => array( 'enabled' => true, 'password' => 'SD(A0%as09' ),
@@ -241,6 +245,13 @@ final class Config {
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
 		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] );
 		$out['preview']['enabled'] = ! empty( $out['preview']['enabled'] ); $out['preview']['password'] = trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) );
+		/* v1.6.0: томбола */
+		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
+		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
+		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );
+		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];
+		$out['tombola']['ref_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['tombola']['ref_param'] ) ?: 'r'; if ( 'ref' === $out['tombola']['ref_param'] ) { $out['tombola']['ref_param'] = 'r'; } /* ?ref= е на ansa Partner */
+		$out['tombola']['ref_mult'] = max( 1, min( 10, (int) $out['tombola']['ref_mult'] ) ); $out['tombola']['ref_max'] = max( 0, min( 1000, (int) $out['tombola']['ref_max'] ) ); $out['tombola']['ref_gift'] = max( 0, min( 10, (int) $out['tombola']['ref_gift'] ) );
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
