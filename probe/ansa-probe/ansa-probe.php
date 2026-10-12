@@ -2,13 +2,13 @@
 /**
  * Plugin Name: LOGADOR Probe
  * Description: Диагностичен канал към сайта за екипа на LOGADOR: REST с token (среда, лог, страница, проверки на плъгините, поръчки, SELECT), „обнови сега“ и отчет, който се записва и в GitHub. Качва се веднъж; проверките на всеки плъгин пътуват със самия плъгин (filter logador_probe_suites).
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      LOGADOR
  * Requires PHP: 7.4
  */
 defined( 'ABSPATH' ) || exit;
 if ( defined( 'LOGADOR_PROBE_VERSION' ) ) return;
-define( 'LOGADOR_PROBE_VERSION', '1.0.1' );
+define( 'LOGADOR_PROBE_VERSION', '1.0.2' );
 define( 'LOGADOR_PROBE_FILE', __FILE__ );
 
 final class LOGADOR_Probe {
@@ -330,7 +330,7 @@ final class LOGADOR_Probe {
 		$plugins = (array) ( $extra['plugins'] ?? ( isset( $extra['plugin'] ) ? array( $extra['plugin'] ) : array() ) );
 		foreach ( $plugins as $p ) { if ( preg_match( '#^(ansa-|logador-)#', (string) $p ) ) { wp_schedule_single_event( time() + 20, self::CRON, array( basename( dirname( $p ) ) ) ); return; } }
 	}
-	public function cron_report( $plugin = '' ) { $rep = self::report(); $rep['trigger'] = 'after update: ' . $plugin; update_option( self::OPT_LAST, $rep, false ); if ( '' !== self::gh_token() ) { self::push( $rep, 'after-update-' . $plugin ); } }
+	public function cron_report( $plugin = '' ) { if ( function_exists( 'opcache_reset' ) ) { @opcache_reset(); } $rep = self::report(); $rep['trigger'] = 'after update: ' . $plugin; update_option( self::OPT_LAST, $rep, false ); if ( '' !== self::gh_token() ) { self::push( $rep, 'after-update-' . $plugin ); } }
 
 	/* ───────── admin ───────── */
 	public function menu() { add_management_page( 'LOGADOR Probe', 'LOGADOR Probe', 'manage_options', 'logador-probe', array( $this, 'page' ) ); }
