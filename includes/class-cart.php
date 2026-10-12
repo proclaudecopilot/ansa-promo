@@ -254,7 +254,9 @@ final class Cart {
 		$cfg = self::cfg(); $box = Config::box( $cfg, $item[ self::META ]['box'] ); $role = $item[ self::META ]['role'];
 		$v = array( 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
 		$tag = self::copy( 'book' === $role ? 'co.tag.book' : ( 'secret' === $role ? 'co.tag.secret' : 'co.tag.base' ), $v );
-		return $name . '<br><small class="ansa-promo-tag">' . wp_kses_post( $tag ) . '</small>';
+		/* v1.5.3: .ansa-promo-lock маркира заключените редове (base/book) и за DOM-а на FunnelKit, който не минава през
+		   woocommerce_cart_item_quantity/remove_link — степерът и ✕ в обобщението му се крият с CSS по този клас */
+		return $name . '<br><small class="ansa-promo-tag' . ( 'secret' === $role ? '' : ' ansa-promo-lock' ) . '">' . wp_kses_post( $tag ) . '</small>';
 	}
 	public static function cart_price_html( $html, $item, $key ) {
 		if ( empty( $item[ self::META ] ) || 'book' !== $item[ self::META ]['role'] ) { return $html; }
@@ -334,7 +336,10 @@ final class Cart {
 		. '.ansa-promo-cosm__txt small{display:block!important;font-size:12.5px!important;line-height:1.45!important;color:#7a6a62!important;font-weight:600!important;text-align:left!important}'
 		. '@media (max-width:480px){.ansa-promo-cosm__ic{display:none!important}label.ansa-promo-cosm{padding:12px 14px!important;gap:10px!important}}'
 		/* етикети в количката, безплатна книга, заключено количество, благодаря */
-		. '.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}.ansa-promo-qty{font-weight:900}.ansa-promo-ty{margin:16px 0!important}.ansa-promo-ty p{margin:6px 0 8px!important;font-size:14px!important;text-align:left!important}'
+		. '.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}'
+		/* v1.5.3: FunnelKit рендва обобщението със свой степер и ✕ (не през WC филтрите) — за заключените редове ги крием */
+		. 'tr.cart_item:has(.ansa-promo-lock) .wfacp_quantity_selector,tr.cart_item:has(.ansa-promo-lock) .product-quantity,tr.cart_item:has(.ansa-promo-lock) .wfacp_delete_item_wrap,tr.cart_item:has(.ansa-promo-lock) .wfacp_mini_cart_remove_item_from_cart{display:none!important}'
+		. '.ansa-promo-qty{font-weight:900}.ansa-promo-ty{margin:16px 0!important}.ansa-promo-ty p{margin:6px 0 8px!important;font-size:14px!important;text-align:left!important}'
 		. '</style>'; }
 
 	/* ═══ ПОРЪЧКА ═══ */
