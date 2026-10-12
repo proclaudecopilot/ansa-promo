@@ -146,7 +146,7 @@
   }
   /* ── навигация ── */
   function go(n){
-    S.screen=n;if(n===5)beacon('order');if(n===1&&!S.emailDone&&!gateSeen())setTimeout(emailGate,250);
+    S.screen=n;if(n===1&&!S.emailDone&&!gateSeen())setTimeout(emailGate,250);
     [1,2,4,5].forEach(function(i){var e=$('apS'+i);if(e)e.classList.toggle('on',i===n)});
     $('apHdr').classList.toggle('builder',n===2);
     if(n!==2)$('apStrip').innerHTML='';
@@ -252,7 +252,7 @@
       +'<div class="cgrid"><div class="cg1">'+cbox+pay_+'</div><div class="cg2"><p class="csub"'+ck(subk)+'>'+T(subk)+'</p><div class="rlist">'+rows+'</div></div></div>'+up
       +'<div class="cacts"><div class="csave"'+ck('cb.save')+'>'+T('cb.save',{save:m(r2(cat()*b.pct/100))})+'</div><button class="cta" id="cGo"'+ck('cb.cta')+'>'+T('cb.cta',{total:m(pay())})+'</button><div class="crow"><button class="lnk" id="cEdit"'+ck('cb.edit')+'>'+T('cb.edit')+'</button><button class="lnk" id="cSwitch"'+ck('cb.switch')+'>'+T('cb.switch')+'</button></div></div></div>';
     $('apOv').classList.remove('off');S._lockOv=true;S._fillPending=false;saveS();
-    $('cGo').onclick=function(){S._lockOv=false;closeInfo();go(5)};
+    $('cGo').onclick=function(){S._lockOv=false;if(A.secret&&A.secret.enabled&&SECRETLIST().length){closeInfo();go(4);return}submitOrder(this,T('cb.cta',{total:m(pay())}))};
     var cm=$('cMore');if(cm){cm.onclick=function(){var bx=cm.closest('.cbox'),open=!bx.classList.contains('open');bx.classList.toggle('open',open);cm.innerHTML=open?T('cb.less'):T('cb.more',{n:cm.dataset.n})}}
     $('cEdit').onclick=function(){S._lockOv=false;closeInfo();S._fillPending=(S.screen!==2);fillModePopup()};
     var cs=$('cSwitch');if(cs)cs.onclick=function(){S._lockOv=false;switchPopup()};
@@ -596,7 +596,7 @@
     $('apOv').classList.remove('off');
     $('upNow').onclick=function(){closeInfo();chooseBox(S.box+1,true)};
     var ub=$('upBig');if(ub)ub.onclick=function(){closeInfo();chooseBox(BI.l,true)};
-    $('keepGo').onclick=function(){closeInfo();go(A.secret&&A.secret.enabled&&SECRETLIST().length?4:5)};
+    $('keepGo').onclick=function(){if(A.secret&&A.secret.enabled&&SECRETLIST().length){closeInfo();go(4);return}submitOrder(this,T('su.stay'))};
   }
   function switchPopup(){
     var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><b>'+esc(x.name)+'</b><small>'+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
@@ -630,7 +630,7 @@
       +'<div class="nar2"><button class="cta" id="c4"'+ck(cnt?'sc.cta.n':'sc.cta.0')+'>'+(cnt?T('sc.cta.n',{n:cnt,lyubimci:cnt===1?'любимец':'любимци'}):T('sc.cta.0'))+'</button></div></div>';
     el.innerHTML=h;$('b4').onclick=function(){go(2)};
     el.querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){var k=b.dataset.s;if(S.secret[k])delete S.secret[k];else S.secret[k]=1;render();saveS()}});
-    $('c4').onclick=function(){go(5)};
+    $('c4').onclick=function(){submitOrder(this,cnt?T('sc.cta.n',{n:cnt,lyubimci:cnt===1?'любимец':'любимци'}):T('sc.cta.0'))};
   }
   /* ── ЕКРАН 5: поръчка (предаване към плащане) ── */
   function renderS5(){
@@ -653,20 +653,25 @@
     el.innerHTML=h;$('b5').onclick=function(){if(A.secret&&A.secret.enabled&&SECRETLIST().length)go(4);else{go(1);setTimeout(celebrate,200)}};
     var ckb=$('cosmOk');if(ckb)ckb.onchange=function(){S.cosm=ckb.checked;saveS()};
     el.querySelectorAll('[data-p]').forEach(function(b){b.onclick=function(){S.pay=b.dataset.p;render();saveS()}});
-    $('finish').onclick=function(){
-      if(!full()){toast(T('ms.full'),true);return}
-      if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
-      var btn=$('finish');btn.disabled=true;btn.innerHTML=T('or.sending');
-      var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay);fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);if(A.draft)fd.append('draft','1');
-      fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
-      /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
-      var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
-        if(r&&r.success&&r.data&&r.data.checkoutUrl){beacon('add');window.location.href=r.data.checkoutUrl;return}
-        if(retry&&r&&r.data&&r.data.code==='nonce'){return fetch(A.ajax+'?action=ansa_promo_runtime',{credentials:'same-origin'}).then(function(x){return x.json()}).then(function(x){if(x&&x.success&&x.data&&x.data.nonce)A.nonce=x.data.nonce;return send(false)})}
-        btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast((r&&r.data&&r.data.msg)||T('or.err'),true);
-      })};
-      send(true).catch(function(){btn.disabled=false;btn.innerHTML=T('or.cta',{total:m(tot)});toast(T('or.err'),true)});
-    };
+    $('finish').onclick=function(){submitOrder(this,T('or.cta',{total:m(tot)}))};
+  }
+  /* v1.5.0: екранът „Поръчка“ (карта/наложен + преглед) е махнат — „Продължи към плащане“ праща кутията и води право в чекаута,
+     където са и начините на плащане. btn се заключва с „Подготвяме кутията ти…“ и се връща с label при грешка. */
+  var sending=false;
+  function submitOrder(btn,label){
+    if(sending)return;if(!full()){toast(T('ms.full'),true);return}
+    if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
+    var b=BX();beacon('order');sending=true;var html=btn?btn.innerHTML:'';if(btn){btn.disabled=true;btn.innerHTML=T('or.sending')}
+    var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=label||html}};
+    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);if(A.draft)fd.append('draft','1');
+    fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
+    /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
+    var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
+      if(r&&r.success&&r.data&&r.data.checkoutUrl){beacon('add');window.location.href=r.data.checkoutUrl;return}
+      if(retry&&r&&r.data&&r.data.code==='nonce'){return fetch(A.ajax+'?action=ansa_promo_runtime',{credentials:'same-origin'}).then(function(x){return x.json()}).then(function(x){if(x&&x.success&&x.data&&x.data.nonce)A.nonce=x.data.nonce;return send(false)})}
+      restore();toast((r&&r.data&&r.data.msg)||T('or.err'),true);
+    })};
+    send(true).catch(function(){restore();toast(T('or.err'),true)});
   }
   /* v1.0.24: плаващата яхта (телефон, само на екрана с кутиите): картинка + „Томбола“; при докосване се разгъва с текста на лентата
      (yban.b / yban.s), „Повече за наградата ›“ отваря инфото за томболата, „Разбрах“ / ✕ / докосване извън нея я свива */

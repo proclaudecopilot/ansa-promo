@@ -10,7 +10,7 @@
   var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
   var scen={utm:'',box:'l',screen:'boxes',full:true};
-  var SCREEN_LABELS={gate:'Имейл-попъп',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',order:'Поръчка',how:'Как работи'};
+  var SCREEN_LABELS={gate:'Имейл-попъп',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
 
   /* ── помощници за конфига ── */

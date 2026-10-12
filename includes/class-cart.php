@@ -273,10 +273,31 @@ final class Cart {
 		$g = self::group(); if ( ! $g || ! self::group_valid( $g ) ) { return; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box || null === $box['cosm_pay'] ) { return; }
 		$v = self::vars( $cfg, $box ); $ctx = self::ctx();
-		echo '<input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '> <span><b>' . wp_kses_post( self::copy( 'co.cosm.label', $v ) ) . '</b><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label>';
+		/* v1.5.0: картичка — чекбокс | икона | текст, подравнено вляво; !important, защото FunnelKit/reskin-ът центрират и презаписват label-ите */
+		echo '<div class="ansa-promo-cosm-wrap"><input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><span class="ansa-promo-cosm__check"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '></span><span class="ansa-promo-cosm__ic">' . esc_html( self::copy( 'co.cosm.ic' ) ) . '</span><span class="ansa-promo-cosm__txt"><b>' . wp_kses_post( self::copy( 'co.cosm.label', $v ) ) . '</b><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label></div>';
 		self::checkout_css();
 	}
-	private static function checkout_css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-promo-co-css">.ansa-promo-co__box{background:#fff5ee;border:1.5px solid rgba(232,114,42,.3);border-radius:12px;padding:12px 14px;font-family:Nunito,sans-serif;text-align:left}.ansa-promo-co__box>b{font-weight:900;display:block;margin-bottom:6px}.ansa-promo-co__box ul{list-style:none;margin:0;padding:0}.ansa-promo-co__box li{font-size:13.5px;font-weight:700;padding:3px 0}.ansa-promo-co__box li i{font-style:normal;margin-right:4px}.ansa-promo-co__warn{margin-top:8px;color:#b91c1c;font-weight:800;font-size:13px}.ansa-promo-cosm{display:flex;gap:10px;align-items:flex-start;background:#fff8e6;border:1.5px solid #f0b429;border-radius:12px;padding:12px 14px;margin:12px 0;font-family:Nunito,sans-serif;cursor:pointer}.ansa-promo-cosm input{margin-top:3px}.ansa-promo-cosm b{display:block;font-weight:900;font-size:14px}.ansa-promo-cosm small{display:block;font-size:12px;color:#8a6a55;font-weight:700}.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}.ansa-promo-qty{font-weight:900}.ansa-promo-ty{margin:16px 0}.ansa-promo-ty p{margin:6px 0 8px;font-size:14px}</style>'; }
+	private static function checkout_css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-promo-co-css">'
+		/* редът с наградите в обобщението на поръчката + благодаря-блокът */
+		. '.ansa-promo-co__box{background:linear-gradient(135deg,#fff8f1,#fff3f6)!important;border:1.5px solid #f3cdb8!important;border-radius:16px!important;padding:14px 16px!important;margin:6px 0!important;font-family:inherit;text-align:left!important;color:#1a1a2e;box-shadow:0 6px 18px rgba(232,114,42,.07)}'
+		. '.ansa-promo-co__box>b{display:block!important;font-weight:900!important;font-size:15px!important;line-height:1.3;margin:0 0 8px!important;text-align:left!important}'
+		. '.ansa-promo-co__box ul{list-style:none!important;margin:0!important;padding:0!important}.ansa-promo-co__box li{display:flex!important;align-items:center;gap:10px;font-size:13.5px!important;font-weight:700!important;line-height:1.35;padding:5px 0!important;margin:0!important;text-align:left!important;border:0!important}'
+		. '.ansa-promo-co__box li i{flex:none;font-style:normal;width:30px;height:30px;border-radius:10px;background:#fff;border:1px solid #f3cdb8;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}'
+		. '.ansa-promo-co__warn{margin-top:8px;color:#b91c1c;font-weight:800;font-size:13px}.ansa-promo-co td{padding:0!important}'
+		/* ☑ сетът — картичка: чекбокс | икона | текст */
+		. '.ansa-promo-cosm-wrap{margin:14px 0 18px!important;clear:both}'
+		. 'label.ansa-promo-cosm{display:flex!important;align-items:flex-start!important;gap:12px!important;width:100%!important;box-sizing:border-box!important;margin:0!important;padding:14px 16px!important;background:linear-gradient(135deg,#fff7f3,#fff1f6)!important;border:1.5px solid #f6c9d6!important;border-radius:16px!important;text-align:left!important;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(232,114,42,.08);transition:border-color .15s,box-shadow .15s;float:none!important}'
+		. 'label.ansa-promo-cosm:has(input:checked){border-color:#e8722a!important;box-shadow:0 8px 24px rgba(232,114,42,.16)}'
+		. '.ansa-promo-cosm__check{flex:none!important;display:flex!important;align-items:center;height:40px}'
+		. '.ansa-promo-cosm__check input{width:22px!important;height:22px!important;min-width:22px;margin:0!important;accent-color:#e8722a;cursor:pointer;-webkit-appearance:checkbox!important;appearance:auto!important;position:static!important;opacity:1!important;display:inline-block!important;visibility:visible!important}'
+		. '.ansa-promo-cosm__ic{flex:none!important;width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid #f6c9d6;display:flex!important;align-items:center;justify-content:center;font-size:22px;line-height:1}'
+		. '.ansa-promo-cosm__txt{flex:1 1 auto!important;min-width:0;text-align:left!important;display:block!important}'
+		. '.ansa-promo-cosm__txt b{display:block!important;font-weight:800!important;font-size:15px!important;line-height:1.3!important;color:#1a1a2e!important;margin:2px 0 4px!important;text-align:left!important}'
+		. '.ansa-promo-cosm__txt small{display:block!important;font-size:12.5px!important;line-height:1.45!important;color:#7a6a62!important;font-weight:600!important;text-align:left!important}'
+		. '@media (max-width:480px){.ansa-promo-cosm__ic{display:none!important}label.ansa-promo-cosm{padding:12px 14px!important;gap:10px!important}}'
+		/* етикети в количката, безплатна книга, заключено количество, благодаря */
+		. '.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}.ansa-promo-qty{font-weight:900}.ansa-promo-ty{margin:16px 0!important}.ansa-promo-ty p{margin:6px 0 8px!important;font-size:14px!important;text-align:left!important}'
+		. '</style>'; }
 
 	/* ═══ ПОРЪЧКА ═══ */
 	/** Метаданните за поръчката от текущата количка (null, ако няма промо група). */
