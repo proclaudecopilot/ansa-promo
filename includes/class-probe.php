@@ -25,6 +25,7 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-page', 'label' => 'ansa™ Промо · страницата на живо',   'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_page' ) );
 		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут',     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
 		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
+		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
 		return $s;
 	}
 
@@ -280,5 +281,68 @@ final class Probe {
 		$t->ok( 'данни за стикера', ! empty( Tickets::ticket_url( $row['code'] ) ) && (bool) Tickets::for_order( $oid ) );
 		if ( ! $keep ) { $o = wc_get_order( $oid ); $o->delete( true ); $t->ok( 'изтриване на поръчката трие билета', ! Tickets::for_order( $oid ) ); $t->note( 'тестова поръчка', '#' . $oid . ' изтрита (?keep=1 я оставя)' ); } else { $t->note( 'тестова поръчка (оставена)', '#' . $oid ); }
 		return array( 'order' => $oid, 'code' => Tickets::pretty( $row['code'] ), 'mails' => $mails );
+	}
+
+	/* ── insights + partner: Фаза 5 — beacon → rollup, отчет; партньорски купон в промо количка: минава, отстъпка 0, +бонус билети. ?keep=1 */
+	public static function suite_insights( $t, $params ) {
+		global $wpdb;
+		$t->ok( 'таблица stats', Schema::exists( Schema::table( 'stats' ) ), Schema::table( 'stats' ) . ' · DB ver ' . get_option( Schema::OPT_DB_VER ) );
+		$before = Insights::report( 1 )['by_step'];
+		Insights::hit( 'view', 'l', 'probe' ); Insights::hit( 'view', 'l', 'probe' ); Insights::hit( 'full', 'l', 'probe' );
+		$after = Insights::report( 1 )['by_step'];
+		$t->ok( 'hit() брои (view +2, full +1)', $after['view'] - $before['view'] === 2 && $after['full'] - $before['full'] === 1, 'view ' . $before['view'] . '→' . $after['view'] . ' · full ' . $before['full'] . '→' . $after['full'] );
+		$rep = Insights::report( 30 ); $t->ok( 'отчетът по кутия/UTM', isset( $rep['by_box']['l'] ) && isset( $rep['by_utm']['probe'] ), wp_json_encode( $rep['by_utm']['probe'] ?? null ) );
+		$t->ok( 'грешна стъпка не се брои', false === Insights::hit( 'hack', 'l', 'x' ) );
+		/* beacon през ajax като клиент */
+		$r = wp_remote_post( admin_url( 'admin-ajax.php' ), array( 'timeout' => 20, 'sslverify' => false, 'body' => array( 'action' => 'ansa_promo_beacon', 'nonce' => wp_create_nonce( Frontend::NONCE ), 'step' => 'box', 'box' => 'm', 'utm' => 'probe' ) ) );
+		$j = is_wp_error( $r ) ? null : json_decode( (string) wp_remote_retrieve_body( $r ), true );
+		$t->ok( 'ajax ansa_promo_beacon', is_array( $j ) && ! empty( $j['success'] ), is_wp_error( $r ) ? $r->get_error_message() : (string) wp_remote_retrieve_body( $r ) );
+		$r = wp_remote_post( admin_url( 'admin-ajax.php' ), array( 'timeout' => 20, 'sslverify' => false, 'body' => array( 'action' => 'ansa_promo_beacon', 'nonce' => 'bad', 'step' => 'box' ) ) );
+		$t->eq( 'beacon без nonce → 403', 403, (int) wp_remote_retrieve_response_code( $r ) );
+		/* чистим пробните редове */
+		$wpdb->delete( Schema::table( 'stats' ), array( 'utm' => 'probe' ), array( '%s' ) );
+		/* ── партньорски купон ── */
+		$t->note( 'ansa Partner', Partner::available() ? 'има (AP_Coupons) · бонус ' . (int) Config::get_published()['tickets']['partner_bonus'] : 'няма — мостът се проверява със симулиран партньорски код' );
+		if ( ! function_exists( 'WC' ) ) { return null; }
+		if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
+		if ( ! WC()->cart ) { $t->ok( 'WC количка', false ); return null; }
+		$pub = Config::get_published(); $draft = ! Config::is_live( $pub ); $cfg = $draft ? Config::get_draft() : $pub; $keep = ! empty( $params['keep'] );
+		$live = Frontend::products( $cfg ); $ok_keys = array(); foreach ( $live as $k => $p ) { if ( $p['stock'] ) { $ok_keys[] = $k; } }
+		$box = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][0]; $n = (int) $box['packs']; if ( count( $ok_keys ) < 1 ) { $t->ok( 'налични продукти', false ); return null; }
+		$pick = array(); for ( $i = 0; $i < $n; $i++ ) { $pick[] = $ok_keys[ $i % count( $ok_keys ) ]; }
+		/* ?pcode=КОД → истински партньорски код (AP_Coupons mapping); иначе временен купон, обявен за партньорски през filter-а */
+		$pcode = sanitize_text_field( (string) ( $params['pcode'] ?? '' ) ); $cid = 0;
+		if ( '' !== $pcode ) { $code = $pcode; $sim = '__return_false'; $t->ok( 'истински партньорски код', Partner::is_partner_code( $code ), $code . ( Partner::is_partner_code( $code ) ? ' · AP mapping има' : ' · НЕ е в AP mapping' ) ); }
+		else {
+			$code = 'probe-partner-' . wp_generate_password( 5, false, false ); $cid = wp_insert_post( array( 'post_title' => $code, 'post_type' => 'shop_coupon', 'post_status' => 'publish' ) );
+			update_post_meta( $cid, 'discount_type', 'percent' ); update_post_meta( $cid, 'coupon_amount', '5' ); update_post_meta( $cid, 'free_shipping', 'yes' );
+			$sim = function ( $is, $c ) use ( $code ) { return $is || wc_format_coupon_code( $c ) === wc_format_coupon_code( $code ); }; add_filter( 'ansa_promo_is_partner_coupon', $sim, 10, 2 );
+		}
+		WC()->customer->set_billing_country( 'BG' ); WC()->customer->set_shipping_country( 'BG' ); WC()->customer->set_shipping_postcode( '1000' );
+		$r = Cart::perform_add( array( 'trusted' => true, 'draft' => $draft, 'box' => $box['id'], 'items' => array_map( function ( $k ) use ( $live ) { return (int) $live[ $k ]['id']; }, $pick ), 'pay' => 'cod', 'email' => 'probe@example.com' ) );
+		if ( ! $t->ok( 'add ' . $box['name'], ! empty( $r['ok'] ), $r['msg'] ?? '' ) ) { remove_filter( 'ansa_promo_is_partner_coupon', $sim, 10 ); if ( $cid ) { wp_delete_post( $cid, true ); } return null; }
+		WC()->cart->calculate_totals(); $tot0 = (float) WC()->cart->get_total( 'edit' );
+		wc_clear_notices(); $applied = WC()->cart->apply_coupon( $code ); $errs = wp_list_pluck( wc_get_notices( 'error' ), 'notice' ); wc_clear_notices();
+		$t->ok( 'партньорският код минава', $applied && in_array( wc_format_coupon_code( $code ), WC()->cart->get_applied_coupons(), true ), implode( ' | ', array_map( 'wp_strip_all_tags', $errs ) ) );
+		WC()->cart->calculate_totals(); $tot1 = (float) WC()->cart->get_total( 'edit' );
+		$t->ok( 'отстъпката му е 0 (не се стаква)', abs( $tot1 - $tot0 ) < 0.011 && (float) WC()->cart->get_discount_total() < 0.011, 'total ' . $tot0 . ' → ' . $tot1 . ' · discount ' . WC()->cart->get_discount_total() );
+		$packages = WC()->cart->get_shipping_packages(); $rates = array(); if ( $packages ) { $calc = WC()->shipping()->calculate_shipping( $packages ); foreach ( (array) ( $calc[0]['rates'] ?? array() ) as $rid => $rate ) { $rates[ $rid ] = (float) $rate->get_cost(); } }
+		$free = in_array( 'ship', $box['rw'], true ); if ( $rates ) { $t->ok( 'доставката остава по кутията (free_shipping на купона не важи)', $free ? max( $rates ) <= 0.0 : min( $rates ) > 0.0, wp_json_encode( $rates ) ); }
+		$meta = Cart::build_meta( true ); $bonus = (int) $cfg['tickets']['partner_bonus'];
+		$t->ok( 'order meta: tickets.partner + bonus', ! empty( $meta['tickets']['partner'] ) && (int) ( $meta['tickets']['bonus'] ?? -1 ) === $bonus && ( $meta['tickets']['partner_code'] ?? '' ) === wc_format_coupon_code( $code ), wp_json_encode( $meta['tickets'] ) );
+		if ( '' !== $pcode ) { $co = self::fetch_as_session( Cart::checkout_url() ); $t->ok( 'чекаутът показва реда за партньора', $bonus <= 0 || ( 200 === $co['code'] && false !== strpos( $co['body'], '🤝' ) ), 'HTTP ' . $co['code'] . ( $bonus <= 0 ? ' · бонусът е 0' : '' ) ); }
+		else { $t->note( 'чекаутът с реда за партньора', 'само с истински код (?pcode=КОД) — симулираният живее само в тази заявка' ); }
+		$oid = self::make_order( $t, '🤝 ' . $box['name'], $box, $cfg ); WC()->cart->empty_cart(); Cart::clear_ctx();
+		if ( $oid ) {
+			$o = wc_get_order( $oid ); $t->ok( 'поръчката носи купона', in_array( wc_format_coupon_code( $code ), $o->get_coupon_codes(), true ), implode( ',', $o->get_coupon_codes() ) );
+			$mails = function ( $pre, $atts ) { return true; }; add_filter( 'pre_wp_mail', $mails, 10, 2 );
+			$o->update_status( 'processing', 'probe' ); $row = Tickets::for_order( $oid );
+			$t->ok( 'билети = allowance + бонус', $row && (int) $row['tickets'] === (int) $box['tickets'] + $bonus, $row ? $row['tickets'] . ' = ' . $box['tickets'] . ' + ' . $bonus : 'няма билет' );
+			remove_filter( 'pre_wp_mail', $mails, 10 );
+			$t->ok( 'Insights: created+paid за кутията', ( Insights::report( 1 )['by_box'][ $box['id'] ]['paid'] ?? 0 ) >= 1 );
+			if ( ! $keep ) { $o = wc_get_order( $oid ); $o->delete( true ); $t->note( 'тестова поръчка', '#' . $oid . ' изтрита' ); } else { $t->note( 'тестова поръчка (оставена)', '#' . $oid ); }
+		}
+		remove_filter( 'ansa_promo_is_partner_coupon', $sim, 10 ); if ( $cid ) { wp_delete_post( $cid, true ); }
+		return array( 'order' => $oid ?? 0 );
 	}
 }

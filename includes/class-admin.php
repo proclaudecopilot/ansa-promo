@@ -52,6 +52,7 @@ final class Admin {
 
 	public static function url( $args = array() ) { return add_query_arg( $args, admin_url( 'admin.php?page=' . Plugin::MENU_SLUG ) ); }
 
+	public static function form_open_public( $do, $tab = 'tools', $extra = '' ) { self::form_open( $do, $tab, $extra ); }
 	private static function form_open( $do, $tab = 'tools', $extra = '' ) {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline"' . $extra . '>';
 		wp_nonce_field( self::NONCE );
@@ -80,6 +81,9 @@ final class Admin {
 				$cfg['tickets']['portal_url'] = esc_url_raw( (string) wp_unslash( $_POST['portal_url'] ?? '' ) ); $cfg['tickets']['email'] = ! empty( $_POST['ticket_email'] ); $cfg['tickets']['partner_bonus'] = (int) ( $_POST['partner_bonus'] ?? 1 );
 				$cfg['rewards']['book']['product_id'] = (int) ( $_POST['book_product_id'] ?? 0 ); $cfg['rewards']['book']['url'] = esc_url_raw( (string) wp_unslash( $_POST['book_url'] ?? '' ) ); $cfg['rewards']['cosm']['product_id'] = (int) ( $_POST['cosm_product_id'] ?? 0 );
 				Config::save_draft( $cfg ); $msg = 'Черновата е записана.'; break;
+			case 'export_stats':
+				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-insights-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
+				echo Insights::csv( (int) ( $_POST['days'] ?? 30 ) ); exit;
 			case 'export_orders':
 				$rows = Tickets::orders( array( 'limit' => 2000 ) );
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-orders-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
@@ -124,10 +128,10 @@ final class Admin {
 		$col  = array( 'ok' => '#1a7f37', 'warn' => '#9a6700', 'bad' => '#cf222e', 'info' => '#57606a' );
 		$draft = Config::get_draft(); $pub = Config::get_published();
 		$page_url = $draft['page_id'] ? get_permalink( $draft['page_id'] ) : '';
-		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'json' => 'JSON' );
+		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'insights' => '📈 Insights', 'json' => 'JSON' );
 		?>
 		<div class="wrap">
-			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 4</small></h1>
+			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?> · Фаза 5</small></h1>
 			<?php if ( $msg ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
 			<nav class="nav-tab-wrapper">
 				<?php foreach ( $tabs as $k => $label ) : ?><a class="nav-tab<?php echo $k === $tab ? ' nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
@@ -301,6 +305,8 @@ final class Admin {
 				<?php endforeach; ?>
 				<?php if ( ! $rows ) : ?><tr><td colspan="12">Още няма промо поръчки.</td></tr><?php endif; ?>
 				</tbody></table>
+			<?php elseif ( 'insights' === $tab ) : ?>
+				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); ?>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<?php self::form_open( 'import', 'json', ' style="display:block;max-width:900px;margin-top:14px"' ); ?>
 					<p>Черновата като JSON. Редактирай и „Внеси“ — записва се като чернова (минава през normalize), публикуваш от 🧰 Инструменти.</p>

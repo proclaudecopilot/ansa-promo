@@ -265,7 +265,8 @@ final class Cart {
 		$g = self::group(); if ( ! $g ) { return; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return; }
 		$v = self::vars( $cfg, $box );
-		echo '<tr class="ansa-promo-co"><td colspan="2"><div class="ansa-promo-co__box"><b>' . wp_kses_post( self::copy( 'co.rewards.h', $v ) ) . '</b><ul>' . self::rewards_list( $cfg, $box, $v ) . '</ul>' . ( self::group_valid( $g ) ? '' : '<div class="ansa-promo-co__warn">' . wp_kses_post( self::copy( 'co.broken', $v ) ) . '</div>' ) . '</div></td></tr>';
+		$bonus = Partner::bonus_now( $cfg ); $prow = $bonus > 0 ? '<li><i>🤝</i> ' . wp_kses_post( self::copy( 'co.partner', array_merge( $v, array( 'bonus' => $bonus, 'bonus_bileta' => 1 === $bonus ? 'билет' : 'билета' ) ) ) ) . '</li>' : '';
+		echo '<tr class="ansa-promo-co"><td colspan="2"><div class="ansa-promo-co__box"><b>' . wp_kses_post( self::copy( 'co.rewards.h', $v ) ) . '</b><ul>' . self::rewards_list( $cfg, $box, $v ) . $prow . '</ul>' . ( self::group_valid( $g ) ? '' : '<div class="ansa-promo-co__warn">' . wp_kses_post( self::copy( 'co.broken', $v ) ) . '</div>' ) . '</div></td></tr>';
 		self::checkout_css();
 	}
 	public static function checkout_cosm_consent() {
@@ -339,7 +340,7 @@ final class Cart {
 		$order = wc_get_order( $order_id ); if ( ! $order ) { return; }
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return; }
 		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $box = Config::box( $cfg, $m['box'] ); if ( ! $box ) { return; }
-		$v = self::vars( $cfg, $box ); $v['tickets'] = (int) $m['tickets']['allowance']; $v['bileta'] = 1 === $v['tickets'] ? 'билет' : 'билета';
+		$v = self::vars( $cfg, $box ); $v['tickets'] = (int) $m['tickets']['allowance'] + ( ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0 ); $v['bileta'] = 1 === $v['tickets'] ? 'билет' : 'билета';
 		echo '<div class="ansa-promo-co__box ansa-promo-ty"><b>' . wp_kses_post( self::copy( 'ty.h', $v ) ) . '</b><p>' . wp_kses_post( self::copy( 'ty.p', $v ) ) . '</p><ul>' . self::rewards_list( $cfg, $box, $v ) . '</ul>' . ( $m['cosm'] && 'reserved' === $m['cosm']['status'] ? '<p>' . wp_kses_post( self::copy( 'ty.cosm', $v ) ) . '</p>' : '' ) . '</div>';
 		self::checkout_css();
 	}

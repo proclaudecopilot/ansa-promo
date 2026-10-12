@@ -15,7 +15,7 @@ GitHub Action-ът (`.github/workflows/release.yml`) прави `php -l`, `ansa-
 ansa-promo.php          header, константи (ANSA_PROMO_VER, ANSA_PROMO_PLUGIN_VER), autoloader AnsaPromo\, cache flush
                         при смяна на версията, HPOS compat, boot на plugins_loaded (5), mu-updater инсталатор
 includes/class-plugin.php    boot, activate/deactivate, cron, Shrine helpers (shrine_version, shrine_promo_module_loaded, shortcode_owner)
-includes/class-schema.php    таблици {prefix}ansa_promo_tickets / _leads (dbDelta при активация и при смяна на ANSA_PROMO_DB_VER)
+includes/class-schema.php    таблици {prefix}ansa_promo_tickets / _leads / _stats (dbDelta при активация и при смяна на ANSA_PROMO_DB_VER)
 includes/class-config.php    option ansa_promo_store {draft, published, published_at, version, history[10]}; normalize; publish/discard/restore; export/import
 includes/class-copy.php      копи-регистърът (мокъп v73): groups → keys → defaults; effective/diff/validate/render; vars()
 includes/class-catalog.php   WC адаптери: wc_line (вариация „1 брой“), search, find_by_name; runtime transient + purge
@@ -27,7 +27,9 @@ includes/class-doctor.php    env() — редовете на екрана „С�
 includes/class-cart.php      Фаза 3: ansa_promo_add, цени/заключване/доставка/купони, чекаут ред + ☑ сетът, order meta, благодаря
 includes/class-tickets.php   Фаза 4: билети (HMAC кодове), QR endpoint, REST за портала, ваучер/книга по имейл, void, 🎟️ Поръчки, стикер
 includes/class-qr.php        QR код в чист PHP (v1–10, L/M/Q/H, RS, маски) → PNG (GD) / SVG
-includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page, promo-cart, promo-tickets
+includes/class-insights.php  Фаза 5: фунията (beacon → дневен rollup ansa_promo_stats), таб 📈 Insights, CSV
+includes/class-partner.php   Фаза 5: мост към ansa Partner — партньорският код минава, отстъпка 0, +бонус билети, re-apply на ref-а
+includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page, promo-cart, promo-tickets, promo-insights
 probe/ansa-probe/            LOGADOR Probe — отделен плъгин (ansa-probe.zip в release-а), REST с token за проверки/лог/поръчки/ъпдейт
 includes/mu/                 LOGADOR GitHub Updater (копира се в mu-plugins)
 assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
@@ -49,7 +51,7 @@ docs/                        планът + мокъпът + port-css.py + shots
 | 2 | 1.0.3 | визуалният редактор | — |
 | 3 | 1.1.0 | количка и чекаут (`includes/class-cart.php`) | probe suite `promo-cart` |
 | 4 | 1.2.0 | награди: билети, QR, REST за портала, ваучер, книга, 🎟️ Поръчки (`class-tickets.php`, `class-qr.php`) | probe suite `promo-tickets` |
-| 5 | 1.3.0 | Insights + ansa Partner | — |
+| 5 | 1.3.0 | Insights (фуния) + мост към ansa Partner (`class-insights.php`, `class-partner.php`) | probe suite `promo-insights` |
 | 6 | 1.3.x | hardening | — |
 
 **1.0.39 — „Не си сигурна какво ти трябва?“ (идея на човека; скрийншоти в `docs/shots/quiz-1.0.39/`):** въпросникът е **незадължителен** — връзка до „Комбинирай N опаковки“ на десктоп и под „Избери продуктите“ на телефон отваря панел „Кое от следното те касае?“ с по един ред на продукт (заглавието и подзаглавието от „проблемите“ в черновата), минимум един избор, „Пропусни“. След „Покажи ми продуктите“ редът е: основният продукт → избраните (с плътна лента „✓ Според теб: тегло и метаболизъм“) → останалите; количествата се пазят, отговорите са в sessionStorage (`S.quiz`), връзката става „Промени отговорите“. Десктоп: **3 продукта на страница** (6 продукта = 2 пълни страници, лентите на категориите с еднаква височина), телефон остава 2. Задължителен въпросник преди пълненето НЕ е правен — човекът идва от реклама с UTM и основният продукт вече е първи; „избери поне 2“ би давало случайни отговори. Копи: `fill.quiz.*`; CSS: promo-extra.css секция 30; харнесът снима quiz · quiz-picked · fill-quiz · fill-quiz-p2 и проверява подредбата.
@@ -79,6 +81,12 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### Фаза 5 (1.3.0) — Insights · мост към ansa Partner
+**Insights** (`includes/class-insights.php`): без суров лог — дневен rollup `{prefix}ansa_promo_stats` (day, step, box, utm, n; DB ver 2, dbDelta при boot). Клиентските стъпки идват от `promo.js` през ajax `ansa_promo_beacon` (nonce + 60/мин/IP; всяка стъпка веднъж на сесия, `sendBeacon` за `add` преди пренасочването; черновата и редакторът не броят): `view` → `gate` → `box` → `full` → `order` → `add`. Сървърните: `created` (поръчка), `paid` (издаден билет), `activated` (портал). Таб **📈 Insights**: фуния по стъпка с % от видели и по кутия, по UTM (конверсия paid/view), по дни; период 7/30/90/всичко; CSV. Doctor: ред „Insights (30 дни)“. Pixel Manager/GA4/Metorik не се дублират.
+**ansa Partner** (`includes/class-partner.php`, план §6.4): партньорският код (`AP_Coupons::get_mapping_by_code`, filter `ansa_promo_is_partner_coupon` за други системи) **минава** през блокадата на купоните, за да оцелее атрибуцията на Partner (lock при чекаут → комисионна при доставка); в промо количката отстъпката му е **0** (`woocommerce_coupon_get_discount_amount`) и безплатната му доставка не важи (доставката е по кутията); ред „🤝 +1 билет от твоя партньорски код“ в чекаута (`co.partner`); `_ansa_promo.tickets.partner/bonus/partner_code` → билетът е allowance + `tickets.partner_bonus`. Понеже `perform_add()` изпразва количката (и купоните), сесийният ref на Partner (`?ref=КОД`, 48 ч) се прилага пак след добавянето (hook `ansa_promo_added`); Partner сам го прилага и на `woocommerce_add_to_cart`. Без Partner на сайта нищо не се закача.
+**Проверено локално** (с ansa Partner 5.8.5 активен и истински партньорски код `MAYA5ANSA`): probe suite `promo-insights` — 23/23 (rollup, отчет, beacon през ajax, 403 без nonce; кодът минава, отстъпка 0, доставка по кутията, order meta partner/bonus, редът 🤝 в чекаута, поръчката носи купона, билети 6 = 5 + 1, created/paid в Insights). Playwright: целият път от страницата до „благодаря“ с beacon-ите — rollup-ът брои view/order/add/created/paid (сценарият на харнеса прескача chooseBox/celebrate, откъдето идват box/full).
+**На живо:** `run?suite=promo-insights&pcode=КОД` с истински партньорски код; без `pcode` мостът се проверява със симулиран код.
 
 ### Фаза 4 (1.2.0) — награди: билети · QR · портал · имейли · 🎟️ Поръчки
 **Какво има:** `includes/class-tickets.php` (`AnsaPromo\Tickets`) + `includes/class-qr.php` (`AnsaPromo\QR`):

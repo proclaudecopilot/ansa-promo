@@ -50,6 +50,7 @@ final class Doctor {
 		$add( 'Продукти в черновата', count( $draft['products'] ) . ' · с WC продукт: ' . count( array_filter( $draft['products'], function ( $p ) { return $p['product_id'] > 0; } ) ) . ' · живи (цена>0): ' . count( $live ) . ( $draft['page_id'] ? ' · page_id=' . $draft['page_id'] : ' · БЕЗ страница' ), count( $live ) ? 'ok' : 'warn' );
 		$add( 'Копи-регистър', count( Copy::defaults() ) . ' ключа · override-и в черновата: ' . count( $draft['copy'] ), 'info' );
 		$add( 'Leads', Leads::count() . ' реда', 'info' );
+		$st = Insights::report( 30 )['by_step']; $add( 'Insights (30 дни)', 'view ' . (int) $st['view'] . ' · box ' . (int) $st['box'] . ' · full ' . (int) $st['full'] . ' · add ' . (int) $st['add'] . ' · created ' . (int) $st['created'] . ' · paid ' . (int) $st['paid'] . ' · ansa Partner: ' . ( Partner::available() ? 'има (мостът е активен)' : 'няма' ), 'info' );
 		$add( 'Билети', Tickets::count( 'issued' ) . ' издадени (' . Tickets::sum( 'issued' ) . ' бр.) · ' . Tickets::count( 'activated' ) . ' активирани · ' . Tickets::count( 'void' ) . ' анулирани · портал: ' . ( $draft['tickets']['portal_url'] ?: 'няма (QR → промо страницата)' ), 'info' );
 
 		$add( 'LOGADOR GitHub Updater', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? LOGADOR_GH_UPDATER_VERSION . ( class_exists( 'LOGADOR_GitHub_Updater' ) && \LOGADOR_GitHub_Updater::token() ? ' · token има' : ' · БЕЗ token' ) : 'не е зареден (mu-plugin)', defined( 'LOGADOR_GH_UPDATER_VERSION' ) ? 'ok' : 'warn' );

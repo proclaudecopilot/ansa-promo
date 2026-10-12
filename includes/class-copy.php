@@ -436,6 +436,7 @@ final class Copy {
 				'co.cosm.label'      => '🌸 Запазвам новия козметичен сет на ansa™ (5 продукта) за €{{cosm_pay}}',
 				'co.cosm.sub'        => 'днес не плащаш нищо · ваучерът идва по имейл · плащаш при получаване (2027)',
 				'co.ship.free'       => 'безплатна с кутията 🎁',
+				'co.partner'         => '🤝 +{{bonus}} {{bonus_bileta}} от твоя партньорски код — отстъпката му не се стаква с кутията',
 				'co.broken'          => 'Кутията ти не е пълна — <a href="{{url}}">върни се и я допълни</a>, за да важат отстъпката и наградите.',
 				'co.expired'         => 'Играта е приключила — кутията не може да бъде поръчана.',
 				'co.coupon'          => 'Промо кутията не се комбинира с купони.',
@@ -492,7 +493,7 @@ final class Copy {
 			'tickets_s', 'tickets_m', 'tickets_l', 'name', 'n', 'need', 'rest', 'opk_rest', 'save', 'pay', 'value', 'from', 'a', 'b', 'diff', 'prod_diff',
 			'opk_diff', 'delyat', 'box_t', 'box_t_l', 'box_t_ic', 'pct_t', 'save_t', 's_box_t', 'save_l', 'save_prod', 'on', 'total', 'pos', 'mmss',
 			'cart', 'lyubimci', 'stay_what', 'full_msg', 'secret_pct', 'url', 'produkt', 'q', 'same', 't', 'podar', 'bileta', 'pg', 'pages',
-			'customer', 'order', 'code', 'voucher', 'book_url', 'portal_url',
+			'customer', 'order', 'code', 'voucher', 'book_url', 'portal_url', 'bonus', 'bonus_bileta',
 		);
 	}
 
