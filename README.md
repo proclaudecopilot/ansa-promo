@@ -24,7 +24,8 @@ includes/class-leads.php     gate имейл → таблица leads (ajax ansa
 includes/class-seed.php      началната чернова от мокъпа (продукти, FIT, проблеми); product_id по име в WC
 includes/class-admin.php     меню „🎁 ansa Промо“: Състояние · 🧰 Инструменти (страница, игра, срок, gate, публикуване, история, seed) · JSON
 includes/class-doctor.php    env() — редовете на екрана „Състояние“; Фаза 2 добавя checks()
-includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page (+ promo-cart от Фаза 3)
+includes/class-cart.php      Фаза 3: ansa_promo_add, цени/заключване/доставка/купони, чекаут ред + ☑ сетът, order meta, благодаря
+includes/class-probe.php     проверките за LOGADOR Probe (filter logador_probe_suites): promo-env, promo-page, promo-cart
 probe/ansa-probe/            LOGADOR Probe — отделен плъгин (ansa-probe.zip в release-а), REST с token за проверки/лог/поръчки/ъпдейт
 includes/mu/                 LOGADOR GitHub Updater (копира се в mu-plugins)
 assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
@@ -44,7 +45,7 @@ docs/                        планът + мокъпът + port-css.py + shots
 | 0 | 1.0.0 · 1.0.1 | репо, скелет, updater, таблици, guard в Shrine 6.19.22; 1.0.1 = LOGADOR updater 1.1.2 (поглъща форка на Partner) | `snippets/phase-0.php` — отчет за средата |
 | 1 | 1.0.2 … 1.0.53 | конфиг + копи-регистър + порт на мокъп v73 + gate/leads + runtime ajax; 1.0.3 = цял екран, WC снимки, бадж с цена, таб 📦 Продукти | `snippets/phase-1.php` |
 | 2 | 1.0.3 | визуалният редактор | — |
-| 3 | 1.1.0 | количка и чекаут | — |
+| 3 | 1.1.0 | количка и чекаут (`includes/class-cart.php`) | probe suite `promo-cart` |
 | 4 | 1.2.0 | награди: билети, QR, REST, ваучер, книга | — |
 | 5 | 1.3.0 | Insights + ansa Partner | — |
 | 6 | 1.3.x | hardening | — |
@@ -76,6 +77,22 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### Фаза 3 (1.1.0) — количка и чекаут
+**Какво има:** `includes/class-cart.php` (`AnsaPromo\Cart`) — порт на пенсионирания `Ansa_Promo_Cart` от Shrine 6.19 с поправките от плана §6.1–6.3:
+- `wp_ajax(_nopriv)_ansa_promo_add`: nonce → rate limit (10/мин/IP) → `perform_add()`: live → кутия → точен брой → продукт в играта → наличност (`has_enough_stock`) → любимци. Грешките са `{code, msg}` с текст от регистъра (`err.live/box/count/allowed/stock/rate/nonce/add`), така че се редактират. Продуктите се резолвват като на страницата (`Frontend::products` → SKU на вариацията „1 опаковка“); вариация с „Any…“ атрибут се добавя с първата възможна стойност (иначе WC я отхвърля).
+- **pct_at_add:** `pct`, `packs`, `spct` (любимци), `ship`, `draft`, `cv` (версия на конфига) се записват в реда при добавянето — публикуване по средата на сесията не преоценява количката. Валидност = Σ base qty == packs от реда.
+- **Идемпотентно:** същата кутия и същият състав вече в количката → не се добавя пак (двойно докосване на телефона); само контекстът (плащане, имейл, сет) се опреснява и се връща същият `checkoutUrl`.
+- Количката се изпразва преди добавяне (промо поръчката е самостоятелна); Shrine Cart_Gift не инжектира подаръци (`$_POST['ansa_no_gift']`), а всичко без наш ред се маха. Книгата влиза като ред на €0, ако кутията има `book` и има `rewards.book.product_id`.
+- Цени на `woocommerce_before_calculate_totals` (95): base = regular × (1 − pct), любимец = regular × (1 − spct), книга = 0; счупена група → регулярни цени, книгата пада, `woocommerce_check_cart_items` дава notice `co.broken` с линк към промото. Base редовете са заключени (без qty/✕), етикети `co.tag.*`.
+- Доставка: `woocommerce_package_rates` (50) нулира всички методи при кутия с `ship` (етикет `co.ship.free`). Купони: `woocommerce_coupon_is_valid` хвърля `co.coupon` (filter `ansa_promo_allow_coupon` за ansa Partner във Фаза 5).
+- Чекаут (класически и FunnelKit — същите hooks): `woocommerce_review_order_after_cart_contents` → ред „Твоята кутия и твоите награди“; `woocommerce_review_order_before_submit` → ☑ сетът (само кутия с `cosm_pay`); `billing_email` се попълва от имейла на gate-а; `chosen_payment_method` = `checkout.card_gateway`/`cod_gateway` по избора на екран 5.
+- Поръчка: `_ansa_promo` (promo, group, box, packs, pct, valid, tickets.allowance, book, cosm{pay,value,status,consent}, ship_free, lead_email, lead_id, utm, pay, draft, ver, config_version, secret[]) + плоски ключове `_ansa_promo_id/_group/_box/_valid/_tickets/_cosm/_cosm_status/_utm/_lead` (HPOS-safe); `_ansa_promo_role/_box/_pct` на всеки ред; Store API вариант за блок-чекаут; `woocommerce_checkout_order_created` → lead → `converted_order_id`, бележка към поръчката; благодаря-блок `ty.*` на `woocommerce_thankyou` (5). Етикети в админ/имейли `oi.*`.
+- `promo.js`: `A.cart=true`; `ansa_promo_runtime` връща свеж nonce (кеширана страница носи стар) и при `code=nonce` добавянето се повтаря веднъж само; грешката се показва с текста от сървъра.
+- Чернова: добавяне с `draft=1` е позволено за `manage_woocommerce` **и за посетител с паролата за преглед** (бисквитката) — така екипът поръчва от черновата преди пускането; `check_cart` не блокира такава количка с `co.expired`.
+**Проверено локално** (WP 7.1.3 · WC 11.1.0 · SQLite): probe suite `promo-cart` — 80/80 за трите кутии (добавяне, цени, книга, доставка безплатна/платена, купон отхвърлен, qty/✕ заключени, ctx, chosen gateway, идемпотентност, чекаут HTML с наградите и ☑ сетът, поръчка COD с `_ansa_promo`, tamper → регулярни цени/книгата пада/notice, грешки count/box/allowed/stock) + Playwright от страницата през „Завърши поръчката“ до „благодаря“ (десктоп и 390×780).
+**На живо:** `run?suite=promo-cart` през LOGADOR Probe прави същото на ansa.bg (тестовите поръчки се трият, `?keep=1` ги оставя; `?box=l` само една кутия).
+**Въпроси (с дефолт):** (P3) глобалният FunnelKit checkout — дефолт `wc_get_checkout_url()` (FunnelKit подменя /checkout/ сам), filter `ansa_promo_checkout_url`. (P3) „€2,55“ в копито срещу реалната тарифа на Speedy/Econt — текстът е от регистъра (`ship.paid` в ⚙️), сверява се от човека.
 
 ### LOGADOR Probe (1.0.53) — проверките без снипети
 **Какво има:** отделен плъгин **LOGADOR Probe** (`probe/ansa-probe/`, в release-а като `ansa-probe.zip`; качва се **веднъж** ръчно, няма GitHub Plugin URI и не се обновява сам). Дава REST `wp-json/logador-probe/v1/*` с token (header `X-Probe-Token`; Tools → LOGADOR Probe показва адреса и token-а):
