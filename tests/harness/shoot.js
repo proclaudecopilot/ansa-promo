@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
     await shot('fill-done');
     await page.click('#nFill'); await page.waitForTimeout(600); await shot('celeb'); await check('celeb');
     await page.click('#cGo'); await shot('order'); await check('order');
-    await page.click('#finish'); await page.waitForTimeout(200); await shot('order-toast');
+    { const f = await page.$('#finish'); if (f && await f.isVisible()) { await f.click(); await page.waitForTimeout(200); await shot('order-toast'); } } // v1.5.1: без екран „Поръчка“ — бутонът може да липсва
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null })); await shot('boxes-noutm'); await check('boxes-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'm', utm: null })); await check('fill-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'celeb', box: 's', utm: 'sakura', full: true })); await shot('celeb-small'); await check('celeb-small');
