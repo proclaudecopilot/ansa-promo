@@ -1323,6 +1323,97 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc .fqz{overflow-x:hidden;touch-action:pan-y}
 }
 
+/* ── 41 · v1.6.2 (забележка на човека: „с изключен night light всичко е мега бяло, неконтрастно, няма цветове, които да
+      насочват вниманието“): контрастен слой върху целия фронт — по-топъл и по-плътен фон (белите карти изпъкват), видими рамки,
+      по-тъмни вторични текстове, таймерът е плътен оранжев чип, всяка кутия има собствен цвят (Малка — пясък, Средна — теракота,
+      Голяма — злато) с цветно име и цветен ред „спестяваш до“, пълните бутони са по-наситени, категориите и панелите в
+      „Напълни кутията си“ са по-цветни. Само цветове/рамки/сенки — без промяна на подредбата. ── */
+/* 1 · тонове: фон, рамки, вторични текстове */
+.ansa-promo{--cream:#f6e4d1;--ol:rgba(232,114,42,.5);--os:rgba(232,114,42,.13);--tan:#6e4c38;--tan2:#8a6650;--muted:#54463e;--ink2:#26263a}
+.ansa-promo:not(.ansa-promo-portal){background:var(--cream)}
+.ansa-promo::before{background:radial-gradient(1000px 520px at 50% -140px,rgba(232,114,42,.26),transparent 62%),radial-gradient(760px 520px at 100% 100%,rgba(240,180,41,.22),transparent 62%),radial-gradient(620px 440px at 0% 55%,rgba(194,24,91,.08),transparent 62%)}
+/* 2 · хедър: плътен таймер, видима долна рамка */
+.ansa-promo .hdr{background:rgba(246,228,209,.94);border-bottom:2px solid rgba(232,114,42,.38)}
+.ansa-promo .timer{background:linear-gradient(135deg,#c2410c,#e8722a);color:#fff;box-shadow:0 3px 10px rgba(194,65,12,.3)}
+.ansa-promo .timer.hot{background:linear-gradient(135deg,#b91c1c,#dc2626);color:#fff}
+.ansa-promo .how{border:1.5px solid var(--o);color:var(--od);background:#fff}
+.ansa-promo .brand{color:var(--ink)}
+/* 3 · стъпки и заглавие */
+.ansa-promo .st{color:var(--tan)}
+.ansa-promo .st i{border-color:rgba(232,114,42,.5);color:var(--od)}
+.ansa-promo .st+.st::before{background:rgba(232,114,42,.4)}
+.ansa-promo .s1hero .eyebrow{display:inline-block;background:#fff;border:1.5px solid var(--ol);border-radius:999px;padding:4px 14px;color:var(--od);box-shadow:0 2px 8px rgba(232,114,42,.15)}
+.ansa-promo .s1sub,.ansa-promo .lead{color:var(--muted)}
+/* 4 · картите на кутиите — всяка със собствен цвят */
+.ansa-promo .box{border-width:2px;box-shadow:0 8px 28px rgba(120,60,20,.16),0 1px 3px rgba(67,48,42,.08)}
+.ansa-promo .box.s{border-color:#c6a78e}
+.ansa-promo .box.m{border-color:var(--o);box-shadow:0 8px 28px rgba(232,114,42,.22),0 1px 3px rgba(67,48,42,.08)}
+.ansa-promo .box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff6d6 0%,#fff 42%)}
+.ansa-promo .bhd .bname,.ansa-promo .box.l .bhd .bname{display:inline-block;flex:0 0 auto;border-radius:999px;padding:4px 14px}
+.ansa-promo .box.s .bhd .bname{background:#f1e4d7;color:var(--tan)}
+.ansa-promo .box.m .bhd .bname{background:#fde4d2;color:var(--od)}
+.ansa-promo .box.l .bhd .bname{background:#ffe9a8;color:var(--goldd)}
+.ansa-promo .box.s .bpc b{color:var(--ink2)}
+.ansa-promo .box.m .bpc b{background:linear-gradient(135deg,#b8390a,#e8722a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ansa-promo .bsave,.ansa-promo .box.s .bsave{background:#f3e8dd!important;border:1.5px solid #d6bda8}
+.ansa-promo .box.s .bsave b{color:var(--tan)}
+.ansa-promo .box.m .bsave{background:#fde4d2!important;border-color:#f1ac7f}
+.ansa-promo .box.m .bsave b{color:#b8390a}
+.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff1bf,#ffe59a)!important;border-color:#e9b32a}
+.ansa-promo .box.l .bsave b{color:#9a4a07}
+.ansa-promo .br{border-bottom-color:rgba(232,114,42,.3)!important}
+.ansa-promo .br>i{background:#fde4d2}
+.ansa-promo .br small{color:var(--tan)}
+.ansa-promo .br.off{opacity:.6}
+.ansa-promo .br.hl{background:linear-gradient(135deg,#fff1bf,#ffe59a)!important;border-color:#e9b32a!important}
+.ansa-promo .bfrom,.ansa-promo .guarl,.ansa-promo .bnote,.ansa-promo .bnote-m{color:var(--tan)}
+.ansa-promo .bfrom b{color:var(--ink)}
+/* 5 · бутоните: по-наситени, с четлив бял текст */
+.ansa-promo .cta{background:linear-gradient(135deg,#ee7f3f 0%,#e2661f 55%,#d94f32 100%);box-shadow:0 6px 20px rgba(226,102,31,.32);text-shadow:0 1px 0 rgba(0,0,0,.12)}
+.ansa-promo .cta.soft{background:#fff;color:var(--od);border:2px solid var(--o);text-shadow:none}
+.ansa-promo .cta.gold,.ansa-promo .box.l>.cta,.ansa-promo .box.l .bmcta{background:linear-gradient(135deg,#b45309,#d97706 55%,#f59e0b);box-shadow:0 6px 20px rgba(217,119,6,.38)}
+.ansa-promo .box.m>.cta,.ansa-promo .box.m .bmcta{background:linear-gradient(135deg,#e8722a,#c2410c);box-shadow:0 6px 18px rgba(194,65,12,.35)}
+.ansa-promo .cta:disabled{background:#e6dcd3;color:#8f7b6c;text-shadow:none}
+.ansa-promo .lnk{color:var(--od)}
+/* 6 · телефон: лентите на кутиите в същите цветове */
+.ansa-promo .box.s .brib{background:linear-gradient(135deg,#8a6a55,#6e4c38)}
+.ansa-promo .box.m .brib{background:linear-gradient(135deg,#e8722a,#c2410c)}
+.ansa-promo .brib.gold,.ansa-promo .box.l .brib{background:linear-gradient(135deg,#b45309,#e9a520 70%,#d97706)}
+.ansa-promo .bmsave{background:#f3e8dd;border:1px solid #d6bda8}
+.ansa-promo .box.m .bmsave{background:#fde4d2;border-color:#f1ac7f}
+.ansa-promo .box.l .bmsave{background:linear-gradient(135deg,#fff1bf,#ffe59a);border-color:#e9b32a}
+.ansa-promo .bmrow.x,.ansa-promo .bmt small{color:var(--tan)}
+.ansa-promo .bmr{border-top-color:rgba(232,114,42,.35)}
+/* 7 · „Напълни кутията си“: цветен панел с наградите, по-плътни категории, прогрес и бутони */
+.ansa-promo .fp3 .f3g{background:linear-gradient(135deg,#fbd9c0,#fde9d9);border:1.5px solid rgba(232,114,42,.3)}
+.ansa-promo .fp3 .f3t{border-color:rgba(232,114,42,.4)}
+.ansa-promo .fp3 .f3sep{background:rgba(232,114,42,.45)}
+.ansa-promo .fp3 .f3cat{background:linear-gradient(135deg,#f7c7a4,#f3b48b);color:#8f2f06;border-color:rgba(232,114,42,.4)}
+.ansa-promo .fp3 .f3cat.core{background:linear-gradient(135deg,#bfe8cc,#a7dfb9);color:#14532d;border-color:rgba(22,163,74,.45)}
+.ansa-promo .dc.fpw .fp3 .f3item:has(.f3cat.core) .fcat.drow.r3{border-color:rgba(22,163,74,.45);border-top-color:transparent}
+.ansa-promo .fp3 .f3bar{background:#f0d8c6;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}
+.ansa-promo .fp3 .f3bar i{background:linear-gradient(90deg,#f59e0b,#e8722a,#c2410c)}
+.ansa-promo .fp3 .f3mix{border-top-color:rgba(232,114,42,.35)}
+.ansa-promo .dc.fpw .fp3 .fcat.drow .fpct.mb{background:#f7c7a4;color:#8f2f06}
+.ansa-promo .dc.fpw .fp3 .madd{border-width:2px}
+.ansa-promo .fcat.r3 .r3f .madd{background:linear-gradient(135deg,#e8722a,#c2410c);box-shadow:0 4px 12px rgba(194,65,12,.3)}
+.ansa-promo .dc.fpw .f3f{background:#fbeee2;border-top:1.5px solid rgba(232,114,42,.3)}
+.ansa-promo .dc.fpw .f3pig{background-color:#f7c7a4}
+.ansa-promo .dc.fpw .f3s small{color:var(--tan)}
+.ansa-promo .dc.fpw .fp3 .fcat.drow,.ansa-promo .dc.fpw .fp3 .fcat.drow.r3{border-color:rgba(232,114,42,.4)}
+.ansa-promo .dc.fpm .mfl{background:#f6e4d1}
+.ansa-promo .madd{background:linear-gradient(135deg,#e8722a,#c2410c)}
+/* 8 · плочки, карти, лепкава лента, попъпи */
+.ansa-promo .sticky{background:#fff;border-top:2px solid rgba(232,114,42,.45)}
+.ansa-promo .card,.ansa-promo .tile,.ansa-promo .nt,.ansa-promo .bx,.ansa-promo .g2r,.ansa-promo .g2b{box-shadow:0 4px 16px rgba(120,60,20,.1)}
+.ansa-promo .g2r i{background:#fde4d2}
+.ansa-promo .g2ft{background:#fde4d2}
+.ansa-promo .ib2{border-color:rgba(232,114,42,.4)}
+.ansa-promo .ib2 .ibtx small{color:var(--muted)}
+.ansa-promo .k2,.ansa-promo .ib .mut{color:var(--tan)}
+.ansa-promo .fpb{border-color:var(--o)}
+.ansa-promo .rstrip{border-color:rgba(232,114,42,.45)}
+
 /* v1.4.0: редакторът — хотспотове (само с ?ansa_editor=1) */
 [data-editor] [data-ck]{cursor:pointer;outline:1px dashed transparent;outline-offset:2px;transition:outline-color .12s}
 [data-editor] [data-ck]:hover{outline-color:#e8722a;background:rgba(232,114,42,.06)}
