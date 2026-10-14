@@ -80,6 +80,8 @@ final class Admin {
 				/* v1.2.0: билети и награди */
 				$cfg['tickets']['portal_url'] = esc_url_raw( (string) wp_unslash( $_POST['portal_url'] ?? '' ) ); $cfg['tickets']['email'] = ! empty( $_POST['ticket_email'] ); $cfg['tickets']['partner_bonus'] = (int) ( $_POST['partner_bonus'] ?? 1 );
 				$cfg['rewards']['book']['product_id'] = (int) ( $_POST['book_product_id'] ?? 0 ); $cfg['rewards']['book']['url'] = esc_url_raw( (string) wp_unslash( $_POST['book_url'] ?? '' ) ); $cfg['rewards']['cosm']['product_id'] = (int) ( $_POST['cosm_product_id'] ?? 0 );
+				/* v1.8.0: страницата „Как работи“ */
+				$cfg['info']['enabled'] = ! empty( $_POST['info_enabled'] ); $cfg['info']['slug'] = sanitize_title( (string) wp_unslash( $_POST['info_slug'] ?? 'info' ) );
 				/* v1.6.0: томбола */
 				$cfg['tombola']['enabled'] = ! empty( $_POST['tb_enabled'] ); $cfg['tombola']['slug'] = sanitize_title( (string) wp_unslash( $_POST['tb_slug'] ?? 'tombola' ) ); $cfg['tombola']['draw'] = sanitize_text_field( (string) wp_unslash( $_POST['tb_draw'] ?? '' ) );
 				$cfg['tombola']['statuses'] = (string) wp_unslash( $_POST['tb_statuses'] ?? '' ); $cfg['tombola']['ref_param'] = sanitize_key( (string) wp_unslash( $_POST['tb_ref_param'] ?? 'r' ) );
@@ -207,6 +209,11 @@ final class Admin {
 							<p><label>Книга — WC продукт ID (влиза в количката на €0): <input type="number" name="book_product_id" value="<?php echo (int) $draft['rewards']['book']['product_id']; ?>" style="width:90px"></label> &nbsp; <label>линк към PDF-а (имейл при „Изпълнена“, ако продуктът не е downloadable): <input type="url" name="book_url" class="regular-text code" value="<?php echo esc_attr( $draft['rewards']['book']['url'] ); ?>"></label></p>
 							<p><label>Козметичен сет — WC продукт ID (само за справка/ваучера): <input type="number" name="cosm_product_id" value="<?php echo (int) $draft['rewards']['cosm']['product_id']; ?>" style="width:90px"></label></p>
 							<p class="description">Билетът се издава при „Обработва се“/„Изпълнена“; QR за стикера е в поръчката (meta box „🎁 ansa™ Промо“ → „Стикер за пратката“). Ваучерът за сета и книгата тръгват при „Изпълнена“. Текстовете са в регистъра, група „14 · Имейли · стикер“.</p>
+						</td></tr>
+						<tr><th>ℹ️ Как работи</th><td>
+							<?php $inf = $draft['info']; $inf_url = Info::url( $draft ); ?>
+							<p><label><input type="checkbox" name="info_enabled" value="1"<?php checked( ! empty( $inf['enabled'] ) ); ?>> самостоятелната страница „Как работи“ е включена</label> &nbsp; <label>път: <code><?php echo esc_html( trim( (string) wp_parse_url( Cart::promo_url( $draft ), PHP_URL_PATH ), '/' ) ); ?>/</code><input type="text" name="info_slug" value="<?php echo esc_attr( $inf['slug'] ); ?>" style="width:110px" class="code"></label> → <a href="<?php echo esc_url( $inf_url ); ?>" target="_blank"><?php echo esc_html( $inf_url ); ?></a> &nbsp; <a href="<?php echo esc_url( add_query_arg( 'ansa_promo', 'draft', $inf_url ) ); ?>" target="_blank">чернова</a></p>
+							<p class="description">Същото съдържание като попъпа „Как работи играта?“ (група „2а · Как работи“ в редактора; <code>info.title</code>/<code>info.desc</code> са заглавието и описанието за Google/споделяне), индексируема — за трафик от реклами и социални мрежи. Бутоните ѝ водят към промо страницата с избраната кутия (<code>?box=s|m|l</code>) или продукт. При включена парола или изключена игра показва „скоро“.</p>
 						</td></tr>
 						<tr><th>🎲 Томбола</th><td>
 							<?php $tb = $draft['tombola']; $tb_url = Tombola::url( $draft ); ?>

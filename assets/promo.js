@@ -129,7 +129,7 @@
       +((A.gate&&A.gate.required)?'':'<button class="lnk gskip" id="gSkip"'+ck('gate.skip')+'>'+T('gate.skip')+'</button>')+'</div>'
       +'<div class="g2ft"'+ck('gate.foot')+'>'+T('gate.foot')+'</div></div>';
     $('apOv').classList.remove('off');S._lockOv=!!(A.gate&&A.gate.required);
-    function done(){S.emailDone=true;S._lockOv=false;gateMark();closeInfo();saveS();beacon('gate')}
+    function done(){S.emailDone=true;S._lockOv=false;gateMark();closeInfo();saveS();beacon('gate');if(S._afterGate){var af=S._afterGate;S._afterGate=null;setTimeout(af,300)}}
     $('gGo').onclick=function(){var v=$('gEmail').value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$('gEmail').classList.add('err');$('gEmail').focus();toast(T('gate.err'),true);return}S.email=v;sendLead(v,$('gOk')&&$('gOk').checked);done();toast(T('gate.saved'),false)};
     var sk=$('gSkip');if(sk)sk.onclick=done;
   }
@@ -197,7 +197,7 @@
      стъпки · яхтата · комплектът · продуктите · защо го правим · отзиви · въпроси · правила · залепен бутон. Всеки текст е ключ how.* (T()),
      кутиите/цените/билетите/наградите се четат от двигателя (BOXES/PROD/A.rewards); „Избери …“ вика chooseBox, „Добави в кутия“ — addSlot
      или прави продукта основен (S.core) и води към кутиите. Структурата: .dc.hw е flex колона, скролва .ib (✕ стои горе вдясно). */
-  function howPopup(){
+  function howHtml(){
     var GI=(A.gate&&A.gate.images)||{},bl=boxOf('l')||BOXES[BOXES.length-1],ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null;
     var maxp=BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0;
     function p(k,tag,cls,v){tag=tag||'p';return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+T(k,v)+'</'+tag+'>'}
@@ -245,15 +245,29 @@
     var faq='<section class="hw-sec hw-faq">'+p('how.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div></section>';
     var ru='<section class="hw-sec hw-ru">'+p('how.rules.h','b')+p('how.rules.p')+'</section>';
     var stk='<div class="hw-stk">'+cta('how.sticky','data-hw="boxes"')+'</div>';
-    var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0; /* редакторът рендира наново при всяка буква — скролът остава */
-    info('',h+bx+st+y+k+pr+w+rv+faq+ru+stk,true);
-    dc.classList.add('hw');if(keepY)dc.querySelector('.ib').scrollTop=keepY;$('apOv').classList.add('ovhw');if(MOBF())lockBody();S._last=howPopup;
-    var toBoxes=function(){closeInfo();go(1);setTimeout(function(){var e=root.querySelector('.boxes');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},60)};
-    dc.querySelectorAll('[data-hw]').forEach(function(b){b.onclick=function(){if(b.dataset.hw==='steps'){var e=$('hwSteps');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});return}toBoxes()}});
-    dc.querySelectorAll('[data-hw-box]').forEach(function(b){b.onclick=function(){var bi=Number(b.dataset.hwBox);closeInfo();if(BOXES[bi])chooseBox(bi);else go(1)}});
-    dc.querySelectorAll('[data-hw-prod]').forEach(function(b){b.onclick=function(){var q=b.dataset.hwProd;if(!PROD[q])return;if(S.box!==null){closeInfo();if(full()){toast(T('ms.full'),true);return}addSlot(q);return}S.core=q;saveS();toBoxes()}});
+    return h+bx+st+y+k+pr+w+rv+faq+ru+stk;
   }
-  $('apHow').onclick=howPopup;
+  function addQ(u,k,v){u=String(u||'');return u+(u.indexOf('?')>-1?'&':'?')+encodeURIComponent(k)+'='+encodeURIComponent(v)}
+  /* бутоните на страницата: в попъпа действат на място (chooseBox/addSlot); на /info (nav) водят към промо страницата — data-go носи адреса */
+  function howBind(dc,nav){
+    var goUrl=function(b,u){b.setAttribute('data-go',u);b.onclick=function(){location.href=u}};
+    var toBoxes=function(){closeInfo();go(1);setTimeout(function(){var e=root.querySelector('.boxes');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},60)};
+    dc.querySelectorAll('[data-hw]').forEach(function(b){if(b.dataset.hw==='steps'){b.onclick=function(){var e=$('hwSteps');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})};return}if(nav)goUrl(b,A.promo_url||'/');else b.onclick=toBoxes});
+    dc.querySelectorAll('[data-hw-box]').forEach(function(b){var bi=Number(b.dataset.hwBox);if(nav){goUrl(b,BOXES[bi]?addQ(A.promo_url||'/','box',BOXES[bi].id):(A.promo_url||'/'));return}b.onclick=function(){closeInfo();if(BOXES[bi])chooseBox(bi);else go(1)}});
+    dc.querySelectorAll('[data-hw-prod]').forEach(function(b){var q=b.dataset.hwProd;if(nav){goUrl(b,addQ(A.promo_url||'/',A.utm_param||'utm_content',q));return}b.onclick=function(){if(!PROD[q])return;if(S.box!==null){closeInfo();if(full()){toast(T('ms.full'),true);return}addSlot(q);return}S.core=q;saveS();toBoxes()}});
+  }
+  function howPopup(){
+    var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0; /* редакторът рендира наново при всяка буква — скролът остава */
+    info('',howHtml(),true);
+    dc.classList.add('hw');if(keepY)dc.querySelector('.ib').scrollTop=keepY;$('apOv').classList.add('ovhw');if(MOBF())lockBody();S._last=howPopup;
+    howBind(dc,false);
+  }
+  /* v1.8.0: страницата {промо}/info (runtime.mode = 'info') — същото съдържание инлайн вместо попъп; хедърът е само марка + срок, бутоните водят към промо страницата */
+  function renderInfo(){
+    var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');br.onclick=function(){location.href=A.promo_url||'/'};br.style.cursor='pointer';
+    renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
+    var s1=$('apS1');s1.innerHTML='<div class="dc hw inl"><div class="ib">'+howHtml()+'</div></div>';s1.classList.add('on');howBind(s1.firstChild,true);
+  }
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
   function prodBody(k){var pr=PROD[k];return '<p><b>'+esc(pr.ds)+'</b></p><p>'+esc(pr.desc)+'</p><p'+ck('prod.pack')+'>'+packTxt(pr)+'</p><div class="il"><span'+ck('prod.price')+'>'+T('prod.price')+'</span><b>'+m(r2(pr.price*(1-pct()/100)))+' <s class="was">'+m(pr.price)+'</s></b></div>'}
@@ -752,7 +766,7 @@
     yfab.querySelectorAll('[data-rw]').forEach(function(x){x.onclick=function(){yfabClose();rewardPopup(x.dataset.rw)}});
   }
   document.addEventListener('click',function(e){if(yfab.querySelector('.fabu.open')&&!yfab.contains(e.target))yfabClose()},true);
-  function render(){renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
@@ -799,12 +813,15 @@
       else if(d.ansaPromo==='goto'){scenario({screen:d.screen})}
     });
   }
-  window.addEventListener('resize',function(){if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
+  window.addEventListener('resize',function(){if(A.mode==='info')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
 
   /* ── старт ── */
+  if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
   var restored=restoreS();
   if(A.editor){S.emailDone=true;A.editorNoGate=true;go(1)}
   else{go(S.screen===2&&restored?2:1);if(restored&&full()){toast(T('ms.restored'),false)}else if(restored&&!full()){S._fillPending=false;fillModePopup()}}
   refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
+  /* v1.8.0: кацане с ?box=s|m|l (от страницата /info) → кутията се избира сама; с имейл-попъп — след него */
+  try{var qB=new URLSearchParams(location.search).get('box');if(qB&&BI[qB]!=null&&!A.editor&&S.box===null){var runB=function(){if(S.box===null)chooseBox(BI[qB])};if(S.emailDone||gateSeen())setTimeout(runB,300);else S._afterGate=runB}}catch(e){}
 })();

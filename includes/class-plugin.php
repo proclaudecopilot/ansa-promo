@@ -45,6 +45,7 @@ final class Plugin {
 		Insights::register();
 		Partner::register();
 		Tombola::register();
+		Info::register(); /* v1.8.0: {промо}/info */
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); Editor::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );

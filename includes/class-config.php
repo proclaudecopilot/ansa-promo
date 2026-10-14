@@ -57,6 +57,8 @@ final class Config {
 			/* v1.6.0: томболата — страницата {промо}/tombola (проверка по телефон + имейл), тегленето, „доставен“ статуси, препоръка (?r=КОД):
 			   ref_mult = множител на билетите на препоръчалия при първа платена препоръка (всяка следваща добавя още толкова), ref_max = най-много
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
+			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
+			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
 			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'completed', 'delivered' ), 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
@@ -249,6 +251,7 @@ final class Config {
 		$out['preview']['enabled'] = ! empty( $out['preview']['enabled'] ); $out['preview']['password'] = trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) );
 		/* v1.6.0: томбола */
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
+		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
 		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );
 		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];
