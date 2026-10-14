@@ -78,7 +78,7 @@
   function baseVars(){
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
     var v={yacht:ths(YACHT),ship:m(SHIP),book_value:BOOK_VAL,cosm_value:COSM,cosm_pay_m:bm&&bm.cosm_pay!=null?money(bm.cosm_pay):'',cosm_pay_l:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',cosm_min:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',deadline:A.deadline||'',max_pct:BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0,
-      tickets_s:bs?tixOf(bs):1,tickets_m:bm?tixOf(bm):3,tickets_l:bl?tixOf(bl):5,pct_s:bs?bs.pct:20,pct_m:bm?bm.pct:30,pct_l:bl?bl.pct:40,secret_pct:SECRET_PCT,total:ORDER.length,name:A.name||'',
+      tickets_s:bs?tixOf(bs):1,tickets_m:bm?tixOf(bm):3,tickets_l:bl?tixOf(bl):5,pct_s:bs?bs.pct:15,pct_m:bm?bm.pct:30,pct_l:bl?bl.pct:40,secret_pct:SECRET_PCT,total:ORDER.length,name:A.name||'',
       /* v1.7.0 („Как работи“): бройките на кутиите, лимитът на комплектите, линкът към билетите, датата на тегленето */
       packs_s:bs?bs.packs:1,packs_m:bm?bm.packs:3,packs_l:bl?bl.packs:5,cosm_limit:ths(Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||10000),tombola_url:esc(A.tombola_url||''),draw:A.draw||''};
     if(S.core&&PROD[S.core]){var c=PROD[S.core];v.core=esc(c.name);v.core_full=esc(c.gname||c.name);v.core_ds=c.ds?esc(c.ds.charAt(0).toUpperCase()+c.ds.slice(1)):'';v.s_core=sPrep(c.name)}
