@@ -1601,6 +1601,35 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw.inl .hw-hero{padding-top:22px}
 }
 
+/* ── 44 · v1.8.1 (забележка на човека: „като избера кутия и на мобилно и на десктоп ясно да се вижда, че съм цъкнал някой продукт и има
+      опаковки от него — в момента е малко неразбираемо“): избраната карта в „Напълни кутията си“ е ЗЕЛЕНА — и на десктоп, и на телефон.
+      (1) плътна зелена рамка + светлозелен фон + зелена сянка (неизбраната остава бяла с оранжева рамка и „+ Добави“);
+      (2) баджът „−40%“ се сменя със зелен пил „✓ В кутията“ / „✓ ×2 в кутията“ (fill.in / fill.inN, рисува се в sync());
+      (3) степерът е зелен — рамка, бутони и числото; (4) на десктоп и лентата на категорията над картата става плътно зелена;
+      (5) снимката е със зелена рамка, етикетът на категорията в картата (телефон) — зелен. Подредбата не е пипана. ── */
+.ansa-promo .fcat.r3{transition:background-color .15s,border-color .15s,box-shadow .15s}
+/* 2 · пилът „✓ В кутията“ вместо баджа −X% */
+.ansa-promo .fcat.r3 .r3h .r3in{display:none;flex:none;margin-left:auto;align-items:center;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-size:13px;font-weight:900;letter-spacing:.01em;padding:5px 11px;border-radius:999px;line-height:1.2;white-space:nowrap;box-shadow:0 3px 8px rgba(21,128,61,.3)}
+.ansa-promo .fcat.r3.on .r3h .r3in{display:inline-flex}
+.ansa-promo .dc .fcat.r3.on .r3h .fpct.mb{display:none!important}
+/* 1 · десктоп: картата + лентата на категорията */
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3.on,.ansa-promo .dc.fpw .fp3 .f3item:has(.f3cat.core) .fcat.drow.r3.on,.ansa-promo .dc.fpw .fp3 .f3item:has(.f3cat.pick) .fcat.drow.r3.on{border-color:var(--g);border-top-color:var(--g);background:#eefaf1;box-shadow:0 0 0 1.5px var(--g),0 8px 22px rgba(21,128,61,.18)}
+.ansa-promo .fp3 .f3item:has(.fcat.r3.on) .f3cat,.ansa-promo .fp3 .f3item:has(.fcat.r3.on) .f3cat.core,.ansa-promo .fp3 .f3item:has(.fcat.r3.on) .f3cat.pick{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-color:var(--g);box-shadow:0 0 0 1.5px var(--g)}
+.ansa-promo .dc.fpw .fp3 .fcat.drow.r3:not(.on):hover{border-color:var(--o);background:#fffaf6}
+/* 1 · телефон: картите са от ръб до ръб (без рамка) — зелена рамка отвътре + зелен фон */
+.ansa-promo .dc.fpm .mitem .fcat.mrow.r3.on,.ansa-promo .dc.fpm .fcat.mrow.r3.on{background:#eefaf1;box-shadow:inset 0 0 0 2.5px var(--g),inset 7px 0 0 var(--g)}
+.ansa-promo .dc .fcat.r3.on .r3cat{color:var(--gd)}
+/* 5 · снимката */
+.ansa-promo .dc .fcat.r3.on .r3m .pic{border-color:rgba(22,163,74,.5);box-shadow:0 2px 8px rgba(21,128,61,.12)}
+/* 3 · степерът */
+.ansa-promo .dc .fcat.r3.on .r3f .stp{border:2px solid var(--g);background:#fff;box-shadow:0 3px 10px rgba(21,128,61,.2)}
+.ansa-promo .dc .fcat.r3.on .r3f .stp button{background:#d1f0da;color:#14532d}
+.ansa-promo .dc .fcat.r3.on .r3f .stp button:hover:not(:disabled){background:#b9e8c8}
+.ansa-promo .dc .fcat.r3.on .r3f .stp button:disabled{opacity:.35}
+.ansa-promo .dc .fcat.r3.on .r3f .stp b{color:#14532d}
+/* 1 · разделителят над цената е зелен в избраната карта */
+.ansa-promo .dc .fcat.r3.on .fbar.r3f{border-top-color:rgba(22,163,74,.3)}
+
 /* v1.4.0: редакторът — хотспотове (само с ?ansa_editor=1) */
 [data-editor] [data-ck]{cursor:pointer;outline:1px dashed transparent;outline-offset:2px;transition:outline-color .12s}
 [data-editor] [data-ck]:hover{outline-color:#e8722a;background:rgba(232,114,42,.06)}
