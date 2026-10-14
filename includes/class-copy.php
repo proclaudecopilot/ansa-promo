@@ -316,6 +316,8 @@ final class Copy {
 				'fill.dots'          => '{{n}} от {{packs}}',
 				'fill.need'          => 'Избери още {{need}} {{opk}}',
 				'fill.pct'           => '−{{pct}}% · спестяваш {{save}}',
+				'fill.in'            => '✓ В кутията',
+				'fill.inN'           => '✓ ×{{n}} в кутията',
 				'fill.save'          => 'Спестяваш <b>{{save}}</b>',
 				'fill.save.zero'     => 'Спестяваш <b>€ 0</b>',
 				'fill.go'            => 'Продължи →',
