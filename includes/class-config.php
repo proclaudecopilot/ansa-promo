@@ -47,7 +47,7 @@ final class Config {
 			'rewards'   => array(
 				'yacht' => array( 'value' => 8800 ),
 				'book'  => array( 'product_id' => 0, 'value' => 19, 'url' => '' ), /* url: линк към PDF-а, ако WC продуктът не е downloadable (имейл при „Изпълнена“) */
-				'cosm'  => array( 'product_id' => 0, 'value' => 129 ),
+				'cosm'  => array( 'product_id' => 0, 'value' => 129, 'limit' => 10000 ), /* limit: броят комплекти за €1 (v1.7.0, „Как работи“: {{cosm_limit}} + прогресът „Първите N са резервирани“) */
 				'icons' => array( 'tix' => '🎟️', 'tix3' => '🎟️', 'tix5' => '🎟️', 'ship' => '🚚', 'book' => '📖', 'cosm50' => '🌸', 'cosm1' => '👑' ),
 			),
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
@@ -240,7 +240,7 @@ final class Config {
 		}
 		$out['rewards']['yacht']['value'] = (float) $out['rewards']['yacht']['value'];
 		$out['rewards']['book']['product_id'] = (int) $out['rewards']['book']['product_id']; $out['rewards']['book']['value'] = (float) $out['rewards']['book']['value']; $out['rewards']['book']['url'] = esc_url_raw( (string) ( $out['rewards']['book']['url'] ?? '' ) );
-		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value'];
+		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value']; $out['rewards']['cosm']['limit'] = max( 0, (int) ( $out['rewards']['cosm']['limit'] ?? 10000 ) );
 		$out['secret']['pct'] = max( 0, min( 90, (float) $out['secret']['pct'] ) ); $out['secret']['count'] = max( 0, min( 6, (int) $out['secret']['count'] ) ); $out['secret']['enabled'] = ! empty( $out['secret']['enabled'] );
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
 		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] );

@@ -1414,6 +1414,176 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .fpb{border-color:var(--o)}
 .ansa-promo .rstrip{border-color:rgba(232,114,42,.45)}
 
+/* ── 42 · v1.7.0 („Как работи играта?“ отваря цялата страница на сезона — текстът на човека от 14.10.2026, оформен в стила на промото):
+      .dc.hw е flex колона на фона на страницата, скролва вътрешният .ib (✕ стои горе вдясно), на телефон е на цял екран. Секциите:
+      hero (праскова) · трите кутии (пясък/теракота/злато като на екран 1) · три стъпки · яхтата (тъмносиня) · комплектът (злато, прогрес)
+      · продуктите (редове със снимка и цена „от …“) · „Защо го правим“ (писмо) · отзиви · въпроси (<details>) · правила · залепен бутон. ── */
+.ansa-promo .ov.ovhw{padding:16px}
+.ansa-promo .dc.hw{max-width:920px;padding:0;display:flex;flex-direction:column;overflow:hidden;background:var(--cream);max-height:calc(100dvh - 32px)}
+.ansa-promo .dc.hw>.ux{position:absolute;top:12px;right:14px;z-index:6;background:rgba(255,255,255,.92);color:var(--od);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.ansa-promo .dc.hw>.ib{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;font-size:15px;color:var(--ink2);scroll-behavior:smooth;position:relative}
+.ansa-promo .dc.hw .dcmore{display:none!important}
+.ansa-promo .dc.hw p{margin:0 0 10px}
+.ansa-promo .dc.hw h2{font-size:30px;font-weight:900;letter-spacing:-.025em;line-height:1.1;margin:6px 0 8px;color:var(--ink)}
+.ansa-promo .dc.hw h3{font-size:23px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:0 0 6px;padding-right:0;color:var(--ink)}
+.ansa-promo .dc.hw .cta{width:auto;min-height:48px;padding:12px 22px;font-size:15px;border-radius:12px}
+.ansa-promo .dc.hw .cta.soft{box-shadow:none}
+.ansa-promo .dc.hw a{color:var(--od);font-weight:800}
+.ansa-promo .dc.hw .hw-sec{padding:30px 32px}
+.ansa-promo .dc.hw .hw-sec+.hw-sec{border-top:1.5px solid rgba(232,114,42,.22)}
+.ansa-promo .dc.hw .hw-kick{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--od);margin-bottom:6px}
+.ansa-promo .dc.hw .hw-sh{margin-bottom:16px}
+.ansa-promo .dc.hw p.hw-lead{font-size:15px;font-weight:600;color:var(--muted);margin:0}
+.ansa-promo .dc.hw p.hw-n{font-size:13.5px;font-weight:600;color:var(--tan);margin:10px 0 0}
+.ansa-promo .dc.hw p.hw-legal{font-size:12px;font-weight:600;color:var(--tan);margin:12px 0 0;opacity:.9}
+/* 1 · hero */
+.ansa-promo .dc.hw .hw-hero{display:grid;grid-template-columns:1.25fr .9fr;gap:22px;align-items:center;padding:34px 32px 30px;background:linear-gradient(135deg,#f6b58a 0%,#f4c89f 45%,#fde9d2 100%);position:relative;overflow:hidden}
+.ansa-promo .dc.hw .hw-hero::after{content:"";position:absolute;right:-120px;top:-120px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.6),rgba(255,255,255,0) 70%);pointer-events:none}
+.ansa-promo .dc.hw .hw-htx{position:relative;z-index:1}
+.ansa-promo .dc.hw .hw-dates{display:inline-block;background:#fff;border:1.5px solid var(--ol);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:800;color:var(--od);margin-bottom:12px}
+.ansa-promo .dc.hw p.hw-sub{font-size:16px;font-weight:700;color:var(--tan);margin:0 0 14px}
+.ansa-promo .dc.hw .hw-bul{list-style:none;display:grid;gap:8px;margin:0 0 16px;padding:0}
+.ansa-promo .dc.hw .hw-bul li{position:relative;padding:9px 12px 9px 40px;background:rgba(255,255,255,.78);border:1.5px solid rgba(232,114,42,.3);border-radius:12px;font-size:14px;font-weight:600;line-height:1.35;color:var(--ink2)}
+.ansa-promo .dc.hw .hw-bul li::before{content:"✓";position:absolute;left:12px;top:9px;width:20px;height:20px;border-radius:50%;background:var(--o);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.ansa-promo .dc.hw .hw-bul li b{color:var(--od)}
+.ansa-promo .dc.hw .hw-ctas{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.ansa-promo .dc.hw p.hw-note{font-size:13px;font-weight:700;color:var(--tan);margin:0}
+.ansa-promo .dc.hw .hw-hpic{position:relative;z-index:1;display:flex;align-items:center;justify-content:center}
+.ansa-promo .dc.hw .hw-hpic img{width:100%;max-width:340px;border-radius:20px;box-shadow:0 18px 44px rgba(120,60,20,.28);transform:rotate(2deg)}
+.ansa-promo .dc.hw .hw-hpic span{font-size:120px;line-height:1;filter:drop-shadow(0 12px 24px rgba(120,60,20,.3))}
+/* 2 · кутиите */
+.ansa-promo .dc.hw .hw-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ansa-promo .dc.hw .hw-box{display:flex;flex-direction:column;background:#fff;border:2px solid #c6a78e;border-radius:18px;padding:18px 16px 16px;box-shadow:0 8px 28px rgba(120,60,20,.12)}
+.ansa-promo .dc.hw .hw-box.m{border-color:var(--o)}
+.ansa-promo .dc.hw .hw-box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff6d6 0%,#fff 45%)}
+.ansa-promo .dc.hw .hw-bn{display:inline-block;align-self:flex-start;border-radius:999px;padding:4px 14px;font-size:14px;font-weight:900;background:#f1e4d7;color:var(--tan)}
+.ansa-promo .dc.hw .hw-box.m .hw-bn{background:#fde4d2;color:var(--od)}
+.ansa-promo .dc.hw .hw-box.l .hw-bn{background:#ffe9a8;color:var(--goldd)}
+.ansa-promo .dc.hw .hw-bp{font-size:13px;font-weight:700;color:var(--tan);margin:8px 0 4px}
+.ansa-promo .dc.hw .hw-pct{font-size:40px;font-weight:900;line-height:1;letter-spacing:-.03em;color:var(--ink2);margin-bottom:10px}
+.ansa-promo .dc.hw .hw-box.m .hw-pct{background:linear-gradient(135deg,#b8390a,#e8722a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ansa-promo .dc.hw .hw-box.l .hw-pct{color:var(--goldd)}
+.ansa-promo .dc.hw .hw-box ul{list-style:none;display:grid;align-content:start;gap:6px;margin:0 0 12px;padding:0;flex:1}
+.ansa-promo .dc.hw .hw-box li{position:relative;padding-left:22px;font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.35}
+.ansa-promo .dc.hw .hw-box li::before{content:"•";position:absolute;left:4px;top:-2px;color:var(--o);font-size:18px;line-height:1}
+.ansa-promo .dc.hw .hw-box.l li::before{color:var(--goldd)}
+.ansa-promo .dc.hw p.hw-ex{font-size:12.5px;font-weight:600;color:var(--tan);margin:0 0 12px;padding:8px 10px;border-radius:10px;background:#f7efe6}
+.ansa-promo .dc.hw p.hw-ex b{color:var(--ink);font-size:14px;white-space:nowrap}
+.ansa-promo .dc.hw p.hw-ex s{color:var(--tan2);white-space:nowrap}
+.ansa-promo .dc.hw .hw-box .cta{width:100%}
+.ansa-promo .dc.hw .hw-box.s .cta{background:linear-gradient(135deg,#8a6a55,#6e4c38);box-shadow:0 6px 18px rgba(110,76,56,.3)}
+.ansa-promo .dc.hw .hw-box.m .cta{background:linear-gradient(135deg,#e8722a,#c2410c);box-shadow:0 6px 18px rgba(194,65,12,.35)}
+.ansa-promo .dc.hw .hw-box.l .cta{background:linear-gradient(135deg,#b45309,#d97706 55%,#f59e0b);box-shadow:0 6px 20px rgba(217,119,6,.38)}
+/* 3 · стъпките */
+.ansa-promo .dc.hw .hw-steps{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 0 16px;padding:0}
+.ansa-promo .dc.hw .hw-steps li{position:relative;background:#fff;border:1.5px solid var(--ol);border-radius:16px;padding:18px 16px 16px;box-shadow:0 4px 16px rgba(120,60,20,.1)}
+.ansa-promo .dc.hw .hw-steps li i{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#e8722a,#c2410c);color:#fff;font-style:normal;font-weight:900;font-size:16px;margin-bottom:10px;box-shadow:0 4px 12px rgba(194,65,12,.3)}
+.ansa-promo .dc.hw .hw-steps li b{display:block;font-size:17px;font-weight:900;margin-bottom:6px;color:var(--ink)}
+.ansa-promo .dc.hw .hw-steps li p{font-size:14px;line-height:1.45;color:var(--ink2);font-weight:600;margin:0}
+.ansa-promo .dc.hw p.hw-more{font-size:14.5px;line-height:1.45;font-weight:600;color:var(--ink2);background:#fff;border-left:4px solid var(--o);border-radius:0 12px 12px 0;padding:12px 14px;margin:0 0 16px}
+/* 4 · яхтата — тъмна секция */
+.ansa-promo .dc.hw .hw-y{display:grid;grid-template-columns:.9fr 1.3fr;gap:26px;align-items:start;background:linear-gradient(160deg,#1a1a2e 0%,#23305a 55%,#1d4e6e 100%);color:#fff}
+.ansa-promo .dc.hw .hw-y .hw-kick{color:#f6b58a}
+.ansa-promo .dc.hw .hw-y h3,.ansa-promo .dc.hw .hw-y p{color:#fff}
+.ansa-promo .dc.hw .hw-y p{opacity:.92;font-weight:600;line-height:1.5}
+.ansa-promo .dc.hw .hw-ypic{position:relative}
+.ansa-promo .dc.hw .hw-ypic img{width:100%;border-radius:18px;box-shadow:0 18px 44px rgba(0,0,0,.35);display:block}
+.ansa-promo .dc.hw .hw-ypic span{display:flex;align-items:center;justify-content:center;font-size:120px;height:220px;background:rgba(255,255,255,.06);border-radius:18px}
+.ansa-promo .dc.hw .hw-ypic em{position:absolute;left:12px;top:12px;font-style:normal;font-size:12.5px;font-weight:900;background:var(--gold);color:#3b2a00;border-radius:999px;padding:6px 12px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.ansa-promo .dc.hw .hw-facts{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;padding:0}
+.ansa-promo .dc.hw .hw-facts li{position:relative;padding:8px 10px 8px 32px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:13.5px;font-weight:700;line-height:1.35}
+.ansa-promo .dc.hw .hw-facts li::before{content:"✓";position:absolute;left:10px;top:8px;color:#f6b58a;font-weight:900}
+.ansa-promo .dc.hw .hw-win{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.ansa-promo .dc.hw .hw-win b{display:block;font-size:15px;font-weight:900;margin-bottom:6px;color:#f6b58a}
+.ansa-promo .dc.hw .hw-win p{font-size:14px;margin:0}
+.ansa-promo .dc.hw .hw-y p.hw-legal{color:rgba(255,255,255,.72)}
+/* 5 · комплектът — златна секция */
+.ansa-promo .dc.hw .hw-k{display:grid;grid-template-columns:.8fr 1.4fr;gap:26px;align-items:start;background:linear-gradient(160deg,#fff6d6,#fde9d2)}
+.ansa-promo .dc.hw .hw-k .hw-kick{color:var(--goldd)}
+.ansa-promo .dc.hw .hw-kpic{position:relative}
+.ansa-promo .dc.hw .hw-kpic img{width:100%;border-radius:18px;box-shadow:0 14px 36px rgba(180,120,20,.3);display:block}
+.ansa-promo .dc.hw .hw-kpic span{display:flex;align-items:center;justify-content:center;font-size:110px;height:220px;background:#fff;border-radius:18px}
+.ansa-promo .dc.hw .hw-kpic em{position:absolute;right:12px;top:12px;font-style:normal;font-size:16px;font-weight:900;background:#fff;color:var(--goldd);border:2px solid var(--gold);border-radius:999px;padding:6px 14px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.ansa-promo .dc.hw .hw-kpic em s{color:var(--tan2);font-size:13px;font-weight:700;margin-right:4px}
+.ansa-promo .dc.hw .hw-k p{font-weight:600;line-height:1.5}
+.ansa-promo .dc.hw .hw-k .hw-facts li{background:#fff;border-color:#e9b32a;color:var(--ink)}
+.ansa-promo .dc.hw .hw-k .hw-facts li::before{color:var(--goldd)}
+.ansa-promo .dc.hw .hw-qa{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ansa-promo .dc.hw .hw-qa div{background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid rgba(233,179,42,.5)}
+.ansa-promo .dc.hw .hw-qa b{display:block;font-size:14.5px;font-weight:900;margin-bottom:4px;color:var(--goldd)}
+.ansa-promo .dc.hw .hw-qa p{font-size:13.5px;margin:0}
+.ansa-promo .dc.hw .hw-bar{margin:4px 0 14px}
+.ansa-promo .dc.hw .hw-bart{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:700;color:var(--ink2);margin-bottom:6px}
+.ansa-promo .dc.hw .hw-bart b{color:var(--goldd);font-size:16px}
+.ansa-promo .dc.hw .hw-bart small{font-size:12px;color:var(--tan)}
+.ansa-promo .dc.hw .hw-barb{height:12px;border-radius:999px;background:#fff;border:1.5px solid #e9b32a;overflow:hidden}
+.ansa-promo .dc.hw .hw-barb i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#f59e0b,#e8722a,#c2410c)}
+/* 6 · продуктите */
+.ansa-promo .dc.hw .hw-prods{display:grid;gap:10px}
+.ansa-promo .dc.hw .hw-prod{display:grid;grid-template-columns:72px 1fr auto;gap:14px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:12px 14px;box-shadow:0 4px 16px rgba(120,60,20,.08)}
+.ansa-promo .dc.hw .hw-ppic{width:72px;height:72px;object-fit:contain;border-radius:12px;background:#f7efe6;display:flex;align-items:center;justify-content:center;font-size:36px}
+.ansa-promo .dc.hw .hw-ptx>b{display:block;font-size:16px;font-weight:900;color:var(--ink);margin-bottom:2px}
+.ansa-promo .dc.hw .hw-ptx p{font-size:13.5px;line-height:1.4;color:var(--ink2);font-weight:600;margin:0}
+.ansa-promo .dc.hw .hw-pprice{margin-top:6px;font-size:13px;font-weight:700;color:var(--tan)}
+.ansa-promo .dc.hw .hw-pprice b{color:var(--od);font-size:15px;white-space:nowrap}
+.ansa-promo .dc.hw .hw-pprice s{white-space:nowrap}
+.ansa-promo .dc.hw .hw-pprice s{color:var(--tan2)}
+.ansa-promo .dc.hw .hw-padd{border:2px solid var(--o);background:#fff;color:var(--od);font-weight:800;font-size:13px;border-radius:10px;padding:10px 14px;white-space:nowrap}
+.ansa-promo .dc.hw .hw-padd:hover{background:var(--os)}
+/* 7 · защо го правим — писмо */
+.ansa-promo .dc.hw .hw-w{background:#fff}
+.ansa-promo .dc.hw .hw-letter{max-width:640px;margin:0 auto}
+.ansa-promo .dc.hw .hw-letter h3{margin-bottom:14px}
+.ansa-promo .dc.hw .hw-letter p{font-size:15.5px;line-height:1.6;font-weight:600;color:var(--ink2);margin:0 0 12px}
+.ansa-promo .dc.hw .hw-vid{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1a1a2e,#23305a);color:#fff!important;border-radius:14px;padding:14px 16px;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:16px}
+.ansa-promo .dc.hw .hw-vid i{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--o);font-style:normal;flex:0 0 auto}
+.ansa-promo .dc.hw .hw-vid.off{opacity:.55;border:1.5px dashed #fff}
+.ansa-promo .dc.hw .hw-letter p.hw-sign{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:17px;color:var(--od);margin-top:8px}
+/* 8 · отзиви */
+.ansa-promo .dc.hw .hw-rv{text-align:center}
+.ansa-promo .dc.hw .hw-rvs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;text-align:left}
+.ansa-promo .dc.hw .hw-rv1{background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:14px;box-shadow:0 4px 16px rgba(120,60,20,.08)}
+.ansa-promo .dc.hw .hw-rv1 i{display:block;font-style:normal;color:var(--gold);letter-spacing:.1em;font-size:13px;margin-bottom:6px}
+.ansa-promo .dc.hw .hw-rv1 p{font-size:13.5px;line-height:1.45;font-weight:600;color:var(--ink2);margin:0}
+.ansa-promo .dc.hw .hw-rv1 small{display:block;margin-top:8px;font-size:12px;font-weight:800;color:var(--tan)}
+/* 9 · въпросите */
+.ansa-promo .dc.hw .hw-faqs{display:grid;gap:8px;margin-top:14px}
+.ansa-promo .dc.hw .hw-faqs details{background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:0 16px}
+.ansa-promo .dc.hw .hw-faqs summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;font-size:15px;font-weight:800;color:var(--ink)}
+.ansa-promo .dc.hw .hw-faqs summary::-webkit-details-marker{display:none}
+.ansa-promo .dc.hw .hw-faqs summary i{font-style:normal;color:var(--o);transition:transform .2s;flex:0 0 auto}
+.ansa-promo .dc.hw .hw-faqs details[open] summary i{transform:rotate(180deg)}
+.ansa-promo .dc.hw .hw-faqs details p{padding:0 0 14px;font-size:14px;line-height:1.5;font-weight:600;color:var(--ink2);margin:0}
+/* 10 · правилата */
+.ansa-promo .dc.hw .hw-ru{padding-bottom:28px}
+.ansa-promo .dc.hw .hw-ru b{display:block;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--tan);margin-bottom:6px}
+.ansa-promo .dc.hw .hw-ru p{font-size:12.5px;line-height:1.5;color:var(--tan);font-weight:600;margin:0}
+/* залепен бутон */
+.ansa-promo .dc.hw .hw-stk{position:sticky;bottom:0;z-index:4;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(246,228,209,.92);backdrop-filter:blur(8px);border-top:1.5px solid rgba(232,114,42,.35);display:flex;justify-content:center}
+.ansa-promo .dc.hw .hw-stk .cta{width:100%;max-width:420px}
+/* телефон: цял екран, една колона */
+@media(max-width:760px){
+.ansa-promo .ov.ovhw{padding:0}
+.ansa-promo .dc.hw{max-width:100%;max-height:100dvh;height:100dvh;border-radius:0;animation:none}
+.ansa-promo .dc.hw>.ib{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.ansa-promo .dc.hw>.ux{top:calc(10px + env(safe-area-inset-top))}
+.ansa-promo .dc.hw h2{font-size:25px}
+.ansa-promo .dc.hw h3{font-size:21px}
+.ansa-promo .dc.hw .cta{width:100%}
+.ansa-promo .dc.hw .hw-sec{padding:24px 16px}
+.ansa-promo .dc.hw .hw-hero{grid-template-columns:1fr;padding:calc(22px + env(safe-area-inset-top)) 16px 24px;gap:14px}
+.ansa-promo .dc.hw .hw-hpic{order:-1;justify-content:flex-start}
+.ansa-promo .dc.hw .hw-hpic img{max-width:200px;transform:none}
+.ansa-promo .dc.hw .hw-hpic span{font-size:84px}
+.ansa-promo .dc.hw .hw-boxes,.ansa-promo .dc.hw .hw-steps,.ansa-promo .dc.hw .hw-rvs,.ansa-promo .dc.hw .hw-qa{grid-template-columns:1fr}
+.ansa-promo .dc.hw .hw-y,.ansa-promo .dc.hw .hw-k{grid-template-columns:1fr;gap:16px}
+.ansa-promo .dc.hw .hw-facts{grid-template-columns:1fr}
+.ansa-promo .dc.hw .hw-ypic span,.ansa-promo .dc.hw .hw-kpic span{height:160px;font-size:84px}
+.ansa-promo .dc.hw .hw-prod{grid-template-columns:60px 1fr;gap:10px}
+.ansa-promo .dc.hw .hw-ppic{width:60px;height:60px;font-size:30px}
+.ansa-promo .dc.hw .hw-padd{grid-column:1/-1;width:100%}
+}
+
 /* v1.4.0: редакторът — хотспотове (само с ?ansa_editor=1) */
 [data-editor] [data-ck]{cursor:pointer;outline:1px dashed transparent;outline-offset:2px;transition:outline-color .12s}
 [data-editor] [data-ck]:hover{outline-color:#e8722a;background:rgba(232,114,42,.06)}

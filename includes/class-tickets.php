@@ -71,8 +71,10 @@ final class Tickets {
 	/* ── данни ── */
 	public static function by_code( $code ) { global $wpdb; $c = self::normalize( $code ); if ( '' === $c ) { return null; } return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'tickets' ) . ' WHERE code = %s', $c ), ARRAY_A ); }
 	public static function for_order( $order_id ) { global $wpdb; return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'tickets' ) . ' WHERE order_id = %d ORDER BY id DESC LIMIT 1', (int) $order_id ), ARRAY_A ); }
-	public static function set_status( $id, $status ) { global $wpdb; return (bool) $wpdb->update( Schema::table( 'tickets' ), array( 'status' => $status ), array( 'id' => (int) $id ), array( '%s' ), array( '%d' ) ); }
+	public static function set_status( $id, $status ) { global $wpdb; delete_transient( 'ansa_promo_cnt_l' ); return (bool) $wpdb->update( Schema::table( 'tickets' ), array( 'status' => $status ), array( 'id' => (int) $id ), array( '%s' ), array( '%d' ) ); }
 	public static function count( $status = '' ) { global $wpdb; return (int) ( $status ? $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Schema::table( 'tickets' ) . ' WHERE status = %s', $status ) ) : $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Schema::table( 'tickets' ) ) ); }
+	/** v1.7.0: билетите (не анулирани) за дадена кутия — „Първите N са резервирани“ на страницата „Как работи“; transient 5 мин, нулира се при издаване/void. */
+	public static function count_box( $box ) { $k = 'ansa_promo_cnt_' . sanitize_key( $box ); $n = get_transient( $k ); if ( false === $n ) { global $wpdb; $n = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Schema::table( 'tickets' ) . " WHERE box = %s AND status <> 'void'", (string) $box ) ); set_transient( $k, $n, 5 * MINUTE_IN_SECONDS ); } return (int) $n; }
 	public static function sum( $status = '' ) { global $wpdb; return (int) ( $status ? $wpdb->get_var( $wpdb->prepare( 'SELECT COALESCE(SUM(tickets),0) FROM ' . Schema::table( 'tickets' ) . ' WHERE status = %s', $status ) ) : $wpdb->get_var( 'SELECT COALESCE(SUM(tickets),0) FROM ' . Schema::table( 'tickets' ) ) ); }
 
 	/** URL-ът в QR кода: порталът (?t=) или промо страницата (?ticket=). */
@@ -101,7 +103,7 @@ final class Tickets {
 		$code = self::generate(); $tries = 0;
 		while ( $tries++ < 5 && ! $wpdb->insert( Schema::table( 'tickets' ), array( 'order_id' => (int) $order_id, 'code' => $code, 'tickets' => max( 1, $allow ), 'box' => (string) $m['box'], 'status' => 'issued', 'created_at' => current_time( 'mysql' ) ), array( '%d', '%s', '%d', '%s', '%s', '%s' ) ) ) { $code = self::generate(); }
 		if ( ! $wpdb->insert_id ) { return null; }
-		$id = (int) $wpdb->insert_id;
+		$id = (int) $wpdb->insert_id; delete_transient( 'ansa_promo_cnt_l' ); /* v1.7.0: броячът „Първите N са резервирани“ */
 		$order->update_meta_data( '_ansa_promo_ticket_id', $id ); $order->update_meta_data( '_ansa_promo_ticket_code', $code ); $order->update_meta_data( '_ansa_promo_qr_url', self::qr_url( $order_id ) );
 		if ( ! empty( $m['cosm'] ) && 'reserved' === ( $m['cosm']['status'] ?? '' ) && ! $order->get_meta( '_ansa_promo_voucher' ) ) { $order->update_meta_data( '_ansa_promo_voucher', 'V' . substr( self::generate(), 0, 7 ) ); }
 		$order->save();

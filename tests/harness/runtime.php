@@ -12,5 +12,5 @@ $utm=$argv[1]??'sakura';
 $gate=$cfg['gate']; $gate['images']=[]; foreach(array_keys(Config::gate_image_slots()) as $k){ $gate['images'][$k]='file://'.ANSA_PROMO_PATH.'assets/img/gate/'.$k.'.svg'; }
 $rt=['ver'=>ANSA_PROMO_VER,'id'=>$cfg['id'],'name'=>$cfg['name'],'version'=>1,'ajax'=>'','nonce'=>'x','live'=>true,'draft'=>false,'editor'=>!empty($argv[2]),'cart'=>false,'refresh'=>false,
  'checkout'=>['cod'=>true],'products'=>(object)$prods,'order'=>array_keys($prods),'fit'=>(object)$cfg['fit'],'problems'=>$cfg['problems'],'boxes'=>$cfg['boxes'],'box_order'=>$cfg['order'],
- 'rewards'=>$cfg['rewards'],'secret'=>$cfg['secret'],'ship'=>$cfg['ship']['paid'],'timer'=>$cfg['timer'],'gate'=>$gate,'bgn'=>$cfg['bgn'],'utm'=>$utm,'deadline'=>'31.12.2026','copy'=>Copy::effective([]),'registry'=>null];
+ 'rewards'=>$cfg['rewards'],'secret'=>$cfg['secret'],'ship'=>$cfg['ship']['paid'],'timer'=>$cfg['timer'],'gate'=>$gate,'bgn'=>$cfg['bgn'],'utm'=>$utm,'deadline'=>'31.12.2026','tombola_url'=>'https://ansa.bg/sezonut-na-ansa/tombola/','draw'=>'10.01.2027','cosm_reserved'=>1000,'copy'=>Copy::effective([]),'registry'=>null];
 echo json_encode($rt,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
