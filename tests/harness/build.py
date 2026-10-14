@@ -13,4 +13,7 @@ html = ('<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="
         '<link rel="stylesheet" href="file://' + root + '/assets/promo.css"><link rel="stylesheet" href="file://' + root + '/assets/promo-extra.css"></head><body style="margin:0">' + t +
         '<script>window.AnsaPromoRuntime=' + rt + ';</script><script src="file://' + root + '/assets/promo.js"></script></body></html>')
 open(out + '/harness/index.html', 'w', encoding='utf-8').write(html)
-print('harness →', out + '/harness/index.html')
+# v1.8.0: самостоятелната страница „Как работи“ (runtime.mode = info) → harness/info.html
+rt2 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', 'sakura', '', 'info']).decode()
+open(out + '/harness/info.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt2 + ';</script>'))
+print('harness →', out + '/harness/index.html', '+ info.html')

@@ -1584,6 +1584,23 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-padd{grid-column:1/-1;width:100%}
 }
 
+/* ── 43 · v1.8.0: страницата {промо}/info — същото съдържание (.dc.hw) инлайн в #apS1 (.inl): без popup-рамка, без ✕, без лимит на
+      височината; залепеният бутон стои в дъното на прозореца; хедърът е само марка + срок (бутонът „Как работи“ е скрит). ── */
+.ansa-promo.info .topr .how,.ansa-promo.info .dc.hw.inl>.ux{display:none}
+.ansa-promo.info .wrap{max-width:1000px;padding-bottom:0}
+.ansa-promo.info #apS1.on{animation:none}
+.ansa-promo .dc.hw.inl{position:static;max-width:none;max-height:none;height:auto;overflow:visible;display:block;border-radius:22px;margin:14px 0 0;box-shadow:0 12px 40px rgba(120,60,20,.14);animation:none}
+.ansa-promo .dc.hw.inl>.ib{overflow:visible;flex:none;min-height:0;padding:0}
+.ansa-promo .dc.hw.inl .hw-hero{border-radius:22px 22px 0 0}
+.ansa-promo .dc.hw.inl .hw-stk{border-radius:0 0 22px 22px}
+.ansa-promo.info .foot{padding:18px 0 24px}
+@media(max-width:760px){
+.ansa-promo.info .wrap{padding-left:0;padding-right:0}
+.ansa-promo .dc.hw.inl{border-radius:0;margin-top:0;box-shadow:none}
+.ansa-promo .dc.hw.inl .hw-hero,.ansa-promo .dc.hw.inl .hw-stk{border-radius:0}
+.ansa-promo .dc.hw.inl .hw-hero{padding-top:22px}
+}
+
 /* v1.4.0: редакторът — хотспотове (само с ?ansa_editor=1) */
 [data-editor] [data-ck]{cursor:pointer;outline:1px dashed transparent;outline-offset:2px;transition:outline-color .12s}
 [data-editor] [data-ck]:hover{outline-color:#e8722a;background:rgba(232,114,42,.06)}
