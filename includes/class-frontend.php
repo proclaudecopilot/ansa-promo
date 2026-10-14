@@ -276,6 +276,10 @@ final class Frontend {
 			'box_order' => $cfg['order'],
 			'rewards'   => $cfg['rewards'],
 			'secret'    => $cfg['secret'],
+			/* v1.7.0: „Как работи“ — страницата на сезона в попъп: линкът към билетите, датата на тегленето, резервираните комплекти за €1 */
+			'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : (string) $cfg['tickets']['portal_url'],
+			'draw'      => Tombola::draw_label( $cfg ),
+			'cosm_reserved' => Tickets::count_box( 'l' ),
 			'ship'      => (float) $cfg['ship']['paid'],
 			'timer'     => $cfg['timer'],
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),

@@ -78,7 +78,9 @@
   function baseVars(){
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
     var v={yacht:ths(YACHT),ship:m(SHIP),book_value:BOOK_VAL,cosm_value:COSM,cosm_pay_m:bm&&bm.cosm_pay!=null?money(bm.cosm_pay):'',cosm_pay_l:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',cosm_min:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',deadline:A.deadline||'',max_pct:BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0,
-      tickets_s:bs?tixOf(bs):1,tickets_m:bm?tixOf(bm):3,tickets_l:bl?tixOf(bl):5,pct_s:bs?bs.pct:20,pct_m:bm?bm.pct:30,pct_l:bl?bl.pct:40,secret_pct:SECRET_PCT,total:ORDER.length,name:A.name||''};
+      tickets_s:bs?tixOf(bs):1,tickets_m:bm?tixOf(bm):3,tickets_l:bl?tixOf(bl):5,pct_s:bs?bs.pct:20,pct_m:bm?bm.pct:30,pct_l:bl?bl.pct:40,secret_pct:SECRET_PCT,total:ORDER.length,name:A.name||'',
+      /* v1.7.0 („Как работи“): бройките на кутиите, лимитът на комплектите, линкът към билетите, датата на тегленето */
+      packs_s:bs?bs.packs:1,packs_m:bm?bm.packs:3,packs_l:bl?bl.packs:5,cosm_limit:ths(Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||10000),tombola_url:esc(A.tombola_url||''),draw:A.draw||''};
     if(S.core&&PROD[S.core]){var c=PROD[S.core];v.core=esc(c.name);v.core_full=esc(c.gname||c.name);v.core_ds=c.ds?esc(c.ds.charAt(0).toUpperCase()+c.ds.slice(1)):'';v.s_core=sPrep(c.name)}
     if(S.box!==null&&BX()){var b=BX();v.box=esc(b.name);v.box_l=esc(b.name.toLowerCase());v.box_ic=b.ic;v.packs=b.packs;v.opk=opk(b.packs);v.pct=b.pct;v.tickets=tixOf(b);v.shans=shans(tixOf(b));v.cosm_pay=b.cosm_pay!=null?money(b.cosm_pay):'';v.s_box=sPrep(b.name);v.need=b.packs-boxes();v.n=boxes();v.save=m0(save());v.pay=m(pay());v.value=m0(value());v.rest=b.packs-1;v.opk_rest=opk(b.packs-1);v.produkt=b.packs===1?'продукт':'продукти'}
     return v;
@@ -178,7 +180,7 @@
   function fitSheet(dc){dc=dc||$('apDc');if(!dc||!dc.classList.contains('fpm'))return;dc.style.top='';dc.style.left='';dc.style.width='';dc.style.height='';var r=dc.getBoundingClientRect(),vh=window.innerHeight,vw=window.innerWidth;
     if(Math.abs(r.top)>2)dc.style.top=(-r.top)+'px';if(Math.abs(r.left)>2)dc.style.left=(-r.left)+'px';if(Math.abs(r.width-vw)>2)dc.style.width=vw+'px';if(Math.abs(r.height-vh)>2)dc.style.height=vh+'px'}
   window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))fitSheet()});
-  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');unlockBody();S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
+  function closeInfo(){$('apOv').classList.add('off');$('apOv').classList.remove('ovfpm');$('apOv').classList.remove('ovhw');unlockBody();S.replaceSlot=null;if(S._fillPending){S._fillPending=false;if(S.screen!==2)go(2)}}
   function scrollHint(){var dc=$('apDc');var more=dc.scrollHeight-dc.scrollTop-dc.clientHeight>24;dc.classList.toggle('more',more);var h=$('apMore');if(!h){h=document.createElement('div');h.id='apMore';h.className='dcmore';h.innerHTML='<span'+ck('ms.more')+'>'+T('ms.more')+'</span>';dc.appendChild(h);h.onclick=function(){dc.scrollBy({top:dc.clientHeight*.7,behavior:'smooth'})}}else dc.appendChild(h)}
   (function(){var dc=$('apDc');dc.addEventListener('scroll',function(){dc.classList.toggle('more',dc.scrollHeight-dc.scrollTop-dc.clientHeight>24)});if(window.MutationObserver){var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){if(ms[i].type==='childList'&&![].some.call(ms[i].addedNodes,function(n){return n.id==='apMore'})){setTimeout(scrollHint,60);return}}});mo.observe(dc,{childList:true})}window.addEventListener('resize',function(){if(!$('apOv').classList.contains('off'))scrollHint()})})();
   $('apOv').onclick=function(e){if(e.target.id==='apOv'&&!S._lockOv)closeInfo()};
@@ -191,7 +193,66 @@
   })();
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(!$('apOv2').classList.contains('off')){$('apOv2').classList.add('off');return}if(!S._lockOv&&!$('apOv').classList.contains('off'))closeInfo()}});
 
-  function howPopup(){info(T('how.title'),'<p class="hb"'+ck('how.p')+'>'+T('how.p')+'</p>'+BOXES.map(function(b){return '<div class="il"><span>'+esc(b.name)+' · '+b.packs+' '+opk(b.packs)+'</span><b>−'+b.pct+'% · '+b.rw.map(function(r){return RW(r).ic}).join(' ')+'</b></div>'}).join('')+'<p class="mut"'+ck('how.foot')+'>'+T('how.foot')+'</p>')}
+  /* v1.7.0: „Как работи играта?“ отваря ЦЯЛАТА страница на сезона (текстът на човека) като пълноекранен попъп: hero · трите кутии · три
+     стъпки · яхтата · комплектът · продуктите · защо го правим · отзиви · въпроси · правила · залепен бутон. Всеки текст е ключ how.* (T()),
+     кутиите/цените/билетите/наградите се четат от двигателя (BOXES/PROD/A.rewards); „Избери …“ вика chooseBox, „Добави в кутия“ — addSlot
+     или прави продукта основен (S.core) и води към кутиите. Структурата: .dc.hw е flex колона, скролва .ib (✕ стои горе вдясно). */
+  function howPopup(){
+    var GI=(A.gate&&A.gate.images)||{},bl=boxOf('l')||BOXES[BOXES.length-1],ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null;
+    var maxp=BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0;
+    function p(k,tag,cls,v){tag=tag||'p';return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+T(k,v)+'</'+tag+'>'}
+    function cta(k,attr,cls){return '<button class="cta'+(cls?' '+cls:'')+'" type="button" '+attr+ck(k)+'>'+T(k)+'</button>'}
+    var pic1=function(k,emo){return GI[k]?'<img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'};
+    /* 1 · hero */
+    var h='<section class="hw-hero"><div class="hw-htx">'+p('how.title','div','hw-kick')+p('how.hero.dates','div','hw-dates')+p('how.hero.h','h2')+p('how.hero.sub','p','hw-sub')
+      +'<ul class="hw-bul">'+['how.hero.b1','how.hero.b2','how.hero.b3'].map(function(k){return '<li'+ck(k)+'>'+T(k)+'</li>'}).join('')+'</ul>'
+      +'<div class="hw-ctas">'+cta('how.hero.cta','data-hw="boxes"')+cta('how.hero.cta2','data-hw="steps"','soft')+'</div>'+p('how.hero.note','p','hw-note')+'</div><div class="hw-hpic">'+pic1('yacht','🛥️')+'</div></section>';
+    /* 2 · трите кутии — от двигателя */
+    var bx='<section class="hw-sec" id="hwBoxes"><div class="hw-sh">'+p('how.bx.h','h3')+p('how.bx.sub','p','hw-lead')+'</div><div class="hw-boxes">'
+      +BOXES.map(function(b,i){var bv=boxVars(b),lines=[['how.bx.pct',bv],['how.bx.tix',bv]];
+        b.rw.forEach(function(r){if(/^cosm/.test(r)&&b.cosm_pay!=null)lines.push(['how.bx.cosm',bv]);else if(r==='book')lines.push(['how.bx.book']);else if(r==='ship')lines.push(['how.bx.ship'])});
+        var exh='';if(exp&&Number(exp.price)>0){var fullp=r2(exp.price*b.packs);exh=p('how.bx.ex','p','hw-ex',{core:esc(exp.name),a:m(r2(fullp*(1-b.pct/100))),b:m(fullp)})}
+        return '<div class="hw-box '+b.id+'"><div class="hw-bn">'+esc(b.name)+'</div>'+p('how.bx.packs','div','hw-bp',bv)+'<div class="hw-pct">−'+b.pct+'%</div><ul>'+lines.map(function(l){return '<li'+ck(l[0])+'>'+T(l[0],l[1])+'</li>'}).join('')+'</ul>'+exh
+          +'<button class="cta" type="button" data-hw-box="'+i+'"'+ck('how.bx.cta')+'>'+T('how.bx.cta',bv)+'</button></div>'}).join('')
+      +'</div>'+p('how.bx.n1','p','hw-n')+p('how.bx.n2','p','hw-n')+p('how.legal','p','hw-legal')+'</section>';
+    /* 3 · три стъпки */
+    var st='<section class="hw-sec" id="hwSteps"><div class="hw-sh">'+p('how.st.h','h3')+p('how.st.sub','p','hw-lead')+'</div><ol class="hw-steps">'
+      +[1,2,3].map(function(i){return '<li><i>'+i+'</i>'+p('how.st.'+i+'.t','b')+p('how.st.'+i+'.p')+'</li>'}).join('')+'</ol>'+p('how.st.more','p','hw-more')+cta('how.st.cta','data-hw="boxes"')+'</section>';
+    /* 4 · яхтата */
+    var y='<section class="hw-sec hw-y"><div class="hw-ypic">'+pic1('yacht','🛥️')+p('how.y.value','em')+'</div><div class="hw-ytx">'+p('how.y.kick','div','hw-kick')+p('how.y.h','h3')+p('how.y.p')
+      +'<ul class="hw-facts">'+[1,2,3,4,5].map(function(i){return '<li'+ck('how.y.f'+i)+'>'+T('how.y.f'+i)+'</li>'}).join('')+'</ul>'
+      +'<div class="hw-win">'+p('how.y.how.h','b')+p('how.y.how.p')+'</div>'+cta('how.y.cta','data-hw="boxes"')+p('how.legal','p','hw-legal')+'</div></section>';
+    /* 5 · комплектът (+ „Първите N са резервирани“ от издадените билети за Голяма) */
+    var limit=Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||0,res=Number(A.cosm_reserved)||0,bar='';
+    if(limit>0&&res>0){var pc=Math.max(2,Math.min(100,Math.round(res/limit*100)));bar='<div class="hw-bar"><div class="hw-bart">'+p('how.k.bar','span','',{n:ths(res)})+p('how.k.bar.of','small')+'</div><div class="hw-barb"><i style="width:'+pc+'%"></i></div></div>'}
+    var k='<section class="hw-sec hw-k"><div class="hw-kpic">'+pic1('cosm','🌸')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('how.k.kick','div','hw-kick')+p('how.k.h','h3')+p('how.k.sub','p','hw-lead')+p('how.k.p')
+      +'<ul class="hw-facts">'+[1,2,3].map(function(i){return '<li'+ck('how.k.f'+i)+'>'+T('how.k.f'+i)+'</li>'}).join('')+'</ul>'
+      +'<div class="hw-qa">'+[1,2].map(function(i){return '<div>'+p('how.k.q'+i+'.t','b')+p('how.k.q'+i+'.p')+'</div>'}).join('')+'</div>'+bar
+      +'<button class="cta gold" type="button" data-hw-box="'+(bl?BI[bl.id]:0)+'"'+ck('how.k.cta')+'>'+T('how.k.cta')+'</button>'+p('how.k.note','p','hw-legal')+'</div></section>';
+    /* 6 · продуктите — описанието от how.pr.d.<ключ>, иначе от 📦 Продукти; „от …“ е цената при най-голямата отстъпка */
+    var pr='<section class="hw-sec" id="hwProd"><div class="hw-sh">'+p('how.pr.kick','div','hw-kick')+p('how.pr.h','h3')+p('how.pr.sub','p','hw-lead')+'</div><div class="hw-prods">'
+      +ORDER.filter(function(q){return PROD[q]}).map(function(q){var x=PROD[q],dk='how.pr.d.'+q,has=!!(A.copy&&A.copy[dk]);
+        return '<div class="hw-prod">'+pic(x,'hw-ppic')+'<div class="hw-ptx"><b>'+esc(x.name)+'</b><p'+(has?ck(dk):'')+'>'+(has?T(dk):esc(x.desc||x.ds||''))+'</p>'+(Number(x.price)>0?p('how.pr.price','div','hw-pprice',{a:m(r2(x.price*(1-maxp/100))),b:m(x.price)}):'')+'</div><button class="hw-padd" type="button" data-hw-prod="'+q+'"'+ck('how.pr.add')+'>'+T('how.pr.add')+'</button></div>'}).join('')
+      +'</div>'+p('how.pr.note','p','hw-n')+'</section>';
+    /* 7 · защо го правим (видеото се показва само с линк в how.w.video) */
+    var vid=A.copy&&A.copy['how.w.video']||'',vidh=/^https?:\/\//.test(vid)?'<a class="hw-vid" href="'+esc(vid)+'" target="_blank" rel="noopener"><i>▶</i>'+p('how.w.video.t','span')+'</a>':(A.editor?'<div class="hw-vid off"'+ck('how.w.video')+'><i>▶</i><span>Видео: сложи линк в how.w.video</span></div>':'');
+    var w='<section class="hw-sec hw-w"><div class="hw-letter">'+p('how.w.kick','div','hw-kick')+p('how.w.h','h3')+vidh+[1,2,3,4,5,6,7,8].map(function(i){return p('how.w.p'+i)}).join('')+p('how.w.sign','p','hw-sign')+'</div></section>';
+    /* 8 · отзиви — първият отзив на всеки продукт (до 6) */
+    var rvs=[];ORDER.forEach(function(q){var x=PROD[q];if(x&&x.reviews&&x.reviews.length&&rvs.length<6)rvs.push({n:x.reviews[0].n,s:x.reviews[0].s,t:x.reviews[0].t,p:x.name})});
+    var rv='<section class="hw-sec hw-rv">'+p('how.rv.h','h3')+p('how.rv.sub','p','hw-lead')+(rvs.length?'<div class="hw-rvs">'+rvs.map(function(r){var n=Math.max(1,Math.min(5,Number(r.s)||5));return '<div class="hw-rv1"><i>'+'★★★★★'.slice(0,n)+'</i><p>'+esc(r.t)+'</p><small>'+esc(r.n)+' · '+esc(r.p)+'</small></div>'}).join('')+'</div>':'')+'</section>';
+    /* 9 · въпроси · 10 · правила · залепен бутон */
+    var fq='';for(var i=1;i<=15;i++){if(!(A.copy&&A.copy['how.faq.'+i+'.q']))continue;fq+='<details><summary'+ck('how.faq.'+i+'.q')+'>'+T('how.faq.'+i+'.q')+'<i>▾</i></summary>'+p('how.faq.'+i+'.a')+'</details>'}
+    var faq='<section class="hw-sec hw-faq">'+p('how.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div></section>';
+    var ru='<section class="hw-sec hw-ru">'+p('how.rules.h','b')+p('how.rules.p')+'</section>';
+    var stk='<div class="hw-stk">'+cta('how.sticky','data-hw="boxes"')+'</div>';
+    var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0; /* редакторът рендира наново при всяка буква — скролът остава */
+    info('',h+bx+st+y+k+pr+w+rv+faq+ru+stk,true);
+    dc.classList.add('hw');if(keepY)dc.querySelector('.ib').scrollTop=keepY;$('apOv').classList.add('ovhw');if(MOBF())lockBody();S._last=howPopup;
+    var toBoxes=function(){closeInfo();go(1);setTimeout(function(){var e=root.querySelector('.boxes');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},60)};
+    dc.querySelectorAll('[data-hw]').forEach(function(b){b.onclick=function(){if(b.dataset.hw==='steps'){var e=$('hwSteps');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});return}toBoxes()}});
+    dc.querySelectorAll('[data-hw-box]').forEach(function(b){b.onclick=function(){var bi=Number(b.dataset.hwBox);closeInfo();if(BOXES[bi])chooseBox(bi);else go(1)}});
+    dc.querySelectorAll('[data-hw-prod]').forEach(function(b){b.onclick=function(){var q=b.dataset.hwProd;if(!PROD[q])return;if(S.box!==null){closeInfo();if(full()){toast(T('ms.full'),true);return}addSlot(q);return}S.core=q;saveS();toBoxes()}});
+  }
   $('apHow').onclick=howPopup;
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
