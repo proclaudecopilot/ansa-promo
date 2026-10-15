@@ -778,6 +778,8 @@
       Object.keys(d.products).forEach(function(k){if(!PROD[k]||PROD[k].price!==d.products[k].price||PROD[k].stock!==d.products[k].stock)changed=true});
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render()}
+      /* 1.8.8: броячът „Първите N са резервирани“ идва свеж (кешираната страница носи 0 до rewards.cosm.bar_from); на /info се рендира наново */
+      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo()}
     }).catch(function(){});
   }
 
