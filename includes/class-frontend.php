@@ -279,7 +279,7 @@ final class Frontend {
 			/* v1.7.0: „Как работи“ — страницата на сезона в попъп: линкът към билетите, датата на тегленето, резервираните комплекти за €1 */
 			'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : (string) $cfg['tickets']['portal_url'],
 			'draw'      => Tombola::draw_label( $cfg ),
-			'cosm_reserved' => Config::cosm_bar_on( $cfg ) ? Tickets::count_box( 'l' ) : 0, /* 1.8.8: 0 (= без брояч) до rewards.cosm.bar_from */
+			'cosm_reserved' => Config::cosm_bar_on( $cfg ) ? Tickets::count_box( 'l' ) : 0, /* 1.8.9: 0 (= без брояч) до rewards.cosm.bar_from */
 			'ship'      => (float) $cfg['ship']['paid'],
 			'timer'     => $cfg['timer'],
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),

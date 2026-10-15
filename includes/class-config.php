@@ -48,7 +48,7 @@ final class Config {
 			'rewards'   => array(
 				'yacht' => array( 'value' => 8800 ),
 				'book'  => array( 'product_id' => 0, 'value' => 19, 'url' => '' ), /* url: линк към PDF-а, ако WC продуктът не е downloadable (имейл при „Изпълнена“) */
-				'cosm'  => array( 'product_id' => 0, 'value' => 129, 'limit' => 10000, 'bar_from' => '2026-10-23' ), /* limit: броят комплекти за €1 (v1.7.0, „Как работи“: {{cosm_limit}} + прогресът „Първите N са резервирани“) · bar_from (1.8.8, човекът): прогресът се показва чак от тази дата (YYYY-MM-DD, час на сайта); '' = винаги */
+				'cosm'  => array( 'product_id' => 0, 'value' => 129, 'limit' => 10000, 'bar_from' => '2026-10-23' ), /* limit: броят комплекти за €1 (v1.7.0, „Как работи“: {{cosm_limit}} + прогресът „Първите N са резервирани“) · bar_from (1.8.9, човекът): прогресът се показва чак от тази дата (YYYY-MM-DD, час на сайта); '' = винаги */
 				'icons' => array( 'tix' => '🎟️', 'tix3' => '🎟️', 'tix5' => '🎟️', 'ship' => '🚚', 'book' => '📖', 'cosm50' => '🌸', 'cosm1' => '👑' ),
 			),
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
@@ -335,7 +335,7 @@ final class Config {
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
 	public static function max_pct( $cfg ) { $m = 0; foreach ( $cfg['boxes'] as $b ) { $m = max( $m, (float) $b['pct'] ); } return $m; }
 	public static function deadline_ts( $cfg ) { if ( empty( $cfg['deadline'] ) ) { return 0; } $t = strtotime( $cfg['deadline'] . ' ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
-	/** 1.8.8: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */
+	/** 1.8.9: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */
 	public static function cosm_bar_on( $cfg ) { $bf = (string) ( $cfg['rewards']['cosm']['bar_from'] ?? '' ); if ( '' === $bf ) { return true; } $t = strtotime( $bf . ' 00:00 ' . wp_timezone_string() ); return ! $t || time() >= $t; }
 	public static function is_live( $cfg ) {
 		if ( empty( $cfg['enabled'] ) ) { return false; }
