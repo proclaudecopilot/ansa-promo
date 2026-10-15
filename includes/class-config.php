@@ -31,6 +31,9 @@ final class Config {
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'images' => self::gate_image_defaults() ),
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
 			'ship'      => array( 'paid' => 2.55 ),
+			/* v1.10.0 (човекът): кутията не е с точен брой — packs на кутията е МИНИМУМ, добавяш и повече на същата отстъпка; броят сам
+			   вдига кутията (малка → средна → голяма). max_packs = таванът на опаковките в една кутия (защита; ⚙️ Двигател → Играта). */
+			'max_packs' => 20,
 			/* продуктите в играта — key = UTM стойност; цената, наличността и (по подразбиране) снимката идват от WC при рендиране */
 			'products'  => array(),
 			/* FIT: key => [key, key, key] — препоръчани към основния */
@@ -65,6 +68,10 @@ final class Config {
 			'book'      => array( 'enabled' => true, 'slug' => 'kniga', 'file' => '', 'url' => '', 'remember' => 365 ), /* статусите са общите „получена“ — tombola.statuses */
 			/* v1.9.0: демо данни — телефон + имейл, които отварят /kniga и формата на томболата без поръчка (за екипа/админа); празно = изключено */
 			'demo'      => array( 'phone' => '0888000000', 'email' => 'demo@ansa.bg' ),
+			/* v1.11.0: лийдовете от имейл-попъпа → FunnelKit Automations (Lead_Sync): контакт (и за гост), лист + таг → тригър за
+			   автоматизация „не е завършила поръчката“. consent_only = само с отметнато съгласие; untag_on_order = при промо поръчка
+			   тагът пада от контакта (за да спре/не тръгне автоматизацията), листът остава. Празно име = без лист/без таг. */
+			'leads'     => array( 'fka' => true, 'list' => 'Сезонът на ansa — лийдове', 'tag' => 'sezon-lead', 'consent_only' => true, 'untag_on_order' => true ),
 			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'delivered' ), /* 1.9.0: САМО Delivered — „Изпълнена“ не брои (томбола · ваучер за сета · книга) */ 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
@@ -259,6 +266,8 @@ final class Config {
 			$bx[] = $b;
 		}
 		$out['boxes'] = $bx;
+		/* v1.10.0: таванът никога не е под най-голямата кутия */
+		$out['max_packs'] = max( self::max_packs_floor( $bx ), min( 50, (int) ( $out['max_packs'] ?? 20 ) ?: 20 ) );
 		foreach ( array( 'desktop', 'mobile' ) as $dev ) {
 			$ord = array_values( array_unique( array_filter( array_map( 'strval', (array) ( $out['order'][ $dev ] ?? array() ) ), function ( $x ) { return in_array( $x, array( 's', 'm', 'l' ), true ); } ) ) );
 			$out['order'][ $dev ] = count( $ord ) === 3 ? $ord : $d['order'][ $dev ];
@@ -283,6 +292,10 @@ final class Config {
 		$out['book']['enabled'] = ! empty( $out['book']['enabled'] ); $out['book']['slug'] = sanitize_title( (string) $out['book']['slug'] ) ?: 'kniga'; $out['book']['file'] = str_replace( '..', '', trim( (string) $out['book']['file'] ) ); $out['book']['url'] = esc_url_raw( (string) $out['book']['url'] ); $out['book']['remember'] = max( 1, min( 3650, (int) $out['book']['remember'] ) );
 		unset( $out['book']['statuses'] ); /* общите „получена“ статуси са tombola.statuses */
 		$dm = is_array( $out['demo'] ?? null ) ? $out['demo'] : array(); $out['demo'] = self::merge( $d['demo'], $dm ); $out['demo']['phone'] = sanitize_text_field( (string) $out['demo']['phone'] ); $out['demo']['email'] = sanitize_email( (string) $out['demo']['email'] );
+		/* v1.11.0: лийдовете → FKA */
+		$ld = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = self::merge( $d['leads'], $ld );
+		$out['leads']['fka'] = ! empty( $out['leads']['fka'] ); $out['leads']['consent_only'] = ! empty( $out['leads']['consent_only'] ); $out['leads']['untag_on_order'] = ! empty( $out['leads']['untag_on_order'] );
+		foreach ( array( 'list', 'tag' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) $out['leads'][ $lk ] ) ), 0, 100 ); }
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
@@ -359,6 +372,17 @@ final class Config {
 	/* ── помощници ── */
 	public static function product( $cfg, $key ) { foreach ( $cfg['products'] as $p ) { if ( $p['key'] === $key ) { return $p; } } return null; }
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
+	private static function max_packs_floor( $boxes ) { $m = 1; foreach ( (array) $boxes as $b ) { $m = max( $m, (int) ( $b['packs'] ?? 1 ) ); } return $m; }
+	/** v1.10.0: кутията според броя опаковки — най-голямата кутия с packs ≤ $count, но не по-малка от $min (избраната от клиента).
+	 *  Малка с 3 опаковки = Средна; Средна с 5 = Голяма; Голяма с 7 = Голяма. null само ако $min липсва и броят не стига до никоя кутия. */
+	public static function box_for_count( $cfg, $count, $min = null ) {
+		$best = is_array( $min ) ? $min : ( $min ? self::box( $cfg, $min ) : null );
+		foreach ( $cfg['boxes'] as $b ) {
+			if ( (int) $b['packs'] <= (int) $count && ( ! $best || (int) $b['packs'] > (int) $best['packs'] ) ) { $best = $b; }
+		}
+		return $best;
+	}
+	public static function max_packs( $cfg ) { return max( self::max_packs_floor( $cfg['boxes'] ?? array() ), (int) ( $cfg['max_packs'] ?? 20 ) ?: 20 ); }
 	public static function max_pct( $cfg ) { $m = 0; foreach ( $cfg['boxes'] as $b ) { $m = max( $m, (float) $b['pct'] ); } return $m; }
 	public static function deadline_ts( $cfg ) { if ( empty( $cfg['deadline'] ) ) { return 0; } $t = strtotime( $cfg['deadline'] . ' ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
 	/** 1.8.9: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */

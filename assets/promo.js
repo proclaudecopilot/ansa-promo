@@ -48,17 +48,19 @@
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';
-  function freshS(){return {box:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
+  function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
   var S=freshS();
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null}}))}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
-    Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;return S.box!==null&&S.slots.filter(Boolean).length>0}catch(e){return false}}
+    Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
+    if(S.chosen==null||!BOXES[S.chosen])S.chosen=S.box;if(S.box!==null)syncBox(); /* v1.10.0 */
+    return S.box!==null&&S.slots.filter(Boolean).length>0}catch(e){return false}}
 
   function BX(){return BOXES[S.box]}
   function boxOf(id){return BOXES[BI[id]]}
   function boxes(){return S.slots.filter(Boolean).length}
-  function full(){return S.box!==null&&boxes()===BX().packs}
+  function full(){return S.box!==null&&boxes()>=BX().packs} /* v1.10.0: packs е минимум */
   function qtyOf(k){return S.slots.filter(function(x){return x===k}).length}
   function cat(){return r2(S.slots.filter(Boolean).reduce(function(a,k){return a+PROD[k].price},0))}
   function pct(){return S.box===null?0:BX().pct}
@@ -73,16 +75,27 @@
   function secretTotal(){var c=0;SECRETLIST().forEach(function(x){if(S.secret[x])c+=r2(PROD[x].price*(1-SECRET_PCT/100))});return r2(c)}
   function pic(pr,cls){return pr.img?'<img class="'+(cls||'')+'" src="'+esc(pr.img)+'" alt="" loading="lazy">':'<span class="'+(cls||'')+'">'+pr.ph+'</span>'}
   function tixOf(b){return Number(b.tickets)||1}
+  /* v1.10.0 (човекът): кутията не е с точен брой — packs на кутията е МИНИМУМ, добавяш и повече на същата отстъпка. S.chosen = кутията,
+     която човекът избра; S.box = действащата: най-голямата кутия, чийто минимум броят покрива, но никога под избраната. Малка + 3 опаковки
+     = Средна, Средна + 5 = Голяма, Голяма + 7 = Голяма (−40%). Надолу се слиза само изрично (sureDown) или като махнеш опаковки. */
+  function MAXP(){return Math.max(Number(A.max_packs)||20,BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.packs})):1)}
+  function tierFor(n){var best=-1;BOXES.forEach(function(b,i){if(b.packs<=n&&(best<0||b.packs>BOXES[best].packs))best=i});return best}
+  function effBox(n){var c=S.chosen!=null&&BOXES[S.chosen]?S.chosen:S.box,t=tierFor(n);if(c==null)return t;if(t<0)return c;return BOXES[t].packs>BOXES[c].packs?t:c}
+  function nextAbove(b){var best=null;BOXES.forEach(function(x){if(x.packs>b.packs&&(!best||x.packs<best.packs))best=x});return best}
+  function need(){return S.box===null?0:Math.max(0,BX().packs-boxes())}
+  function normSlots(){var f=S.slots.filter(Boolean);S.slots=f;if(S.box!==null)while(S.slots.length<BX().packs)S.slots.push(null)}
+  /** след всяка промяна на слотовете: действащата кутия по броя + допълване с празни до минимума; връща предишната кутия */
+  function syncBox(){var prev=S.box,e=effBox(boxes());if(e!=null&&e>=0&&e!==S.box)S.box=e;normSlots();return prev}
 
   /* ── копи ── */
   function baseVars(){
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
-    var v={yacht:ths(YACHT),ship:m(SHIP),book_value:BOOK_VAL,cosm_value:COSM,cosm_pay_m:bm&&bm.cosm_pay!=null?money(bm.cosm_pay):'',cosm_pay_l:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',cosm_min:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',deadline:A.deadline||'',max_pct:BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0,
+    var v={yacht:ths(YACHT),ship:m(SHIP),max:MAXP(),opk_n:opk(boxes()),book_value:BOOK_VAL,cosm_value:COSM,cosm_pay_m:bm&&bm.cosm_pay!=null?money(bm.cosm_pay):'',cosm_pay_l:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',cosm_min:bl&&bl.cosm_pay!=null?money(bl.cosm_pay):'',deadline:A.deadline||'',max_pct:BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0,
       tickets_s:bs?tixOf(bs):1,tickets_m:bm?tixOf(bm):3,tickets_l:bl?tixOf(bl):5,pct_s:bs?bs.pct:15,pct_m:bm?bm.pct:30,pct_l:bl?bl.pct:40,secret_pct:SECRET_PCT,total:ORDER.length,name:A.name||'',
       /* v1.7.0 („Как работи“): бройките на кутиите, лимитът на комплектите, линкът към билетите, датата на тегленето */
       packs_s:bs?bs.packs:1,packs_m:bm?bm.packs:3,packs_l:bl?bl.packs:5,cosm_limit:ths(Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||10000),tombola_url:esc(A.tombola_url||''),draw:A.draw||''};
     if(S.core&&PROD[S.core]){var c=PROD[S.core];v.core=esc(c.name);v.core_full=esc(c.gname||c.name);v.core_ds=c.ds?esc(c.ds.charAt(0).toUpperCase()+c.ds.slice(1)):'';v.s_core=sPrep(c.name)}
-    if(S.box!==null&&BX()){var b=BX();v.box=esc(b.name);v.box_l=esc(b.name.toLowerCase());v.box_ic=b.ic;v.packs=b.packs;v.opk=opk(b.packs);v.pct=b.pct;v.tickets=tixOf(b);v.shans=shans(tixOf(b));v.cosm_pay=b.cosm_pay!=null?money(b.cosm_pay):'';v.s_box=sPrep(b.name);v.need=b.packs-boxes();v.n=boxes();v.save=m0(save());v.pay=m(pay());v.value=m0(value());v.rest=b.packs-1;v.opk_rest=opk(b.packs-1);v.produkt=b.packs===1?'продукт':'продукти'}
+    if(S.box!==null&&BX()){var b=BX();v.box=esc(b.name);v.box_l=esc(b.name.toLowerCase());v.box_ic=b.ic;v.packs=b.packs;v.opk=opk(b.packs);v.pct=b.pct;v.tickets=tixOf(b);v.shans=shans(tixOf(b));v.cosm_pay=b.cosm_pay!=null?money(b.cosm_pay):'';v.s_box=sPrep(b.name);v.need=Math.max(0,b.packs-boxes());v.n=boxes();v.save=m0(save());v.pay=m(pay());v.value=m0(value());v.rest=b.packs-1;v.opk_rest=opk(b.packs-1);v.produkt=b.packs===1?'продукт':'продукти'}
     return v;
   }
   function T(k,v){var s=A.copy&&A.copy[k];if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
@@ -97,7 +110,8 @@
   /* v1.0.3: бадж с отстъпката + намалена/редовна цена в редовете на пълненето (искане на човека; не е в мокъп v73) */
   function fprc(pr,b,q){return '<span class="fpct" data-pct="'+esc(pr.key)+'">'+T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q||0)))})+(q>1?' <i>×'+q+'</i>':'')+'</span>'}
   function fprice(pr,b){return '<span class="fprc"><b>'+m(r2(pr.price*(1-b.pct/100)))+'</b><s>'+m(pr.price)+'</s></span>'}
-  function tgtVars(t){var d=t.packs-(S.box!==null?BX().packs:0);return {box_t:esc(t.name),box_t_l:esc(t.name.toLowerCase()),box_t_ic:t.ic,pct_t:t.pct,save_t:m0(boxSaveMax(t)),s_box_t:sPrep(t.name,true),diff:d,prod_diff:prodw(d),opk_diff:opk(d),delyat:d===1?'дели':'делят'}}
+  /* v1.10.0: diff = колко опаковки остават до кутията t от РЕАЛНИЯ брой (n, по подразбиране избраните слотове) */
+  function tgtVars(t,n){var d=Math.max(1,t.packs-(n!=null?n:(S.box!==null?boxes():0)));return {box_t:esc(t.name),box_t_l:esc(t.name.toLowerCase()),box_t_ic:t.ic,pct_t:t.pct,save_t:m0(boxSaveMax(t)),s_box_t:sPrep(t.name,true),diff:d,prod_diff:prodw(d),opk_diff:opk(d),delyat:d===1?'дели':'делят'}}
 
   /* ── имейл-попъп (v73 „g2“): веднъж на сесия, може да се пропусне ── */
   function gateSeen(){try{return sessionStorage.getItem('ansa_promo_gate')==='1'}catch(e){return false}}
@@ -310,12 +324,12 @@
     var dc=$('apDc');dc.className='dc wide';dc.scrollTop=0;
     /* наградите — всяка с пълното си име; яхтата и сетът са героите */
     var rows=b.rw.map(function(r){var k=RW(r);var cls=r==='cosm1'?'gold':r==='cosm50'?'violet':/^tix/.test(r)?'pink':'plain';var ic=/^tix/.test(r)?'🛥️':k.ic;return '<div class="hero '+cls+'">'+rimg(r,ic)+'<div><b'+ck('rw.'+r+'.t')+'>'+k.t+'</b><small'+ck('rw.'+r+'.s')+'>'+k.s+'</small>'+cosmPrice(r,true)+'</div><em class="hchk">✓</em></div>'}).join('');
-    /* при по-малка кутия — предложение за Голямата */
-    var big=boxOf('l'),up='';
-    if(b.id==='s'&&big){var tv=tgtVars(big);var news=big.rw.filter(function(r){return b.rw.indexOf(r)<0});
+    /* при по-малка кутия — предложение за следващата (v1.10.0: броят я вдига сам — „още 2 опаковки“ е от реалния брой); от малката има и пряк път към Голямата */
+    var tgt=nextAbove(b),big=boxOf('l'),up='';
+    if(tgt){var tv=tgtVars(tgt);var news=tgt.rw.filter(function(r){return b.rw.indexOf(r)<0});
       up='<div class="nudge"><b'+ck('cb.nudge')+'>'+T('cb.nudge',tv)+'</b><div class="nl"><span'+ck('cb.nudge.pct')+'>'+T('cb.nudge.pct',tv)+'</span>'+news.map(function(r){return '<span>'+RW(r).ic+' '+RW(r).t+'</span>'}).join('')+'</div>'
-        +'<button class="cta gold" id="cUp"'+ck('cb.nudge.cta')+'>'+T('cb.nudge.cta',tv)+'</button><small'+ck('cb.nudge.s')+'>'+T('cb.nudge.s',tv)+'</small></div>'}
-    var items=S.slots.filter(Boolean).map(function(k,i){var pr=PROD[k];return '<div class="cit"><em>'+['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'][i]+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(pr.price*(1-b.pct/100)))+'<s>'+m(pr.price)+'</s></span></div>'}).join('');
+        +'<button class="cta gold" id="cUp" data-to="'+BI[tgt.id]+'"'+ck('cb.nudge.cta')+'>'+T('cb.nudge.cta',tv)+'</button>'+(big&&tgt.id!=='l'?'<div style="text-align:center;margin-top:6px"><button class="lnk" id="cUpBig"'+ck('push.big')+'>'+T('push.big')+'</button></div>':'')+'<small'+ck('cb.nudge.s')+'>'+T('cb.nudge.s',tv)+'</small></div>'}
+    var items=S.slots.filter(Boolean).map(function(k,i){var pr=PROD[k];return '<div class="cit"><em>'+(['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'][i]||(i+1))+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(pr.price*(1-b.pct/100)))+'<s>'+m(pr.price)+'</s></span></div>'}).join('');
     var mix=uniq(S.slots.filter(Boolean)).length>1;
     /* мобилно: еднаквите продукти се групират — „5× Sakura“ */
     if(MOB()){var grp={},go_=[];S.slots.filter(Boolean).forEach(function(k){if(!grp[k]){grp[k]=0;go_.push(k)}grp[k]++});
@@ -333,26 +347,34 @@
     var cm=$('cMore');if(cm){cm.onclick=function(){var bx=cm.closest('.cbox'),open=!bx.classList.contains('open');bx.classList.toggle('open',open);cm.innerHTML=open?T('cb.less'):T('cb.more',{n:cm.dataset.n})}}
     $('cEdit').onclick=function(){S._lockOv=false;closeInfo();S._fillPending=(S.screen!==2);fillModePopup()};
     var cs=$('cSwitch');if(cs)cs.onclick=function(){S._lockOv=false;switchPopup()};
-    var cu=$('cUp');if(cu)cu.onclick=function(){S._lockOv=false;closeInfo();chooseBox(BI.l,true)};
+    var cu=$('cUp');if(cu)cu.onclick=function(){S._lockOv=false;closeInfo();chooseBox(+cu.dataset.to,true)};
+    var cub=$('cUpBig');if(cub)cub.onclick=function(){S._lockOv=false;closeInfo();chooseBox(BI.l,true)};
   }
   function fullMsg(){var b=BX();return T(b.id==='s'?'full.small':b.id==='m'?'full.medium':'full.large')}
 
   /* ── слотове ── */
+  /* v1.10.0: над минимума се добавя още (до MAXP), броят сам вдига кутията — връща 'celeb' (кутията е пълна/вдигната → честито), true или false (таван) */
   function addSlot(k){
-    var i=S.slots.indexOf(null);if(i<0){toast(T('ms.full'),true);return}
-    var wasFull=full();S.slots[i]=k;S._undo=i;
-    if(full()&&!wasFull){render();saveS();setTimeout(celebrate,350);return}
+    var i=S.slots.indexOf(null);
+    if(i<0){if(boxes()>=MAXP()){toast(T('ms.full'),true);return false}S.slots.push(k);i=S.slots.length-1}else S.slots[i]=k;
+    var wasFull=full(),prev=syncBox(),up=prev!==S.box;S._undo=i;
+    if(full()&&(!wasFull||up)){render();saveS();setTimeout(celebrate,350);return 'celeb'}
     else if(i===0)toast(T('ms.first'),false,true);
-    else toast(T('ms.added',{name:esc(PROD[k].name),need:BX().packs-boxes(),opk:opk(BX().packs-boxes())}),false,true);
-    render();saveS();
+    else if(need()>0)toast(T('ms.added',{name:esc(PROD[k].name),need:need(),opk:opk(need())}),false,true);
+    else{var nx=nextAbove(BX());toast(nx?T('ms.added.next',Object.assign({name:esc(PROD[k].name)},tgtVars(nx))):T('pk.added',{name:esc(PROD[k].name)}),false,true)}
+    render();saveS();return true;
   }
-  function removeSlot(i,isUndo){if(S.slots[i]==null)return;S.slots[i]=null;S.slots=S.slots.filter(Boolean);while(S.slots.length<BX().packs)S.slots.push(null);if(isUndo)toast(T('ms.undone'),true);render();saveS()}
+  function removeSlot(i,isUndo){if(S.slots[i]==null)return;S.slots[i]=null;var prev=syncBox();
+    if(isUndo)toast(T('ms.undone'),true);else if(prev!==S.box&&BOXES[prev])toast(T('ms.down',tgtVars(BOXES[prev])),true); /* v1.10.0: броят свали кутията */
+    render();saveS()}
   function removeOne(k){var i=S.slots.lastIndexOf(k);if(i>=0)removeSlot(i)}
   function chooseBox(bi,keep){setTimeout(function(){beacon('box')},0);
-    S.box=bi;var b=BOXES[bi];
+    var b=BOXES[bi],down=keep&&S.box!==null&&!!BX()&&b.packs<BX().packs;
+    S.chosen=bi;S.box=bi;
     var kept=keep?S.slots.filter(Boolean):[];
     if(!keep&&S.core)kept=[S.core];
-    S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null);
+    /* v1.10.0: към по-малка кутия излишните опаковки падат (иначе броят пак би я вдигнал); нагоре всичко остава */
+    S.slots=down?kept.slice(0,b.packs):kept;normSlots();
     startTimer();saveS();
     /* попъпът пълни кутията докрай; таблото (екран 2) е само резервен екран за редакция */
     if(!full()){if(S.screen!==2)render();S._fillPending=(S.screen!==2);fillModePopup();return}
@@ -362,8 +384,8 @@
 
   /* ── ЕДИН попъп за пълнене: наградите на кутията + категории със степери (десктоп) / пълноекранен лист (мобилно) ── */
   var needQ={},needOrder=[];
-  function fillModePopup(){needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
-  function fillPopup(){
+  function fillModePopup(){S._fillPg=0;needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
+  function fillPopup(again){ /* again (v1.10.0): прерисуване след като броят вдигна кутията — без интро попъпа, скролът и страницата се пазят */
     var b=BX(),c=S.core&&PROD[S.core]?PROD[S.core]:null,P=b.packs,bv=boxVars(b);
     var rows=[];if(c)rows.push({key:S.core,t:T('fill.cat.core'),why:c.ds,core:true});
     /* v1.0.39: отговорите на въпросника (S.quiz) слагат избраните проблеми преди останалите; основният продукт остава първи */
@@ -397,6 +419,7 @@
       +'<div class="f3g"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t',bv)+'</b><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div>'
       +'<div class="f3mixr"><p class="f3mix"'+ck('fill.combine')+'>'+T('fill.combine',bv)+'</p><button class="fqzb'+(qz?' on':'')+'" id="fQuiz" type="button"'+ck('fill.quiz.l')+'><i>?</i><span>'+T('fill.quiz.l')+'</span></button></div>'
       +'<div class="f3p"><span class="f3n"><span'+ck('fill.sel.a')+'>'+T('fill.sel.a')+'</span> <span id="fSlotsN"></span> <span'+ck('fill.sel.b')+'>'+T('fill.sel.b')+'</span></span><span class="f3bar"><i id="fBar"></i></span><em id="fPct">0%</em></div>'
+      +'<div class="fnext" id="fNext" style="display:none"></div>' /* v1.10.0: „Още 2 опаковки и отключваш голяма кутия с −40%“ */
       +'<div class="fslots" id="fSlots" hidden></div>'
       +'<div class="fcats f3grid">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="f3item" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="f3cat'+(r.core?' core':r.pick?' pick':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):r.pick?pcat(String(pr.cat||'').trim()||r.t):mcat(pr,r))+'</h5>'+fcard(r,'drow')+'</div>'}).join('')+'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
       +'<div class="f3f"><div class="f3s"><i class="f3pig"></i><div><div class="fsave" id="fSave"></div><small'+ck('fill.save.sub')+'>'+T('fill.save.sub',bv)+'</small></div></div><button class="cta" id="nFill"></button></div>';
@@ -432,17 +455,17 @@
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
-    var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=0;var showPg=function(){dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
+    var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=Math.min(Math.max(0,S._fillPg||0),pages-1);var showPg=function(){S._fillPg=pg;dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
         pgEl.innerHTML='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
         pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0;else{var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest'})}}})};showPg()}
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
-    if(mob)unlockPopup(b,P);
+    if(mob&&!again)unlockPopup(b,P);
     /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
     var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){mm.classList.toggle('off',ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24)};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}}
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -452,30 +475,36 @@
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
-    function sync(){var t=total(),need=P-t;
+    function sync(){var t=total();
+      /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
+      var eb=effBox(t);if(eb!=null&&eb>=0&&eb!==S.box){var was=S.box;S.box=eb;saveS();var sc=$('mfS')?$('mfS').scrollTop:dc.scrollTop;fillPopup(true);var ms2=$('mfS');if(ms2)ms2.scrollTop=sc;else $('apDc').scrollTop=sc;if(BOXES[eb].packs>BOXES[was].packs)toast(T('fill.up'),false);return}
+      var need=Math.max(0,P-t),nx=nextAbove(b),goal=need>0?P:(nx?nx.packs:P);
       dc.querySelectorAll('[data-q]').forEach(function(x){var q=needQ[x.dataset.q]||0;x.textContent=q;x.closest('.fcat').classList.toggle('on',q>0)});
       /* v1.8.1: избраната карта носи зелен пил „✓ В кутията“ / „✓ ×2 в кутията“ на мястото на баджа −X% (CSS секция 44) */
       dc.querySelectorAll('[data-in]').forEach(function(x){var q=needQ[x.dataset.in]||0;x.innerHTML=q>1?T('fill.inN',{n:q}):T('fill.in')});
-      dc.querySelectorAll('[data-inc]').forEach(function(x){x.disabled=need<=0});
+      dc.querySelectorAll('[data-inc]').forEach(function(x){x.disabled=t>=MAXP()});
       dc.querySelectorAll('[data-dec]').forEach(function(x){x.disabled=!(needQ[x.dataset.dec]>0)});
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
-      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+T('fill.dots',{n:t,packs:P})+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
-      var fb=$('fBar');if(fb){var pc=Math.round(t/P*100);fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
-      $('fSlots').innerHTML=cnt+Array.from({length:P},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
+      /* v1.10.0: прогресът е към следващата кутия („3 от 5“), на най-голямата — просто броят („7 опаковки“) */
+      var topN=t>=goal&&!nx,mobF=!!$('mfS'); /* десктоп: „Избрани 7 опаковки“ (думата е в хедъра); телефон: „7 опаковки“ */
+      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      var fb=$('fBar');if(fb){var pc=Math.min(100,Math.round(t/goal*100));fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
+      var fn=$('fNext');if(fn){var nt=need>0?'':(nx?T('fill.next',tgtVars(nx,t)):T('fill.top'));fn.innerHTML=nt;fn.className='fnext'+(need>0||nx?'':' top');fn.style.display=nt?'':'none'}
+      $('fSlots').innerHTML=cnt+Array.from({length:Math.max(goal,t)},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*PROD[k].price*b.pct/100});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2(pr.price*b.pct/100*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
     sync();
-    function inc(k){if(total()>=P){toast(T('fill.over2',{packs:P}),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
+    function inc(k){if(total()>=MAXP()){toast(T('fill.over2'),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
     dc.querySelectorAll('[data-inc]').forEach(function(x){x.onclick=function(e){e.stopPropagation();inc(x.dataset.inc)}});
     dc.querySelectorAll('[data-dec]').forEach(function(x){x.onclick=function(e){e.stopPropagation();var k=x.dataset.dec;if(!needQ[k])return;needQ[k]--;if(!needQ[k]){delete needQ[k];needOrder=needOrder.filter(function(y){return y!==k})}sync()}});
     dc.querySelectorAll('[data-more]').forEach(function(x){x.onclick=function(e){e.stopPropagation();productPopup(x.dataset.more,inc)}});
     dc.querySelectorAll('.fcat').forEach(function(x){x.onclick=function(e){if(e.target.closest('button'))return;inc(x.dataset.nq)}});
-    $('nFill').onclick=function(){if(total()!==P)return;
+    $('nFill').onclick=function(){if(total()<P)return;
       var order=(S.core?[S.core]:[]).concat(needOrder.filter(function(k){return k!==S.core}));if(!S.core)S.core=order[0];
       var sl=[];order.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
-      S.slots=sl.slice(0,P);while(S.slots.length<P)S.slots.push(null);
+      S.slots=sl;syncBox(); /* v1.10.0: всички избрани опаковки остават (и над минимума) */
       S._lockOv=false;S._fillPending=false;closeInfo();S._prevOn=null;render();saveS();setTimeout(celebrate,300)};
   }
 
@@ -563,20 +592,20 @@
 
   /* ── ЕКРАН 2: таблото (резервен път за редакция) ── */
   function tile(k){
-    var pr=PROD[k],q=qtyOf(k),p=pct(),isFull=full();
+    var pr=PROD[k],q=qtyOf(k),p=pct(),isFull=boxes()>=MAXP(); /* v1.10.0: + спира чак на тавана */
     return '<div class="tile'+(q?' on':'')+'"><div class="pic">'+pic(pr,'timg')+'</div><div class="mid" data-p="'+k+'" style="cursor:pointer"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small><span class="desc">'+esc(String(pr.desc).split('.')[0])+'.</span></div>'
       +'<div class="act"><div class="pr">'+m(r2(pr.price*(1-p/100)))+'<s>'+m(pr.price)+'</s></div>'+(q?'<div class="step"><button data-rm="'+k+'">−</button><b>'+q+'</b><button data-add="'+k+'"'+(isFull?' disabled':'')+'>+</button></div>':'<button class="addb" data-add="'+k+'"'+(isFull?' disabled':'')+ck('bl.tile.add')+'>'+T('bl.tile.add')+'</button>')+'</div></div>';
   }
   function shortRw(r){return RW(r).sh}
   function renderS2(){
     var el=$('apS2');if(S.box===null){el.innerHTML='';return}
-    var b=BX(),n=boxes(),need=b.packs-n,h='',mob=window.innerWidth<1000;
-    $('apChip').innerHTML=b.ic+' '+esc(b.name)+' · '+b.packs+' '+opk(b.packs)+' · −'+b.pct+'% <button class="sw" id="swBox"'+ck('head.chip.sw')+'>'+T('head.chip.sw')+'</button>';
+    var b=BX(),n=boxes(),need=Math.max(0,b.packs-n),h='',mob=window.innerWidth<1000,target=nextAbove(b);
+    $('apChip').innerHTML=b.ic+' '+esc(b.name)+' · от '+b.packs+' '+opk(b.packs)+' · −'+b.pct+'% <button class="sw" id="swBox"'+ck('head.chip.sw')+'>'+T('head.chip.sw')+'</button>';
     var onArr=b.rw.map(function(r,ri){return ri===0?n>=1:full()});var uc=onArr.filter(Boolean).length;
     var strip='<div class="rstrip"><div class="rst"><span'+ck('strip.play')+'>'+T('strip.play')+' <button class="sw" id="swBox3">'+T('strip.sw')+'</button></span><span class="rtm" id="apTimer2"></span><span class="rcnt"'+ck('strip.count')+'>'+T('strip.count',{on:uc,total:b.rw.length})+'</span></div><div class="rsi">'+b.rw.map(function(r,ri){var on=onArr[ri];return '<div class="rsc '+(on?'on':'lk')+'"><i>'+RW(r).ic+'</i><div class="tx"><b>'+shortRw(r)+'</b><small>'+(on?T('strip.on'):T('strip.locked'))+'</small></div>'+(on?'<em class="chk">✓</em>':'')+'</div>'}).join('')+'</div></div>';
     var hs=$('apStrip');if(S.screen!==2||!mob){hs.innerHTML=''}else if(hs.innerHTML!==strip)hs.innerHTML=strip;
     h+='<div class="colL"><div class="bhead"><div class="bi">'+b.ic+'</div><div><h2'+ck('bl.h2')+'>'+T('bl.h2')+'</h2><div class="sub"'+ck(need>0?'bl.sub.need':(mob?'bl.sub.full.m':'bl.sub.full.d'))+'>'+(need>0?T('bl.sub.need'):(mob?T('bl.sub.full.m',{full_msg:fullMsg()}):T('bl.sub.full.d')))+'</div></div>'+(mob?'<button class="lnk sw" id="swBox2"'+ck('bl.sw')+'>'+T('bl.sw')+'</button>':'')+'</div>';
-    var slots='';for(var i=0;i<b.packs;i++){var k=S.slots[i];
+    var slots='';for(var i=0;i<Math.max(b.packs,n);i++){var k=S.slots[i]; /* v1.10.0: и опаковките над минимума */
       if(k){var pr=PROD[k];slots+='<div class="srow filled'+(i===0?' shero':'')+'" data-sl="'+i+'" data-hero="'+esc(T('bl.slot.hero'))+'"><span class="sn">'+(i+1)+'</span><span class="spic">'+pic(pr,'simg')+'</span><span class="smid"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></span><span class="spr">'+m(r2(pr.price*(1-b.pct/100)))+'<s>'+m(pr.price)+'</s></span><span class="sact"><button class="sbt rep" data-rep="'+i+'"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3"/><path d="M20 17H7l3 3"/></svg><span'+ck('bl.slot.rep')+'>'+T('bl.slot.rep')+'</span></button><button class="sbt rm" data-si="'+i+'" aria-label="махни">✕</button></span></div>'}
       else{slots+='<div class="srow empty'+(i===S.slots.indexOf(null)?' next':'')+(i===0?' shero':'')+'" data-se="'+i+'"><span class="sn">'+(i+1)+'</span><span class="spic">＋</span><span class="smid"><b'+ck(i===0?'bl.slot.core':'bl.slot.empty')+'>'+T(i===0?'bl.slot.core':'bl.slot.empty')+'</b><small'+ck('bl.slot.sub')+'>'+T('bl.slot.sub')+'</small></span><span class="spr"></span><span class="sact"><button class="sbt add" data-se="'+i+'">＋</button></span></div>'}}
     h+='<div class="slist" data-hero-label="'+esc(T('bl.slot.hero'))+'">'+slots+'</div>';
@@ -586,17 +615,17 @@
       h+='<div class="sline"'+ck('bl.count')+'>'+T('bl.count')+'</div><button class="cta" id="pickBtn"'+ck('bl.pick')+'>'+T('bl.pick')+'</button>';
       if(!mob){var top3=keys.filter(function(k){return qtyOf(k)<b.packs}).slice(0,3);h+='<div class="k2 k2row"><span'+ck('bl.reco')+'>'+T('bl.reco')+'</span><button class="lnk" id="seeAll"'+ck('bl.seeall')+'>'+T('bl.seeall')+'</button></div><div class="tiles">'+top3.map(tile).join('')+'</div>'}
     }else if(!mob){
-      h+='<div class="done mini"><span'+ck('bl.done.mini')+'>'+T('bl.done.mini')+'</span><button class="lnk" id="editPick"'+ck('bl.edit')+'>'+T('bl.edit')+'</button></div>';
+      h+='<div class="done mini"><span'+ck('bl.done.mini')+'>'+T('bl.done.mini')+'</span><button class="lnk" id="editPick"'+ck('bl.edit')+'>'+T('bl.edit')+'</button>'+(n<MAXP()?' · <button class="lnk" id="morePick"'+ck('bl.more')+'>'+T('bl.more')+'</button>':'')+'</div>';
     }else{
       h+='<div class="done"><div class="dh"><i>🎉</i><div><b'+ck('bl.done.b')+'>'+T('bl.done.b')+'</b><small>'+fullMsg()+'</small></div><div class="dsave"><em'+ck('bl.done.save')+'>'+T('bl.done.save')+'</em><b>'+m0(save())+'</b></div></div>'
         +'<div class="drw">'+b.rw.map(function(r){return '<div class="drc'+(/^cosm/.test(r)?' cosm':'')+'"><i>'+RW(r).ic+'</i><b>'+RW(r).t+'</b>'+cosmPrice(r)+'</div>'}).join('')+'</div>'
         +'<div class="vline eq"><div class="vl pay"><em>'+T('pane.pay')+'</em><b>'+m(pay())+'</b></div><div class="vlarr">→</div><div class="vl get"><em>'+T('pane.get')+'</em><b>'+m0(value())+'</b></div></div>'
-        +'<button class="cta" id="goDone"'+ck('bl.done.cta')+'>'+T('bl.done.cta')+'</button><div style="text-align:center;margin-top:8px"><button class="lnk" id="editPick">'+T('bl.edit')+'</button></div></div>';
+        +'<button class="cta" id="goDone"'+ck('bl.done.cta')+'>'+T('bl.done.cta')+'</button><div style="text-align:center;margin-top:8px"><button class="lnk" id="editPick">'+T('bl.edit')+'</button>'+(n<MAXP()?' · <button class="lnk" id="morePick"'+ck('bl.more')+'>'+T('bl.more')+'</button>':'')+'</div></div>';
     }
-    if(b.id!=='l'&&(need===0||!mob)){
-      var target=b.id==='s'?boxOf('m'):boxOf('l');if(target){var tv=tgtVars(target);var news=target.rw.filter(function(r){return b.rw.indexOf(r)<0});
+    if(target&&(need===0||!mob)){ /* v1.10.0: следващата по брой кутия, „още N опаковки“ от реалния брой */
+      {var tv=tgtVars(target);var news=target.rw.filter(function(r){return b.rw.indexOf(r)<0});
       h+='<div class="push"><div class="ph"><i>'+target.ic+'</i><span'+ck('push.h')+'>'+T('push.h',tv)+'</span></div><div class="pl"><div><i>💸</i><span'+ck('push.pct')+'>'+T('push.pct',tv)+'</span></div>'+news.slice(0,2).map(function(r){return '<div><i>'+RW(r).ic+'</i>'+shortRw(r)+'</div>'}).join('')+'</div>'
-        +'<div class="ps"'+ck('push.save')+'>'+T('push.save',tv)+'</div><button class="cta gold" id="upBox"'+ck('push.cta')+'>'+T('push.cta',tv)+'</button>'+(b.id==='s'?'<div style="text-align:center;margin-top:6px"><button class="lnk" id="upBox2"'+ck('push.big')+'>'+T('push.big')+'</button></div>':'')+'</div>'}
+        +'<div class="ps"'+ck('push.save')+'>'+T('push.save',tv)+'</div><button class="cta gold" id="upBox"'+ck('push.cta')+'>'+T('push.cta',tv)+'</button>'+(target.id!=='l'&&boxOf('l')?'<div style="text-align:center;margin-top:6px"><button class="lnk" id="upBox2"'+ck('push.big')+'>'+T('push.big')+'</button></div>':'')+'</div>'}
     }
     h+='</div>';
     /* панел */
@@ -616,6 +645,7 @@
     var pb=$('pickBtn');if(pb)pb.onclick=pickerPopup;
     var gd=$('goDone');if(gd)gd.onclick=sureContinue;
     var ep=$('editPick');if(ep)ep.onclick=function(){removeSlot(S.slots.length-1);pickerPopup()};
+    var mp=$('morePick');if(mp)mp.onclick=function(){S.replaceSlot=null;pickerPopup()}; /* v1.10.0: още опаковки над минимума */
     el.querySelectorAll('[data-rm]').forEach(function(x){x.onclick=function(){removeOne(x.dataset.rm)}});
     el.querySelectorAll('[data-si]').forEach(function(x){x.onclick=function(e){e.stopPropagation();removeSlot(+x.dataset.si)}});
     el.querySelectorAll('[data-rep]').forEach(function(x){x.onclick=function(e){e.stopPropagation();S.replaceSlot=+x.dataset.rep;pickerPopup()}});
@@ -625,7 +655,7 @@
     el.querySelectorAll('.mid[data-p]').forEach(function(x){x.onclick=function(){prodInfo(x.dataset.p)}});
     el.querySelectorAll('.rr[data-rw]').forEach(function(x){x.onclick=function(){rewardPopup(x.dataset.rw)}});
     ['swBox','swBox2','swBox3','swBox4'].forEach(function(id){var x=$(id);if(x)x.onclick=switchPopup});
-    var ub=$('upBox');if(ub)ub.onclick=function(){chooseBox(b.id==='s'?BI.m:BI.l,true)};
+    var ub=$('upBox');if(ub)ub.onclick=function(){chooseBox(target?BI[target.id]:BI.l,true)};
     var ub2=$('upBox2');if(ub2)ub2.onclick=function(){chooseBox(BI.l,true)};
     var g=el.querySelector('[data-guar]');if(g)g.onclick=function(){info(T('guar.title'),'<p'+ck('guar.p1')+'>'+T('guar.p1')+'</p><p'+ck('guar.p2')+'>'+T('guar.p2')+'</p>')};
     var og=$('oGo');if(og)og.onclick=sureContinue;
@@ -635,18 +665,18 @@
   }
   /* селектор (мобилно основно) */
   function prow(k){
-    var pr=PROD[k],q=qtyOf(k),p=pct(),isFull=full()&&S.replaceSlot==null;
+    var pr=PROD[k],q=qtyOf(k),p=pct(),isFull=boxes()>=MAXP()&&S.replaceSlot==null; /* v1.10.0 */
     return '<div class="prow'+(q?' on':'')+'"><div class="ppic" data-p="'+k+'">'+pic(pr,'pimg')+(q?'<em>'+q+'</em>':'')+'</div><div class="pmid" data-p="'+k+'"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><div class="ppr">'+m(r2(pr.price*(1-p/100)))+'<s>'+m(pr.price)+'</s></div>'
       +'<button class="padd" data-add="'+k+'"'+(isFull?' disabled':'')+' aria-label="добави">'+(S.replaceSlot!=null?'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3"/><path d="M20 17H7l3 3"/></svg>':'＋')+'</button></div>';
   }
   function pickerPopup(){
-    var b=BX(),need=b.packs-boxes(),rep=S.replaceSlot!=null;
-    if(!rep&&need<=0){closeInfo();return}
+    var b=BX(),nd=Math.max(0,b.packs-boxes()),rep=S.replaceSlot!=null;
+    if(!rep&&boxes()>=MAXP()){closeInfo();return} /* v1.10.0: над минимума се добавя още, до тавана */
     var repK=rep?S.slots[S.replaceSlot]:null;
     var cats=uniq(ORDER.map(function(k){return PROD[k].cat||''}));
     var fits=[S.core].concat(FIT[S.core]||[]).filter(function(k){return k&&PROD[k]});
     var groups=cats.map(function(c){return {c:c,ks:ORDER.filter(function(k){return (PROD[k].cat||'')===c})}}).filter(function(g){return g.ks.length});
-    var head=rep?(repK?T('pk.head.rep',{name:esc(PROD[repK].name)}):T('pk.head.pos',{pos:S.replaceSlot+1})):T('pk.head.need');
+    var head=rep?(repK?T('pk.head.rep',{name:esc(PROD[repK].name)}):T('pk.head.pos',{pos:S.replaceSlot+1})):T(nd>0?'pk.head.need':'pk.head.more');
     var body='<div class="pkhead">'+head+'<small'+ck('pk.head.sub')+'>'+T('pk.head.sub')+'</small></div>'
       +(fits.length?'<div class="pcat"><span class="pch"'+ck('pk.reco')+'>'+T('pk.reco')+'</span><div class="plist">'+fits.map(prow).join('')+'</div></div>':'')
       +groups.map(function(g){return '<div class="pcat"><span class="pch">'+esc(g.c)+'</span><div class="plist">'+g.ks.map(prow).join('')+'</div></div>'}).join('');
@@ -654,7 +684,7 @@
     var dc=$('apDc');
     dc.querySelectorAll('[data-add]').forEach(function(x){x.onclick=function(){var sc=dc.scrollTop,k=x.dataset.add;
       if(S.replaceSlot!=null){var wasEmpty=S.slots[S.replaceSlot]==null;S.slots[S.replaceSlot]=k;S.replaceSlot=null;closeInfo();render();saveS();if(full()&&wasEmpty)setTimeout(celebrate,350);else toast(T(wasEmpty?'pk.added':'pk.replaced',{name:esc(PROD[k].name)}),false);return}
-      addSlot(k);if(full())closeInfo();else{pickerPopup();$('apDc').scrollTop=sc}}});
+      var r=addSlot(k);if(r==='celeb'){closeInfo();return}if(r===false)return;pickerPopup();$('apDc').scrollTop=sc}});
     dc.querySelectorAll('[data-p]').forEach(function(x){x.onclick=function(){prodInfo(x.dataset.p)}});
   }
   function slotPopup(i){
@@ -663,24 +693,25 @@
     $('sRep').onclick=function(){S.replaceSlot=i;pickerPopup()};$('sRm').onclick=function(){closeInfo();removeSlot(i)};
   }
   function sureContinue(){
-    if(BX().id==='l'||!BOXES[S.box+1]){go(A.secret&&A.secret.enabled&&SECRETLIST().length?4:5);return}
-    var cur=BX(),tgt=BOXES[S.box+1],tv=tgtVars(tgt);
+    var tgt=nextAbove(BX()); /* v1.10.0: следващата по брой */
+    if(!tgt){go(A.secret&&A.secret.enabled&&SECRETLIST().length?4:5);return}
+    var cur=BX(),tv=tgtVars(tgt);
     var news=tgt.rw.filter(function(r){return cur.rw.indexOf(r)<0});
     var rows='<div class="dl"><i>💸</i><span'+ck('su.pct')+'>'+T('su.pct',tv)+'</span></div>'+news.map(function(r){return '<div class="dl"><i>'+RW(r).ic+'</i><span>'+RW(r).t+'</span></div>'}).join('');
     var dc=$('apDc');dc.className='dc';dc.scrollTop=0;S._lockOv=false;
     dc.innerHTML='<div class="dcx"><div class="dpill"'+ck('su.pill')+'>'+T('su.pill')+'</div><h3 class="dbig"'+ck('su.title')+'>'+T('su.title')+'</h3><p class="sup"'+ck('su.p')+'>'+T('su.p',tv)+'</p>'
       +'<div class="dbox"><em'+ck('su.get')+'>'+T('su.get',tv)+'</em>'+rows+'</div><div class="dkeep"'+ck('su.keep')+'>'+T('su.keep',tv)+'</div>'
-      +'<button class="cta gold" id="upNow" style="margin-top:14px"'+ck('su.cta')+'>'+T('su.cta',tv)+'</button>'+(cur.id==='s'?'<div style="margin-top:6px"><button class="lnk" id="upBig"'+ck('su.big')+'>'+T('su.big')+'</button></div>':'')
+      +'<button class="cta gold" id="upNow" style="margin-top:14px"'+ck('su.cta')+'>'+T('su.cta',tv)+'</button>'+(tgt.id!=='l'&&boxOf('l')?'<div style="margin-top:6px"><button class="lnk" id="upBig"'+ck('su.big')+'>'+T('su.big')+'</button></div>':'')
       +'<div class="dor"><span'+ck('su.or')+'>'+T('su.or')+'</span></div><button class="cta soft" id="keepGo"'+ck('su.stay')+'>'+T('su.stay')+'</button></div>';
     $('apOv').classList.remove('off');
-    $('upNow').onclick=function(){closeInfo();chooseBox(S.box+1,true)};
+    $('upNow').onclick=function(){closeInfo();chooseBox(BI[tgt.id],true)};
     var ub=$('upBig');if(ub)ub.onclick=function(){closeInfo();chooseBox(BI.l,true)};
     $('keepGo').onclick=function(){if(A.secret&&A.secret.enabled&&SECRETLIST().length){closeInfo();go(4);return}submitOrder(this,T('su.stay'))};
   }
   function switchPopup(){
-    var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><b>'+esc(x.name)+'</b><small>'+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
+    var b='<p class="mut"'+ck('sw.p')+'>'+T('sw.p')+'</p><div class="bx3">'+BOXES.map(function(x,i){return '<div class="bx '+x.id+(i===S.box?' cur':'')+'" data-bx="'+i+'"><b>'+esc(x.name)+'</b><small>от '+x.packs+' '+opk(x.packs)+'</small><em>−'+x.pct+'%</em><small>'+x.rw.map(function(r){return RW(r).ic}).join(' ')+'</small>'+(i===S.box?'<small class="curl"'+ck('sw.cur')+'>'+T('sw.cur')+'</small>':'')+'</div>'}).join('')+'</div>';
     info(T('sw.title'),b);
-    $('apDc').querySelectorAll('.bx[data-bx]').forEach(function(x){x.onclick=function(){var to=+x.dataset.bx;if(to===S.box){closeInfo();return}if(to<S.box)sureDown(to);else{closeInfo();chooseBox(to,true)}}});
+    $('apDc').querySelectorAll('.bx[data-bx]').forEach(function(x){x.onclick=function(){var to=+x.dataset.bx;if(to===S.box){closeInfo();return}if(BOXES[to].packs<BX().packs)sureDown(to);else{closeInfo();chooseBox(to,true)}}});
   }
   function sureDown(to){
     var cur=BX(),tgt=BOXES[to],tv=tgtVars(tgt);
@@ -716,7 +747,7 @@
     var el=$('apS5');if(S.box===null){el.innerHTML='';return}
     var b=BX(),p=b.pct,st=secretTotal(),f=1-SECRET_PCT/100,tot=r2(pay()+st),h='';
     h+='<div><button class="back" id="b5"'+ck('or.back')+'>'+T('or.back')+'</button><h2'+ck('or.h2')+'>'+T('or.h2')+'</h2><div class="card sum">';
-    h+='<div class="row"><span>'+b.ic+' '+esc(b.name)+' · '+b.packs+' '+opk(b.packs)+'<small'+ck('or.box.sub')+'>'+T('or.box.sub')+'</small></span><span></span></div>';
+    h+='<div class="row"><span>'+b.ic+' '+esc(b.name)+' · '+boxes()+' '+opk(boxes())+'<small'+ck('or.box.sub')+'>'+T('or.box.sub')+'</small></span><span></span></div>';
     var cnt={};S.slots.filter(Boolean).forEach(function(k){cnt[k]=(cnt[k]||0)+1});
     Object.keys(cnt).forEach(function(k){var pr=PROD[k],q=cnt[k];h+='<div class="row"><span>'+pr.ph+' '+esc(pr.name)+' × '+q+'</span><span>'+m(r2(pr.price*q*(1-p/100)))+'</span></div>'});
     b.rw.forEach(function(r){var w=RW(r);h+='<div class="row"><span>'+w.ic+' '+w.t+'<small>'+w.s+'</small></span><span>'+(/^cosm/.test(r)?cosmPrice(r):(r==='book'?T('or.free'):T('or.incl')))+'</span></div>'});
@@ -738,7 +769,7 @@
      където са и начините на плащане. btn се заключва с „Подготвяме кутията ти…“ и се връща с label при грешка. */
   var sending=false;
   function submitOrder(btn,label){
-    if(sending)return;if(!full()){toast(T('ms.full'),true);return}
+    if(sending)return;if(!full()){toast(T('pane.cta.need'),true);return}
     if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
     var b=BX();beacon('order');sending=true;var html=btn?btn.innerHTML:'';if(btn){btn.disabled=true;btn.innerHTML=T('or.sending')}
     var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=label||html}};
@@ -789,12 +820,12 @@
   function scenario(o){
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
     if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
-    if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
+    if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
     S.emailDone=true;A.editorNoGate=true;
     var sc=o.screen||'boxes';
     if(sc==='gate'){S.screen=1;go(1);A.editorNoGate=false;S.emailDone=false;emailGate();return}
-    if(S.box===null&&sc!=='boxes'){S.box=BI.l;var bl=boxOf('l');S.slots=(S.core?[S.core]:[]).slice(0,bl.packs);while(S.slots.length<bl.packs)S.slots.push(null);if(o.full!==false)S.slots=S.slots.map(function(k){return k||S.core||ORDER[0]})}
+    if(S.box===null&&sc!=='boxes'){S.box=BI.l;S.chosen=BI.l;var bl=boxOf('l');S.slots=(S.core?[S.core]:[]).slice(0,bl.packs);while(S.slots.length<bl.packs)S.slots.push(null);if(o.full!==false)S.slots=S.slots.map(function(k){return k||S.core||ORDER[0]})}
     if(sc==='boxes'){go(1)}
     else if(sc==='fill'){go(1);S._fillPending=false;fillModePopup()}
     else if(sc==='celeb'){go(1);celebrate()}

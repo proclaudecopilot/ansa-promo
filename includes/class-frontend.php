@@ -273,6 +273,7 @@ final class Frontend {
 			'fit'       => (object) $fit,
 			'problems'  => $problems,
 			'boxes'     => $cfg['boxes'],
+			'max_packs' => Config::max_packs( $cfg ), /* v1.10.0: packs на кутията е минимум; това е таванът */
 			'box_order' => $cfg['order'],
 			'rewards'   => $cfg['rewards'],
 			'secret'    => $cfg['secret'],

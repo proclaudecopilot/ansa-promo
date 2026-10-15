@@ -62,6 +62,8 @@ final class Doctor {
 
 		Merge::ensure_tag(); /* 1.8.3: тагът да съществува още преди първата поръчка */
 		$add( 'FunnelKit', ( class_exists( 'WFACP_Core' ) ? 'Checkout ' . ( defined( 'WFACP_VERSION' ) ? WFACP_VERSION : '' ) : 'Checkout липсва' ) . ' · ' . ( class_exists( 'WFFN_Core' ) ? 'Funnel Builder ' . ( defined( 'WFFN_VERSION' ) ? WFFN_VERSION : '' ) : 'Funnel Builder липсва' ) . ' · ' . ( defined( 'BWFAN_VERSION' ) ? 'Automations ' . BWFAN_VERSION . ' (merge tags: ' . Merge::fka_status() . ' · ' . Merge::tag_status( $draft ) . ')' : 'Automations липсва' ), 'info' );
+		Lead_Sync::ensure_terms(); /* 1.11.0: листът и тагът на лийдовете да съществуват преди първия лийд */
+		$add( 'FKA лийдове (1.11.0)', Lead_Sync::status( $draft ), Lead_Sync::enabled( $draft ) ? ( Lead_Sync::available() ? 'ok' : 'warn' ) : 'info' );
 		$add( 'WC checkout page', (int) wc_get_page_id( 'checkout' ) . ' · ' . wc_get_checkout_url(), 'info' );
 
 		if ( function_exists( 'WC' ) && WC()->payment_gateways() ) {

@@ -3,7 +3,8 @@
  * ansa™ Промо — таблици.
  *
  * {prefix}ansa_promo_tickets — един ред на поръчка: код за QR, брой билети, статус.
- * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия.
+ * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия; DB ver 4 (1.11.0): contact_id,
+ *                               fka (резултатът от синхронизацията с FunnelKit: „лист #1 · crm; таг #2 · crm“ / retry: … / no-consent), fka_at.
  * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
  * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
  *                               tickets получава ref_code + bonus).
@@ -79,8 +80,12 @@ final class Schema {
   ip varchar(45) NULL,
   created_at datetime NOT NULL,
   converted_order_id bigint(20) unsigned NULL,
+  contact_id bigint(20) unsigned NULL,
+  fka varchar(191) NOT NULL DEFAULT '',
+  fka_at datetime NULL,
   PRIMARY KEY  (id),
   KEY email (email),
+  KEY fka (fka),
   KEY created_at (created_at),
   KEY converted_order_id (converted_order_id)
 ) $collate;",

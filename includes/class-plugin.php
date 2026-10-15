@@ -41,6 +41,7 @@ final class Plugin {
 		Catalog::register();
 		Frontend::register();
 		Leads::register();
+		Lead_Sync::register(); /* v1.11.0: лийдовете от имейл-попъпа → FunnelKit лист + таг */
 		Cart::register();
 		Tickets::register();
 		Insights::register();
