@@ -313,6 +313,8 @@ final class Probe {
 		$txt = do_shortcode( '[ansa_promo_tickets_text order_id="' . $oid . '"]' );
 		$t->ok( 'merge: [ansa_promo_tickets_text] носи броя, без {{ }}', false !== strpos( $txt, (string) (int) $row['tickets'] ) && false === strpos( $txt, '{{' ), wp_strip_all_tags( $txt ) );
 		$t->eq( 'merge: без промо поръчка → 0 / празно', '0|', do_shortcode( '[ansa_promo_tickets order_id="999999999"]' ) . '|' . do_shortcode( '[ansa_promo_tickets_text order_id="999999999"]' ) );
+		$tagm = (string) wc_get_order( $oid )->get_meta( '_ansa_promo_fka_tag' );
+		$t->ok( 'merge: FunnelKit таг на контакта (тригърът)', '' === Merge::tag_name( $cfg ) || ! function_exists( 'bwf_get_contact' ) || ( '' !== $tagm && 0 !== strpos( $tagm, 'retry' ) ), $tagm ?: ( '' === Merge::tag_name( $cfg ) ? 'тагът е изключен' : 'FunnelKit контакти липсват' ) );
 		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_tickets}}', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_tickets' ), Merge::fka_status() );
 		$t->ok( 'кодът е валиден', Tickets::normalize( $row['code'] ) === $row['code'] );
 		$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code/qr_url', $o->get_meta( '_ansa_promo_ticket_code' ) === $row['code'] && '' !== $o->get_meta( '_ansa_promo_qr_url' ), (string) $o->get_meta( '_ansa_promo_qr_url' ) );

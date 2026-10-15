@@ -11,6 +11,12 @@
  *  - Шорткодове със същите имена за WC имейли / други плъгини: [ansa_promo_tickets order_id="123"], без order_id
  *    вземат поръчката от данните на FKA.
  *  - Броят е Tickets::count_for_order() — същата сметка като томболата, „благодаря“ страницата и имейлите на плъгина.
+ *  - ТАГ (тригърът за имейла): при завършен чекаут на промо поръчка контактът на клиента във FunnelKit получава тага
+ *    `tickets.fka_tag` (дефолт „Сезонът на Анса“; празно = изключено). Слага се през BWFCRM_Contact (пуска event-а
+ *    „Tag Added“ на FKA → автоматизацията тръгва само за тези хора, не за стандартния чекаут), резерва — направо в
+ *    контакта (WooFunnels_Contact, без event, но правилата „Contact Tags“ го виждат). Идемпотентно (meta
+ *    `_ansa_promo_fka_tag`), опитва се пак при processing/completed, ако контактът още го е нямало. В автоматизация
+ *    без поръчка (Tag Added) merge таговете намират последната промо поръчка по имейла на контакта.
  *
  * @package AnsaPromo
  * @since 1.8.2
@@ -32,6 +38,11 @@ final class Merge {
 		add_action( 'bwfan_merge_tags_loaded', array( __CLASS__, 'fka' ) );
 		add_action( 'init', array( __CLASS__, 'fka' ), 99 ); /* резерва: ако тази версия на FKA няма hook-а или го е пуснала преди boot-а */
 		if ( did_action( 'bwfan_merge_tags_loaded' ) ) { self::fka(); }
+		/* тагът: след bwf контакта (woocommerce_checkout_order_processed 10 във Funnel Builder) + повторни опити при смяна на статуса */
+		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'tag_order' ), 9999 );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'tag_order' ), 9999 );
+		foreach ( array( 'on-hold', 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'tag_order' ), 25 ); }
+		add_action( 'woocommerce_payment_complete', array( __CLASS__, 'tag_order' ), 25 );
 	}
 
 	/* ── данни ── */
@@ -46,6 +57,31 @@ final class Merge {
 			if ( $d instanceof \WC_Order ) { return $d; }
 			if ( is_numeric( $d ) && (int) $d > 0 ) { $o = wc_get_order( (int) $d ); if ( $o ) { return $o; } }
 		}
+		/* автоматизация без поръчка (Tag Added, …): последната промо поръчка по имейла на контакта */
+		$email = self::fka_email();
+		return '' !== $email ? self::latest_promo_order( $email ) : null;
+	}
+
+	/** Имейлът на контакта от данните на FKA (email / contact обект / wp user). */
+	public static function fka_email() {
+		foreach ( array( 'email', 'contact_email', 'user_email' ) as $k ) { $d = self::fka_data( $k ); if ( is_string( $d ) && is_email( $d ) ) { return strtolower( trim( $d ) ); } }
+		$c = self::fka_data( 'contact' ); if ( ! is_object( $c ) ) { $c = self::fka_data( 'bwf_contact' ); }
+		if ( is_object( $c ) ) {
+			foreach ( array( $c, ( isset( $c->contact ) && is_object( $c->contact ) ? $c->contact : null ) ) as $obj ) {
+				if ( ! $obj ) { continue; }
+				try {
+					if ( method_exists( $obj, 'get_email' ) ) { $e = $obj->get_email(); if ( is_string( $e ) && is_email( $e ) ) { return strtolower( trim( $e ) ); } }
+					if ( isset( $obj->email ) && is_string( $obj->email ) && is_email( $obj->email ) ) { return strtolower( trim( $obj->email ) ); }
+				} catch ( \Throwable $e ) {}
+			}
+		}
+		foreach ( array( 'user_id', 'wp_user_id', 'wp_id' ) as $k ) { $d = self::fka_data( $k ); if ( is_numeric( $d ) && (int) $d > 0 ) { $u = get_userdata( (int) $d ); if ( $u && is_email( $u->user_email ) ) { return strtolower( trim( $u->user_email ) ); } } }
+		return '';
+	}
+
+	/** Последната поръчка от играта с този billing имейл (или null). */
+	public static function latest_promo_order( $email ) {
+		foreach ( Tombola::orders_by_email( $email ) as $o ) { if ( is_array( $o->get_meta( '_ansa_promo' ) ) ) { return $o; } }
 		return null;
 	}
 
@@ -82,6 +118,96 @@ final class Merge {
 		$val = (string) ( $v[ $key ] ?? '' );
 		if ( 'tickets' === $key && 0 === (int) $v['tickets'] ) { $val = ''; }
 		return '' !== $val ? $val : ( '' !== (string) $attr['fallback'] ? (string) $attr['fallback'] : ( 'tickets' === $key ? '0' : '' ) );
+	}
+
+	/* ── тагът „Сезонът на Анса“ на контакта във FunnelKit ── */
+
+	public static function tag_name( $cfg = null ) { $cfg = $cfg ?: Config::get_published(); return trim( (string) ( $cfg['tickets']['fka_tag'] ?? '' ) ); }
+
+	/**
+	 * Слага тага на контакта на промо поръчка. Идемпотентно: meta `_ansa_promo_fka_tag` = „таг #id · crm|db|има“; при
+	 * „retry: …“ или липсващи FunnelKit функции се опитва пак на следващия hook. Връща статус-низ (за Probe).
+	 */
+	public static function tag_order( $order_id ) {
+		$order = is_object( $order_id ) ? $order_id : ( function_exists( 'wc_get_order' ) ? wc_get_order( (int) $order_id ) : null );
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) { return 'no-order'; }
+		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return 'not-promo'; }
+		$done = (string) $order->get_meta( '_ansa_promo_fka_tag' ); if ( '' !== $done && 0 !== strpos( $done, 'retry' ) ) { return $done; }
+		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $name = self::tag_name( $cfg ); if ( '' === $name ) { return 'off'; }
+		if ( ! function_exists( 'bwf_get_contact' ) || ! class_exists( 'WooFunnels_Contact' ) ) { return 'no-fk'; }
+		$email = (string) $order->get_billing_email(); if ( ! is_email( $email ) ) { return 'no-email'; }
+		$retry = function ( $why ) use ( $order ) { $order->update_meta_data( '_ansa_promo_fka_tag', 'retry: ' . $why ); $order->save(); return 'retry'; };
+		try {
+			$contact = bwf_get_contact( (int) $order->get_customer_id(), $email );
+			if ( ! $contact instanceof \WooFunnels_Contact || $contact->get_id() <= 0 ) {
+				/* контактът още го няма (hook-ът на Funnel Builder не е минал) → създаваме го като него */
+				if ( function_exists( 'bwf_create_update_contact_object' ) ) { $contact = bwf_create_update_contact_object( $contact instanceof \WooFunnels_Contact ? $contact : new \WooFunnels_Contact( '', $email ), $order ); $contact->save(); }
+				$contact = bwf_get_contact( (int) $order->get_customer_id(), $email );
+				if ( ! $contact instanceof \WooFunnels_Contact || $contact->get_id() <= 0 ) { return $retry( 'няма контакт' ); }
+			}
+			$tid = self::tag_id( $name, true ); if ( $tid <= 0 ) { return $retry( 'няма таг' ); }
+			$how = in_array( $tid, array_map( 'intval', (array) $contact->get_tags() ), true ) ? 'има' : self::tag_contact( $contact, $tid, $name, $email );
+			if ( '' === $how ) { return $retry( 'не се записа' ); }
+		} catch ( \Throwable $e ) { return $retry( $e->getMessage() ); }
+		$order->update_meta_data( '_ansa_promo_fka_tag', $name . ' #' . $tid . ' · ' . $how ); $order->save();
+		if ( 'има' !== $how ) { $order->add_order_note( 'ansa™ Промо: FunnelKit таг „' . $name . '“ на контакт #' . $contact->get_id() . ' (' . ( 'crm' === $how ? 'през FKA, event „Tag Added“' : 'направо в контакта' ) . ').' ); }
+		do_action( 'ansa_promo_fka_tagged', $order, $contact, $tid, $how );
+		return $how;
+	}
+
+	/** Добавя тага: през BWFCRM_Contact (пуска event-а „Tag Added“), иначе направо в WooFunnels_Contact. 'crm' | 'db' | ''. */
+	private static function tag_contact( $contact, $tid, $name, $email ) {
+		$has = function () use ( $email, $tid ) { try { $f = new \WooFunnels_Contact( '', $email ); return $f->get_id() > 0 && in_array( $tid, array_map( 'intval', (array) $f->get_tags() ), true ); } catch ( \Throwable $e ) { return false; } };
+		if ( class_exists( 'BWFCRM_Contact' ) ) {
+			foreach ( array( $contact, $email, (int) $contact->get_id() ) as $ctor ) {
+				foreach ( array( array( $tid ), array( array( 'id' => $tid, 'name' => $name ) ) ) as $tags ) {
+					try {
+						$c = new \BWFCRM_Contact( $ctor );
+						if ( ! method_exists( $c, 'add_tags' ) ) { break 2; }
+						$c->add_tags( $tags );
+						if ( method_exists( $c, 'save' ) ) { $c->save(); }
+						if ( $has() ) { return 'crm'; }
+					} catch ( \Throwable $e ) { /* следващият вариант */ }
+				}
+			}
+		}
+		try { $contact->set_tags( array_values( array_unique( array_merge( array_map( 'intval', (array) $contact->get_tags() ), array( $tid ) ) ) ) ); $contact->save(); if ( $has() ) { return 'db'; } } catch ( \Throwable $e ) {}
+		return '';
+	}
+
+	/** ID на FKA тага по име (BWFCRM_Tag::get_tags → таблицата bwf_terms, type 1 = таг); $create = създава го, ако го няма. 0 = няма. */
+	public static function tag_id( $name, $create = false ) {
+		global $wpdb; $name = trim( (string) $name ); if ( '' === $name ) { return 0; }
+		static $cache = array(); if ( ! empty( $cache[ $name ] ) ) { return $cache[ $name ]; }
+		$find = function () use ( $name, $wpdb ) {
+			if ( class_exists( 'BWFCRM_Tag' ) && method_exists( 'BWFCRM_Tag', 'get_tags' ) ) {
+				try { foreach ( (array) \BWFCRM_Tag::get_tags( array(), false, '', '' ) as $t ) { if ( is_array( $t ) && isset( $t['name'] ) && 0 === strcasecmp( trim( (string) $t['name'] ), $name ) ) { return (int) ( $t['ID'] ?? $t['id'] ?? 0 ); } } } catch ( \Throwable $e ) {}
+			}
+			$table = $wpdb->prefix . 'bwf_terms';
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) { return (int) $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $table WHERE type = 1 AND name = %s ORDER BY ID ASC LIMIT 1", $name ) ); }
+			return 0;
+		};
+		$id = $find();
+		if ( $id <= 0 && $create ) {
+			$table = $wpdb->prefix . 'bwf_terms';
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+				$cols = (array) $wpdb->get_col( "SHOW COLUMNS FROM $table" ); $row = array( 'name' => $name, 'type' => 1 ); $fmt = array( '%s', '%d' );
+				if ( in_array( 'created_at', $cols, true ) ) { $row['created_at'] = current_time( 'mysql' ); $fmt[] = '%s'; }
+				if ( in_array( 'data', $cols, true ) ) { $row['data'] = ''; $fmt[] = '%s'; }
+				if ( $wpdb->insert( $table, $row, $fmt ) ) { $id = (int) $wpdb->insert_id; }
+			}
+			if ( $id <= 0 ) { $id = $find(); }
+		}
+		if ( $id > 0 ) { $cache[ $name ] = $id; }
+		return $id;
+	}
+
+	/** За Doctor: „таг „X“ #id“ / „таг „X“ — още не е създаден“ / „таг: изключен“. */
+	public static function tag_status( $cfg = null ) {
+		$name = self::tag_name( $cfg ); if ( '' === $name ) { return 'таг: изключен'; }
+		if ( ! function_exists( 'bwf_get_contact' ) ) { return 'таг „' . $name . '“ — FunnelKit контакти липсват'; }
+		$id = self::tag_id( $name );
+		return 'таг „' . $name . '“' . ( $id > 0 ? ' #' . $id : ' — още не е създаден (създава се при първата поръчка)' );
 	}
 
 	/* ── FunnelKit Automations ── */

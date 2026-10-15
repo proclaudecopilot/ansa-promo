@@ -53,7 +53,7 @@ final class Config {
 			),
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
 			'checkout'  => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true, 'consent_default' => true ),
-			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1, 'email' => false ), /* email: и имейл с кода при издаване (QR-ът е в пратката така или иначе) */
+			'tickets'   => array( 'portal_url' => '', 'secret' => '', 'partner_bonus' => 1, 'email' => false, 'fka_tag' => 'Сезонът на Анса' ), /* 1.8.2 fka_tag: FunnelKit таг на контакта при промо поръчка; '' = без */ /* email: и имейл с кода при издаване (QR-ът е в пратката така или иначе) */
 			/* v1.6.0: томболата — страницата {промо}/tombola (проверка по телефон + имейл), тегленето, „доставен“ статуси, препоръка (?r=КОД):
 			   ref_mult = множител на билетите на препоръчалия при първа платена препоръка (всяка следваща добавя още толкова), ref_max = най-много
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
@@ -247,7 +247,7 @@ final class Config {
 		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value']; $out['rewards']['cosm']['limit'] = max( 0, (int) ( $out['rewards']['cosm']['limit'] ?? 10000 ) );
 		$out['secret']['pct'] = max( 0, min( 90, (float) $out['secret']['pct'] ) ); $out['secret']['count'] = max( 0, min( 6, (int) $out['secret']['count'] ) ); $out['secret']['enabled'] = ! empty( $out['secret']['enabled'] );
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
-		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] );
+		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] ); $out['tickets']['fka_tag'] = mb_substr( trim( wp_strip_all_tags( (string) ( $out['tickets']['fka_tag'] ?? '' ) ) ), 0, 100 );
 		$out['preview']['enabled'] = ! empty( $out['preview']['enabled'] ); $out['preview']['password'] = trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) );
 		/* v1.6.0: томбола */
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
