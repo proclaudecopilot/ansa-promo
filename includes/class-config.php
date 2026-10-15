@@ -48,7 +48,7 @@ final class Config {
 			'rewards'   => array(
 				'yacht' => array( 'value' => 8800 ),
 				'book'  => array( 'product_id' => 0, 'value' => 19, 'url' => '' ), /* url: линк към PDF-а, ако WC продуктът не е downloadable (имейл при „Изпълнена“) */
-				'cosm'  => array( 'product_id' => 0, 'value' => 129, 'limit' => 10000 ), /* limit: броят комплекти за €1 (v1.7.0, „Как работи“: {{cosm_limit}} + прогресът „Първите N са резервирани“) */
+				'cosm'  => array( 'product_id' => 0, 'value' => 129, 'limit' => 10000, 'bar_from' => '2026-10-23' ), /* limit: броят комплекти за €1 (v1.7.0, „Как работи“: {{cosm_limit}} + прогресът „Първите N са резервирани“) · bar_from (1.8.9, човекът): прогресът се показва чак от тази дата (YYYY-MM-DD, час на сайта); '' = винаги */
 				'icons' => array( 'tix' => '🎟️', 'tix3' => '🎟️', 'tix5' => '🎟️', 'ship' => '🚚', 'book' => '📖', 'cosm50' => '🌸', 'cosm1' => '👑' ),
 			),
 			'secret'    => array( 'enabled' => false, 'pct' => 35, 'count' => 3 ),
@@ -265,7 +265,7 @@ final class Config {
 		}
 		$out['rewards']['yacht']['value'] = (float) $out['rewards']['yacht']['value'];
 		$out['rewards']['book']['product_id'] = (int) $out['rewards']['book']['product_id']; $out['rewards']['book']['value'] = (float) $out['rewards']['book']['value']; $out['rewards']['book']['url'] = esc_url_raw( (string) ( $out['rewards']['book']['url'] ?? '' ) );
-		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value']; $out['rewards']['cosm']['limit'] = max( 0, (int) ( $out['rewards']['cosm']['limit'] ?? 10000 ) );
+		$out['rewards']['cosm']['product_id'] = (int) $out['rewards']['cosm']['product_id']; $out['rewards']['cosm']['value'] = (float) $out['rewards']['cosm']['value']; $out['rewards']['cosm']['limit'] = max( 0, (int) ( $out['rewards']['cosm']['limit'] ?? 10000 ) ); $bf = trim( (string) ( $out['rewards']['cosm']['bar_from'] ?? '' ) ); $out['rewards']['cosm']['bar_from'] = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $bf ) && strtotime( $bf ) ? $bf : '';
 		$out['secret']['pct'] = max( 0, min( 90, (float) $out['secret']['pct'] ) ); $out['secret']['count'] = max( 0, min( 6, (int) $out['secret']['count'] ) ); $out['secret']['enabled'] = ! empty( $out['secret']['enabled'] );
 		$out['checkout']['card_gateway'] = sanitize_key( (string) $out['checkout']['card_gateway'] ); $out['checkout']['cod_gateway'] = sanitize_key( (string) $out['checkout']['cod_gateway'] ); $out['checkout']['block_coupons'] = ! empty( $out['checkout']['block_coupons'] ); $out['checkout']['consent_default'] = ! empty( $out['checkout']['consent_default'] );
 		$out['tickets']['portal_url'] = esc_url_raw( (string) $out['tickets']['portal_url'] ); $out['tickets']['secret'] = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $out['tickets']['secret'] ); $out['tickets']['partner_bonus'] = max( 0, (int) $out['tickets']['partner_bonus'] ); $out['tickets']['email'] = ! empty( $out['tickets']['email'] ); $out['tickets']['fka_tag'] = mb_substr( trim( wp_strip_all_tags( (string) ( $out['tickets']['fka_tag'] ?? '' ) ) ), 0, 100 ); $bt = is_array( $out['tickets']['fka_tag_box'] ?? null ) ? $out['tickets']['fka_tag_box'] : array(); $out['tickets']['fka_tag_box'] = array(); foreach ( array( 's', 'm', 'l' ) as $bid ) { $out['tickets']['fka_tag_box'][ $bid ] = mb_substr( trim( wp_strip_all_tags( (string) ( $bt[ $bid ] ?? '' ) ) ), 0, 100 ); }
@@ -361,6 +361,8 @@ final class Config {
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
 	public static function max_pct( $cfg ) { $m = 0; foreach ( $cfg['boxes'] as $b ) { $m = max( $m, (float) $b['pct'] ); } return $m; }
 	public static function deadline_ts( $cfg ) { if ( empty( $cfg['deadline'] ) ) { return 0; } $t = strtotime( $cfg['deadline'] . ' ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
+	/** 1.8.9: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */
+	public static function cosm_bar_on( $cfg ) { $bf = (string) ( $cfg['rewards']['cosm']['bar_from'] ?? '' ); if ( '' === $bf ) { return true; } $t = strtotime( $bf . ' 00:00 ' . wp_timezone_string() ); return ! $t || time() >= $t; }
 	public static function is_live( $cfg ) {
 		if ( empty( $cfg['enabled'] ) ) { return false; }
 		$t = self::deadline_ts( $cfg ); if ( $t && time() > $t ) { return false; }

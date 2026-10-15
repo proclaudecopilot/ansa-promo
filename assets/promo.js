@@ -268,6 +268,8 @@
     renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
     var s1=$('apS1');s1.innerHTML='<div class="dc hw inl"><div class="ib">'+howHtml()+'</div></div>';s1.classList.add('on');howBind(s1.firstChild,true);
   }
+  /* 1.8.10: бутонът „ℹ️ Как работи играта?“ в хедъра — връзката към попъпа беше изпусната при 1.8.0 (разделянето howPopup → howHtml/howBind); на /info хедърът няма този бутон */
+  if(A.mode!=='info')$('apHow').onclick=howPopup;
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
   function prodBody(k){var pr=PROD[k];return '<p><b>'+esc(pr.ds)+'</b></p><p>'+esc(pr.desc)+'</p><p'+ck('prod.pack')+'>'+packTxt(pr)+'</p><div class="il"><span'+ck('prod.price')+'>'+T('prod.price')+'</span><b>'+m(r2(pr.price*(1-pct()/100)))+' <s class="was">'+m(pr.price)+'</s></b></div>'}
@@ -778,6 +780,8 @@
       Object.keys(d.products).forEach(function(k){if(!PROD[k]||PROD[k].price!==d.products[k].price||PROD[k].stock!==d.products[k].stock)changed=true});
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render()}
+      /* 1.8.9: броячът „Първите N са резервирани“ идва свеж (кешираната страница носи 0 до rewards.cosm.bar_from); на /info се рендира наново */
+      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo()}
     }).catch(function(){});
   }
 
