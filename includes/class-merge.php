@@ -168,6 +168,24 @@ final class Merge {
 		return $how;
 	}
 
+	/** 1.8.4: промо поръчки без тага (без отменени/възстановени/неуспешни/кошче) — старите поръчки отпреди 1.8.2. */
+	public static function untagged( $limit = 500 ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return array(); }
+		$st = array_values( array_diff( array_keys( wc_get_order_statuses() ), array( 'wc-cancelled', 'wc-refunded', 'wc-failed', 'wc-trash' ) ) );
+		$out = array();
+		foreach ( wc_get_orders( array( 'limit' => $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => $st, 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) ) as $o ) {
+			if ( ! is_object( $o ) || ! is_array( $o->get_meta( '_ansa_promo' ) ) ) { continue; }
+			$d = (string) $o->get_meta( '_ansa_promo_fka_tag' ); if ( '' === $d || 0 === strpos( $d, 'retry' ) ) { $out[] = $o; }
+		}
+		return $out;
+	}
+	/** Слага тага на старите промо поръчки (бутонът в 🎟️ Поръчки). → брой по резултат: crm / db / има / retry / other. */
+	public static function backfill( $limit = 500 ) {
+		$r = array( 'crm' => 0, 'db' => 0, 'има' => 0, 'retry' => 0, 'other' => 0 );
+		foreach ( self::untagged( $limit ) as $o ) { $k = (string) self::tag_order( $o ); if ( isset( $r[ $k ] ) ) { $r[ $k ]++; } else { $r['other']++; } }
+		return $r;
+	}
+
 	/** Добавя тага: през BWFCRM_Contact (пуска event-а „Tag Added“), иначе направо в WooFunnels_Contact. 'crm' | 'db' | ''. */
 	private static function tag_contact( $contact, $tid, $name, $email ) {
 		$has = function () use ( $email, $tid ) { try { $f = new \WooFunnels_Contact( '', $email ); return $f->get_id() > 0 && in_array( $tid, array_map( 'intval', (array) $f->get_tags() ), true ); } catch ( \Throwable $e ) { return false; } };
