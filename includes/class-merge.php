@@ -50,14 +50,14 @@ final class Merge {
 
 	/** Създава FKA тага по име, ако го няма (веднъж на име; option ansa_promo_fka_tag_ensured). Връща id или 0. */
 	public static function ensure_tag() {
-		$name = self::tag_name( Config::get_draft() ) ?: self::tag_name(); if ( '' === $name ) { return 0; }
-		if ( get_option( 'ansa_promo_fka_tag_ensured' ) === $name ) { return self::tag_id( $name ); }
+		$names = array_values( array_unique( array_merge( self::all_tag_names( Config::get_draft() ), self::all_tag_names() ) ) ); if ( ! $names ) { return 0; }
+		$key = md5( implode( '|', $names ) ); $first = 0;
+		if ( get_option( 'ansa_promo_fka_tag_ensured' ) === $key ) { return self::tag_id( $names[0] ); }
 		if ( ! function_exists( 'bwf_get_contact' ) ) { return 0; }
-		$id = self::tag_id( $name, true );
-		if ( $id > 0 ) { update_option( 'ansa_promo_fka_tag_ensured', $name, false ); }
-		return $id;
+		$all = true; foreach ( $names as $i => $n ) { $id = self::tag_id( $n, true ); if ( 0 === $i ) { $first = $id; } if ( $id <= 0 ) { $all = false; } }
+		if ( $all ) { update_option( 'ansa_promo_fka_tag_ensured', $key, false ); }
+		return $first;
 	}
-
 	/* ── данни ── */
 
 	/** Поръчката за тага: order_id атрибут → данните на FKA (wc_order / order_id) → null. */
@@ -136,20 +136,35 @@ final class Merge {
 	/* ── тагът „Сезонът на Анса“ на контакта във FunnelKit ── */
 
 	public static function tag_name( $cfg = null ) { $cfg = $cfg ?: Config::get_published(); return trim( (string) ( $cfg['tickets']['fka_tag'] ?? '' ) ); }
+	/** 1.8.8: тагът за кутията (tickets.fka_tag_box[s|m|l] → malka-kutiq / sredna-kutiq / golqma-kutiq); '' = без. */
+	public static function box_tag_name( $cfg, $box_id ) { $bt = $cfg['tickets']['fka_tag_box'] ?? array(); return trim( (string) ( is_array( $bt ) ? ( $bt[ (string) $box_id ] ?? '' ) : '' ) ); }
+	/** Всички тагове, които поръчка от тази кутия трябва да има: общият + този на кутията (без празни, без дубли). */
+	public static function tag_names_for( $cfg, $box_id ) { return array_values( array_unique( array_filter( array( self::tag_name( $cfg ), self::box_tag_name( $cfg, $box_id ) ) ) ) ); }
+	/** Всички имена на тагове от конфига (за ensure_tag / Doctor). */
+	public static function all_tag_names( $cfg = null ) {
+		$cfg = $cfg ?: Config::get_published(); $n = array( self::tag_name( $cfg ) );
+		foreach ( (array) ( $cfg['tickets']['fka_tag_box'] ?? array() ) as $v ) { $n[] = trim( (string) $v ); }
+		return array_values( array_unique( array_filter( $n ) ) );
+	}
 
 	/**
-	 * Слага тага на контакта на промо поръчка. Идемпотентно: meta `_ansa_promo_fka_tag` = „таг #id · crm|db|има“; при
-	 * „retry: …“ или липсващи FunnelKit функции се опитва пак на следващия hook. Връща статус-низ (за Probe).
+	 * Слага таговете (общия + на кутията) на контакта на промо поръчка. Идемпотентно: meta `_ansa_promo_fka_tags` = сложените
+	 * имена (масив), `_ansa_promo_fka_tag` = четим низ „таг #id · crm|db|има; …“ или „retry: …“. При липсващи FunnelKit
+	 * функции / контакт / таг се опитва пак на следващия hook. Връща 'crm' | 'db' | 'има' | 'retry' | 'off' | ….
 	 */
 	public static function tag_order( $order_id ) {
 		$order = is_object( $order_id ) ? $order_id : ( function_exists( 'wc_get_order' ) ? wc_get_order( (int) $order_id ) : null );
 		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) { return 'no-order'; }
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return 'not-promo'; }
-		$done = (string) $order->get_meta( '_ansa_promo_fka_tag' ); if ( '' !== $done && 0 !== strpos( $done, 'retry' ) ) { return $done; }
-		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $name = self::tag_name( $cfg ); if ( '' === $name ) { return 'off'; }
+		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published();
+		$names = self::tag_names_for( $cfg, (string) ( $m['box'] ?? '' ) ); if ( ! $names ) { return 'off'; }
+		$done = array_values( array_filter( array_map( 'strval', (array) $order->get_meta( '_ansa_promo_fka_tags' ) ) ) );
+		$todo = array_values( array_diff( $names, $done ) );
+		if ( ! $todo ) { return 'има'; }
 		if ( ! function_exists( 'bwf_get_contact' ) || ! class_exists( 'WooFunnels_Contact' ) ) { return 'no-fk'; }
 		$email = (string) $order->get_billing_email(); if ( ! is_email( $email ) ) { return 'no-email'; }
-		$retry = function ( $why ) use ( $order ) { $order->update_meta_data( '_ansa_promo_fka_tag', 'retry: ' . $why ); $order->save(); return 'retry'; };
+		$prev = (string) $order->get_meta( '_ansa_promo_fka_tag' ); $parts = ( '' !== $prev && 0 !== strpos( $prev, 'retry' ) ) ? array( $prev ) : array(); $hows = array();
+		$retry = function ( $why ) use ( $order, &$done, &$parts ) { $order->update_meta_data( '_ansa_promo_fka_tags', $done ); $order->update_meta_data( '_ansa_promo_fka_tag', ( $parts ? implode( '; ', $parts ) . '; ' : '' ) . 'retry: ' . $why ); $order->save(); return 'retry'; };
 		try {
 			$contact = bwf_get_contact( (int) $order->get_customer_id(), $email );
 			if ( ! $contact instanceof \WooFunnels_Contact || $contact->get_id() <= 0 ) {
@@ -158,14 +173,18 @@ final class Merge {
 				$contact = bwf_get_contact( (int) $order->get_customer_id(), $email );
 				if ( ! $contact instanceof \WooFunnels_Contact || $contact->get_id() <= 0 ) { return $retry( 'няма контакт' ); }
 			}
-			$tid = self::tag_id( $name, true ); if ( $tid <= 0 ) { return $retry( 'няма таг' ); }
-			$how = in_array( $tid, array_map( 'intval', (array) $contact->get_tags() ), true ) ? 'има' : self::tag_contact( $contact, $tid, $name, $email );
-			if ( '' === $how ) { return $retry( 'не се записа' ); }
+			foreach ( $todo as $name ) {
+				$tid = self::tag_id( $name, true ); if ( $tid <= 0 ) { return $retry( 'няма таг „' . $name . '“' ); }
+				$had = array_map( 'intval', (array) ( new \WooFunnels_Contact( '', $email ) )->get_tags() );
+				$how = in_array( $tid, $had, true ) ? 'има' : self::tag_contact( $contact, $tid, $name, $email );
+				if ( '' === $how ) { return $retry( 'не се записа „' . $name . '“' ); }
+				$done[] = $name; $parts[] = $name . ' #' . $tid . ' · ' . $how; $hows[] = $how;
+				if ( 'има' !== $how ) { $order->add_order_note( 'ansa™ Промо: FunnelKit таг „' . $name . '“ на контакт #' . $contact->get_id() . ' (' . ( 'crm' === $how ? 'през FKA, event „Tag Added“' : 'направо в контакта' ) . ').' ); }
+				do_action( 'ansa_promo_fka_tagged', $order, $contact, $tid, $how, $name );
+			}
 		} catch ( \Throwable $e ) { return $retry( $e->getMessage() ); }
-		$order->update_meta_data( '_ansa_promo_fka_tag', $name . ' #' . $tid . ' · ' . $how ); $order->save();
-		if ( 'има' !== $how ) { $order->add_order_note( 'ansa™ Промо: FunnelKit таг „' . $name . '“ на контакт #' . $contact->get_id() . ' (' . ( 'crm' === $how ? 'през FKA, event „Tag Added“' : 'направо в контакта' ) . ').' ); }
-		do_action( 'ansa_promo_fka_tagged', $order, $contact, $tid, $how );
-		return $how;
+		$order->update_meta_data( '_ansa_promo_fka_tags', array_values( array_unique( $done ) ) ); $order->update_meta_data( '_ansa_promo_fka_tag', implode( '; ', $parts ) ); $order->save();
+		return in_array( 'crm', $hows, true ) ? 'crm' : ( in_array( 'db', $hows, true ) ? 'db' : 'има' );
 	}
 
 	/** 1.8.4: промо поръчки без тага (без отменени/възстановени/неуспешни/кошче) — старите поръчки отпреди 1.8.2. */
@@ -174,8 +193,10 @@ final class Merge {
 		$st = array_values( array_diff( array_keys( wc_get_order_statuses() ), array( 'wc-cancelled', 'wc-refunded', 'wc-failed', 'wc-trash' ) ) );
 		$out = array();
 		foreach ( wc_get_orders( array( 'limit' => $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => $st, 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) ) as $o ) {
-			if ( ! is_object( $o ) || ! is_array( $o->get_meta( '_ansa_promo' ) ) ) { continue; }
-			$d = (string) $o->get_meta( '_ansa_promo_fka_tag' ); if ( '' === $d || 0 === strpos( $d, 'retry' ) ) { $out[] = $o; }
+			$m = $o->get_meta( '_ansa_promo' ); if ( ! is_object( $o ) || ! is_array( $m ) ) { continue; }
+			$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published();
+			$done = array_map( 'strval', (array) $o->get_meta( '_ansa_promo_fka_tags' ) );
+			if ( array_diff( self::tag_names_for( $cfg, (string) ( $m['box'] ?? '' ) ), $done ) ) { $out[] = $o; }
 		}
 		return $out;
 	}
@@ -312,12 +333,12 @@ final class Merge {
 
 	/** За Doctor: „таг „X“ #id“ / „таг „X“ — още не е създаден“ / „таг: изключен“. */
 	public static function tag_status( $cfg = null ) {
-		$name = self::tag_name( $cfg ); if ( '' === $name ) { return 'таг: изключен'; }
-		if ( ! function_exists( 'bwf_get_contact' ) ) { return 'таг „' . $name . '“ — FunnelKit контакти липсват'; }
-		$id = self::tag_id( $name );
-		return 'таг „' . $name . '“' . ( $id > 0 ? ' #' . $id . ( self::terms_table() ? ' в ' . self::terms_table() : '' ) : ' — НЕ Е СЪЗДАДЕН (' . ( self::$tag_diag ?: 'без диагностика' ) . '); създай го ръчно във FKA → Contacts → Tags със същото име' );
+		$names = self::all_tag_names( $cfg ); if ( ! $names ) { return 'таг: изключен'; }
+		if ( ! function_exists( 'bwf_get_contact' ) ) { return 'тагове „' . implode( '“, „', $names ) . '“ — FunnelKit контакти липсват'; }
+		$out = array();
+		foreach ( $names as $n ) { $id = self::tag_id( $n ); $out[] = '„' . $n . '“' . ( $id > 0 ? ' #' . $id : ' НЕ Е СЪЗДАДЕН (' . ( self::$tag_diag ?: 'без диагностика' ) . ')' ); }
+		return 'тагове: ' . implode( ', ', $out ) . ( self::terms_table() ? ' в ' . self::terms_table() : '' );
 	}
-
 	/* ── FunnelKit Automations ── */
 
 	public static function fka_data( $key ) {
