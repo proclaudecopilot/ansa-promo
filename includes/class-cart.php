@@ -142,12 +142,11 @@ final class Cart {
 		$bv = array( 'packs' => (int) $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ) );
 		$items  = is_array( $a['items'] ?? null ) ? array_values( array_filter( array_map( 'absint', $a['items'] ) ) ) : array();
 		$secret = is_array( $a['secret'] ?? null ) ? array_values( array_unique( array_filter( array_map( 'absint', $a['secret'] ) ) ) ) : array();
-		if ( count( $items ) < (int) $box['packs'] ) { return $err( 'count', $bv ); }
-		$maxp = Config::max_packs( $cfg );
-		if ( count( $items ) > $maxp ) { return $err( 'max', array_merge( $bv, array( 'max' => $maxp ) ) ); }
-		/* v1.10.0: броят сам вдига кутията — 3 опаковки в „малка“ са средна кутия (клиентът праща вече вдигнатата; това е защитата) */
-		$eff = Config::box_for_count( $cfg, count( $items ), $box );
-		if ( $eff && $eff['id'] !== $box['id'] ) { $box = $eff; $box_id = (string) $box['id']; }
+		/* v1.12.0: растяща кутия (grow, Голямата) = поне packs и най-много max_packs; останалите (малка/средна) = точно packs */
+		$maxp = Config::max_for( $cfg, $box );
+		if ( count( $items ) < (int) $box['packs'] ) { return $err( ! empty( $box['grow'] ) ? 'count_min' : 'count', $bv ); }
+		if ( count( $items ) > $maxp ) { return $err( ! empty( $box['grow'] ) ? 'max' : 'count', array_merge( $bv, array( 'max' => $maxp ) ) ); }
+		if ( ! empty( $box['grow'] ) ) { $eff = Config::box_for_count( $cfg, count( $items ), $box ); if ( $eff && $eff['id'] !== $box['id'] ) { $box = $eff; $box_id = (string) $box['id']; } }
 		$allowed = self::allowed( $cfg ); $counts = array_count_values( $items );
 		foreach ( $counts as $pid => $q ) {
 			if ( ! isset( $allowed[ $pid ] ) ) { return $err( 'allowed' ); }
@@ -305,9 +304,9 @@ final class Cart {
 	public static function prefill_email( $value, $input ) { if ( 'billing_email' === $input && ! $value ) { $ctx = self::ctx(); if ( ! empty( $ctx['email'] ) ) { return $ctx['email']; } } return $value; }
 
 	/* ═══ ЧЕКАУТ ═══ */
-	public static function vars( $cfg, $box ) {
-		$bl = Config::box( $cfg, 'l' ); $bm = Config::box( $cfg, 'm' );
-		return array( 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ), 'box_ic' => $box['ic'], 'packs' => $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'pct' => self::fmt( $box['pct'] ), 'tickets' => $box['tickets'], 'shans' => 1 === (int) $box['tickets'] ? 'шанс' : 'шанса', 'bileta' => 1 === (int) $box['tickets'] ? 'билет' : 'билета',
+	public static function vars( $cfg, $box, $count = 0 ) {
+		$bl = Config::box( $cfg, 'l' ); $bm = Config::box( $cfg, 'm' ); $tix = Config::tickets_for( $box, $count ); /* v1.12.0: + билетите за опаковките над packs */
+		return array( 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ), 'box_ic' => $box['ic'], 'packs' => $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'pct' => self::fmt( $box['pct'] ), 'tickets' => $tix, 'shans' => 1 === $tix ? 'шанс' : 'шанса', 'bileta' => 1 === $tix ? 'билет' : 'билета', 'n' => (int) $count, 'opk_n' => 1 === (int) $count ? 'опаковка' : 'опаковки',
 			'yacht' => number_format( (float) $cfg['rewards']['yacht']['value'], 0, '', ' ' ), 'ship' => wc_price( $cfg['ship']['paid'] ), 'book_value' => self::fmt( $cfg['rewards']['book']['value'] ), 'cosm_value' => self::fmt( $cfg['rewards']['cosm']['value'] ), 'cosm_pay' => self::fmt( $box['cosm_pay'] ), 'cosm_save' => self::fmt( null === $box['cosm_pay'] ? null : max( 0, (float) $cfg['rewards']['cosm']['value'] - (float) $box['cosm_pay'] ) ), 'cosm_pay_m' => self::fmt( $bm ? $bm['cosm_pay'] : null ), 'cosm_pay_l' => self::fmt( $bl ? $bl['cosm_pay'] : null ), 'cosm_min' => self::fmt( $bl ? $bl['cosm_pay'] : null ),
 			'tickets_s' => 1, 'tickets_m' => $bm ? $bm['tickets'] : 3, 'tickets_l' => $bl ? $bl['tickets'] : 5, 'packs_s' => ( $bs = Config::box( $cfg, 's' ) ) ? $bs['packs'] : 1, 'packs_m' => $bm ? $bm['packs'] : 3, 'packs_l' => $bl ? $bl['packs'] : 5, 'cosm_limit' => number_format( (int) ( $cfg['rewards']['cosm']['limit'] ?? 10000 ), 0, '', ' ' ), 'secret_pct' => self::fmt( $cfg['secret']['pct'] ), 'name' => $cfg['name'], 'deadline' => $cfg['deadline'] ? date_i18n( 'd.m.Y', Config::deadline_ts( $cfg ) ?: time() ) : '', 'max_pct' => self::fmt( Config::max_pct( $cfg ) ), 'url' => esc_url( self::promo_url( $cfg ) ) );
 	}
@@ -319,7 +318,7 @@ final class Cart {
 	public static function checkout_rewards_row() {
 		$g = self::group(); if ( ! $g ) { return; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return; }
-		$v = self::vars( $cfg, $box );
+		$v = self::vars( $cfg, $box, (int) $g['sum'] );
 		$bonus = Partner::bonus_now( $cfg ); $prow = $bonus > 0 ? '<li><i>🤝</i> ' . wp_kses_post( self::copy( 'co.partner', array_merge( $v, array( 'bonus' => $bonus, 'bonus_bileta' => 1 === $bonus ? 'билет' : 'билета' ) ) ) ) . '</li>' : '';
 		$prow .= (string) apply_filters( 'ansa_promo_checkout_rows', '', $cfg, $v ); /* 1.6.0: Tombola — „+1 билет — подарък от близък човек“ */
 		echo '<tr class="ansa-promo-co" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><td colspan="2"><div class="ansa-promo-co__box"><b>' . wp_kses_post( self::copy( 'co.rewards.h', $v ) ) . '</b><ul>' . self::rewards_list( $cfg, $box, $v ) . $prow . '</ul>' . ( self::group_valid( $g ) ? '' : '<div class="ansa-promo-co__warn">' . wp_kses_post( self::copy( 'co.broken', $v ) ) . '</div>' ) . '</div></td></tr>';
@@ -328,7 +327,7 @@ final class Cart {
 	public static function checkout_cosm_consent() {
 		$g = self::group(); if ( ! $g || ! self::group_valid( $g ) ) { return; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box || null === $box['cosm_pay'] ) { return; }
-		$v = self::vars( $cfg, $box ); $ctx = self::ctx();
+		$v = self::vars( $cfg, $box, (int) $g['sum'] ); $ctx = self::ctx();
 		/* v1.5.0: картичка — чекбокс | икона | текст, подравнено вляво; !important, защото FunnelKit/reskin-ът центрират и презаписват label-ите.
 		   v1.5.4: цената е отделен ред „<s>€129</s> €1“ (co.cosm.price), винаги от PHP — не зависи от това дали co.cosm.label е редактиран
 		   в редактора; стар текст/override, завършващ на „за €1“ или „за <s>€129</s> <b>€1</b>“, се подрязва, за да не излиза два пъти. */
@@ -378,7 +377,7 @@ final class Cart {
 		if ( null !== $box['cosm_pay'] ) { $cosm_on = null !== $cosm_posted ? (bool) $cosm_posted : ( isset( $ctx['cosm'] ) ? (bool) $ctx['cosm'] : true ); } else { $cosm_on = false; }
 		$meta = array(
 			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
-			'tickets' => array( 'allowance' => $valid ? (int) $box['tickets'] : 0, 'partner' => false, 'issued' => array() ),
+			'tickets' => array( 'allowance' => $valid ? Config::tickets_for( $box, (int) $g['sum'] ) : 0, 'partner' => false, 'issued' => array() ), /* 1.12.0: + tix_extra за всяка опаковка над packs */
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
 			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),

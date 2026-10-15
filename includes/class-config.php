@@ -43,9 +43,11 @@ final class Config {
 			'boxes'     => array(
 				/* v1.0.13 (човекът, 06.10): Малка −15% · 1× яхта; Средна −30% · 3× яхта + книга + доставка (без сет); Голяма без промяна.
 				   v1.7.1 (човекът, 14.10): Малката пак е −15% (1.0.30 я беше вдигнала на −20%). */
-				array( 'id' => 's', 'ic' => '📦', 'name' => 'Малка кутия',  'packs' => 1, 'pct' => 15, 'tickets' => 1, 'rw' => array( 'tix' ),                 'no' => array( 'book', 'ship', 'cosm1' ), 'tag' => '',                                 'cosm_pay' => null ),
-				array( 'id' => 'm', 'ic' => '🎁', 'name' => 'Средна кутия', 'packs' => 3, 'pct' => 30, 'tickets' => 3, 'rw' => array( 'tix3', 'book', 'ship' ), 'no' => array( 'cosm1' ),                 'tag' => 'Най-популярна',                       'cosm_pay' => null ),
-				array( 'id' => 'l', 'ic' => '👑', 'name' => 'Голяма кутия', 'packs' => 5, 'pct' => 40, 'tickets' => 5, 'rw' => array( 'tix5', 'cosm1', 'book', 'ship' ),  'no' => array(),                           'tag' => 'Най-изгодна · спестяваш най-много', 'cosm_pay' => 1 ),
+				/* v1.12.0 (човекът): grow = кутията приема и повече опаковки от packs (на същата отстъпка; таванът е max_packs) — само
+				   Голямата засега („за 1 кутия и 3 кутии не прави функцията“); tix_extra = билети за всяка опаковка над packs (+1). */
+				array( 'id' => 's', 'ic' => '📦', 'name' => 'Малка кутия',  'packs' => 1, 'pct' => 15, 'tickets' => 1, 'rw' => array( 'tix' ),                 'no' => array( 'book', 'ship', 'cosm1' ), 'tag' => '',                                 'cosm_pay' => null, 'grow' => false, 'tix_extra' => 0 ),
+				array( 'id' => 'm', 'ic' => '🎁', 'name' => 'Средна кутия', 'packs' => 3, 'pct' => 30, 'tickets' => 3, 'rw' => array( 'tix3', 'book', 'ship' ), 'no' => array( 'cosm1' ),                 'tag' => 'Най-популярна',                       'cosm_pay' => null, 'grow' => false, 'tix_extra' => 0 ),
+				array( 'id' => 'l', 'ic' => '👑', 'name' => 'Голяма кутия', 'packs' => 5, 'pct' => 40, 'tickets' => 5, 'rw' => array( 'tix5', 'cosm1', 'book', 'ship' ),  'no' => array(),                           'tag' => 'Най-изгодна · спестяваш най-много', 'cosm_pay' => 1, 'grow' => true, 'tix_extra' => 1 ),
 			),
 			'order'     => array( 'desktop' => array( 's', 'l', 'm' ), 'mobile' => array( 'l', 'm', 's' ) ),
 			'rewards'   => array(
@@ -263,6 +265,7 @@ final class Config {
 			$b['packs'] = max( 1, min( 12, (int) $b['packs'] ) ); $b['pct'] = max( 0, min( 90, (float) $b['pct'] ) ); $b['tickets'] = max( 0, (int) $b['tickets'] );
 			$b['rw'] = array_values( array_filter( array_map( 'strval', (array) $b['rw'] ) ) ); $b['no'] = array_values( array_filter( array_map( 'strval', (array) $b['no'] ) ) );
 			$b['cosm_pay'] = ( null === $b['cosm_pay'] || '' === $b['cosm_pay'] ) ? null : round( (float) $b['cosm_pay'], 2 );
+			$b['grow'] = ! empty( $b['grow'] ); $b['tix_extra'] = max( 0, min( 10, (int) ( $b['tix_extra'] ?? 0 ) ) ); /* v1.12.0 */
 			$bx[] = $b;
 		}
 		$out['boxes'] = $bx;
@@ -373,8 +376,12 @@ final class Config {
 	public static function product( $cfg, $key ) { foreach ( $cfg['products'] as $p ) { if ( $p['key'] === $key ) { return $p; } } return null; }
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
 	private static function max_packs_floor( $boxes ) { $m = 1; foreach ( (array) $boxes as $b ) { $m = max( $m, (int) ( $b['packs'] ?? 1 ) ); } return $m; }
+	/** v1.12.0: най-много опаковки за кутията — растящата (grow) до max_packs, останалите точно packs. */
+	public static function max_for( $cfg, $box ) { return ! empty( $box['grow'] ) ? self::max_packs( $cfg ) : (int) $box['packs']; }
+	/** v1.12.0: билетите за кутия с $count опаковки — tickets + tix_extra за всяка опаковка над packs (само grow кутия). */
+	public static function tickets_for( $box, $count ) { $n = (int) $box['tickets']; if ( ! empty( $box['grow'] ) && (int) $count > (int) $box['packs'] ) { $n += ( (int) $count - (int) $box['packs'] ) * (int) ( $box['tix_extra'] ?? 0 ); } return $n; }
 	/** v1.10.0: кутията според броя опаковки — най-голямата кутия с packs ≤ $count, но не по-малка от $min (избраната от клиента).
-	 *  Малка с 3 опаковки = Средна; Средна с 5 = Голяма; Голяма с 7 = Голяма. null само ако $min липсва и броят не стига до никоя кутия. */
+	 *  v1.12.0: само растяща (grow) кутия може да бъде „прескочена“ от броя — малка/средна са с точен брой и не минават оттук. */
 	public static function box_for_count( $cfg, $count, $min = null ) {
 		$best = is_array( $min ) ? $min : ( $min ? self::box( $cfg, $min ) : null );
 		foreach ( $cfg['boxes'] as $b ) {
