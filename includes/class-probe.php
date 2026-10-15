@@ -306,6 +306,14 @@ final class Probe {
 		$t->ok( 'processing → билет', (bool) $row, $row ? Tickets::pretty( $row['code'] ) . ' · ' . $row['tickets'] . ' бр. · ' . $row['status'] : 'няма ред' );
 		if ( ! $row ) { remove_filter( 'pre_wp_mail', $hook, 10 ); if ( ! $keep ) { $o->delete( true ); } return null; }
 		$t->eq( 'билети = allowance', (int) $m['tickets']['allowance'], (int) $row['tickets'] );
+		/* 1.8.2: merge tags за имейла за потвърждение */
+		$t->eq( 'merge: count_for_order = билетите на реда', (int) $row['tickets'], Tickets::count_for_order( $oid ) );
+		$t->eq( 'merge: [ansa_promo_tickets order_id]', (string) (int) $row['tickets'], do_shortcode( '[ansa_promo_tickets order_id="' . $oid . '"]' ) );
+		$t->eq( 'merge: [ansa_promo_bileta]', 1 === (int) $row['tickets'] ? 'билет' : 'билета', do_shortcode( '[ansa_promo_bileta order_id="' . $oid . '"]' ) );
+		$txt = do_shortcode( '[ansa_promo_tickets_text order_id="' . $oid . '"]' );
+		$t->ok( 'merge: [ansa_promo_tickets_text] носи броя, без {{ }}', false !== strpos( $txt, (string) (int) $row['tickets'] ) && false === strpos( $txt, '{{' ), wp_strip_all_tags( $txt ) );
+		$t->eq( 'merge: без промо поръчка → 0 / празно', '0|', do_shortcode( '[ansa_promo_tickets order_id="999999999"]' ) . '|' . do_shortcode( '[ansa_promo_tickets_text order_id="999999999"]' ) );
+		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_tickets}}', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_tickets' ), Merge::fka_status() );
 		$t->ok( 'кодът е валиден', Tickets::normalize( $row['code'] ) === $row['code'] );
 		$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code/qr_url', $o->get_meta( '_ansa_promo_ticket_code' ) === $row['code'] && '' !== $o->get_meta( '_ansa_promo_qr_url' ), (string) $o->get_meta( '_ansa_promo_qr_url' ) );
 		$t->ok( 'ваучер при запазен сет', null === $box['cosm_pay'] || '' !== (string) $o->get_meta( '_ansa_promo_voucher' ), (string) $o->get_meta( '_ansa_promo_voucher' ) );
@@ -329,6 +337,7 @@ final class Probe {
 		$t->note( 'имейли общо (WC + промо)', count( $mails ) . ': ' . implode( ' | ', $subjects ) );
 		/* cancel → void → processing → issued */
 		$o->update_status( 'cancelled', 'probe' ); $t->eq( 'cancelled → void', 'void', Tickets::for_order( $oid )['status'] );
+		$t->eq( 'merge: void → 0 билета', 0, Tickets::count_for_order( $oid ) );
 		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/ticket/' . $row['code'] ); $d = rest_do_request( $req )->get_data(); $t->ok( 'GET void → valid=false', empty( $d['valid'] ) && 'void' === ( $d['status'] ?? '' ) );
 		$o = wc_get_order( $oid ); $o->update_status( 'processing', 'probe' ); $t->eq( 'пак processing → issued', 'issued', Tickets::for_order( $oid )['status'] );
 		remove_filter( 'pre_wp_mail', $hook, 10 );

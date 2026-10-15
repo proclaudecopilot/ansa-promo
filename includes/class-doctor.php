@@ -59,7 +59,7 @@ final class Doctor {
 		$pages = self::pages_with_shortcode();
 		$add( 'Страници с [ansa_promo]', $pages ? implode( '; ', $pages ) : 'няма', $pages ? 'ok' : 'warn' );
 
-		$add( 'FunnelKit', ( class_exists( 'WFACP_Core' ) ? 'Checkout ' . ( defined( 'WFACP_VERSION' ) ? WFACP_VERSION : '' ) : 'Checkout липсва' ) . ' · ' . ( class_exists( 'WFFN_Core' ) ? 'Funnel Builder ' . ( defined( 'WFFN_VERSION' ) ? WFFN_VERSION : '' ) : 'Funnel Builder липсва' ), 'info' );
+		$add( 'FunnelKit', ( class_exists( 'WFACP_Core' ) ? 'Checkout ' . ( defined( 'WFACP_VERSION' ) ? WFACP_VERSION : '' ) : 'Checkout липсва' ) . ' · ' . ( class_exists( 'WFFN_Core' ) ? 'Funnel Builder ' . ( defined( 'WFFN_VERSION' ) ? WFFN_VERSION : '' ) : 'Funnel Builder липсва' ) . ' · ' . ( defined( 'BWFAN_VERSION' ) ? 'Automations ' . BWFAN_VERSION . ' (merge tags: ' . Merge::fka_status() . ')' : 'Automations липсва' ), 'info' );
 		$add( 'WC checkout page', (int) wc_get_page_id( 'checkout' ) . ' · ' . wc_get_checkout_url(), 'info' );
 
 		if ( function_exists( 'WC' ) && WC()->payment_gateways() ) {

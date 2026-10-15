@@ -149,13 +149,35 @@ final class Tickets {
 		$order->save();
 	}
 
+	/**
+	 * 1.8.2: колко билета носи поръчката — ЕДНАТА сметка за merge tags, „благодаря“, имейлите и томболата.
+	 * Издаден билет → tickets + bonus (препоръки) от реда; преди издаване → allowance + бонус Partner + подарък от препоръка
+	 * от order meta. 0 = извън играта, непълна кутия (valid=0), отменена/възстановена/неуспешна поръчка или void билет.
+	 */
+	public static function count_for_order( $order ) {
+		if ( ! is_object( $order ) ) { $order = function_exists( 'wc_get_order' ) ? wc_get_order( (int) $order ) : null; }
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) { return 0; }
+		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return 0; }
+		if ( in_array( $order->get_status(), array( 'cancelled', 'refunded', 'failed', 'trash' ), true ) ) { return 0; }
+		$row = self::for_order( $order->get_id() );
+		if ( $row ) { return 'void' === $row['status'] ? 0 : max( 0, (int) $row['tickets'] + (int) ( $row['bonus'] ?? 0 ) ); }
+		return max( 0, (int) ( $m['tickets']['allowance'] ?? 0 ) + ( ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0 ) + (int) ( $m['tickets']['ref_bonus'] ?? 0 ) );
+	}
+
+	/** Конфигът, кутията и плейсхолдърите на поръчката за имейл текстовете (em.*): [cfg, box, vars] или null извън играта. */
+	public static function email_vars( $order, $extra = array() ) {
+		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return null; }
+		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $box = Config::box( $cfg, (string) ( $m['box'] ?? '' ) ); if ( ! $box ) { return null; }
+		$v = Cart::vars( $cfg, $box ); $row = self::for_order( $order->get_id() );
+		$v = array_merge( $v, array( 'customer' => $order->get_billing_first_name() ?: $order->get_billing_last_name(), 'order' => $order->get_order_number(), 'code' => $row ? self::pretty( $row['code'] ) : '', 'tickets' => self::count_for_order( $order ), 'voucher' => (string) $order->get_meta( '_ansa_promo_voucher' ), 'book_url' => (string) ( $cfg['rewards']['book']['url'] ?? '' ), 'portal_url' => Merge::portal_url( $cfg ), 'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : '' ), $extra );
+		$v['bileta'] = 1 === (int) $v['tickets'] ? 'билет' : 'билета';
+		return array( 'cfg' => $cfg, 'box' => $box, 'vars' => $v );
+	}
+
 	/** Имейл от регистъра (em.<kind>.subject/h/body) през WC mailer-а. Връща true при подаден wp_mail. */
 	public static function send( $order, $kind, $extra = array() ) {
-		$m = $order->get_meta( '_ansa_promo' ); $cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $box = Config::box( $cfg, (string) ( $m['box'] ?? '' ) ); if ( ! $box ) { return false; }
-		$copy = Copy::effective( $cfg['copy'] ); $v = Cart::vars( $cfg, $box );
-		$row = self::for_order( $order->get_id() );
-		$v = array_merge( $v, array( 'customer' => $order->get_billing_first_name() ?: $order->get_billing_last_name(), 'order' => $order->get_order_number(), 'code' => $row ? self::pretty( $row['code'] ) : '', 'tickets' => $row ? (int) $row['tickets'] : (int) ( $m['tickets']['allowance'] ?? 0 ), 'voucher' => (string) $order->get_meta( '_ansa_promo_voucher' ), 'book_url' => (string) ( $cfg['rewards']['book']['url'] ?? '' ), 'portal_url' => $cfg['tickets']['portal_url'] ?: ( Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : Cart::promo_url( $cfg ) ) ), $extra );
-		$v['bileta'] = 1 === (int) $v['tickets'] ? 'билет' : 'билета';
+		$ev = self::email_vars( $order, $extra ); if ( ! $ev ) { return false; }
+		$cfg = $ev['cfg']; $v = $ev['vars']; $copy = Copy::effective( $cfg['copy'] );
 		$subject = wp_strip_all_tags( Copy::render( $copy[ 'em.' . $kind . '.subject' ] ?? '', $v ) ); $heading = wp_strip_all_tags( Copy::render( $copy[ 'em.' . $kind . '.h' ] ?? '', $v ) ); $body = wpautop( Copy::render( $copy[ 'em.' . $kind . '.body' ] ?? '', $v ) );
 		$to = $order->get_billing_email(); if ( ! $to || '' === $subject ) { return false; }
 		$mailer = WC()->mailer(); $html = $mailer->wrap_message( $heading, $body );

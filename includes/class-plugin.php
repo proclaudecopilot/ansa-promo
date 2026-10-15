@@ -46,6 +46,7 @@ final class Plugin {
 		Partner::register();
 		Tombola::register();
 		Info::register(); /* v1.8.0: {промо}/info */
+		Merge::register(); /* v1.8.2: merge tags за имейлите (FunnelKit Automations + шорткодове) */
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); Editor::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
