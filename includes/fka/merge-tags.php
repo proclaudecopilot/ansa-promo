@@ -1,7 +1,7 @@
 <?php
 /**
  * ansa™ Промо 1.8.2 — merge tag класовете за FunnelKit Automations ({{ansa_promo_tickets}}, {{ansa_promo_bileta}},
- * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
+ * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}, 1.9.0: {{ansa_promo_book_url}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
  * gate-ът е потвърдил, че BWFAN_Merge_Tag е съвместим. Глобален namespace — FKA класовете са глобални.
  * Логиката е в Merge::shortcode(); тук е само обвивката, която FKA очаква (tag_name, parse_shortcode, dummy preview).
  *
@@ -67,4 +67,7 @@ class Ansa_Promo_FKA_Tickets_Text extends Ansa_Promo_FKA_Tag {
 }
 class Ansa_Promo_FKA_Box extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'box'; protected $ansa_desc = 'ansa™ Промо: името на кутията от поръчката';
+}
+class Ansa_Promo_FKA_Book_Url extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'book_url'; protected $ansa_desc = 'ansa™ Промо: линкът към книгата с рецепти (/kniga — телефон + имейл от поръчката; празно, ако поръчката няма книга)';
 }

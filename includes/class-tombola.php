@@ -138,6 +138,7 @@ final class Tombola {
 			. '.ansa-tb__link{display:flex;gap:6px;align-items:center}.ansa-tb__link input{flex:1;min-width:0;font:inherit;font-size:13.5px;font-weight:800;padding:11px 12px;border:1.5px solid rgba(232,114,42,.35);border-radius:12px;background:#fff;color:#1a1a2e}.ansa-tb__link button,.ansa-tb__share{font:inherit;font-size:14px;font-weight:900;border:none;border-radius:12px;padding:11px 14px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ef8c4f,#e8722a 50%,#e56b50);white-space:nowrap}.ansa-tb__share{width:100%;margin-top:8px;min-height:44px}'
 			. '.ansa-tb__again{display:block;margin:16px auto 0;background:none;border:none;font:inherit;font-size:13.5px;font-weight:800;color:#a88a75;text-decoration:underline;cursor:pointer}'
 			. '.ansa-tb__toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:999999;background:#3bb273;color:#fff;font:700 14px/1.45 Nunito,sans-serif;padding:12px 20px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:min(560px,92vw);text-align:center}'
+			. '.ansa-tb__book{margin-top:10px;background:#fff8f1;border-color:#f3cdb8}.ansa-tb__book a{color:#e8722a;font-weight:900}.ansa-tb__demo{margin:12px 0 0!important;font-size:12.5px!important;font-weight:800!important;color:#7a6a62!important;background:#fff8f1;border:1px dashed #f3cdb8;border-radius:12px;padding:8px 10px}'
 			. '@media (max-width:480px){.ansa-tb__card{--tbx:16px;--tbb:22px;padding:22px var(--tbx) var(--tbb);border-radius:18px}.ansa-tb__ref{border-radius:0 0 18px 18px}.ansa-tb h1{font-size:23px}.ansa-tb__ok .big{font-size:40px}}</style>';
 	}
 	private static function js() {
@@ -313,6 +314,8 @@ final class Tombola {
 		if ( Leads::rate_limited( 'tombola', 8 ) ) { $err( 'rate', 429 ); }
 		$email = sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ); $phone = sanitize_text_field( (string) wp_unslash( $_POST['phone'] ?? '' ) );
 		if ( ! is_email( $email ) || strlen( self::norm_phone( $phone ) ) < 7 ) { $err( 'input' ); }
+		/* 1.9.0: демо данни (🧰 Инструменти) → примерен резултат, без DB и без активиране */
+		if ( Book::is_demo( $cfg, $email, $phone ) ) { $r = self::demo_result( $cfg ); wp_send_json_success( array( 'html' => self::result_html( $r, $cfg ), 'tickets' => $r['total'], 'orders' => 1, 'demo' => true ) ); }
 		$r = self::lookup( $email, $phone, $cfg );
 		if ( empty( $r['ok'] ) ) { $err( $r['code'] ); }
 		wp_send_json_success( array( 'html' => self::result_html( $r, $cfg ), 'tickets' => $r['total'], 'orders' => count( $r['orders'] ) ) );
@@ -346,13 +349,20 @@ final class Tombola {
 			$code = self::ensure_ref_code( $row ); $row['ref_code'] = $code;
 			$bonus = self::recompute_bonus( $o->get_id(), $cfg ); $refs = count( self::referrals( $code, 'credited' ) ); if ( $t['ref_max'] > 0 ) { $refs = min( $refs, (int) $t['ref_max'] ); }
 			$box = Config::box( $cfg, (string) $row['box'] );
-			$out['orders'][] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'box' => $box ? $box['name'] : (string) $row['box'], 'box_ic' => $box ? $box['ic'] : '', 'tickets' => (int) $row['tickets'], 'allowance' => (int) ( $m['tickets']['allowance'] ?? 0 ), 'partner' => ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0, 'gift' => (int) ( $m['tickets']['ref_bonus'] ?? 0 ), 'bonus' => $bonus, 'refs' => $refs, 'code' => Tickets::pretty( $row['code'] ), 'ref_code' => $code );
+			$out['orders'][] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'box' => $box ? $box['name'] : (string) $row['box'], 'box_ic' => $box ? $box['ic'] : '', 'tickets' => (int) $row['tickets'], 'allowance' => (int) ( $m['tickets']['allowance'] ?? 0 ), 'partner' => ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0, 'gift' => (int) ( $m['tickets']['ref_bonus'] ?? 0 ), 'bonus' => $bonus, 'refs' => $refs, 'code' => Tickets::pretty( $row['code'] ), 'ref_code' => $code, 'book' => ! empty( $m['book'] ) );
 			$out['total'] += (int) $row['tickets'] + $bonus; $out['refs'] += $refs; $out['ref_bonus'] += $bonus;
 			if ( '' === $out['ref_code'] && $code ) { $out['ref_code'] = $code; $out['ref_link'] = self::ref_link( $code, $cfg ); }
 			if ( ! empty( $m['cosm'] ) && 'reserved' === ( $m['cosm']['status'] ?? '' ) ) { $out['voucher'][] = array( 'order' => $o->get_order_number(), 'pay' => (float) $m['cosm']['pay'], 'code' => (string) $o->get_meta( '_ansa_promo_voucher' ) ); }
 		}
 		if ( ! $out['orders'] ) { return array( 'ok' => false, 'code' => 'notfound' ); }
 		return $out;
+	}
+	/** 1.9.0: демо резултат за demo.phone / demo.email (Book::is_demo) — примерна голяма кутия, без DB и без активиране. */
+	public static function demo_result( $cfg ) {
+		$box = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][0]; $t = $cfg['tombola']; $n = (int) $box['tickets']; $bonus = $n * max( 0, (int) $t['ref_mult'] - 1 );
+		$o = array( 'id' => 0, 'number' => '12345', 'box' => $box['name'], 'box_ic' => $box['ic'], 'tickets' => $n, 'allowance' => $n, 'partner' => 0, 'gift' => 0, 'bonus' => $bonus, 'refs' => $bonus > 0 ? 1 : 0, 'code' => 'DEMO-DEMO-DEMO', 'ref_code' => 'DEMO0000', 'book' => in_array( 'book', (array) $box['rw'], true ) );
+		$vou = null !== $box['cosm_pay'] ? array( array( 'order' => '12345', 'pay' => (float) $box['cosm_pay'], 'code' => 'VDEMO123' ) ) : array();
+		return array( 'ok' => true, 'demo' => true, 'total' => $n + $bonus, 'orders' => array( $o ), 'voucher' => $vou, 'ref_code' => 'DEMO0000', 'ref_link' => self::ref_link( 'DEMO0000', $cfg ), 'refs' => $o['refs'], 'ref_bonus' => $bonus, 'email' => (string) ( $cfg['demo']['email'] ?? '' ) );
 	}
 	/** „Честито!“ — HTML на резултата. */
 	public static function result_html( $r, $cfg ) {
@@ -369,6 +379,9 @@ final class Tombola {
 			if ( $o['bonus'] > 0 ) { $h .= '<li><i>💞</i> ' . wp_kses_post( self::copy( $cfg, 'tb.ok.refs', array_merge( $v, array( 'bonus' => $o['bonus'], 'bonus_bileta' => $bil( $o['bonus'] ), 'n' => $o['refs'], 'n_word' => 1 === (int) $o['refs'] ? 'близък човек' : 'близки хора' ) ) ) ) . '</li>'; }
 		}
 		$h .= '</ul></details>';
+		/* 1.9.0: книгата с рецепти — линк към /kniga, ако някоя от поръчките я носи и страницата е включена с качен PDF */
+		if ( Book::ready( $cfg ) && array_filter( array_column( $r['orders'], 'book' ) ) ) { $bu = Book::url( $cfg ); $h .= '<div class="ansa-tb__vou ansa-tb__book">' . wp_kses_post( self::copy( $cfg, 'tb.book', array_merge( $v, array( 'book_url' => esc_url( $bu ), 'book_page' => preg_replace( '#^https?://#', '', untrailingslashit( $bu ) ) ) ) ) ) . '</div>'; }
+		if ( ! empty( $r['demo'] ) ) { $h .= '<p class="ansa-tb__demo">' . wp_kses_post( self::copy( $cfg, 'tb.demo', $v ) ) . '</p>'; }
 		if ( $r['voucher'] ) {
 			$codes = implode( ', ', array_filter( array_map( function ( $x ) { return $x['code']; }, $r['voucher'] ) ) );
 			$h .= '<details class="ansa-tb__sec"><summary><b>' . wp_kses_post( self::copy( $cfg, 'tb.sec.voucher', $v ) ) . '</b><small>' . esc_html( $codes ) . '</small><i>▾</i></summary><div>';
