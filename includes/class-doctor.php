@@ -99,7 +99,7 @@ final class Doctor {
 		$rw_ok = array( 'tix', 'tix3', 'tix5', 'ship', 'book', 'cosm50', 'cosm1' );
 		foreach ( $cfg['boxes'] as $b ) {
 			$e = array(); if ( (int) $b['packs'] < 1 ) { $e[] = 'packs < 1'; } if ( (float) $b['pct'] <= 0 || (float) $b['pct'] >= 100 ) { $e[] = 'pct извън (0,100)'; } foreach ( $b['rw'] as $r ) { if ( ! in_array( $r, $rw_ok, true ) ) { $e[] = 'непозната награда ' . $r; } } if ( ( in_array( 'cosm1', $b['rw'], true ) || in_array( 'cosm50', $b['rw'], true ) ) && null === $b['cosm_pay'] ) { $e[] = 'има сет без cosm_pay'; }
-			$c( 'box_' . $b['id'], $e ? 'bad' : 'ok', $b['ic'] . ' ' . $b['name'] . ': ' . $b['packs'] . ' опак. · −' . $b['pct'] . '% · ' . $b['tickets'] . ' билета · ' . implode( '+', $b['rw'] ) . ( $e ? ' — ' . implode( '; ', $e ) : '' ) );
+			$c( 'box_' . $b['id'], $e ? 'bad' : 'ok', $b['ic'] . ' ' . $b['name'] . ': ' . $b['packs'] . ' опак.' . ( ! empty( $b['grow'] ) ? '+ (расте, +' . (int) $b['tix_extra'] . ' билет/опаковка)' : '' ) . ' · −' . $b['pct'] . '% · ' . $b['tickets'] . ' билета · ' . implode( '+', $b['rw'] ) . ( $e ? ' — ' . implode( '; ', $e ) : '' ) );
 		}
 		/* 4–5. книга и сет */
 		$needs_book = (bool) array_filter( $cfg['boxes'], function ( $b ) { return in_array( 'book', $b['rw'], true ); } ); $bp = ! empty( $cfg['rewards']['book']['product_id'] ) && function_exists( 'wc_get_product' ) ? wc_get_product( (int) $cfg['rewards']['book']['product_id'] ) : null;
