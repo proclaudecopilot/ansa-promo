@@ -1,0 +1,66 @@
+<?php
+/**
+ * ansa™ Промо 1.8.2 — merge tag класовете за FunnelKit Automations ({{ansa_promo_tickets}}, {{ansa_promo_bileta}},
+ * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
+ * gate-ът е потвърдил, че BWFAN_Merge_Tag е съвместим. Глобален namespace — FKA класовете са глобални.
+ * Логиката е в Merge::shortcode(); тук е само обвивката, която FKA очаква (tag_name, parse_shortcode, dummy preview).
+ *
+ * @package AnsaPromo
+ * @since 1.8.2
+ */
+defined( 'ABSPATH' ) || exit;
+
+if ( ! class_exists( 'BWFAN_Merge_Tag' ) || class_exists( 'Ansa_Promo_FKA_Tag' ) ) { return; }
+
+abstract class Ansa_Promo_FKA_Tag extends BWFAN_Merge_Tag {
+	public $tag_name         = '';
+	public $tag_description  = '';
+	public $support_fallback = true;
+	public $priority         = 90;
+	/** Ключът в AnsaPromo\Merge::TAGS (tickets / bileta / tickets_text / box). */
+	protected $ansa_key  = '';
+	protected $ansa_desc = '';
+	private static $instances = array();
+
+	public static function get_instance() {
+		$c = static::class;
+		if ( ! isset( self::$instances[ $c ] ) ) { self::$instances[ $c ] = new $c(); }
+		return self::$instances[ $c ];
+	}
+	public function __construct() {
+		$this->tag_name        = 'ansa_promo_' . $this->ansa_key;
+		$this->tag_description = $this->ansa_desc;
+		/* FKA превръща {{tag}} в [bwfan_tag] и пуска do_shortcode — шорткодът е това, което реално работи */
+		add_shortcode( 'bwfan_' . $this->tag_name, array( $this, 'parse_shortcode' ) );
+	}
+	public function parse_shortcode( $attr = array(), $content = '' ) {
+		$attr = is_array( $attr ) ? $attr : array();
+		$value = AnsaPromo\Merge::shortcode( $this->ansa_key, $attr );
+		if ( method_exists( $this, 'parse_shortcode_output' ) ) { try { return $this->parse_shortcode_output( $value, $attr ); } catch ( \Throwable $e ) { /* fallback-ът е вече приложен в Merge::shortcode */ } }
+		return $value;
+	}
+	public function get_dummy_preview( $attr = array(), $extra = '' ) { return AnsaPromo\Merge::dummy( $this->ansa_key ); }
+	public function get_setting_schema( $attr = array(), $extra = '' ) {
+		$p = get_parent_class( $this );
+		if ( $p && method_exists( $p, 'get_setting_schema' ) && ! ( new ReflectionMethod( $p, 'get_setting_schema' ) )->isAbstract() ) { return parent::get_setting_schema( $attr, $extra ); }
+		return array();
+	}
+	public function get_view( $attr = array(), $extra = '' ) {
+		$p = get_parent_class( $this );
+		if ( $p && method_exists( $p, 'get_view' ) && ! ( new ReflectionMethod( $p, 'get_view' ) )->isAbstract() ) { return parent::get_view( $attr, $extra ); }
+		return '';
+	}
+}
+
+class Ansa_Promo_FKA_Tickets extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'tickets'; protected $ansa_desc = 'ansa™ Промо: брой билети за томболата (0 извън играта)';
+}
+class Ansa_Promo_FKA_Bileta extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bileta'; protected $ansa_desc = 'ansa™ Промо: „билет“ / „билета“ според броя';
+}
+class Ansa_Promo_FKA_Tickets_Text extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'tickets_text'; protected $ansa_desc = 'ansa™ Промо: „Имаш X билета. Ще се активират, щом вземеш пратката си.“ (празно извън играта)';
+}
+class Ansa_Promo_FKA_Box extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'box'; protected $ansa_desc = 'ansa™ Промо: името на кутията от поръчката';
+}
