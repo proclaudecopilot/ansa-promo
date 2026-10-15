@@ -40,15 +40,19 @@ abstract class Ansa_Promo_FKA_Tag extends BWFAN_Merge_Tag {
 		return $value;
 	}
 	public function get_dummy_preview( $attr = array(), $extra = '' ) { return AnsaPromo\Merge::dummy( $this->ansa_key ); }
+	/** 1.8.7: parent:: тук е BWFAN_Merge_Tag (не нашата обвивка) — проверява се ТОЙ; ако няма такъв метод, връщаме празна схема (без полета). */
 	public function get_setting_schema( $attr = array(), $extra = '' ) {
-		$p = get_parent_class( $this );
-		if ( $p && method_exists( $p, 'get_setting_schema' ) && ! ( new ReflectionMethod( $p, 'get_setting_schema' ) )->isAbstract() ) { return parent::get_setting_schema( $attr, $extra ); }
+		if ( self::parent_has( 'get_setting_schema' ) ) { try { return parent::get_setting_schema( $attr, $extra ); } catch ( \Throwable $e ) {} }
 		return array();
 	}
 	public function get_view( $attr = array(), $extra = '' ) {
-		$p = get_parent_class( $this );
-		if ( $p && method_exists( $p, 'get_view' ) && ! ( new ReflectionMethod( $p, 'get_view' ) )->isAbstract() ) { return parent::get_view( $attr, $extra ); }
+		if ( self::parent_has( 'get_view' ) ) { try { return parent::get_view( $attr, $extra ); } catch ( \Throwable $e ) {} }
 		return '';
+	}
+	/** Има ли BWFAN_Merge_Tag (родителят на обвивката) реален, неабстрактен метод с това име. */
+	protected static function parent_has( $method ) {
+		$p = get_parent_class( 'Ansa_Promo_FKA_Tag' ); if ( ! $p || ! method_exists( $p, $method ) ) { return false; }
+		try { return ! ( new ReflectionMethod( $p, $method ) )->isAbstract(); } catch ( \Throwable $e ) { return false; }
 	}
 }
 
