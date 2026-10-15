@@ -60,12 +60,12 @@ final class Config {
 			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
 			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
 			/* v1.9.0: книгата с рецепти — страницата /kniga (class-book.php): телефон + имейл от поръчката → PDF. file = относителен път в
-			   {uploads}/ansa-promo-book/ (качва се от 🧰 Инструменти), url = външен линк (алтернатива), statuses = при кои статуси поръчката
-			   отключва книгата, remember = колко дни браузърът я помни (подписана бисквитка) */
-			'book'      => array( 'enabled' => true, 'slug' => 'kniga', 'file' => '', 'url' => '', 'statuses' => array( 'processing', 'completed', 'delivered' ), 'remember' => 365 ),
+			   {uploads}/ansa-promo-book/ (качва се от 🧰 Инструменти), url = външен линк (алтернатива), remember = колко дни браузърът я помни
+			   (подписана бисквитка); отключва се при „получена“ поръчка = tombola.statuses */
+			'book'      => array( 'enabled' => true, 'slug' => 'kniga', 'file' => '', 'url' => '', 'remember' => 365 ), /* статусите са общите „получена“ — tombola.statuses */
 			/* v1.9.0: демо данни — телефон + имейл, които отварят /kniga и формата на томболата без поръчка (за екипа/админа); празно = изключено */
 			'demo'      => array( 'phone' => '0888000000', 'email' => 'demo@ansa.bg' ),
-			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'completed', 'delivered' ), 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
+			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'delivered' ), /* 1.9.0: САМО Delivered — „Изпълнена“ не брои (томбола · ваучер за сета · книга) */ 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
 			'preview'   => array( 'enabled' => true, 'password' => 'SD(A0%as09' ),
@@ -92,6 +92,21 @@ final class Config {
 		}
 		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
 		update_option( 'ansa_promo_rw_v2', $changed ? 'migrated' : 'noop', false );
+	}
+
+	/** v1.9.0: „получена“ поръчка е САМО Delivered (решение на човека: „Изпълнена“ не върши работа — само Delivered поръчки ползват
+	 *  сет, книга, томбола). Еднократно: tombola.statuses, ако още е старият дефолт (completed + delivered), става [delivered] в черновата
+	 *  и публикуваното; ръчно сменен списък не се пипа. */
+	public static function maybe_migrate_delivered() {
+		if ( get_option( 'ansa_promo_delivered_v1' ) ) { return; }
+		$s = self::read_store(); $changed = false;
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['tombola'] ) || ! is_array( $s[ $slot ]['tombola'] ) ) { continue; }
+			$st = array_values( array_map( 'strval', (array) ( $s[ $slot ]['tombola']['statuses'] ?? array() ) ) ); sort( $st );
+			if ( array( 'completed', 'delivered' ) === $st ) { $s[ $slot ]['tombola']['statuses'] = array( 'delivered' ); $changed = true; }
+		}
+		if ( $changed ) { self::write_store( $s ); }
+		update_option( 'ansa_promo_delivered_v1', $changed ? 'migrated' : 'noop', false );
 	}
 
 	/** v1.0.24: промото се казва „Сезонът на ansa™“ — старото име по подразбиране („ansa™ Розово Тримесечие“) се пренаписва еднократно
@@ -266,8 +281,7 @@ final class Config {
 		/* v1.9.0: книга + демо данни */
 		$bk = is_array( $out['book'] ?? null ) ? $out['book'] : array(); $out['book'] = self::merge( $d['book'], $bk );
 		$out['book']['enabled'] = ! empty( $out['book']['enabled'] ); $out['book']['slug'] = sanitize_title( (string) $out['book']['slug'] ) ?: 'kniga'; $out['book']['file'] = str_replace( '..', '', trim( (string) $out['book']['file'] ) ); $out['book']['url'] = esc_url_raw( (string) $out['book']['url'] ); $out['book']['remember'] = max( 1, min( 3650, (int) $out['book']['remember'] ) );
-		$bs = is_array( $out['book']['statuses'] ) ? $out['book']['statuses'] : preg_split( '/[\s,]+/', (string) $out['book']['statuses'] );
-		$out['book']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $bs ) ) ) ) ?: $d['book']['statuses'];
+		unset( $out['book']['statuses'] ); /* общите „получена“ статуси са tombola.statuses */
 		$dm = is_array( $out['demo'] ?? null ) ? $out['demo'] : array(); $out['demo'] = self::merge( $d['demo'], $dm ); $out['demo']['phone'] = sanitize_text_field( (string) $out['demo']['phone'] ); $out['demo']['email'] = sanitize_email( (string) $out['demo']['email'] );
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );

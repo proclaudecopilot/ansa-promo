@@ -8,8 +8,8 @@
  *    все пак е сервирал формата, JS-ът вижда бисквитката и пита ajax (mode=check) → показва книгата без въвеждане.
  *  - Достъп: телефон + имейл от поръчката → ajax ansa_promo_book (rate limit 10/мин/IP, без nonce — страницата може да е кеширана).
  *    Съвпадение: поръчки с този billing имейл, чийто телефон (Tombola::same_phone) е същият, и които носят книгата — промо поръчка с
- *    _ansa_promo.book (средна/голяма кутия) ИЛИ ред с WC продукта на книгата (rewards.book.product_id). Статусът трябва да е сред
- *    book.statuses (по подразбиране processing + completed + delivered); иначе „още се обработва“. Имейл без съвпадащ телефон = „не
+ *    _ansa_promo.book (средна/голяма кутия) ИЛИ ред с WC продукта на книгата (rewards.book.product_id). Поръчката трябва да е
+ *    „получена“ (tombola.statuses — САМО delivered; „Изпълнена“ не брои), иначе „пратката още пътува“. Имейл без съвпадащ телефон = „не
  *    намираме“ (нищо не се издава на половин съвпадение).
  *  - Помни: подписана бисквитка ansa_promo_book (HMAC през wp_hash, book.remember дни, по подразбиране 365) + localStorage с телефона
  *    и имейла за предварително попълване. „Забрави този браузър“ трие и двете.
@@ -162,17 +162,17 @@ final class Book {
 	}
 	/**
 	 * Без HTTP: поръчките с този имейл и телефон, които носят книгата → [ok, customer, orders[{id, number, status}]] или [ok=false, code].
-	 * code: notfound (нищо с този телефон+имейл) · nobook (има поръчка, но без книга) · notyet (с книга, но статусът не е сред book.statuses).
+	 * code: notfound (нищо с този телефон+имейл) · nobook (има поръчка, но без книга) · notyet (с книга, но още не е „получена“ — tombola.statuses).
 	 */
 	public static function lookup( $email, $phone, $cfg = null ) {
-		$cfg = $cfg ?: Config::get_published(); $b = $cfg['book'];
+		$cfg = $cfg ?: Config::get_published();
 		if ( ! function_exists( 'wc_get_orders' ) ) { return array( 'ok' => false, 'code' => 'off' ); }
 		$match = array();
 		foreach ( Tombola::orders_by_email( $email ) as $o ) { if ( Tombola::same_phone( $o->get_billing_phone(), $phone ) || Tombola::same_phone( $o->get_shipping_phone(), $phone ) ) { $match[] = $o; } }
 		if ( ! $match ) { return array( 'ok' => false, 'code' => 'notfound' ); }
 		$with = array_values( array_filter( $match, function ( $o ) use ( $cfg ) { return self::order_has_book( $o, $cfg ); } ) );
 		if ( ! $with ) { return array( 'ok' => false, 'code' => 'nobook' ); }
-		$ok = array_values( array_filter( $with, function ( $o ) use ( $b ) { return in_array( $o->get_status(), (array) $b['statuses'], true ); } ) );
+		$ok = array_values( array_filter( $with, function ( $o ) use ( $cfg ) { return Tombola::delivered( $o, $cfg ); } ) ); /* „получена“ = tombola.statuses (само Delivered) */
 		if ( ! $ok ) {
 			$alive = array_filter( $with, function ( $o ) { return ! in_array( $o->get_status(), array( 'cancelled', 'refunded', 'failed', 'trash' ), true ); } );
 			return array( 'ok' => false, 'code' => $alive ? 'notyet' : 'notfound' );
@@ -197,7 +197,7 @@ final class Book {
 			$phone_ok = '' !== Tombola::norm_phone( $phone ) && ( Tombola::same_phone( $bp, $phone ) || Tombola::same_phone( $sp, $phone ) );
 			if ( ! $phone_ok ) { $why[] = 'телефонът не съвпада: в поръчката „' . $bp . '“' . ( $sp && $sp !== $bp ? ' / „' . $sp . '“' : '' ) . ', въведен „' . $phone . '“'; }
 			if ( ! self::order_has_book( $o, $cfg ) ) { $why[] = 'поръчката не носи книгата (няма _ansa_promo.book и няма ред с продукт #' . (int) $cfg['rewards']['book']['product_id'] . ')'; }
-			if ( ! in_array( $o->get_status(), (array) $cfg['book']['statuses'], true ) ) { $why[] = 'статусът „' . $o->get_status() . '“ не е сред (' . implode( ', ', (array) $cfg['book']['statuses'] ) . ')'; }
+			if ( ! Tombola::delivered( $o, $cfg ) ) { $why[] = 'статусът „' . $o->get_status() . '“ не е „получена“ (' . implode( ', ', (array) $cfg['tombola']['statuses'] ) . ')'; }
 			$rows[] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'status' => $o->get_status(), 'ok' => ! $why, 'why' => $why, 'edit' => $o->get_edit_order_url() );
 		}
 		return array( 'orders' => $rows, 'result' => self::lookup( $email, $phone, $cfg ) );

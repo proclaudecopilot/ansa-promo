@@ -37,6 +37,7 @@ final class Plugin {
 		Config::maybe_migrate_cat();
 		Config::maybe_migrate_pct();
 		Config::maybe_migrate_wctext();
+		Config::maybe_migrate_delivered(); /* 1.9.0: „получена“ = само Delivered */
 		Catalog::register();
 		Frontend::register();
 		Leads::register();

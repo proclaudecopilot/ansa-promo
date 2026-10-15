@@ -35,7 +35,7 @@ final class Probe {
 	   ?email=&phone= → диагностика с истински данни (без бисквитка, нищо не се записва). ── */
 	public static function suite_book( $t, $params ) {
 		$pub = Config::get_published(); $bk = $pub['book']; $bi = Book::file_info( $pub );
-		$t->ok( 'страницата е включена', Book::enabled( $pub ), 'slug=' . $bk['slug'] . ' · statuses=' . implode( ',', (array) $bk['statuses'] ) . ' · remember ' . (int) $bk['remember'] . ' дни' );
+		$t->ok( 'страницата е включена', Book::enabled( $pub ), 'slug=' . $bk['slug'] . ' · получена=' . implode( ',', (array) $pub['tombola']['statuses'] ) . ' · remember ' . (int) $bk['remember'] . ' дни' );
 		$t->ok( 'има PDF (качен файл или линк)', '' !== $bi['source'], 'file' === $bi['source'] ? $bi['name'] . ' · ' . $bi['size'] . ' · ' . $bi['mtime'] : ( 'url' === $bi['source'] ? $bi['url'] : 'НЯМА — 🧰 Инструменти → 📖 Книга' ) );
 		$url = Book::url( $pub ); $t->note( 'url', $url . ' · pdf: ' . Book::pdf_url( $pub ) );
 		$hd = array( 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' );
@@ -369,12 +369,16 @@ final class Probe {
 		$t->eq( 'редът е activated', 'activated', Tickets::for_order( $oid )['status'] );
 		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/order/' . $oid . '/qr.svg' ); $req->set_param( 'key', 'wrong' ); $res = rest_do_request( $req ); $t->ok( 'QR с грешен key → 401/403', in_array( $res->get_status(), array( 401, 403 ), true ), (string) $res->get_status() );
 		$t->ok( 'QR auth с подписан key', true === Tickets::qr_auth( ( function () use ( $oid ) { $q = new \WP_REST_Request( 'GET', '/' ); $q['id'] = $oid; $q->set_param( 'key', Tickets::qr_key( $oid ) ); return $q; } )() ) );
-		/* completed → имейли */
+		/* „получена“ (tombola.statuses, 1.9.0: само delivered) → имейли; „Изпълнена“ НЕ праща нищо */
 		$o = wc_get_order( $oid ); $o->update_status( 'completed', 'probe' ); $o = wc_get_order( $oid );
+		$t->ok( 'completed НЕ праща ваучер/книга', 'voucher_sent' !== $o->get_meta( '_ansa_promo_cosm_status' ) && ! $o->get_meta( '_ansa_promo_book_sent' ), 'cosm=' . $o->get_meta( '_ansa_promo_cosm_status' ) . ' book=' . $o->get_meta( '_ansa_promo_book_sent' ) );
+		$wcst = array_map( function ( $s ) { return preg_replace( '/^wc-/', '', $s ); }, array_keys( wc_get_order_statuses() ) ); $dst = ''; foreach ( (array) $cfg['tombola']['statuses'] as $s ) { if ( in_array( $s, $wcst, true ) ) { $dst = $s; break; } }
+		$t->ok( 'статусът „получена“ съществува в WC', '' !== $dst, implode( ', ', (array) $cfg['tombola']['statuses'] ) . ' · WC: ' . implode( ', ', $wcst ) );
+		if ( $dst ) { $o->update_status( $dst, 'probe' ); $o = wc_get_order( $oid ); }
 		$subjects = array_map( function ( $x ) { return $x['subject']; }, $mails );
-		if ( null !== $box['cosm_pay'] ) { $t->ok( 'completed → ваучер по имейл', 'voucher_sent' === $o->get_meta( '_ansa_promo_cosm_status' ) && (bool) array_filter( $subjects, function ( $s ) { return false !== mb_stripos( $s, 'ваучер' ); } ), 'cosm_status=' . $o->get_meta( '_ansa_promo_cosm_status' ) . ' · имейли: ' . implode( ' | ', $subjects ) ); }
-		else { $t->note( 'completed → ваучер', 'кутията няма сет' ); }
-		$t->note( 'completed → книга', (string) $o->get_meta( '_ansa_promo_book_sent' ) ?: ( ! empty( $m['book'] ) ? 'не е изпратена (няма rewards.book.url и продуктът не е downloadable)' : 'кутията няма книга' ) );
+		if ( null !== $box['cosm_pay'] ) { $t->ok( 'получена (' . $dst . ') → ваучер по имейл', 'voucher_sent' === $o->get_meta( '_ansa_promo_cosm_status' ) && (bool) array_filter( $subjects, function ( $s ) { return false !== mb_stripos( $s, 'ваучер' ); } ), 'cosm_status=' . $o->get_meta( '_ansa_promo_cosm_status' ) . ' · имейли: ' . implode( ' | ', $subjects ) ); }
+		else { $t->note( 'получена → ваучер', 'кутията няма сет' ); }
+		$t->note( 'получена → книга', (string) $o->get_meta( '_ansa_promo_book_sent' ) ?: ( ! empty( $m['book'] ) ? 'не е изпратена (няма rewards.book.url и продуктът не е downloadable)' : 'кутията няма книга' ) );
 		$t->note( 'имейли общо (WC + промо)', count( $mails ) . ': ' . implode( ' | ', $subjects ) );
 		/* cancel → void → processing → issued */
 		$o->update_status( 'cancelled', 'probe' ); $t->eq( 'cancelled → void', 'void', Tickets::for_order( $oid )['status'] );

@@ -10,7 +10,7 @@
  *    е и в order meta `_ansa_promo_qr_url`, за да го печата плъгинът за опаковъчния лист. Бележка към поръчката с кода.
  *  - Портал: GET /ansa-promo/v1/ticket/{code} → {valid,count,box,status,activated}; POST …/activate {email|phone} →
  *    activated (веднъж), hook ansa_promo_ticket_activated. Rate limit 30/мин/IP. CORS за origin-а на портала.
- *  - completed: ваучер за сета (ако е запазен; `_ansa_promo_cosm_status = voucher_sent`, код `_ansa_promo_voucher`) и книгата
+ *  - „получена“ поръчка (tombola.statuses, 1.9.0: САМО delivered — „Изпълнена“ не брои): ваучер за сета (ако е запазен; `_ansa_promo_cosm_status = voucher_sent`, код `_ansa_promo_voucher`) и книгата
  *    (ако кутията я има и има линк — 1.9.0: страницата /kniga (Book::link) или rewards.book.url — а WC не я дава като download);
  *    по избор имейл с билетите (tickets.email).
  *  - cancelled/refunded → void; връщане към processing → issued. Дневен крон: void за отменени поръчки (застраховка).
@@ -30,7 +30,7 @@ final class Tickets {
 
 	public static function register() {
 		foreach ( array( 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_paid' ), 20 ); }
-		add_action( 'woocommerce_order_status_completed', array( __CLASS__, 'on_completed' ), 30 );
+		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 30, 3 ); /* 1.9.0: ваучер + книга при „получена“ (tombola.statuses = Delivered), НЕ при „Изпълнена“ */
 		foreach ( array( 'cancelled', 'refunded' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_void' ), 20 ); }
 		add_action( 'woocommerce_before_delete_order', array( __CLASS__, 'on_delete' ) );
 		add_action( 'before_delete_post', array( __CLASS__, 'on_delete' ) );
@@ -132,8 +132,14 @@ final class Tickets {
 		foreach ( (array) $ids as $oid ) { $o = wc_get_order( (int) $oid ); if ( $o && in_array( $o->get_status(), array( 'cancelled', 'refunded', 'trash' ), true ) ) { self::on_void( (int) $oid ); } }
 	}
 
-	/* ── completed: ваучер + книга ── */
-	public static function on_completed( $order_id ) {
+	/* ── „получена“ поръчка (tombola.statuses, по подразбиране само delivered): ваучер + книга ── */
+	public static function on_status_changed( $order_id, $from = '', $to = '' ) {
+		$order = wc_get_order( $order_id ); if ( ! $order || ! Tombola::delivered( $order ) ) { return; }
+		self::on_delivered( $order_id );
+	}
+	/** @deprecated 1.9.0 — името остава за външни извиквания; логиката е on_delivered(). */
+	public static function on_completed( $order_id ) { self::on_delivered( $order_id ); }
+	public static function on_delivered( $order_id ) {
 		$order = wc_get_order( $order_id ); if ( ! $order ) { return; }
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return; }
 		$cfg = Config::get_published();
@@ -144,7 +150,7 @@ final class Tickets {
 		if ( ! empty( $m['book'] ) && ! $order->get_meta( '_ansa_promo_book_sent' ) ) {
 			$bp = ! empty( $m['book']['product_id'] ) ? wc_get_product( (int) $m['book']['product_id'] ) : null;
 			$wc_gives = $bp && $bp->is_downloadable() && $bp->get_downloads();
-			if ( ! $wc_gives && '' !== Book::link( $cfg ) && self::send( $order, 'book' ) ) { $order->update_meta_data( '_ansa_promo_book_sent', current_time( 'mysql' ) ); $order->add_order_note( 'ansa™ Промо: линкът към книгата е изпратен.' ); }
+			if ( ! $wc_gives && '' !== Book::link( $cfg ) && self::send( $order, 'book' ) ) { $order->update_meta_data( '_ansa_promo_book_sent', current_time( 'mysql' ) ); $order->add_order_note( 'ansa™ Промо: линкът към книгата е изпратен (поръчката е получена).' ); }
 			elseif ( $wc_gives ) { $order->update_meta_data( '_ansa_promo_book_sent', 'wc-download' ); }
 		}
 		$order->save();
