@@ -11,7 +11,8 @@
  *  - Портал: GET /ansa-promo/v1/ticket/{code} → {valid,count,box,status,activated}; POST …/activate {email|phone} →
  *    activated (веднъж), hook ansa_promo_ticket_activated. Rate limit 30/мин/IP. CORS за origin-а на портала.
  *  - completed: ваучер за сета (ако е запазен; `_ansa_promo_cosm_status = voucher_sent`, код `_ansa_promo_voucher`) и книгата
- *    (ако кутията я има и има rewards.book.url, а WC не я дава като download); по избор имейл с билетите (tickets.email).
+ *    (ако кутията я има и има линк — 1.9.0: страницата /kniga (Book::link) или rewards.book.url — а WC не я дава като download);
+ *    по избор имейл с билетите (tickets.email).
  *  - cancelled/refunded → void; връщане към processing → issued. Дневен крон: void за отменени поръчки (застраховка).
  *
  * @package AnsaPromo
@@ -143,7 +144,7 @@ final class Tickets {
 		if ( ! empty( $m['book'] ) && ! $order->get_meta( '_ansa_promo_book_sent' ) ) {
 			$bp = ! empty( $m['book']['product_id'] ) ? wc_get_product( (int) $m['book']['product_id'] ) : null;
 			$wc_gives = $bp && $bp->is_downloadable() && $bp->get_downloads();
-			if ( ! $wc_gives && ! empty( $cfg['rewards']['book']['url'] ) && self::send( $order, 'book', array( 'book_url' => $cfg['rewards']['book']['url'] ) ) ) { $order->update_meta_data( '_ansa_promo_book_sent', current_time( 'mysql' ) ); $order->add_order_note( 'ansa™ Промо: линкът към книгата е изпратен.' ); }
+			if ( ! $wc_gives && '' !== Book::link( $cfg ) && self::send( $order, 'book' ) ) { $order->update_meta_data( '_ansa_promo_book_sent', current_time( 'mysql' ) ); $order->add_order_note( 'ansa™ Промо: линкът към книгата е изпратен.' ); }
 			elseif ( $wc_gives ) { $order->update_meta_data( '_ansa_promo_book_sent', 'wc-download' ); }
 		}
 		$order->save();
@@ -169,7 +170,7 @@ final class Tickets {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return null; }
 		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $box = Config::box( $cfg, (string) ( $m['box'] ?? '' ) ); if ( ! $box ) { return null; }
 		$v = Cart::vars( $cfg, $box ); $row = self::for_order( $order->get_id() );
-		$v = array_merge( $v, array( 'customer' => $order->get_billing_first_name() ?: $order->get_billing_last_name(), 'order' => $order->get_order_number(), 'code' => $row ? self::pretty( $row['code'] ) : '', 'tickets' => self::count_for_order( $order ), 'voucher' => (string) $order->get_meta( '_ansa_promo_voucher' ), 'book_url' => (string) ( $cfg['rewards']['book']['url'] ?? '' ), 'portal_url' => Merge::portal_url( $cfg ), 'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : '' ), $extra );
+		$v = array_merge( $v, array( 'customer' => $order->get_billing_first_name() ?: $order->get_billing_last_name(), 'order' => $order->get_order_number(), 'code' => $row ? self::pretty( $row['code'] ) : '', 'tickets' => self::count_for_order( $order ), 'voucher' => (string) $order->get_meta( '_ansa_promo_voucher' ), 'book_url' => Book::link( $cfg ), 'book_how' => Book::enabled( $cfg ) ? ' — отваря се с телефона и имейла от поръчката' : '', 'portal_url' => Merge::portal_url( $cfg ), 'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : '' ), $extra );
 		$v['bileta'] = 1 === (int) $v['tickets'] ? 'билет' : 'билета';
 		return array( 'cfg' => $cfg, 'box' => $box, 'vars' => $v );
 	}

@@ -27,7 +27,46 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
 		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
+		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
 		return $s;
+	}
+
+	/* ── book (1.9.0): страницата /kniga, PDF-ът само с бисквитка, токенът, демо данните, проверка с измислени данни (→ notfound).
+	   ?email=&phone= → диагностика с истински данни (без бисквитка, нищо не се записва). ── */
+	public static function suite_book( $t, $params ) {
+		$pub = Config::get_published(); $bk = $pub['book']; $bi = Book::file_info( $pub );
+		$t->ok( 'страницата е включена', Book::enabled( $pub ), 'slug=' . $bk['slug'] . ' · statuses=' . implode( ',', (array) $bk['statuses'] ) . ' · remember ' . (int) $bk['remember'] . ' дни' );
+		$t->ok( 'има PDF (качен файл или линк)', '' !== $bi['source'], 'file' === $bi['source'] ? $bi['name'] . ' · ' . $bi['size'] . ' · ' . $bi['mtime'] : ( 'url' === $bi['source'] ? $bi['url'] : 'НЯМА — 🧰 Инструменти → 📖 Книга' ) );
+		$url = Book::url( $pub ); $t->note( 'url', $url . ' · pdf: ' . Book::pdf_url( $pub ) );
+		$hd = array( 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' );
+		$r = wp_remote_get( $url, array( 'timeout' => 30, 'redirection' => 3, 'sslverify' => false, 'headers' => $hd ) );
+		$code = is_wp_error( $r ) ? 0 : (int) wp_remote_retrieve_response_code( $r ); $body = is_wp_error( $r ) ? '' : (string) wp_remote_retrieve_body( $r );
+		$t->ok( 'страницата отговаря 200', 200 === $code, $code . ( is_wp_error( $r ) ? ' ' . $r->get_error_message() : '' ) );
+		$t->ok( 'има #ansaBook с формата (без бисквитка)', false !== strpos( $body, 'id="ansaBook"' ) && false !== strpos( $body, 'data-state="form"' ), strlen( $body ) . ' B' . ( preg_match( '/data-ver="([^"]+)"/', $body, $mm ) ? ' · data-ver ' . $mm[1] : '' ) );
+		$t->ok( 'без темата (самостоятелен HTML) и noindex', false !== strpos( $body, 'ansa-promo-book-page' ) && false !== strpos( $body, 'noindex' ) );
+		$t->ok( 'не се кешира (Cache-Control no-cache)', false !== stripos( (string) wp_remote_retrieve_header( $r, 'cache-control' ), 'no-cache' ), (string) wp_remote_retrieve_header( $r, 'cache-control' ) );
+		$r2 = wp_remote_get( Book::pdf_url( $pub ), array( 'timeout' => 30, 'redirection' => 0, 'sslverify' => false, 'headers' => $hd ) );
+		$c2 = is_wp_error( $r2 ) ? 0 : (int) wp_remote_retrieve_response_code( $r2 ); $ct = (string) wp_remote_retrieve_header( $r2, 'content-type' );
+		$t->ok( 'PDF-ът без бисквитка НЕ се дава (302 към формата)', 302 === $c2 && false === stripos( $ct, 'pdf' ), $c2 . ' · ' . $ct . ' → ' . (string) wp_remote_retrieve_header( $r2, 'location' ) );
+		/* токен */
+		$tk = Book::token( 'probe@example.invalid', '0888123456', 'Проба', false, $pub ); $vf = Book::verify( $tk['value'] );
+		$t->ok( 'токенът се подписва и проверява', $vf && ! $vf['demo'] && 'Проба' === $vf['name'] && $vf['exp'] > time(), substr( $tk['value'], 0, 24 ) . '… изтича ' . date_i18n( 'd.m.Y', $tk['exp'] ) );
+		$t->ok( 'подправен токен → null', null === Book::verify( substr( $tk['value'], 0, -2 ) . 'zz' ) && null === Book::verify( 'abc' ) );
+		/* демо данни */
+		$dm = $pub['demo']; $t->ok( 'демо данните се разпознават', $dm['phone'] && $dm['email'] ? Book::is_demo( $pub, $dm['email'], $dm['phone'] ) && ! Book::is_demo( $pub, $dm['email'], '0000000001' ) : ! Book::is_demo( $pub, 'x@y.z', '0888000000' ), $dm['phone'] . ' / ' . $dm['email'] );
+		if ( $dm['phone'] && $dm['email'] ) { $html = Tombola::result_html( Tombola::demo_result( $pub ), $pub ); $t->ok( 'томболата: демо резултат', false !== strpos( $html, 'ansa-tb__demo' ) && false === strpos( $html, '{{' ), strlen( $html ) . ' B' ); }
+		/* проверка с измислени данни */
+		$x = Book::lookup( 'probe-' . wp_generate_password( 8, false ) . '@example.invalid', '0888000000', $pub );
+		$t->ok( 'измислени данни → notfound', empty( $x['ok'] ) && 'notfound' === ( $x['code'] ?? '' ), wp_json_encode( $x ) );
+		$h = Book::ready_html( $pub, array( 'via' => 'cookie', 'name' => 'Проба', 'demo' => false ) ); $has_open = false !== strpos( $h, 'ansa-bk__open' );
+		$t->ok( 'HTML „книгата ти е тук“', '' !== $h && $has_open === ( '' !== $bi['source'] ) && false === strpos( $h, '{{' ), strlen( $h ) . ' B' . ( $has_open ? ' · с бутон „Отвори“' : ' · без PDF → „още не е качена“' ) );
+		$t->ok( 'имейлът/merge тагът водят към /kniga', Book::link( $pub ) === ( Book::enabled( $pub ) ? $url : (string) $pub['rewards']['book']['url'] ), Book::link( $pub ) ?: '(празно)' );
+		if ( ! empty( $params['email'] ) ) {
+			$dg = Book::diagnose( (string) $params['email'], (string) ( $params['phone'] ?? '' ), $pub );
+			$t->note( 'диагностика ' . $params['email'], count( $dg['orders'] ) . ' поръчки · резултат: ' . ( ! empty( $dg['result']['ok'] ) ? 'ok · ' . count( $dg['result']['orders'] ) . ' поръчка(и) с книга' : (string) ( $dg['result']['code'] ?? '' ) ) );
+			foreach ( $dg['orders'] as $d ) { $t->note( '  #' . $d['number'] . ' · ' . $d['status'], $d['ok'] ? '✅ отключва книгата' : implode( ' · ', $d['why'] ) ); }
+		}
+		return array( 'url' => $url, 'source' => $bi['source'], 'file' => $bi['name'], 'size' => $bi['size'] );
 	}
 
 	/* ── tombola (1.6.0): страницата {промо}/tombola, нормализация на телефон, проверка с измислени данни (→ notfound), кодове за препоръка.

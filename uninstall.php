@@ -2,7 +2,7 @@
 /**
  * ansa™ Промо — деинсталация (Plugins → Delete).
  *
- * Трие опциите, transient-ите и крона на плъгина. Таблиците (билети, leads, Insights) и order meta-та на поръчките ОСТАВАТ —
+ * Трие опциите, transient-ите и крона на плъгина. Таблиците (билети, leads, Insights), качената книга и order meta-та на поръчките ОСТАВАТ —
  * те са бизнес данни (кой билет на коя поръчка). За пълно изтриване: define( 'ANSA_PROMO_UNINSTALL_DROP', true ) в wp-config.php
  * преди изтриването. proclaudecopilot GitHub Updater (mu-plugin) е общ за плъгините на ansa и не се пипа.
  *
@@ -17,6 +17,9 @@ $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_a
 wp_clear_scheduled_hook( 'ansa_promo_daily' );
 if ( defined( 'ANSA_PROMO_UNINSTALL_DROP' ) && ANSA_PROMO_UNINSTALL_DROP ) {
 	foreach ( array( 'tickets', 'leads', 'stats', 'referrals' ) as $t ) { $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'ansa_promo_' . $t ); }
+	/* 1.9.0: качената книга (uploads/ansa-promo-book/) */
+	$u = wp_upload_dir( null, false ); $bd = rtrim( (string) $u['basedir'], '/' ) . '/ansa-promo-book';
+	if ( is_dir( $bd ) ) { foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $bd, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::CHILD_FIRST ) as $f ) { $f->isDir() ? @rmdir( $f->getPathname() ) : @unlink( $f->getPathname() ); } @rmdir( $bd ); }
 	$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '_ansa_promo%'" );
 	if ( $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}wc_orders_meta'" ) ) { $wpdb->query( "DELETE FROM {$wpdb->prefix}wc_orders_meta WHERE meta_key LIKE '_ansa_promo%'" ); }
 }

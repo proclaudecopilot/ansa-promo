@@ -59,6 +59,12 @@ final class Config {
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
 			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
 			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
+			/* v1.9.0: книгата с рецепти — страницата /kniga (class-book.php): телефон + имейл от поръчката → PDF. file = относителен път в
+			   {uploads}/ansa-promo-book/ (качва се от 🧰 Инструменти), url = външен линк (алтернатива), statuses = при кои статуси поръчката
+			   отключва книгата, remember = колко дни браузърът я помни (подписана бисквитка) */
+			'book'      => array( 'enabled' => true, 'slug' => 'kniga', 'file' => '', 'url' => '', 'statuses' => array( 'processing', 'completed', 'delivered' ), 'remember' => 365 ),
+			/* v1.9.0: демо данни — телефон + имейл, които отварят /kniga и формата на томболата без поръчка (за екипа/админа); празно = изключено */
+			'demo'      => array( 'phone' => '0888000000', 'email' => 'demo@ansa.bg' ),
 			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'completed', 'delivered' ), 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
@@ -257,6 +263,12 @@ final class Config {
 		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];
 		$out['tombola']['ref_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['tombola']['ref_param'] ) ?: 'r'; if ( 'ref' === $out['tombola']['ref_param'] ) { $out['tombola']['ref_param'] = 'r'; } /* ?ref= е на ansa Partner */
 		$out['tombola']['ref_mult'] = max( 1, min( 10, (int) $out['tombola']['ref_mult'] ) ); $out['tombola']['ref_max'] = max( 0, min( 1000, (int) $out['tombola']['ref_max'] ) ); $out['tombola']['ref_gift'] = max( 0, min( 10, (int) $out['tombola']['ref_gift'] ) );
+		/* v1.9.0: книга + демо данни */
+		$bk = is_array( $out['book'] ?? null ) ? $out['book'] : array(); $out['book'] = self::merge( $d['book'], $bk );
+		$out['book']['enabled'] = ! empty( $out['book']['enabled'] ); $out['book']['slug'] = sanitize_title( (string) $out['book']['slug'] ) ?: 'kniga'; $out['book']['file'] = str_replace( '..', '', trim( (string) $out['book']['file'] ) ); $out['book']['url'] = esc_url_raw( (string) $out['book']['url'] ); $out['book']['remember'] = max( 1, min( 3650, (int) $out['book']['remember'] ) );
+		$bs = is_array( $out['book']['statuses'] ) ? $out['book']['statuses'] : preg_split( '/[\s,]+/', (string) $out['book']['statuses'] );
+		$out['book']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $bs ) ) ) ) ?: $d['book']['statuses'];
+		$dm = is_array( $out['demo'] ?? null ) ? $out['demo'] : array(); $out['demo'] = self::merge( $d['demo'], $dm ); $out['demo']['phone'] = sanitize_text_field( (string) $out['demo']['phone'] ); $out['demo']['email'] = sanitize_email( (string) $out['demo']['email'] );
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );

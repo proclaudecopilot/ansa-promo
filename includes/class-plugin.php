@@ -45,6 +45,7 @@ final class Plugin {
 		Insights::register();
 		Partner::register();
 		Tombola::register();
+		Book::register(); /* v1.9.0: книгата с рецепти — /kniga */
 		Info::register(); /* v1.8.0: {промо}/info */
 		Merge::register(); /* v1.8.2: merge tags за имейлите (FunnelKit Automations + шорткодове) */
 		Probe::register();
