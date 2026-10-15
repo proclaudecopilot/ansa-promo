@@ -255,7 +255,7 @@ final class Tickets {
 			$out[] = array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'date' => $o->get_date_created() ? $o->get_date_created()->date_i18n( 'd.m.Y H:i' ) : '', 'status' => $o->get_status(), 'email' => $o->get_billing_email(), 'name' => $o->get_formatted_billing_full_name(), 'total' => $o->get_total(), 'gateway' => $o->get_payment_method(),
 				'box' => (string) ( $m['box'] ?? '' ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'pct' => $m['pct'] ?? '', 'valid' => ! empty( $m['valid'] ), 'allowance' => (int) ( $m['tickets']['allowance'] ?? 0 ), 'partner' => ! empty( $m['tickets']['partner'] ), 'utm' => (string) ( $m['utm'] ?? '' ),
 				'cosm' => $m['cosm'] ? (string) $o->get_meta( '_ansa_promo_cosm_status' ) : '', 'voucher' => (string) $o->get_meta( '_ansa_promo_voucher' ), 'book' => ! empty( $m['book'] ), 'book_sent' => (string) $o->get_meta( '_ansa_promo_book_sent' ),
-				'ref_gift' => (int) ( $m['tickets']['ref_bonus'] ?? 0 ), 'ref_from' => (string) ( $m['tickets']['ref_code'] ?? '' ),
+				'ref_gift' => (int) ( $m['tickets']['ref_bonus'] ?? 0 ), 'ref_from' => (string) ( $m['tickets']['ref_code'] ?? '' ), 'fka_tag' => (string) $o->get_meta( '_ansa_promo_fka_tag' ),
 				'ticket' => $t ? array( 'id' => (int) $t['id'], 'code' => self::pretty( $t['code'] ), 'tickets' => (int) $t['tickets'], 'bonus' => (int) ( $t['bonus'] ?? 0 ), 'ref_code' => (string) ( $t['ref_code'] ?? '' ), 'status' => $t['status'], 'activated_at' => $t['activated_at'], 'portal_user' => $t['portal_user'] ) : null, 'edit' => $o->get_edit_order_url() );
 		}
 		return $out;
