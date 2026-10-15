@@ -17,7 +17,8 @@
  *    данни работят и на формата на томболата (Tombola::ajax_lookup → демо резултат). Влезлият админ (manage_woocommerce) вижда
  *    книгата направо, без форма.
  *  - PDF-ът: качва се от 🧰 Инструменти в {uploads}/ansa-promo-book/{случайна папка}/ (с .htaccess „deny“ + index.html; не е attachment
- *    в Медията, за да няма публичен линк) и се сервира само през {сайт}/kniga/pdf (inline; ?dl=1 = сваляне; Range за iOS Safari)
+ *    в Медията, за да няма публичен линк; голям файл над PHP лимита се качва по FTP в същата папка и се избира от списъка —
+ *    Book::scan()/adopt()) и се сервира само през {сайт}/kniga/pdf (inline; ?dl=1 = сваляне; Range за iOS Safari)
  *    при валидна бисквитка/админ. Алтернатива: book.url — външен линк (тогава /kniga/pdf пренасочва натам; самият линк е публичен).
  *  - Имейлът при „Изпълнена“ (em.book.*) и merge тагът {{ansa_promo_book_url}} водят към /kniga (Book::link), когато страницата е
  *    включена; иначе към стария rewards.book.url.
@@ -211,7 +212,7 @@ final class Book {
 		if ( 'url' === $src ) { wp_redirect( esc_url_raw( (string) $cfg['book']['url'] ), 302 ); exit; }
 		$path = self::file_path( $cfg ); $size = (int) filesize( $path ); $dl = ! empty( $_GET['dl'] );
 		do_action( 'ansa_promo_book_served', $a, $cfg, $dl );
-		while ( ob_get_level() ) { ob_end_clean(); }
+		@set_time_limit( 0 ); @ini_set( 'zlib.output_compression', '0' ); while ( ob_get_level() ) { ob_end_clean(); }
 		header( 'Content-Type: application/pdf' ); header( 'Content-Disposition: ' . ( $dl ? 'attachment' : 'inline' ) . '; filename="' . self::FILENAME . '"' ); header( 'Accept-Ranges: bytes' ); header( 'X-Content-Type-Options: nosniff' );
 		$start = 0; $end = $size - 1;
 		if ( ! empty( $_SERVER['HTTP_RANGE'] ) && preg_match( '/bytes=(\d*)-(\d*)/', (string) $_SERVER['HTTP_RANGE'], $m ) ) { /* iOS Safari чете PDF-а на парчета */
@@ -239,6 +240,20 @@ final class Book {
 		if ( ! @move_uploaded_file( $file['tmp_name'], $dest ) && ! @copy( $file['tmp_name'], $dest ) ) { return new \WP_Error( 'move', 'Файлът не може да се запише в ' . $dest ); }
 		@chmod( $dest, 0644 );
 		return basename( $dir ) . '/' . $name;
+	}
+	/** PDF-и, качени по FTP в {uploads}/ansa-promo-book/ (в корена ѝ или в подпапка): [[rel, name, size]] — за големи файлове над PHP лимита. */
+	public static function scan() {
+		$base = self::base_dir(); $out = array(); if ( ! is_dir( $base ) ) { return $out; }
+		foreach ( array_merge( (array) glob( $base . '/*.[pP][dD][fF]' ), (array) glob( $base . '/*/*.[pP][dD][fF]' ) ) as $p ) { if ( is_file( $p ) ) { $out[] = array( 'rel' => ltrim( substr( $p, strlen( $base ) ), '/' ), 'name' => basename( $p ), 'size' => size_format( filesize( $p ) ) ); } }
+		return $out;
+	}
+	/** Приема файл от scan(): ако е в корена на папката — мести го в случайна подпапка (да не е с познат адрес на nginx), слага .htaccess; → rel или ''. */
+	public static function adopt( $rel ) {
+		$rel = ltrim( str_replace( '..', '', (string) $rel ), '/' ); $ok = false; foreach ( self::scan() as $f ) { if ( $f['rel'] === $rel ) { $ok = true; } } if ( ! $ok ) { return ''; }
+		$base = self::base_dir(); self::protect_dir( $base );
+		if ( false === strpos( $rel, '/' ) ) { $dir = $base . '/' . wp_generate_password( 20, false ); if ( wp_mkdir_p( $dir ) && @rename( $base . '/' . $rel, $dir . '/' . $rel ) ) { $rel = basename( $dir ) . '/' . $rel; } }
+		if ( false !== strpos( $rel, '/' ) ) { self::protect_dir( dirname( $base . '/' . $rel ) ); }
+		return $rel;
 	}
 	private static function protect_dir( $dir ) {
 		if ( ! is_file( $dir . '/.htaccess' ) ) { @file_put_contents( $dir . '/.htaccess', "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n" ); }
