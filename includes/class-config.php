@@ -31,6 +31,9 @@ final class Config {
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'images' => self::gate_image_defaults() ),
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
 			'ship'      => array( 'paid' => 2.55 ),
+			/* v1.10.0 (човекът): кутията не е с точен брой — packs на кутията е МИНИМУМ, добавяш и повече на същата отстъпка; броят сам
+			   вдига кутията (малка → средна → голяма). max_packs = таванът на опаковките в една кутия (защита; ⚙️ Двигател → Играта). */
+			'max_packs' => 20,
 			/* продуктите в играта — key = UTM стойност; цената, наличността и (по подразбиране) снимката идват от WC при рендиране */
 			'products'  => array(),
 			/* FIT: key => [key, key, key] — препоръчани към основния */
@@ -259,6 +262,8 @@ final class Config {
 			$bx[] = $b;
 		}
 		$out['boxes'] = $bx;
+		/* v1.10.0: таванът никога не е под най-голямата кутия */
+		$out['max_packs'] = max( self::max_packs_floor( $bx ), min( 50, (int) ( $out['max_packs'] ?? 20 ) ?: 20 ) );
 		foreach ( array( 'desktop', 'mobile' ) as $dev ) {
 			$ord = array_values( array_unique( array_filter( array_map( 'strval', (array) ( $out['order'][ $dev ] ?? array() ) ), function ( $x ) { return in_array( $x, array( 's', 'm', 'l' ), true ); } ) ) );
 			$out['order'][ $dev ] = count( $ord ) === 3 ? $ord : $d['order'][ $dev ];
@@ -359,6 +364,17 @@ final class Config {
 	/* ── помощници ── */
 	public static function product( $cfg, $key ) { foreach ( $cfg['products'] as $p ) { if ( $p['key'] === $key ) { return $p; } } return null; }
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
+	private static function max_packs_floor( $boxes ) { $m = 1; foreach ( (array) $boxes as $b ) { $m = max( $m, (int) ( $b['packs'] ?? 1 ) ); } return $m; }
+	/** v1.10.0: кутията според броя опаковки — най-голямата кутия с packs ≤ $count, но не по-малка от $min (избраната от клиента).
+	 *  Малка с 3 опаковки = Средна; Средна с 5 = Голяма; Голяма с 7 = Голяма. null само ако $min липсва и броят не стига до никоя кутия. */
+	public static function box_for_count( $cfg, $count, $min = null ) {
+		$best = is_array( $min ) ? $min : ( $min ? self::box( $cfg, $min ) : null );
+		foreach ( $cfg['boxes'] as $b ) {
+			if ( (int) $b['packs'] <= (int) $count && ( ! $best || (int) $b['packs'] > (int) $best['packs'] ) ) { $best = $b; }
+		}
+		return $best;
+	}
+	public static function max_packs( $cfg ) { return max( self::max_packs_floor( $cfg['boxes'] ?? array() ), (int) ( $cfg['max_packs'] ?? 20 ) ?: 20 ); }
 	public static function max_pct( $cfg ) { $m = 0; foreach ( $cfg['boxes'] as $b ) { $m = max( $m, (float) $b['pct'] ); } return $m; }
 	public static function deadline_ts( $cfg ) { if ( empty( $cfg['deadline'] ) ) { return 0; } $t = strtotime( $cfg['deadline'] . ' ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
 	/** 1.8.9: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */

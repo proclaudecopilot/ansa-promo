@@ -4,10 +4,12 @@
  *
  *  - ansa_promo_add: клиентът праща само product ID-та + кутия; сървърът валидира ред по ред (live → box → count → allowed →
  *    stock → secret), изчиства количката (промо поръчката е самостоятелна) и добавя редовете с група. Грешките са кодове +
+ *    v1.10.0: броят е ПОНЕ packs на кутията (и най-много max_packs); повече опаковки = същата отстъпка. Броят сам вдига
+ *    кутията (Config::box_for_count): „малка“ с 3 опаковки се записва като средна — клиентът прави същото, тук е защитата.
  *    текст от копи-регистъра (err.*). Rate limit 10/мин/IP. Същият състав вече в количката → не се добавя пак (идемпотентно).
  *  - pct/packs/secret_pct се записват В РЕДА при добавянето (pct_at_add): публикуване по средата на сесията не преоценява.
  *  - Цени в before_calculate_totals: base = regular × (1 − pct), secret = regular × (1 − spct), book = 0. Base редовете са
- *    заключени (без qty/✕). Счупена група (Σ ≠ packs) → регулярни цени, книгата пада, чекаутът спира с notice + линк.
+ *    заключени (без qty/✕). Счупена група (Σ < packs) → регулярни цени, книгата пада, чекаутът спира с notice + линк.
  *  - Безплатна доставка през package_rates (нулира избрания метод, не сменя метода). Купоните са блокирани (filter
  *    ansa_promo_allow_coupon за ansa Partner, Фаза 5). Shrine Cart_Gift не инжектира подаръци ($_POST['ansa_no_gift']).
  *  - Чекаут (класически / FunnelKit — същите hooks): ред „Твоята кутия и твоите награди“, ☑ сетът, имейлът prefill.
@@ -87,7 +89,8 @@ final class Cart {
 		if ( $g ) { $g['foreign'] = $foreign; }
 		return $g;
 	}
-	public static function group_valid( $g ) { return $g && $g['packs'] > 0 && $g['sum'] === $g['packs'] && count( $g['base'] ) > 0; }
+	/** v1.10.0: валидна = поне packs опаковки (повече са позволени — същата отстъпка). */
+	public static function group_valid( $g ) { return $g && $g['packs'] > 0 && $g['sum'] >= $g['packs'] && count( $g['base'] ) > 0; }
 
 	/** Продуктите в играта като карта parent_id → runtime ред (id, vid, key, name, price, stock). */
 	private static function allowed( $cfg ) {
@@ -139,7 +142,12 @@ final class Cart {
 		$bv = array( 'packs' => (int) $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ) );
 		$items  = is_array( $a['items'] ?? null ) ? array_values( array_filter( array_map( 'absint', $a['items'] ) ) ) : array();
 		$secret = is_array( $a['secret'] ?? null ) ? array_values( array_unique( array_filter( array_map( 'absint', $a['secret'] ) ) ) ) : array();
-		if ( count( $items ) !== (int) $box['packs'] ) { return $err( 'count', $bv ); }
+		if ( count( $items ) < (int) $box['packs'] ) { return $err( 'count', $bv ); }
+		$maxp = Config::max_packs( $cfg );
+		if ( count( $items ) > $maxp ) { return $err( 'max', array_merge( $bv, array( 'max' => $maxp ) ) ); }
+		/* v1.10.0: броят сам вдига кутията — 3 опаковки в „малка“ са средна кутия (клиентът праща вече вдигнатата; това е защитата) */
+		$eff = Config::box_for_count( $cfg, count( $items ), $box );
+		if ( $eff && $eff['id'] !== $box['id'] ) { $box = $eff; $box_id = (string) $box['id']; }
 		$allowed = self::allowed( $cfg ); $counts = array_count_values( $items );
 		foreach ( $counts as $pid => $q ) {
 			if ( ! isset( $allowed[ $pid ] ) ) { return $err( 'allowed' ); }
@@ -369,7 +377,7 @@ final class Cart {
 		$ctx = self::ctx(); $valid = self::group_valid( $g );
 		if ( null !== $box['cosm_pay'] ) { $cosm_on = null !== $cosm_posted ? (bool) $cosm_posted : ( isset( $ctx['cosm'] ) ? (bool) $ctx['cosm'] : true ); } else { $cosm_on = false; }
 		$meta = array(
-			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'pct' => $g['pct'], 'valid' => $valid,
+			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
 			'tickets' => array( 'allowance' => $valid ? (int) $box['tickets'] : 0, 'partner' => false, 'issued' => array() ),
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
@@ -409,7 +417,7 @@ final class Cart {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return; }
 		if ( ! empty( $m['lead_id'] ) ) { Leads::convert( (int) $m['lead_id'], $order->get_id() ); }
 		if ( empty( $m['valid'] ) ) { $order->add_order_note( 'ansa™ Промо: кутията е била непълна при поръчката — цените са регулярни, без награди.' ); }
-		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · −%s%% · %d билет(а)%s%s', $m['box'], self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] : '', $m['ship_free'] ? ' · безплатна доставка' : '' ) ); }
+		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · %d опак. · −%s%% · %d билет(а)%s%s', $m['box'], (int) ( $m['count'] ?? $m['packs'] ), self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] : '', $m['ship_free'] ? ' · безплатна доставка' : '' ) ); }
 		do_action( 'ansa_promo_order_created', $order, $m );
 	}
 	public static function order_label( $name, $item ) {

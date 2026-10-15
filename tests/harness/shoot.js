@@ -52,6 +52,39 @@ const { chromium } = require('playwright');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'how' })); await shot('how'); await check('how'); // v1.7.0: цялата страница на сезона в попъпа
     { const ov = await page.evaluate(() => { const e = document.querySelector('#apDc > .ib'); return e ? e.scrollWidth - e.clientWidth : 0; }); if (ov > 1) errors.push(tag + ' how: хоризонтален скрол ' + ov + 'px'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'picker', box: 'l', utm: 'sakura', full: false })); await shot('picker'); await check('picker');
+    // v1.10.0: кутията расте с броя — малка + 3 опаковки = средна, + 5 = голяма, 7 = пак голяма (−40%); редът „Още N опаковки и отключваш …“
+    const boxId = () => page.evaluate(() => { const s = AnsaPromo.state(); return s.box == null ? null : window.AnsaPromoRuntime.boxes[s.box].id; });
+    const incN = (n) => page.evaluate((n) => { const d = document.getElementById('apDc'); for (let i = 0; i < n; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } }, n);
+    const nextTxt = () => page.evaluate(() => { const e = document.getElementById('fNext'); return e && e.style.display !== 'none' ? e.innerText : ''; });
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 's', utm: 'sakura' }));
+    { const ok = await page.$('#okBtn'); if (ok && await ok.isVisible()) { await ok.click(); await page.waitForTimeout(200); } }
+    await shot('grow-s'); await check('grow-s');
+    if (await boxId() !== 's') errors.push(tag + ' grow-s: с 1 опаковка кутията трябва да е s, а е ' + await boxId());
+    { const t = await nextTxt(); if (!/Още\s+2\s+опаковки.*средна кутия.*30/i.test(t)) errors.push(tag + ' grow-s: няма ред „Още 2 опаковки … средна кутия с −30%“: ' + JSON.stringify(t)); }
+    await incN(2); await page.waitForTimeout(300); await shot('grow-m'); await check('grow-m');
+    if (await boxId() !== 'm') errors.push(tag + ' grow-m: с 3 опаковки кутията трябва да е m, а е ' + await boxId());
+    { const t = await nextTxt(); if (!/Още\s+2\s+опаковки.*голяма кутия.*40/i.test(t)) errors.push(tag + ' grow-m: няма ред „Още 2 опаковки … голяма кутия с −40%“: ' + JSON.stringify(t)); }
+    { const q = await page.evaluate(() => Array.from(document.querySelectorAll('#apDc [data-q]')).map(x => x.dataset.q + '=' + x.textContent).join(',')); if (!/sakura=1/.test(q) || !/meno=2/.test(q)) errors.push(tag + ' grow-m: количествата не се пазят при вдигане: ' + q); }
+    await incN(2); await page.waitForTimeout(300); await shot('grow-l'); await check('grow-l');
+    if (await boxId() !== 'l') errors.push(tag + ' grow-l: с 5 опаковки кутията трябва да е l, а е ' + await boxId());
+    await incN(2); await page.waitForTimeout(300); await shot('grow-l7'); await check('grow-l7');
+    if (await boxId() !== 'l') errors.push(tag + ' grow-l7: със 7 опаковки кутията трябва да остане l');
+    { const t = await nextTxt(); if (!/40/.test(t)) errors.push(tag + ' grow-l7: липсва „най-голямата отстъпка −40%“: ' + JSON.stringify(t)); }
+    { const d = await page.evaluate(() => ({ btn: document.getElementById('nFill').disabled, inc: !!document.querySelector('#apDc [data-inc]:not([disabled])') })); if (d.btn) errors.push(tag + ' grow-l7: „Продължи“ е заключен при 7 опаковки'); if (!d.inc) errors.push(tag + ' grow-l7: степерите са заключени под тавана'); }
+    await page.click('#nFill'); await page.waitForTimeout(600); await shot('grow-celeb'); await check('grow-celeb');
+    { const n = await page.evaluate(() => AnsaPromo.state().slots.filter(Boolean).length); if (n !== 7) errors.push(tag + ' grow-celeb: очаквах 7 опаковки, има ' + n); }
+    { const t = await page.evaluate(() => document.getElementById('apDc').innerText); if (!/7\s+опаковки/.test(t)) errors.push(tag + ' grow-celeb: „7 опаковки“ липсва в честито'); if (/undefined/.test(t)) errors.push(tag + ' grow-celeb: undefined'); }
+    // таблото: малка (1) → „＋ Добави още опаковки“ → селектор → 2 (още s) → 3 = средна (честито) → махни една → пак малка
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'builder', box: 's', utm: 'sakura', full: true })); await shot('grow-builder'); await check('grow-builder');
+    await page.click('#morePick'); await page.waitForTimeout(200); await shot('grow-picker'); await check('grow-picker');
+    await page.click('#apDc [data-add="meno"]'); await page.waitForTimeout(250);
+    if (await boxId() !== 's') errors.push(tag + ' grow-builder: с 2 опаковки още трябва да е s, а е ' + await boxId());
+    await page.click('#apDc [data-add="meno"]'); await page.waitForTimeout(600); await shot('grow-builder-celeb'); await check('grow-builder-celeb');
+    if (await boxId() !== 'm') errors.push(tag + ' grow-builder: с 3 опаковки трябва да е m, а е ' + await boxId());
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'builder' })); await page.waitForTimeout(200);
+    await page.click('#apS2 [data-si="2"]'); await page.waitForTimeout(250); await shot('grow-down'); await check('grow-down');
+    if (await boxId() !== 's') errors.push(tag + ' grow-down: след махане на 3-тата опаковка трябва да е пак s, а е ' + await boxId());
+    { const t = await page.evaluate(() => document.getElementById('apToast').innerText); if (!/малка кутия/i.test(t)) errors.push(tag + ' grow-down: няма тост „Вече си на малка кутия“: ' + JSON.stringify(t)); }
     console.log(tag, 'shots:', shots.join(' '));
     await ctx.close();
   }

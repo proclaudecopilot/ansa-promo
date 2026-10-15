@@ -263,6 +263,15 @@ final class Probe {
 		$bl = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][0];
 		$r = Cart::perform_add( array_merge( $base, array( 'box' => $bl['id'], 'items' => $ids( array_slice( $ok_keys, 0, 1 ) ) ) ) ); $t->eq( 'грешка: грешен брой → err.count', 'count', $r['code'] ?? 'ok', $r['msg'] ?? '' );
 		$r = Cart::perform_add( array_merge( $base, array( 'box' => 'zz', 'items' => array() ) ) ); $t->eq( 'грешка: невалидна кутия → err.box', 'box', $r['code'] ?? 'ok' );
+		/* v1.10.0: повече опаковки от кутията → ок, валидна група, същата отстъпка; „малка“ с опаковките на средна → сървърът я вдига; над тавана → err.max */
+		$np = (int) $bl['packs'] + 2; $pick = array(); for ( $i = 0; $i < $np; $i++ ) { $pick[] = $ok_keys[ $i % count( $ok_keys ) ]; }
+		$r = Cart::perform_add( array_merge( $base, array( 'box' => $bl['id'], 'items' => $ids( $pick ), 'secret' => array() ) ) ); WC()->cart->calculate_totals(); $g = Cart::group();
+		$t->ok( 'v1.10.0: ' . $np . ' опаковки в ' . $bl['name'] . ' → ок и валидна група', ! empty( $r['ok'] ) && Cart::group_valid( $g ) && ( $r['box'] ?? '' ) === $bl['id'], ( $r['code'] ?? 'ok' ) . ' · box=' . ( $r['box'] ?? '' ) . ' · Σ=' . ( $g['sum'] ?? 0 ) . ' packs=' . ( $g['packs'] ?? 0 ) );
+		$bs = Config::box( $cfg, 's' ); $bm = Config::box( $cfg, 'm' );
+		if ( $bs && $bm && (int) $bm['packs'] > (int) $bs['packs'] ) { $np = (int) $bm['packs']; $pick = array(); for ( $i = 0; $i < $np; $i++ ) { $pick[] = $ok_keys[ $i % count( $ok_keys ) ]; }
+			$r = Cart::perform_add( array_merge( $base, array( 'box' => $bs['id'], 'items' => $ids( $pick ), 'secret' => array() ) ) );
+			$t->eq( 'v1.10.0: ' . $bs['name'] . ' с ' . $np . ' опаковки → сървърът я вдига на ' . $bm['name'], $bm['id'], $r['box'] ?? ( $r['code'] ?? '' ), $r['msg'] ?? '' ); }
+		$r = Cart::perform_add( array_merge( $base, array( 'box' => $bl['id'], 'items' => array_fill( 0, Config::max_packs( $cfg ) + 1, (int) $live[ $ok_keys[0] ]['id'] ) ) ) ); $t->eq( 'грешка: над тавана max_packs → err.max', 'max', $r['code'] ?? 'ok', $r['msg'] ?? '' );
 		$r = Cart::perform_add( array_merge( $base, array( 'box' => $bl['id'], 'items' => array_fill( 0, (int) $bl['packs'], 999999999 ) ) ) ); $t->eq( 'грешка: продукт извън играта → err.allowed', 'allowed', $r['code'] ?? 'ok' );
 		$oos = null; foreach ( $live as $k => $p ) { if ( ! $p['stock'] ) { $oos = $k; break; } }
 		if ( $oos ) { $r = Cart::perform_add( array_merge( $base, array( 'box' => $bl['id'], 'items' => array_fill( 0, (int) $bl['packs'], (int) $live[ $oos ]['id'] ) ) ) ); $t->eq( 'грешка: изчерпан продукт → err.stock', 'stock', $r['code'] ?? 'ok', $r['msg'] ?? '' ); } else { $t->note( 'грешка: изчерпан продукт', 'няма изчерпан продукт за проверка' ); }
