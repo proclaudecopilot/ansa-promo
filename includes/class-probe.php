@@ -27,6 +27,7 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
 		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
+		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
 		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
 		return $s;
 	}
@@ -402,6 +403,51 @@ final class Probe {
 	}
 
 	/* ── insights + partner: Фаза 5 — beacon → rollup, отчет; партньорски купон в промо количка: минава, отстъпка 0, +бонус билети. ?keep=1 */
+	/**
+	 * 1.11.0: лийд от попъпа → FunnelKit контакт (гост) + лист + таг; „поръчка“ → тагът пада, листът остава, лийдът е конвертиран.
+	 * Ползва probe-lead@example.com (един и същ контакт, не се трупат); лийдът и тестовата поръчка се трият.
+	 */
+	public static function suite_leads( $t, $params ) {
+		global $wpdb;
+		$cfg = Config::get_published(); $l = Lead_Sync::cfg( $cfg );
+		$t->ok( 'таблица leads с колоните fka/contact_id', Schema::exists( Schema::table( 'leads' ) ) && in_array( 'fka', (array) $wpdb->get_col( 'SHOW COLUMNS FROM ' . Schema::table( 'leads' ) ), true ), 'DB ver ' . get_option( Schema::OPT_DB_VER ) );
+		$t->ok( 'синхронизацията е включена (🧰 Инструменти → 📨 Лийдовете → FunnelKit)', Lead_Sync::enabled( $cfg ), 'лист „' . $l['list'] . '“ · таг „' . $l['tag'] . '“ · consent_only=' . (int) ! empty( $l['consent_only'] ) . ' · untag=' . (int) ! empty( $l['untag_on_order'] ) );
+		if ( ! $t->ok( 'FunnelKit контакти (Funnel Builder)', Lead_Sync::available(), function_exists( 'bwf_get_contact' ) ? 'bwf_get_contact ✓' : 'bwf_get_contact липсва' ) ) { return null; }
+		$t->note( 'Automations (BWFCRM_Contact за event-ите List/Tag Added)', class_exists( 'BWFCRM_Contact' ) ? 'има' . ( defined( 'BWFAN_VERSION' ) ? ' · ' . BWFAN_VERSION : '' ) : 'няма — термините отиват направо в контакта (без event)' );
+		$t->ok( 'листът и тагът съществуват (ensure_terms)', Lead_Sync::ensure_terms(), Lead_Sync::status( $cfg ) );
+		$lid = '' !== $l['list'] ? Merge::list_id( $l['list'] ) : 0; $tid = '' !== $l['tag'] ? Merge::tag_id( $l['tag'] ) : 0;
+		if ( '' !== $l['list'] ) { $t->ok( 'лист „' . $l['list'] . '“ има id', $lid > 0, $lid > 0 ? '#' . $lid : Merge::$tag_diag ); }
+		if ( '' !== $l['tag'] ) { $t->ok( 'таг „' . $l['tag'] . '“ има id', $tid > 0, $tid > 0 ? '#' . $tid : Merge::$tag_diag ); }
+		$email = 'probe-lead@example.com';
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Schema::table( 'leads' ) . ' WHERE email = %s', $email ) );
+		/* тагът да го няма от предишен probe */
+		if ( $tid > 0 && Merge::contact_has( $email, 'tags', $tid ) ) { try { $f = new \WooFunnels_Contact( '', $email ); $f->set_tags( array_values( array_diff( array_map( 'intval', (array) $f->get_tags() ), array( $tid ) ) ) ); $f->save(); } catch ( \Throwable $e ) {} }
+		$lead_id = Leads::capture( $email, true, 'probe', 'l' ); /* → hook ansa_promo_lead_captured → Lead_Sync::sync */
+		$t->ok( 'Leads::capture → ред + синхронизация', $lead_id > 0, 'lead #' . $lead_id . ' · ' . Lead_Sync::$diag );
+		$row = Leads::get( $lead_id );
+		$t->ok( 'leads.fka не е retry', $row && '' !== (string) $row['fka'] && 0 !== strpos( (string) $row['fka'], 'retry' ), (string) ( $row['fka'] ?? '' ) );
+		$c = Lead_Sync::contact( $email, true );
+		$t->ok( 'контакт във FunnelKit (гост, без WP акаунт)', $c && $c->get_id() > 0, $c ? '#' . $c->get_id() . ' · status ' . $c->get_status() . ' · type ' . $c->get_type() . ' · source ' . $c->get_source() : 'няма' );
+		if ( $lid > 0 ) { $t->ok( 'контактът е в листа', Merge::contact_has( $email, 'lists', $lid ) ); }
+		if ( $tid > 0 ) { $t->ok( 'контактът има тага', Merge::contact_has( $email, 'tags', $tid ) ); }
+		$t->eq( 'повторно capture → идемпотентно (има)', true, false !== strpos( (string) Lead_Sync::sync( $lead_id, $email, true ), 'има' ) );
+		$t->eq( 'без съгласие → no-consent (при consent_only)', ! empty( $l['consent_only'] ) ? 'no-consent' : 'x', ! empty( $l['consent_only'] ) ? Lead_Sync::sync( 0, 'probe-noconsent@example.com', false ) : 'x' );
+		/* „поръчка“: тагът пада, листът остава, лийдът е конвертиран */
+		if ( function_exists( 'wc_create_order' ) ) {
+			$o = wc_create_order(); $o->set_billing_email( $email ); $o->update_meta_data( '_ansa_promo', array( 'promo' => $cfg['id'], 'box' => 'l', 'lead_id' => $lead_id, 'lead_email' => $email, 'valid' => true, 'draft' => false ) ); $o->save();
+			$r = Lead_Sync::on_order( $o, $o->get_meta( '_ansa_promo' ) );
+			$t->eq( 'on_order → ok', ! empty( $l['untag_on_order'] ) && $tid > 0 ? 'ok' : 'off', $r, (string) $o->get_meta( '_ansa_promo_lead_untag' ) );
+			if ( $tid > 0 && ! empty( $l['untag_on_order'] ) ) { $t->ok( 'тагът падна от контакта', ! Merge::contact_has( $email, 'tags', $tid ) ); }
+			if ( $lid > 0 ) { $t->ok( 'листът остава', Merge::contact_has( $email, 'lists', $lid ) ); }
+			$row = Leads::get( $lead_id ); $t->eq( 'лийдът е конвертиран', (int) $o->get_id(), (int) ( $row['converted_order_id'] ?? 0 ) );
+			$t->eq( 'повторно sync на конвертиран → без таг', true, false !== strpos( (string) Lead_Sync::sync( $lead_id, $email, true ), 'конвертиран' ) || '' === $l['tag'] );
+			$o->delete( true );
+		} else { $t->note( 'поръчка', 'няма wc_create_order' ); }
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Schema::table( 'leads' ) . ' WHERE email IN (%s, %s)', $email, 'probe-noconsent@example.com' ) );
+		$t->note( 'статус', Lead_Sync::status( $cfg ) );
+		return array( 'contact' => $c ? $c->get_id() : 0, 'list' => $lid, 'tag' => $tid );
+	}
+
 	public static function suite_insights( $t, $params ) {
 		global $wpdb;
 		$t->ok( 'таблица stats', Schema::exists( Schema::table( 'stats' ) ), Schema::table( 'stats' ) . ' · DB ver ' . get_option( Schema::OPT_DB_VER ) );

@@ -233,23 +233,31 @@ final class Merge {
 	public static $tag_diag = '';
 
 	/**
-	 * ID на FKA тага по име. Търси: BWFCRM_Tag::get_tags → таблицата с термините (bwfan_terms / bwf_terms, type 1 = таг).
+	 * ID на FKA тага по име. Търси: BWFCRM_Tag::get_tags → таблицата с термините (bwfan_terms / bwf_terms, type 1 = таг, 2 = лист).
 	 * $create: създава го — през API на FKA (BWFCRM_Tag/BWFCRM_Term create*), през REST-а на FKA (autonami…/v1/tags), накрая
 	 * направо в таблицата. 0 = няма; причината е в self::$tag_diag.
 	 */
-	public static function tag_id( $name, $create = false ) {
-		$name = trim( (string) $name ); if ( '' === $name ) { return 0; }
-		static $cache = array(); if ( ! empty( $cache[ $name ] ) ) { return $cache[ $name ]; }
+	public static function tag_id( $name, $create = false ) { return self::term_id( $name, 1, $create ); }
+	/** 1.11.0: ID на FKA лист по име (type 2 в термините) — същите пътища като тага; за лийдовете от имейл-попъпа (Lead_Sync). */
+	public static function list_id( $name, $create = false ) { return self::term_id( $name, 2, $create ); }
+	/** Общото: $type 1 = таг, 2 = лист. */
+	public static function term_id( $name, $type = 1, $create = false ) {
+		$name = trim( (string) $name ); $type = 2 === (int) $type ? 2 : 1; if ( '' === $name ) { return 0; }
+		static $cache = array(); $ck = $type . '|' . $name; if ( ! empty( $cache[ $ck ] ) ) { return $cache[ $ck ]; }
 		$diag = array();
-		$id = self::tag_find( $name, $diag );
+		$id = self::term_find( $name, $diag, $type );
 		if ( $id <= 0 && $create ) {
-			$id = self::tag_create_api( $name, $diag ); if ( $id <= 0 ) { $id = self::tag_find( $name, $diag ); }
-			if ( $id <= 0 ) { $id = self::tag_create_rest( $name, $diag ); if ( $id <= 0 ) { $id = self::tag_find( $name, $diag ); } }
-			if ( $id <= 0 ) { $id = self::tag_create_db( $name, $diag ); if ( $id <= 0 ) { $id = self::tag_find( $name, $diag ); } }
+			$id = self::term_create_api( $name, $diag, $type ); if ( $id <= 0 ) { $id = self::term_find( $name, $diag, $type ); }
+			if ( $id <= 0 ) { $id = self::term_create_rest( $name, $diag, $type ); if ( $id <= 0 ) { $id = self::term_find( $name, $diag, $type ); } }
+			if ( $id <= 0 ) { $id = self::term_create_db( $name, $diag, $type ); if ( $id <= 0 ) { $id = self::term_find( $name, $diag, $type ); } }
 		}
 		self::$tag_diag = implode( ' · ', $diag );
-		if ( $id > 0 ) { $cache[ $name ] = $id; }
+		if ( $id > 0 ) { $cache[ $ck ] = $id; }
 		return $id;
+	}
+	/** 1.11.0: има ли контактът (по имейл) този term — $kind 'tags' | 'lists'. */
+	public static function contact_has( $email, $kind, $tid ) {
+		try { $f = new \WooFunnels_Contact( '', $email ); if ( $f->get_id() <= 0 ) { return false; } $cur = 'lists' === $kind ? $f->get_lists() : $f->get_tags(); return in_array( (int) $tid, array_map( 'intval', (array) $cur ), true ); } catch ( \Throwable $e ) { return false; }
 	}
 
 	/** Таблицата с термините на FKA ({prefix}bwfan_terms или {prefix}bwf_terms — която има колони name + type). '' = няма. */
@@ -264,37 +272,41 @@ final class Merge {
 		return $t;
 	}
 
-	private static function tag_find( $name, &$diag ) {
-		global $wpdb;
-		if ( class_exists( 'BWFCRM_Tag' ) && method_exists( 'BWFCRM_Tag', 'get_tags' ) ) {
+	/** Класовете на FKA за типа: таг → BWFCRM_Tag, лист → BWFCRM_Lists / BWFCRM_List (+ BWFCRM_Term и за двата). */
+	private static function term_classes( $type ) { return 2 === (int) $type ? array( 'BWFCRM_Lists', 'BWFCRM_List', 'BWFCRM_Term' ) : array( 'BWFCRM_Tag', 'BWFCRM_Term' ); }
+	private static function term_find( $name, &$diag, $type = 1 ) {
+		global $wpdb; $type = 2 === (int) $type ? 2 : 1;
+		$getter = null; foreach ( self::term_classes( $type ) as $cls ) { foreach ( array( 2 === $type ? 'get_lists' : 'get_tags', 'get_terms', 'get_all' ) as $mn ) { if ( class_exists( $cls ) && method_exists( $cls, $mn ) ) { $getter = array( $cls, $mn ); break 2; } } }
+		if ( $getter ) {
 			try {
-				$all = (array) \BWFCRM_Tag::get_tags( array(), false, '', '' ); $diag[] = 'get_tags: ' . count( $all );
-				foreach ( $all as $t ) { $t = is_object( $t ) ? (array) $t : $t; if ( is_array( $t ) && isset( $t['name'] ) && 0 === strcasecmp( trim( (string) $t['name'] ), $name ) ) { $id = (int) ( $t['ID'] ?? $t['id'] ?? 0 ); if ( $id > 0 ) { return $id; } } }
-			} catch ( \Throwable $e ) { $diag[] = 'get_tags: ' . $e->getMessage(); }
-		} else { $diag[] = 'няма BWFCRM_Tag::get_tags'; }
+				$all = (array) call_user_func( $getter, array(), false, '', '' ); $diag[] = $getter[0] . '::' . $getter[1] . ': ' . count( $all );
+				foreach ( $all as $t ) { $t = is_object( $t ) ? (array) $t : $t; if ( is_array( $t ) && isset( $t['name'] ) && 0 === strcasecmp( trim( (string) $t['name'] ), $name ) && ( ! isset( $t['type'] ) || (int) $t['type'] === $type ) ) { $id = (int) ( $t['ID'] ?? $t['id'] ?? 0 ); if ( $id > 0 ) { return $id; } } }
+			} catch ( \Throwable $e ) { $diag[] = $getter[0] . '::' . $getter[1] . ': ' . $e->getMessage(); }
+		} else { $diag[] = 'няма ' . ( 2 === $type ? 'BWFCRM_Lists::get_lists' : 'BWFCRM_Tag::get_tags' ); }
 		$table = self::terms_table();
 		if ( '' === $table ) { $diag[] = 'няма таблица *_terms'; return 0; }
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE type = 1 AND name = %s ORDER BY 1 ASC LIMIT 1", $name ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE type = %d AND name = %s ORDER BY 1 ASC LIMIT 1", $type, $name ), ARRAY_A );
 		if ( ! $row ) { $diag[] = 'в ' . $table . ' няма „' . $name . '“'; return 0; }
 		$row = array_change_key_case( $row, CASE_LOWER );
 		return (int) ( $row['id'] ?? 0 );
 	}
 
 	/** Създаване през статичен метод на FKA (BWFCRM_Tag / BWFCRM_Term: create, create_tag, create_term, add, add_tag, insert, get_or_create). */
-	private static function tag_create_api( $name, &$diag ) {
-		foreach ( array( 'BWFCRM_Tag', 'BWFCRM_Term' ) as $cls ) {
+	private static function term_create_api( $name, &$diag, $type = 1 ) {
+		$type = 2 === (int) $type ? 2 : 1;
+		foreach ( self::term_classes( $type ) as $cls ) {
 			if ( ! class_exists( $cls ) ) { continue; }
-			foreach ( array( 'create', 'create_tag', 'create_term', 'add', 'add_tag', 'insert', 'get_or_create' ) as $mn ) {
+			foreach ( ( 2 === $type ? array( 'create', 'create_list', 'create_term', 'add', 'add_list', 'insert', 'get_or_create' ) : array( 'create', 'create_tag', 'create_term', 'add', 'add_tag', 'insert', 'get_or_create' ) ) as $mn ) {
 				if ( ! method_exists( $cls, $mn ) ) { continue; }
 				try {
 					$rm = new \ReflectionMethod( $cls, $mn ); if ( ! $rm->isStatic() || ! $rm->isPublic() ) { continue; }
-					$argsets = array( array( $name ), array( array( 'name' => $name ) ), array( $name, 1 ), array( array( 'name' => $name, 'type' => 1 ) ) );
+					$argsets = array( array( $name ), array( array( 'name' => $name ) ), array( $name, $type ), array( array( 'name' => $name, 'type' => $type ) ) );
 					foreach ( $argsets as $args ) {
 						if ( count( $args ) < $rm->getNumberOfRequiredParameters() ) { continue; }
 						$r = $rm->invokeArgs( null, $args ); $diag[] = $cls . '::' . $mn . ' → ' . ( is_scalar( $r ) ? var_export( $r, true ) : gettype( $r ) );
 						$id = 0; if ( is_numeric( $r ) ) { $id = (int) $r; } elseif ( is_array( $r ) ) { $r2 = array_change_key_case( $r, CASE_LOWER ); $id = (int) ( $r2['id'] ?? 0 ); } elseif ( is_object( $r ) ) { foreach ( array( 'ID', 'id' ) as $k ) { if ( isset( $r->$k ) ) { $id = (int) $r->$k; break; } } if ( ! $id && method_exists( $r, 'get_id' ) ) { $id = (int) $r->get_id(); } }
 						if ( $id > 0 ) { return $id; }
-						$d2 = array(); $id = self::tag_find( $name, $d2 ); if ( $id > 0 ) { return $id; }
+						$d2 = array(); $id = self::term_find( $name, $d2, $type ); if ( $id > 0 ) { return $id; }
 					}
 				} catch ( \Throwable $e ) { $diag[] = $cls . '::' . $mn . ': ' . $e->getMessage(); }
 			}
@@ -303,23 +315,24 @@ final class Merge {
 	}
 
 	/** Създаване през REST-а на FKA (POST /autonami…/v1/tags {name}) — само с права (admin_init / Doctor). */
-	private static function tag_create_rest( $name, &$diag ) {
+	private static function term_create_rest( $name, &$diag, $type = 1 ) {
 		if ( ! function_exists( 'rest_get_server' ) || ! current_user_can( 'manage_options' ) ) { return 0; }
+		$type = 2 === (int) $type ? 2 : 1;
 		try {
 			foreach ( array_keys( rest_get_server()->get_routes() ) as $route ) {
-				if ( ! preg_match( '#^/autonami[a-z\-]*/v1/tags?$#', $route ) ) { continue; }
-				$req = new \WP_REST_Request( 'POST', $route ); $req->set_body_params( array( 'name' => $name, 'tag_name' => $name, 'type' => 1 ) );
+				if ( ! preg_match( 2 === $type ? '#^/autonami[a-z\-]*/v1/lists?$#' : '#^/autonami[a-z\-]*/v1/tags?$#', $route ) ) { continue; }
+				$req = new \WP_REST_Request( 'POST', $route ); $req->set_body_params( array( 'name' => $name, ( 2 === $type ? 'list_name' : 'tag_name' ) => $name, 'type' => $type ) );
 				$res = rest_do_request( $req ); $diag[] = 'REST ' . $route . ' → ' . $res->get_status();
-				$d2 = array(); $id = self::tag_find( $name, $d2 ); if ( $id > 0 ) { return $id; }
+				$d2 = array(); $id = self::term_find( $name, $d2, $type ); if ( $id > 0 ) { return $id; }
 			}
 		} catch ( \Throwable $e ) { $diag[] = 'REST: ' . $e->getMessage(); }
 		return 0;
 	}
 
 	/** Създаване направо в таблицата: name + type=1, а задължителните колони без default се попълват според типа си. */
-	private static function tag_create_db( $name, &$diag ) {
+	private static function term_create_db( $name, &$diag, $type = 1 ) {
 		global $wpdb; $table = self::terms_table(); if ( '' === $table ) { return 0; }
-		$row = array( 'name' => $name, 'type' => 1 ); $fmt = array( '%s', '%d' );
+		$row = array( 'name' => $name, 'type' => 2 === (int) $type ? 2 : 1 ); $fmt = array( '%s', '%d' );
 		foreach ( (array) $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A ) as $c ) {
 			$f = strtolower( (string) ( $c['Field'] ?? '' ) ); $ty = strtolower( (string) ( $c['Type'] ?? '' ) );
 			if ( in_array( $f, array( 'id', 'name', 'type' ), true ) || false !== stripos( (string) ( $c['Extra'] ?? '' ), 'auto_increment' ) ) { continue; }

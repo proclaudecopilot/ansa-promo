@@ -68,6 +68,10 @@ final class Config {
 			'book'      => array( 'enabled' => true, 'slug' => 'kniga', 'file' => '', 'url' => '', 'remember' => 365 ), /* статусите са общите „получена“ — tombola.statuses */
 			/* v1.9.0: демо данни — телефон + имейл, които отварят /kniga и формата на томболата без поръчка (за екипа/админа); празно = изключено */
 			'demo'      => array( 'phone' => '0888000000', 'email' => 'demo@ansa.bg' ),
+			/* v1.11.0: лийдовете от имейл-попъпа → FunnelKit Automations (Lead_Sync): контакт (и за гост), лист + таг → тригър за
+			   автоматизация „не е завършила поръчката“. consent_only = само с отметнато съгласие; untag_on_order = при промо поръчка
+			   тагът пада от контакта (за да спре/не тръгне автоматизацията), листът остава. Празно име = без лист/без таг. */
+			'leads'     => array( 'fka' => true, 'list' => 'Сезонът на ansa — лийдове', 'tag' => 'sezon-lead', 'consent_only' => true, 'untag_on_order' => true ),
 			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'delivered' ), /* 1.9.0: САМО Delivered — „Изпълнена“ не брои (томбола · ваучер за сета · книга) */ 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
@@ -288,6 +292,10 @@ final class Config {
 		$out['book']['enabled'] = ! empty( $out['book']['enabled'] ); $out['book']['slug'] = sanitize_title( (string) $out['book']['slug'] ) ?: 'kniga'; $out['book']['file'] = str_replace( '..', '', trim( (string) $out['book']['file'] ) ); $out['book']['url'] = esc_url_raw( (string) $out['book']['url'] ); $out['book']['remember'] = max( 1, min( 3650, (int) $out['book']['remember'] ) );
 		unset( $out['book']['statuses'] ); /* общите „получена“ статуси са tombola.statuses */
 		$dm = is_array( $out['demo'] ?? null ) ? $out['demo'] : array(); $out['demo'] = self::merge( $d['demo'], $dm ); $out['demo']['phone'] = sanitize_text_field( (string) $out['demo']['phone'] ); $out['demo']['email'] = sanitize_email( (string) $out['demo']['email'] );
+		/* v1.11.0: лийдовете → FKA */
+		$ld = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = self::merge( $d['leads'], $ld );
+		$out['leads']['fka'] = ! empty( $out['leads']['fka'] ); $out['leads']['consent_only'] = ! empty( $out['leads']['consent_only'] ); $out['leads']['untag_on_order'] = ! empty( $out['leads']['untag_on_order'] );
+		foreach ( array( 'list', 'tag' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) $out['leads'][ $lk ] ) ), 0, 100 ); }
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );

@@ -3,7 +3,8 @@
  * ansa™ Промо — leads (имейлът от gate-а).
  *
  * wp_ajax_nopriv_ansa_promo_lead → ред в {prefix}ansa_promo_leads; при поръчка (Фаза 3) converted_order_id.
- * Hook `ansa_promo_lead_captured( $lead_id, $email, $consent, $utm )` за мейлър интеграция.
+ * Hook `ansa_promo_lead_captured( $lead_id, $email, $consent, $utm )` за мейлър интеграция — 1.11.0: Lead_Sync го слуша и праща
+ * лийда във FunnelKit (контакт + лист + таг); резултатът е в колоните contact_id / fka / fka_at.
  * Rate limit: 10 заявки/мин/IP (transient).
  *
  * @package AnsaPromo
@@ -37,7 +38,7 @@ final class Leads {
 
 	public static function capture( $email, $consent, $utm = '', $box_seen = '' ) {
 		global $wpdb;
-		$email = sanitize_email( (string) $email );
+		$email = strtolower( sanitize_email( (string) $email ) ); /* 1.11.0: с малки букви — съвпада с контакта във FunnelKit и с billing имейла */
 		if ( ! is_email( $email ) ) { return 0; }
 		$t = Schema::table( 'leads' );
 		$wpdb->insert( $t, array(
@@ -77,4 +78,28 @@ final class Leads {
 	}
 
 	public static function count() { global $wpdb; return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Schema::table( 'leads' ) ); }
+
+	/* ── 1.11.0: за Lead_Sync ── */
+	public static function get( $id ) { global $wpdb; $r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . ' WHERE id = %d', (int) $id ), ARRAY_A ); return is_array( $r ) ? $r : null; }
+	/** Резултатът от синхронизацията с FunnelKit (четим низ; „retry: …“ = ще се опита пак от бутона). */
+	public static function mark_fka( $id, $contact_id, $txt ) {
+		global $wpdb; if ( ! $id ) { return; }
+		$wpdb->update( Schema::table( 'leads' ), array( 'contact_id' => (int) $contact_id ?: null, 'fka' => mb_substr( (string) $txt, 0, 191 ), 'fka_at' => current_time( 'mysql' ) ), array( 'id' => (int) $id ), array( '%d', '%s', '%s' ), array( '%d' ) );
+	}
+	/** Всички неконвертирани лийдове с този имейл стават конвертирани (гостът може да е дал друг имейл в чекаута — тогава остава по lead_id). */
+	public static function convert_email( $email, $order_id ) {
+		global $wpdb; $email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) || ! $order_id ) { return 0; }
+		return (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . Schema::table( 'leads' ) . ' SET converted_order_id = %d WHERE converted_order_id IS NULL AND email = %s', (int) $order_id, $email ) );
+	}
+	/** Лийдове, които още не са минали през FunnelKit (празно fka или „retry: …“) — за бутона „Синхронизирай“. */
+	public static function unsynced( $limit = 500 ) {
+		global $wpdb; $r = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . " WHERE fka = '' OR fka LIKE 'retry%%' ORDER BY id ASC LIMIT %d", (int) $limit ), ARRAY_A );
+		return is_array( $r ) ? $r : array();
+	}
+	/** Броячи за Doctor: всички · със съгласие · синхронизирани · чакащи · конвертирани. */
+	public static function stats() {
+		global $wpdb; $t = Schema::table( 'leads' );
+		$r = $wpdb->get_row( "SELECT COUNT(*) AS total, SUM(consent = 1) AS consent, SUM(fka <> '' AND fka NOT LIKE 'retry%' AND fka <> 'no-consent') AS synced, SUM(fka = '' OR fka LIKE 'retry%') AS pending, SUM(converted_order_id IS NOT NULL) AS converted FROM $t", ARRAY_A );
+		return array_map( 'intval', is_array( $r ) ? $r : array( 'total' => 0, 'consent' => 0, 'synced' => 0, 'pending' => 0, 'converted' => 0 ) );
+	}
 }
