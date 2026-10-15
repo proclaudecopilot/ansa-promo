@@ -43,6 +43,19 @@ final class Merge {
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'tag_order' ), 9999 );
 		foreach ( array( 'on-hold', 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'tag_order' ), 25 ); }
 		add_action( 'woocommerce_payment_complete', array( __CLASS__, 'tag_order' ), 25 );
+		/* 1.8.3: тагът се създава веднага (админът го търси в FKA при настройката на автоматизацията, преди първата поръчка) */
+		add_action( 'admin_init', array( __CLASS__, 'ensure_tag' ), 20 );
+		add_action( 'ansa_promo_published', array( __CLASS__, 'ensure_tag' ), 20 );
+	}
+
+	/** Създава FKA тага по име, ако го няма (веднъж на име; option ansa_promo_fka_tag_ensured). Връща id или 0. */
+	public static function ensure_tag() {
+		$name = self::tag_name( Config::get_draft() ) ?: self::tag_name(); if ( '' === $name ) { return 0; }
+		if ( get_option( 'ansa_promo_fka_tag_ensured' ) === $name ) { return self::tag_id( $name ); }
+		if ( ! function_exists( 'bwf_get_contact' ) ) { return 0; }
+		$id = self::tag_id( $name, true );
+		if ( $id > 0 ) { update_option( 'ansa_promo_fka_tag_ensured', $name, false ); }
+		return $id;
 	}
 
 	/* ── данни ── */
@@ -207,7 +220,7 @@ final class Merge {
 		$name = self::tag_name( $cfg ); if ( '' === $name ) { return 'таг: изключен'; }
 		if ( ! function_exists( 'bwf_get_contact' ) ) { return 'таг „' . $name . '“ — FunnelKit контакти липсват'; }
 		$id = self::tag_id( $name );
-		return 'таг „' . $name . '“' . ( $id > 0 ? ' #' . $id : ' — още не е създаден (създава се при първата поръчка)' );
+		return 'таг „' . $name . '“' . ( $id > 0 ? ' #' . $id : ' — още не е създаден (създава се при зареждане на админа / първата поръчка; или го създай във FKA → Contacts → Tags)' );
 	}
 
 	/* ── FunnelKit Automations ── */
