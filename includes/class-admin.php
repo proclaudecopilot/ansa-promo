@@ -140,6 +140,9 @@ final class Admin {
 				Lead_Sync::ensure_terms(); $r = Lead_Sync::backfill(); $msg = 'Лийдове → FunnelKit: ' . $r['ok'] . ' синхронизирани, ' . $r['retry'] . ' за повторен опит, ' . $r['skip'] . ' пропуснати (без съгласие/изключено). ' . Lead_Sync::status( Config::get_published() ); break;
 			case 'fka_backfill': /* 1.8.4: тагът на старите промо поръчки */
 				$r = Merge::backfill(); $msg = 'FunnelKit тагове (общият + по кутия): през FKA (event „Tag Added“) на ' . $r['crm'] . ' поръчки, направо в контакта на ' . $r['db'] . ', вече го имаха ' . $r['има'] . ', за повторен опит ' . $r['retry'] . ( $r['other'] ? ', пропуснати ' . $r['other'] . ' (тагът е изключен или FunnelKit контакти липсват)' : '' ) . '.'; break;
+			case 'link_proxy': /* 1.13.1: HTTPS прокси за SendGrid линковете — отделна опция, без публикуване */
+				Link_Proxy::save( ! empty( $_POST['lp_enabled'] ), (string) wp_unslash( $_POST['lp_host'] ?? '' ), (int) ( $_POST['lp_reset_days'] ?? 0 ) );
+				$st = Link_Proxy::status(); $msg = 'SendGrid линкове: записано. ' . $st[0]; break;
 			case 'purge':
 				Catalog::purge_runtime(); $c = Config::get_published(); Config::purge_page( $c['page_id'] ); $msg = 'Кешът на runtime-а и страницата е изчистен.'; break;
 		}
@@ -284,6 +287,17 @@ final class Admin {
 					<?php endforeach; ?>
 					</ul>
 				<?php endif; ?>
+				<hr>
+				<h2>🔗 Линковете от SendGrid (HTTPS за url2581.ansa.bg)</h2>
+				<?php $lp = Link_Proxy::settings(); $lps = Link_Proxy::status(); ?>
+				<p>SendGrid пренаписва линковете в имейлите към <code>http://url2581.ansa.bg/ls/click?…</code> и няма сертификат за домейна — браузърите, които вдигат линка към HTTPS, показват „Връзката ви не е поверителна“. Тук домейнът се обслужва от <b>този</b> сайт по HTTPS и всяка заявка се препраща към SendGrid (кликът се брои, клиентът стига до истинския адрес). Нужно е в хостинга <b>url2581.ansa.bg</b> да е добавен като допълнителен домейн на WordPress (без пренасочване), с Let's Encrypt, и DNS записът да е <b>A към IP-то на сайта</b> вместо CNAME към sendgrid.net. Вторият запис на SendGrid (<code>2581.ansa.bg</code>) остава CNAME.</p>
+				<p class="description">Състояние: <?php echo esc_html( $lps[0] ); ?> · проверка: <a href="https://<?php echo esc_attr( $lp['host'] ?: 'url2581.ansa.bg' ); ?>/__ansa_promo_ping" target="_blank" rel="noopener">https://<?php echo esc_html( $lp['host'] ?: 'url2581.ansa.bg' ); ?>/__ansa_promo_ping</a> трябва да покаже „ok <?php echo esc_html( ANSA_PROMO_VER ); ?>“ без предупреждение.</p>
+				<?php self::form_open( 'link_proxy', 'tools', ' style="display:block"' ); ?>
+					<p><label><input type="checkbox" name="lp_enabled" value="1"<?php checked( $lp['enabled'] ); ?><?php disabled( ! empty( $lp['const'] ) ); ?>> <b>Включено</b></label>
+					&nbsp; <label>домейн: <input type="text" name="lp_host" value="<?php echo esc_attr( $lp['host'] ); ?>" class="regular-text code" placeholder="url2581.ansa.bg"<?php disabled( ! empty( $lp['const'] ) ); ?>></label>
+					&nbsp; <label>линкът за парола важи <input type="number" name="lp_reset_days" value="<?php echo (int) $lp['reset_days']; ?>" min="0" max="60" style="width:70px"> дни</label> <small>0 = стандартно (1 ден); 7 = и ключовете от вече изпратените писма работят още една седмица</small></p>
+					<p><button class="button button-primary">💾 Запази</button><?php if ( ! empty( $lp['const'] ) ) : ?> <small>домейнът е зададен с константата <code>ANSA_PROMO_LINK_PROXY_HOST</code> в wp-config.php</small><?php endif; ?></p>
+				</form>
 				<hr>
 				<h2>Продуктите в черновата</h2>
 				<table class="widefat striped"><thead><tr><th>ключ (UTM)</th><th>име</th><th>WC продукт</th><th>ред · цена · наличност</th></tr></thead><tbody>

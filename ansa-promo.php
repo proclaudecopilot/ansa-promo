@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.13.0
+ * Version:     1.13.1
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.13.0' );
+define( 'ANSA_PROMO_VER', '1.13.1' );
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
@@ -61,6 +61,10 @@ add_action( 'before_woocommerce_init', function () {
 
 register_activation_hook( __FILE__, array( 'AnsaPromo\\Plugin', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'AnsaPromo\\Plugin', 'deactivate' ) );
+
+/* ── 1.13.1: HTTPS прокси за брандирания домейн на SendGrid (url2581.ansa.bg) — преди WooCommerce и темата,
+   защото заявката за линк от имейла не бива да зарежда нищо друго; вижте includes/class-link-proxy.php ── */
+add_action( 'plugins_loaded', array( 'AnsaPromo\\Link_Proxy', 'init' ), 1 );
 
 /* ── Boot: WooCommerce е задължителен; без него — само известие, нищо друго не се закача ── */
 add_action( 'plugins_loaded', function () {
