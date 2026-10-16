@@ -20,7 +20,26 @@
 #ansa-promo-app ::-webkit-scrollbar-track { background: transparent; }
 #ansa-promo-app ::-webkit-scrollbar-thumb { background: var(--coral-soft); border-radius: 999px; }
 #ansa-promo-app ::-webkit-scrollbar-thumb:hover { background: var(--coral); }
-#ansa-promo-app a { color: var(--coral-deep); }
+/* 1.17.3: цветът на линковете само в съдържанието — `#ansa-promo-app a` беше по-силно от .on/.ap-btn--primary и активните
+   линкове-бутони ставаха тъмнооранжеви върху оранжево (човекът: „тъмен шрифт на тъмно оранжев фон на бутоните“) */
+#ansa-promo-app .ap-sec a, #ansa-promo-app .ap-note a, #ansa-promo-app .ap-env a, #ansa-promo-app .ap-top h1 a, #ansa-promo-app .ap-state a { color: var(--coral-deep); }
+#ansa-promo-app a:focus { box-shadow: 0 0 0 3px var(--coral-soft); outline: none; }
+#ansa-promo-app a.ap-nav__it, #ansa-promo-app .ap-nav__it { color: var(--ink); }
+#ansa-promo-app a.ap-nav__it:hover, #ansa-promo-app .ap-nav__it:hover { color: var(--coral-deep); }
+#ansa-promo-app a.ap-nav__it.on, #ansa-promo-app .ap-nav__it.on, #ansa-promo-app .ap-nav__it.on:hover, #ansa-promo-app .ap-nav__it.on .n { color: #fff; }
+#ansa-promo-app .ap-nav__sub a { color: var(--muted); }
+#ansa-promo-app .ap-nav__sub a:hover, #ansa-promo-app .ap-nav__sub a.on { color: var(--coral-deep); }
+#ansa-promo-app a.ap-chip, #ansa-promo-app .ap-chip { color: var(--muted); }
+#ansa-promo-app a.ap-chip:hover, #ansa-promo-app .ap-chip:hover { color: var(--coral-deep); }
+#ansa-promo-app a.ap-chip.on, #ansa-promo-app .ap-chip.on, #ansa-promo-app .ap-chip.on:hover { color: #fff; }
+#ansa-promo-app a.ap-btn--primary, #ansa-promo-app .ap-btn--primary, #ansa-promo-app a.ap-btn--primary:hover, #ansa-promo-app .button-primary, #ansa-promo-app .button-primary:hover, #ansa-promo-app .button-primary:focus { color: #fff; }
+#ansa-promo-app a.ap-btn--secondary, #ansa-promo-app a.ap-btn--secondary:hover, #ansa-promo-app .ap-nav__foot, #ansa-promo-app .ap-side__lnk, #ansa-promo-app .ap-side__foot { color: var(--ink); }
+#ansa-promo-app a.ap-btn--secondary:hover, #ansa-promo-app .ap-nav__foot:hover { color: var(--coral-deep); }
+#ansa-promo-app .ap-side__lnk, #ansa-promo-app .ap-side__foot, #ansa-promo-app .ap-nav__foot { color: var(--muted); }
+#ansa-promo-app .ap-state__links a { color: var(--coral-deep); }
+#ansa-promo-app .ap-prod.active, #ansa-promo-app .ap-prod.active *, #ansa-promo-app .ap-tab.on, #ansa-promo-app .ap-fchip.on, #ansa-promo-app .ap-hchip.ap-hchip--btn:hover { color: inherit; }
+#ansa-promo-app .ap-prod.active, #ansa-promo-app .ap-prod.active .ap-prod__name, #ansa-promo-app .ap-prod.active .ap-prod__mode, #ansa-promo-app .ap-tab.on, #ansa-promo-app .ap-fchip.on { color: #fff; }
+#ansa-promo-app .ap-fchip.warn.on { color: #4a3600; }
 /* 1.17.0: Nunito на всичко вътре (WP admin CSS слага свой font-family на body/бутони/полета); моноширинното остава за code */
 #ansa-promo-app, #ansa-promo-app *, .ap-modal-overlay, .ap-modal-overlay *, .ap-toast { font-family: 'Nunito', -apple-system, 'Segoe UI', Roboto, sans-serif; }
 #ansa-promo-app code, #ansa-promo-app kbd, #ansa-promo-app pre, #ansa-promo-app .code, #ansa-promo-app textarea.ap-json, #ansa-promo-app input.code, #ansa-promo-app textarea.code { font-family: Menlo, Consolas, 'Courier New', monospace; }
