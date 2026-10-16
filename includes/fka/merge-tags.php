@@ -1,7 +1,7 @@
 <?php
 /**
  * ansa™ Промо 1.8.2 — merge tag класовете за FunnelKit Automations ({{ansa_promo_tickets}}, {{ansa_promo_bileta}},
- * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}, 1.9.0: {{ansa_promo_book_url}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
+ * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}, 1.9.0: {{ansa_promo_book_url}}, 1.13.0: {{ansa_promo_ref_link}} / {{ansa_promo_ref_code}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
  * gate-ът е потвърдил, че BWFAN_Merge_Tag е съвместим. Глобален namespace — FKA класовете са глобални.
  * Логиката е в Merge::shortcode(); тук е само обвивката, която FKA очаква (tag_name, parse_shortcode, dummy preview).
  *
@@ -70,4 +70,11 @@ class Ansa_Promo_FKA_Box extends Ansa_Promo_FKA_Tag {
 }
 class Ansa_Promo_FKA_Book_Url extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'book_url'; protected $ansa_desc = 'ansa™ Промо: линкът към книгата с рецепти (/kniga — телефон + имейл от поръчката; празно, ако поръчката няма книга)';
+}
+/* 1.13.0: личният линк за препоръка на поръчката — работи от момента на заявката (преди пратката), билетите се активират при получаване */
+class Ansa_Promo_FKA_Ref_Link extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'ref_link'; protected $ansa_desc = 'ansa™ Промо: личният линк за препоръка на поръчката ({промо}?r=КОД — приятелят поръчва през него: ×билети за клиента, +1 билет за приятеля); празно извън играта';
+}
+class Ansa_Promo_FKA_Ref_Code extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'ref_code'; protected $ansa_desc = 'ansa™ Промо: самият код за препоръка (8 знака) от линка; празно извън играта';
 }

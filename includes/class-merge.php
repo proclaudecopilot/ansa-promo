@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
 final class Merge {
 
 	/** key → примерна стойност за преглед на имейла в FKA. */
-	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/' ); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката */
+	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/', 'ref_link' => 'https://ansa.bg/sezonut-na-ansa/?r=XXXXXXXX', 'ref_code' => 'XXXXXXXX' ); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката · 1.13.0 ref_link / ref_code: личният линк за препоръка на поръчката (работи от заявката, преди пратката) */
 
 	/** Състоянието на FKA регистрацията за Doctor/Probe: '' = още не е опитвано. */
 	private static $status = '';
@@ -98,15 +98,16 @@ final class Merge {
 		return null;
 	}
 
-	/** Стойностите за поръчката: [tickets, bileta, tickets_text, box]; tickets=0 и tickets_text='' извън играта. */
+	/** Стойностите за поръчката: [tickets, bileta, tickets_text, box, book_url, ref_link, ref_code]; tickets=0 и tickets_text='' извън играта. */
 	public static function values( $order ) {
-		$out = array( 'tickets' => 0, 'bileta' => 'билета', 'tickets_text' => '', 'box' => '', 'book_url' => '' );
+		$out = array( 'tickets' => 0, 'bileta' => 'билета', 'tickets_text' => '', 'box' => '', 'book_url' => '', 'ref_link' => '', 'ref_code' => '' );
 		if ( ! $order instanceof \WC_Order ) { return $out; }
 		$n = Tickets::count_for_order( $order );
 		$out['tickets'] = $n; $out['bileta'] = 1 === $n ? 'билет' : 'билета';
 		$ev = Tickets::email_vars( $order );
 		if ( $ev ) {
 			$out['box'] = (string) $ev['vars']['box'];
+			$out['ref_link'] = (string) $ev['vars']['ref_link']; $out['ref_code'] = (string) $ev['vars']['ref_code']; /* 1.13.0: от билета или от order meta (дава се при заявката) */
 			if ( Book::order_has_book( $order, $ev['cfg'] ) ) { $out['book_url'] = (string) $ev['vars']['book_url']; }
 			if ( $n > 0 ) { $copy = Copy::effective( $ev['cfg']['copy'] ); $out['tickets_text'] = Copy::render( $copy['em.fk.tickets'] ?? '', $ev['vars'] ); }
 		}
@@ -116,6 +117,7 @@ final class Merge {
 	/** Примерните стойности за прегледа на имейла в FKA (без поръчка). */
 	public static function dummy( $key ) {
 		if ( 'book_url' === $key ) { return Book::link( Config::get_published() ) ?: self::TAGS['book_url']; }
+		if ( 'ref_link' === $key ) { $cfg = Config::get_published(); return Tombola::enabled( $cfg ) ? Tombola::ref_link( self::TAGS['ref_code'], $cfg ) : self::TAGS['ref_link']; }
 		if ( 'tickets_text' !== $key ) { return (string) ( self::TAGS[ $key ] ?? '' ); }
 		$cfg = Config::get_published(); $box = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][0]; $v = Cart::vars( $cfg, $box );
 		$v = array_merge( $v, array( 'customer' => 'Мария', 'order' => '12345', 'code' => 'XXXX-XXXX-XXXX', 'tickets' => (int) $box['tickets'], 'bileta' => 1 === (int) $box['tickets'] ? 'билет' : 'билета', 'portal_url' => self::portal_url( $cfg ), 'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : '' ) );
@@ -376,7 +378,7 @@ final class Merge {
 		if ( '' !== $why ) { self::$status = 'прескочено: ' . $why; return; }
 		require_once ANSA_PROMO_PATH . 'includes/fka/merge-tags.php';
 		$n = 0; $err = '';
-		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url' ) as $c ) {
+		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url', 'Ansa_Promo_FKA_Ref_Link', 'Ansa_Promo_FKA_Ref_Code' ) as $c ) {
 			if ( ! class_exists( $c ) ) { continue; }
 			try { $c::get_instance(); $n++; self::fka_register( $c ); } catch ( \Throwable $e ) { $err = $err ?: $e->getMessage(); }
 		}
