@@ -63,9 +63,11 @@ final class Insights {
 	const COOKIE = 'ansa_promo_sid';
 	public static function cookie_sid( $create = false ) {
 		$v = self::sid( $_COOKIE[ self::COOKIE ] ?? '' );
-		if ( '' === $v && $create && ! headers_sent() ) {
-			$v = 'c' . substr( md5( uniqid( '', true ) . wp_rand() ), 0, 16 );
-			setcookie( self::COOKIE, $v, array( 'expires' => time() + DAY_IN_SECONDS, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ) ); $_COOKIE[ self::COOKIE ] = $v;
+		if ( '' === $v && $create ) {
+			/* 1.17.2: без бисквитка (блокирани, или headers вече пратени) — отпечатък IP + User-Agent + ден: същият човек = същата сесия за деня */
+			$v = 'h' . substr( md5( Leads::ip() . '|' . (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) . '|' . current_time( 'Y-m-d' ) . '|' . wp_salt( 'nonce' ) ), 0, 16 );
+			if ( ! headers_sent() ) { @setcookie( self::COOKIE, $v, array( 'expires' => time() + DAY_IN_SECONDS, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ) ); }
+			$_COOKIE[ self::COOKIE ] = $v;
 		}
 		return $v;
 	}
@@ -306,9 +308,10 @@ final class Insights {
 		Admin::form_open_public( 'export_sessions', 'insights' ); echo '<input type="hidden" name="days" value="' . (int) $days . '"><button class="button">⬇ CSV сесии</button></form> ';
 		Admin::form_open_public( 'export_stats', 'insights' ); echo '<input type="hidden" name="days" value="' . (int) $days . '"><button class="button">⬇ CSV стар rollup</button></form></div>';
 		/* KPI */
-		$k = self::kpi( $r );
+		$k = self::kpi( $r ); global $wpdb; $first = (string) $wpdb->get_var( 'SELECT MIN(started_at) FROM ' . Schema::table( 'sessions' ) );
 		echo '<div class="ap-kpis" style="padding:0 0 14px" id="apInsKpi">'
-			. '<div class="ap-kpi"><b data-k="sessions">' . (int) $k['sessions'] . '</b><span>сесии (влезли)</span></div>'
+			. '<div class="ap-kpi"><b data-k="sessions">' . (int) $k['sessions'] . '</b><span>сесии (влезли)' . ( $first ? ' · от ' . esc_html( date_i18n( 'd.m H:i', strtotime( $first ) ) ) : '' ) . '</span></div>'
+			. '<div class="ap-kpi"><b>' . (int) $legacy['by_step']['view'] . '</b><span>видели (стар брояч, цял период)</span></div>'
 			. '<div class="ap-kpi"><b data-k="gate">' . (int) $k['gate'] . '</b><span>минали попъпа</span></div>'
 			. '<div class="ap-kpi"><b data-k="box">' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
 			. '<div class="ap-kpi"><b data-k="full">' . (int) $k['full'] . '</b><span>напълнили</span></div>'
