@@ -6,7 +6,9 @@ $prices=['greens'=>39.90,'sakura'=>44.90,'red'=>42.90,'berber'=>39.90,'meno'=>45
 $prods=[]; $i=100;
 foreach($cfg['products'] as $p){ $i++; $prods[$p['key']]=['key'=>$p['key'],'id'=>$i,'vid'=>0,'ph'=>$p['ph'],'img'=>'','name'=>$p['name'],'gname'=>$p['gname'],'gsub'=>$p['gsub'],'ds'=>$p['ds'],'desc'=>$p['desc'],'ing'=>$p['ing'],'who'=>$p['who'],'rating'=>$p['rating'],'pack'=>$p['pack'],
   'reviews'=>array_values(array_filter(array_map(function($l){$x=array_map('trim',explode('|',$l));return count($x)>=3?['n'=>$x[0],'s'=>(int)$x[1],'t'=>$x[2]]:null;},preg_split('/\r?\n/',(string)$p['reviews'])))),
-  'cat'=>$p['cat'],'theme'=>$p['theme'],'price'=>$prices[$p['key']],'stock'=>true]; }
+  'cat'=>$p['cat'],'theme'=>$p['theme'],'price'=>$prices[$p['key']],'stock'=>true,
+  /* v1.14.0: отстъпка по кутия — yoni е с override −42% в Голямата (пример), останалите на процента на кутията */
+  'pct'=>(object)array_combine(array_column($cfg['boxes'],'id'),array_map(function($b)use($p){ if('yoni'===$p['key']){ $p['pct']=['l'=>42]; } return Config::product_pct($p,$b); },$cfg['boxes']))]; }
 $utm=$argv[1]??'sakura';
 /* снимките в попъпа: в WP ги дава Frontend::gate_images(); тук — примерните SVG-та от assets/img/gate/ */
 $gate=$cfg['gate']; $gate['images']=[]; foreach(array_keys(Config::gate_image_slots()) as $k){ $gate['images'][$k]='file://'.ANSA_PROMO_PATH.'assets/img/gate/'.$k.'.svg'; }

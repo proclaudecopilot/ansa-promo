@@ -54,6 +54,7 @@ final class Plugin {
 		if ( is_admin() ) { Admin::register(); Editor::register(); }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
+		add_action( 'init', array( 'AnsaPromo\\Config', 'maybe_migrate_yoni' ), 31 ); /* 1.14.0: Yonibiotic → WC #15836 (еднократно, след сийда) */
 	}
 
 	public static function cron() {

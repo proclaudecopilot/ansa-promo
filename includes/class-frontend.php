@@ -186,6 +186,7 @@ final class Frontend {
 			   са резерва при празен WC или при изключена отметка „текстовете от WooCommerce“ */
 			/* v1.0.38 (човекът: „ръчно да може да се мапне“): полетата в 📦 Продукти печелят, когато са попълнени; WC пълни само празните */
 			list( $wn, $wds, $wdesc ) = self::wc_texts( $wc );
+			$pcts = array(); foreach ( (array) $cfg['boxes'] as $b ) { $pcts[ (string) $b['id'] ] = Config::product_pct( $p, $b ); }
 			$name = '' !== $p['name'] ? $p['name'] : ( $wn ?: $wc['wc_name'] );
 			$ds   = '' !== $p['ds'] ? $p['ds'] : ( ! empty( $p['wc_text'] ) ? $wds : '' );
 			$desc = '' !== $p['desc'] ? $p['desc'] : ( ! empty( $p['wc_text'] ) ? $wdesc : '' );
@@ -195,6 +196,8 @@ final class Frontend {
 				'ds' => $ds, 'desc' => $desc, 'ing' => $p['ing'], 'who' => $p['who'], 'rating' => $p['rating'], 'pack' => $p['pack'],
 				'reviews' => array_values( array_filter( array_map( function ( $l ) { $x = array_map( 'trim', explode( '|', $l ) ); return count( $x ) >= 3 ? array( 'n' => $x[0], 's' => max( 1, min( 5, (int) $x[1] ) ), 't' => $x[2] ) : null; }, preg_split( '/\r?\n/', (string) $p['reviews'] ) ) ) ),
 				'cat' => $p['cat'], 'theme' => $p['theme'], 'price' => (float) $wc['price'], 'stock' => (bool) $wc['stock'],
+				/* v1.14.0: ефективната отстъпка по кутия (box id => %) — override от 📦 Продукти или процентът на кутията; лейбълите −15/−30/−40 остават на кутията */
+				'pct' => (object) $pcts,
 			);
 		}
 		return $prods;
