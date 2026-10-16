@@ -20,6 +20,9 @@
  *  - Кеш: 10 минути на имейл (transient) — един имейл с двата тага смята веднъж; тестерът в админа смята наново.
  *
  * @package AnsaPromo
+ *  - 1.20.1: дневник на извикванията (⭐ Любим продукт → „Последни извиквания“, option ansa_promo_fav_log): откъде е имейлът, какви данни е
+ *    дал FKA, резултатът; поръчката на event-а се брои дори pending; имейл и по contact id / из всички данни на FKA.
+ *
  * @since 1.20.0
  */
 namespace AnsaPromo;
@@ -161,15 +164,19 @@ final class Favorite {
 	 * Най-купуваният продукт от картата за този имейл.
 	 * → null (няма поръчки / нищо от картата) или { pid, name, url, score, metric, orders (с продукта), all_orders, last (ts), breakdown: name → score }.
 	 */
-	public static function compute( $email, $user_id = 0, $fresh = false ) {
+	public static function compute( $email, $user_id = 0, $fresh = false, $extra_order = null ) {
 		$email = strtolower( trim( (string) $email ) ); $uid = (int) $user_id;
-		if ( '' === $email && $uid <= 0 ) { return null; }
-		$ck = 'ansa_promo_fav_' . md5( $email . '|' . $uid . '|' . md5( wp_json_encode( get_option( self::OPT, array() ) ) ) );
+		if ( '' === $email && $uid <= 0 && ! $extra_order ) { return null; }
+		/* 1.20.1: поръчката на самия event (Order Created и т.н.) се брои, дори да е още pending — човекът току-що я е направил */
+		$xo = ( is_object( $extra_order ) && method_exists( $extra_order, 'get_items' ) && ! in_array( $extra_order->get_status(), array( 'cancelled', 'refunded', 'failed', 'trash' ), true ) ) ? $extra_order : null;
+		$ck = 'ansa_promo_fav_' . md5( $email . '|' . $uid . '|' . ( $xo ? $xo->get_id() : 0 ) . '|' . md5( wp_json_encode( get_option( self::OPT, array() ) ) ) );
 		static $mem = array();
 		if ( ! $fresh ) { if ( array_key_exists( $ck, $mem ) ) { return $mem[ $ck ]; } $c = get_transient( $ck ); if ( is_array( $c ) && array_key_exists( 'r', $c ) ) { return $mem[ $ck ] = $c['r']; } }
 		$s = self::settings(); $map = self::map( $s ); $r = null;
 		if ( $map ) {
-			$score = array(); $last = array(); $in = array(); $pidof = array(); $pidts = array(); $orders = self::orders_for( $email, $uid, $s ); $n_all = count( $orders );
+			$score = array(); $last = array(); $in = array(); $pidof = array(); $pidts = array(); $orders = self::orders_for( $email, $uid, $s );
+			if ( $xo ) { $has = false; foreach ( $orders as $o ) { if ( $o->get_id() === $xo->get_id() ) { $has = true; break; } } if ( ! $has ) { array_unshift( $orders, $xo ); } }
+			$n_all = count( $orders );
 			foreach ( $orders as $o ) {
 				$ts = $o->get_date_created() ? $o->get_date_created()->getTimestamp() : 0; $seen_here = array();
 				foreach ( $o->get_items( 'line_item' ) as $it ) {
@@ -205,8 +212,8 @@ final class Favorite {
 	}
 
 	/** Стойността за тага: 'fav' → краткото име, 'fav_url' → линкът; '' когато няма (fallback-ът е в Merge::shortcode). */
-	public static function value( $key, $email, $user_id = 0 ) {
-		$r = self::compute( $email, $user_id ); if ( ! $r ) { return 'fav' === $key ? (string) self::settings()['fallback'] : ''; }
+	public static function value( $key, $email, $user_id = 0, $extra_order = null ) {
+		$r = self::compute( $email, $user_id, false, $extra_order ); if ( ! $r ) { return 'fav' === $key ? (string) self::settings()['fallback'] : ''; }
 		return 'fav_url' === $key ? (string) $r['url'] : (string) $r['name'];
 	}
 
@@ -216,6 +223,18 @@ final class Favorite {
 		if ( 'fav_url' === $key ) { return $pid && function_exists( 'get_permalink' ) ? (string) get_permalink( $pid ) : home_url( '/' ); }
 		return $pid ? (string) $map[ $pid ]['name'] : 'Daily Greens';
 	}
+
+	/* ── 1.20.1: дневник на извикванията (option ansa_promo_fav_log, последните 30) — „защо получи fallback“ ── */
+	const LOG = 'ansa_promo_fav_log'; const LOG_N = 30;
+	public static function log( $row ) {
+		$rows = get_option( self::LOG, array() ); $rows = is_array( $rows ) ? $rows : array();
+		$e = (string) ( $row['email'] ?? '' ); $row['email'] = '' === $e ? '' : preg_replace( '/^(.)[^@]*(@.*)$/u', '$1***$2', $e ); /* маскиран — в лога не стоят имейли на клиенти */
+		$row['at'] = function_exists( 'current_time' ) ? current_time( 'mysql' ) : date( 'Y-m-d H:i:s' ); $row['ctx'] = ( defined( 'DOING_CRON' ) && DOING_CRON ? 'cron' : ( defined( 'REST_REQUEST' ) && REST_REQUEST ? 'rest' : ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ? 'ajax' : ( function_exists( 'is_admin' ) && is_admin() ? 'admin' : 'web' ) ) ) );
+		array_unshift( $rows, $row ); $rows = array_slice( $rows, 0, self::LOG_N );
+		update_option( self::LOG, $rows, false );
+	}
+	public static function log_rows() { $r = get_option( self::LOG, array() ); return is_array( $r ) ? $r : array(); }
+	public static function log_clear() { delete_option( self::LOG ); }
 
 	/** Чисти кеша на сметките (при запис на настройките). */
 	public static function flush() {

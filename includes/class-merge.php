@@ -77,18 +77,11 @@ final class Merge {
 
 	/** Имейлът на контакта от данните на FKA (email / contact обект / wp user). */
 	public static function fka_email() {
-		foreach ( array( 'email', 'contact_email', 'user_email' ) as $k ) { $d = self::fka_data( $k ); if ( is_string( $d ) && is_email( $d ) ) { return strtolower( trim( $d ) ); } }
-		$c = self::fka_data( 'contact' ); if ( ! is_object( $c ) ) { $c = self::fka_data( 'bwf_contact' ); }
-		if ( is_object( $c ) ) {
-			foreach ( array( $c, ( isset( $c->contact ) && is_object( $c->contact ) ? $c->contact : null ) ) as $obj ) {
-				if ( ! $obj ) { continue; }
-				try {
-					if ( method_exists( $obj, 'get_email' ) ) { $e = $obj->get_email(); if ( is_string( $e ) && is_email( $e ) ) { return strtolower( trim( $e ) ); } }
-					if ( isset( $obj->email ) && is_string( $obj->email ) && is_email( $obj->email ) ) { return strtolower( trim( $obj->email ) ); }
-				} catch ( \Throwable $e ) {}
-			}
-		}
-		foreach ( array( 'user_id', 'wp_user_id', 'wp_id' ) as $k ) { $d = self::fka_data( $k ); if ( is_numeric( $d ) && (int) $d > 0 ) { $u = get_userdata( (int) $d ); if ( $u && is_email( $u->user_email ) ) { return strtolower( trim( $u->user_email ) ); } } }
+		self::$email_src = '';
+		foreach ( array( 'email', 'contact_email', 'user_email' ) as $k ) { $d = self::fka_data( $k ); if ( is_string( $d ) && is_email( $d ) ) { self::$email_src = $k; return strtolower( trim( $d ) ); } }
+		foreach ( array( 'contact', 'bwf_contact', 'bwfan_contact', 'crm_contact' ) as $k ) { $c = self::fka_data( $k ); if ( is_object( $c ) ) { $e = self::email_of( $c ); if ( '' !== $e ) { self::$email_src = $k . ' (' . get_class( $c ) . ')'; return $e; } } }
+		foreach ( array( 'user_id', 'wp_user_id', 'wp_id' ) as $k ) { $d = self::fka_data( $k ); if ( is_numeric( $d ) && (int) $d > 0 && function_exists( 'get_userdata' ) ) { $u = get_userdata( (int) $d ); if ( $u && is_email( $u->user_email ) ) { self::$email_src = $k . '=' . (int) $d; return strtolower( trim( $u->user_email ) ); } } }
+		foreach ( array( 'cid', 'contact_id', 'bwf_contact_id', 'bwfan_contact_id' ) as $k ) { $d = self::fka_data( $k ); if ( is_numeric( $d ) && (int) $d > 0 ) { $e = self::email_by_cid( (int) $d ); if ( '' !== $e ) { self::$email_src = $k . '=' . (int) $d; return $e; } } } /* 1.20.1 */
 		return '';
 	}
 
@@ -142,15 +135,81 @@ final class Merge {
 	/**
 	 * 1.20.0: {{ansa_promo_fav}} / {{ansa_promo_fav_url}} — човекът, не поръчката: имейлът на FKA контакта (broadcast, Tag Added, …);
 	 * при WC event без контакт в данните — billing имейлът на поръчката; order_id="" / email="" (само с manage_woocommerce) за тестове.
+	 * 1.20.1: всяко извикване се записва в Favorite::log (откъде е имейлът, какви данни е дал FKA, резултатът) — ⭐ Любим продукт
+	 * → „Последни извиквания“; поръчката на самия event се брои дори да е още pending; имейлът се търси и по contact id (cid) и
+	 * във всички данни на FKA (обект с get_email / ключ email).
 	 */
 	public static function favorite( $key, $attr = array() ) {
-		$attr = is_array( $attr ) ? $attr : array(); $email = ''; $uid = 0;
-		if ( ! empty( $attr['email'] ) && function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' ) && is_email( (string) $attr['email'] ) ) { $email = (string) $attr['email']; }
-		if ( '' === $email && ! empty( $attr['order_id'] ) && function_exists( 'wc_get_order' ) ) { $o = wc_get_order( (int) $attr['order_id'] ); if ( $o ) { $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); } }
-		if ( '' === $email ) { $email = self::fka_email(); }
-		if ( '' === $email ) { $o = self::order( array() ); if ( $o ) { $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); } }
-		if ( '' === $email && $uid <= 0 ) { return ''; }
-		return Favorite::value( $key, $email, $uid );
+		$attr = is_array( $attr ) ? $attr : array(); $email = ''; $uid = 0; $src = ''; $order = null;
+		if ( ! empty( $attr['email'] ) && function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' ) && is_email( (string) $attr['email'] ) ) { $email = (string) $attr['email']; $src = 'attr email'; }
+		if ( '' === $email && ! empty( $attr['order_id'] ) && function_exists( 'wc_get_order' ) ) { $o = wc_get_order( (int) $attr['order_id'] ); if ( $o ) { $order = $o; $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); $src = 'attr order_id #' . $o->get_id(); } }
+		if ( '' === $email ) { $email = self::fka_email(); if ( '' !== $email ) { $src = 'FKA контакт (' . self::$email_src . ')'; } }
+		if ( '' === $email ) { $o = self::fka_order(); if ( $o ) { $order = $o; $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); $src = 'FKA поръчка #' . $o->get_id(); } }
+		if ( '' === $email ) { $email = self::fka_email_deep(); if ( '' !== $email ) { $src = 'FKA данни (' . self::$email_src . ')'; } }
+		if ( ! $order ) { $order = self::fka_order(); } /* и при имейл от контакта: поръчката на event-а се брои, дори още pending */
+		$val = ( '' === $email && $uid <= 0 ) ? '' : Favorite::value( $key, $email, $uid, $order );
+		Favorite::log( array( 'key' => $key, 'src' => $src ?: 'няма имейл', 'email' => $email, 'uid' => $uid, 'order' => $order ? $order->get_id() . ' · ' . $order->get_status() : '', 'data' => self::fka_data_keys(), 'result' => $val, 'fallback' => (string) ( $attr['fallback'] ?? '' ) ) );
+		return $val;
+	}
+	/** Откъде дойде имейлът (за лога). */
+	public static $email_src = '';
+	/** Поръчката от данните на FKA (wc_order / order / order_id / wc_order_id), без резервата „последната промо поръчка по имейла“. */
+	public static function fka_order() {
+		if ( ! function_exists( 'wc_get_order' ) ) { return null; }
+		foreach ( array( 'wc_order', 'order', 'order_id', 'wc_order_id' ) as $k ) {
+			$d = self::fka_data( $k );
+			if ( $d instanceof \WC_Order ) { return $d; }
+			if ( is_object( $d ) && method_exists( $d, 'get_id' ) && method_exists( $d, 'get_billing_email' ) ) { return $d; }
+			if ( is_numeric( $d ) && (int) $d > 0 ) { $o = wc_get_order( (int) $d ); if ( $o ) { return $o; } }
+		}
+		return null;
+	}
+	/** Всички данни на FKA (BWFAN_Merge_Tag_Loader::get_data() без ключ), ако версията ги дава като масив; иначе null. */
+	public static function fka_all_data() {
+		if ( ! class_exists( 'BWFAN_Merge_Tag_Loader' ) || ! method_exists( 'BWFAN_Merge_Tag_Loader', 'get_data' ) ) { return null; }
+		try { $all = \BWFAN_Merge_Tag_Loader::get_data(); return is_array( $all ) ? $all : null; } catch ( \Throwable $e ) {}
+		try { $rc = new \ReflectionClass( 'BWFAN_Merge_Tag_Loader' ); foreach ( $rc->getProperties( \ReflectionProperty::IS_STATIC ) as $p ) { $p->setAccessible( true ); $v = $p->getValue(); if ( is_array( $v ) && ( isset( $v['email'] ) || isset( $v['contact'] ) || isset( $v['wc_order'] ) || isset( $v['order_id'] ) || isset( $v['user_id'] ) ) ) { return $v; } } } catch ( \Throwable $e ) {}
+		return null;
+	}
+	/** За лога: „email:string · contact:BWFCRM_Contact · order_id:int …“ или кои от познатите ключове не са празни. */
+	public static function fka_data_keys() {
+		$all = self::fka_all_data(); $out = array();
+		if ( is_array( $all ) ) { foreach ( $all as $k => $v ) { $out[] = $k . ':' . ( is_object( $v ) ? get_class( $v ) : ( is_array( $v ) ? 'array(' . count( $v ) . ')' : ( is_scalar( $v ) ? ( is_string( $v ) && ( strlen( $v ) > 24 || is_email( $v ) ) ? gettype( $v ) : var_export( $v, true ) ) : gettype( $v ) ) ) ); } return implode( ' · ', array_slice( $out, 0, 20 ) ); }
+		foreach ( array( 'email', 'contact', 'bwf_contact', 'contact_id', 'cid', 'user_id', 'wp_user_id', 'wc_order', 'order_id', 'is_preview' ) as $k ) { $d = self::fka_data( $k ); if ( null !== $d && '' !== $d && false !== $d ) { $out[] = $k . ':' . ( is_object( $d ) ? get_class( $d ) : gettype( $d ) ); } }
+		return $out ? implode( ' · ', $out ) : ( class_exists( 'BWFAN_Merge_Tag_Loader' ) ? 'нищо от познатите ключове' : 'без BWFAN_Merge_Tag_Loader' );
+	}
+	/** Имейл от обект на FKA/Funnel Builder: get_email(), ->email, ->contact->get_email(), ->data['email']. */
+	private static function email_of( $c ) {
+		if ( ! is_object( $c ) ) { return ''; }
+		foreach ( array( $c, ( isset( $c->contact ) && is_object( $c->contact ) ? $c->contact : null ) ) as $obj ) {
+			if ( ! $obj ) { continue; }
+			try {
+				if ( method_exists( $obj, 'get_email' ) ) { $e = $obj->get_email(); if ( is_string( $e ) && is_email( $e ) ) { return strtolower( trim( $e ) ); } }
+				if ( method_exists( $obj, 'get_billing_email' ) ) { $e = $obj->get_billing_email(); if ( is_string( $e ) && is_email( $e ) ) { return strtolower( trim( $e ) ); } }
+				foreach ( array( 'email', 'contact_email', 'user_email' ) as $pn ) { if ( isset( $obj->$pn ) && is_string( $obj->$pn ) && is_email( $obj->$pn ) ) { return strtolower( trim( $obj->$pn ) ); } }
+				if ( isset( $obj->data ) && is_array( $obj->data ) && ! empty( $obj->data['email'] ) && is_email( (string) $obj->data['email'] ) ) { return strtolower( trim( (string) $obj->data['email'] ) ); }
+			} catch ( \Throwable $e ) {}
+		}
+		return '';
+	}
+	/** 1.20.1: контакт по id (cid / contact_id) → имейл, през WooFunnels_Contact (Funnel Builder) или BWFCRM_Contact. */
+	private static function email_by_cid( $cid ) {
+		$cid = (int) $cid; if ( $cid <= 0 ) { return ''; }
+		try { if ( class_exists( 'WooFunnels_Contact' ) ) { $c = new \WooFunnels_Contact( '', '', '', $cid ); if ( method_exists( $c, 'get_id' ) && (int) $c->get_id() > 0 ) { $e = self::email_of( $c ); if ( '' !== $e ) { return $e; } } } } catch ( \Throwable $e ) {}
+		try { if ( class_exists( 'BWFCRM_Contact' ) ) { $e = self::email_of( new \BWFCRM_Contact( $cid ) ); if ( '' !== $e ) { return $e; } } } catch ( \Throwable $e ) {}
+		return '';
+	}
+	/** 1.20.1: търси имейл във ВСИЧКИ данни на FKA — скалар с имейл, обект с get_email, масив с ключ email (до 2 нива). */
+	public static function fka_email_deep() {
+		$all = self::fka_all_data(); if ( ! is_array( $all ) ) { return ''; }
+		foreach ( $all as $k => $v ) {
+			if ( is_string( $v ) && is_email( $v ) && false !== stripos( (string) $k, 'mail' ) ) { self::$email_src = $k; return strtolower( trim( $v ) ); }
+			if ( is_object( $v ) ) { $e = self::email_of( $v ); if ( '' !== $e ) { self::$email_src = $k . ' (' . get_class( $v ) . ')'; return $e; } }
+			if ( is_array( $v ) ) { foreach ( array( 'email', 'billing_email', 'contact_email', 'user_email' ) as $ek ) { if ( ! empty( $v[ $ek ] ) && is_string( $v[ $ek ] ) && is_email( $v[ $ek ] ) ) { self::$email_src = $k . '[' . $ek . ']'; return strtolower( trim( $v[ $ek ] ) ); } } }
+			if ( is_numeric( $v ) && in_array( (string) $k, array( 'cid', 'contact_id', 'bwf_contact_id', 'bwfan_contact_id' ), true ) ) { $e = self::email_by_cid( (int) $v ); if ( '' !== $e ) { self::$email_src = $k . '=' . (int) $v; return $e; } }
+		}
+		foreach ( $all as $k => $v ) { if ( is_string( $v ) && is_email( $v ) ) { self::$email_src = $k; return strtolower( trim( $v ) ); } }
+		return '';
 	}
 
 	/* ── тагът „Сезонът на Анса“ на контакта във FunnelKit ── */
