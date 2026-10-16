@@ -1647,24 +1647,16 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 /* v1.12.0: в „Честито“ — редът „+2 за 2 опаковки над 5-ата — общо 7 билета“ под томболата */
 .ansa-promo .celeb .hero .tixx{display:block;margin-top:4px;font-size:12.5px;font-weight:800;color:var(--gd,#16a34a)}
 
-/* ═══ v1.18.0: лентата с всички продукти над картите (десктоп и телефон) + пейджър горе на десктоп + примигване на картата ═══ */
-.ansa-promo .fstrip{display:flex;align-items:center;gap:10px;margin:0 0 12px;min-width:0}
-.ansa-promo .fstripn{flex:none;font-size:12px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--od);white-space:nowrap}
-.ansa-promo .fstripl{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;min-width:0;flex:1;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
-.ansa-promo .fstripl::-webkit-scrollbar{display:none}
-.ansa-promo .fsc{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;border:1.5px solid rgba(232,114,42,.22);background:#fff;color:var(--ink);font:inherit;font-size:12.5px;font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap;transition:.15s}
-.ansa-promo .fsc .fsci{width:24px;height:24px;border-radius:50%;object-fit:cover;background:#fff7f0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-style:normal;flex:none}
-.ansa-promo .fsc:hover{border-color:var(--o);background:#fffaf6}
-.ansa-promo .fsc.on{border-color:var(--o);box-shadow:0 0 0 2px rgba(232,114,42,.15)}
-.ansa-promo .fsc.in{background:#eafbf0;border-color:#16a34a;color:#166534}
-.ansa-promo .fsc.in::after{content:"✓";font-size:11px;font-weight:900;color:#16a34a}
-.ansa-promo .dc.fpw .fp3 .mpg2{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-6px 0 10px;padding:0;background:none;border:0}
-.ansa-promo .dc.fpw .fp3 .mpg2 .mpgb{width:34px;height:34px;min-width:0;padding:0;border-radius:50%;font-size:18px;display:inline-flex;align-items:center;justify-content:center;flex:none}
-.ansa-promo .dc.fpw .fp3 .mpg2 .mpgb span{display:none}
-.ansa-promo .dc.fpw .fp3 .mpg2 .mpgn{flex:none;font-size:13px;font-weight:800;color:var(--ink2);white-space:nowrap}
-.ansa-promo .mpgl{font-size:12px;font-weight:800;color:var(--od)}
-.ansa-promo .dc.fpm .fstrip{margin:0 16px 10px;flex:none}
-.ansa-promo .dc.fpm .fstripn{font-size:11px}
-@keyframes ansaFlash{0%{box-shadow:0 0 0 0 rgba(232,114,42,.0)}30%{box-shadow:0 0 0 4px rgba(232,114,42,.45)}100%{box-shadow:0 0 0 0 rgba(232,114,42,0)}}
-.ansa-promo .fcat.flash{animation:ansaFlash 1.1s ease-out 1}
-@media(max-width:760px){.ansa-promo .fstrip{flex-direction:column;align-items:stretch;gap:4px}.ansa-promo .fstripn{padding-left:2px}}
+/* ═══ v1.18.1 (човекът: продуктите си остават на мястото; „още продукти“ се вижда без скрол): стрелки отстрани на картите
+   и бутон „Още N продукта ›“ в залепения футър на десктоп; на телефона „↓ Още N продукта“ с реалния брой ═══ */
+.ansa-promo .fp3 .f3gw{position:relative}
+.ansa-promo .fp3 .f3arr{position:absolute;top:150px;z-index:4;width:44px;height:44px;border-radius:50%;border:none;background:var(--o);color:#fff;font:inherit;font-size:28px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 18px rgba(232,114,42,.4);transition:.15s}
+.ansa-promo .fp3 .f3arr.pv{left:-22px}
+.ansa-promo .fp3 .f3arr.nx{right:-22px}
+.ansa-promo .fp3 .f3arr:hover{transform:scale(1.06)}
+.ansa-promo .fp3 .f3arr.off{opacity:0;pointer-events:none}
+.ansa-promo .dc.fpw .f3f{grid-template-columns:minmax(0,1fr) auto auto}
+.ansa-promo .dc.fpw .f3more{font:inherit;font-size:15px;font-weight:900;color:var(--od);background:#fff;border:1.5px solid var(--o);border-radius:999px;padding:12px 18px;cursor:pointer;white-space:nowrap;transition:.15s;box-shadow:0 2px 10px rgba(232,114,42,.12)}
+.ansa-promo .dc.fpw .f3more:hover{background:#fff5ee}
+.ansa-promo .dc.fpw .f3more[hidden]{display:none}
+@media(max-width:900px){.ansa-promo .dc.fpw .f3f{grid-template-columns:1fr}.ansa-promo .fp3 .f3arr{top:120px}.ansa-promo .fp3 .f3arr.pv{left:-10px}.ansa-promo .fp3 .f3arr.nx{right:-10px}}
