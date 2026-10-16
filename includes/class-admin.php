@@ -55,7 +55,7 @@ final class Admin {
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
@@ -197,6 +197,16 @@ final class Admin {
 			case 'link_proxy': /* 1.13.1: HTTPS прокси за SendGrid линковете — отделна опция, без публикуване */
 				Link_Proxy::save( ! empty( $_POST['lp_enabled'] ), (string) wp_unslash( $_POST['lp_host'] ?? '' ), (int) ( $_POST['lp_reset_days'] ?? 0 ) );
 				$st = Link_Proxy::status(); $msg = 'SendGrid линкове: записано. ' . $st[0]; break;
+			case 'favorite': /* 1.20.0: {{ansa_promo_fav}} — картата с кратките имена; отделна опция, без публикуване */
+				Favorite::save( (string) wp_unslash( $_POST['fav_map'] ?? '' ), (string) wp_unslash( $_POST['fav_metric'] ?? 'packs' ), (string) wp_unslash( $_POST['fav_skip'] ?? '' ), (string) wp_unslash( $_POST['fav_fallback'] ?? '' ), (int) ( $_POST['fav_limit'] ?? 100 ) );
+				$fs = Favorite::status(); $msg = 'Любим продукт: записано. ' . $fs[0]; break;
+			case 'favorite_test': /* 1.20.0: какво ще получи този имейл */
+				$em = sanitize_email( (string) wp_unslash( $_POST['fav_email'] ?? '' ) );
+				if ( ! is_email( $em ) ) { $msg = 'Любим продукт: въведи имейл.'; break; }
+				$r = Favorite::compute( $em, 0, true );
+				$msg = $r ? sprintf( '⭐ %s → {{ansa_promo_fav}} = „%s“ (%s %s в %d поръчки от %d; последно %s) · всички: %s · {{ansa_promo_fav_url}} = %s', $em, $r['name'], Cart::fmt( $r['score'] ), 'spent' === $r['metric'] ? '€' : ( 'orders' === $r['metric'] ? 'поръчки' : ( 'qty' === $r['metric'] ? 'бр.' : 'опаковки' ) ), $r['orders'], $r['all_orders'], $r['last'] ? wp_date( 'd.m.Y', $r['last'] ) : '—', implode( ', ', array_map( function ( $k, $v ) { return $k . ' ' . Cart::fmt( $v ); }, array_keys( $r['breakdown'] ), $r['breakdown'] ) ), $r['url'] )
+					: sprintf( '⭐ %s → няма поръчки с продукт от картата (%d поръчки общо) → {{ansa_promo_fav}} = „%s“ (текстът „когато няма“ / fallback на тага).', $em, count( Favorite::orders_for( $em ) ), Favorite::settings()['fallback'] );
+				break;
 			case 'purge':
 				Catalog::purge_runtime(); $c = Config::get_published(); Config::purge_page( $c['page_id'] ); $msg = 'Кешът на runtime-а и страницата е изчистен.'; break;
 		}
@@ -385,6 +395,27 @@ final class Admin {
 					&nbsp; <label>домейн: <input type="text" name="lp_host" value="<?php echo esc_attr( $lp['host'] ); ?>" class="regular-text code" placeholder="url2581.ansa.bg"<?php disabled( ! empty( $lp['const'] ) ); ?>></label>
 					&nbsp; <label>линкът за парола важи <input type="number" name="lp_reset_days" value="<?php echo (int) $lp['reset_days']; ?>" min="0" max="60" style="width:70px"> дни</label> <small>0 = стандартно (1 ден); 7 = и ключовете от вече изпратените писма работят още една седмица</small></p>
 					<p><button class="button button-primary">💾 Запази</button><?php if ( ! empty( $lp['const'] ) ) : ?> <small>домейнът е зададен с константата <code>ANSA_PROMO_LINK_PROXY_HOST</code> в wp-config.php</small><?php endif; ?></p>
+				</form>
+				</div></section>
+				<section class="ap-sec" id="s-favorite"><div class="ap-sec__h"><span class="ap-sec__t">⭐ Любим продукт за имейлите — {{ansa_promo_fav}}</span></div><div class="ap-sec__b">
+				<?php $fv = Favorite::settings(); $fvs = Favorite::status(); $fve = array(); $fvr = Favorite::parse_map( $fv['map'], $fve ); ?>
+				<p>„Здравей, Мария — твоят любим продукт <b>Daily Greens</b> е вече наличен.“ Merge тагът <code>{{ansa_promo_fav}}</code> (FunnelKit Automations → Merge tags → Order) намира <b>най-купувания продукт на човека</b> по всичките му поръчки с този имейл и го изписва с <b>краткото име</b> от картата по-долу, не с името на WooCommerce продукта. Продукти, които не са в картата, не участват. <code>{{ansa_promo_fav_url}}</code> е линкът към продуктовата му страница. Във FKA: <code>{{ansa_promo_fav fallback="любимата ти добавка"}}</code>. Същото като шорткод: <code>[ansa_promo_fav]</code>.</p>
+				<p class="description">Състояние: <?php echo esc_html( $fvs[0] ); ?></p>
+				<?php self::form_open( 'favorite', 'tools', ' style="display:block"' ); ?>
+					<p><label><b>Картата</b> — на ред: <code>ID на продукта = Кратко име</code>; няколко ID-та (или SKU) на един ред се броят заедно (напр. сетове към основния продукт); вариация се свежда до продукта; <code>#</code> = коментар. Празно = продуктите от черновата с имената по подразбиране.<br>
+					<textarea name="fav_map" rows="<?php echo max( 6, min( 14, substr_count( $fv['map'], "\n" ) + 2 ) ); ?>" class="large-text code" placeholder="3994 = Daily Greens&#10;28726 = Sakura SkinTonik&#10;15836 = YoniBiotic&#10;22307 = MenoStop&#10;11546 = Dihydroberberine&#10;1298 = Thyrozen"><?php echo esc_textarea( $fv['custom'] ? $fv['map'] : '' ); ?></textarea></label>
+					<?php if ( ! $fv['custom'] && '' !== $fv['map'] ) : ?><span class="description">сега (по подразбиране): <code><?php echo esc_html( str_replace( "\n", ' · ', $fv['map'] ) ); ?></code></span><?php endif; ?>
+					<?php if ( $fve ) : ?><br><span style="color:#cf222e">⚠ <?php echo esc_html( implode( '; ', $fve ) ); ?></span><?php endif; ?></p>
+					<?php if ( $fvr && function_exists( 'wc_get_product' ) ) : ?><table class="widefat striped ap-table" style="max-width:760px"><thead><tr><th>кратко име</th><th>WC продукт(и)</th></tr></thead><tbody>
+					<?php foreach ( $fvr as $row ) : ?><tr><td><b><?php echo esc_html( $row['name'] ); ?></b></td><td><?php $cells = array(); foreach ( $row['ids'] as $pid ) { $pr = wc_get_product( $pid ); $cells[] = '#' . (int) $pid . ' ' . ( $pr ? esc_html( $pr->get_name() ) : '<span style="color:#cf222e">няма такъв продукт</span>' ); } echo implode( '<br>', $cells ); ?></td></tr><?php endforeach; ?>
+					</tbody></table><?php endif; ?>
+					<p><label>Най-купуван = <select name="fav_metric"><?php foreach ( Favorite::METRICS as $k => $l ) : ?><option value="<?php echo esc_attr( $k ); ?>"<?php selected( $fv['metric'], $k ); ?>><?php echo esc_html( $l ); ?></option><?php endforeach; ?></select></label> <span class="description">„опаковки“: 1 × „3 кутии“ = 3, 2 × „1 брой“ = 2; при равенство печели по-скоро купеният</span></p>
+					<p><label>Не броят поръчки със статус: <input type="text" name="fav_skip" value="<?php echo esc_attr( $fv['skip'] ); ?>" class="regular-text code"></label> <span class="description">всички останали статуси (delivered, at-office, shipped, processing, completed, on-hold…) са покупка</span></p>
+					<p><label>Текст, когато няма любим (без поръчки с тези продукти): <input type="text" name="fav_fallback" value="<?php echo esc_attr( $fv['fallback'] ); ?>" class="regular-text" placeholder="любимата ти добавка"></label> &nbsp; <label>до <input type="number" name="fav_limit" value="<?php echo (int) $fv['limit']; ?>" min="10" max="500" style="width:70px"> поръчки назад</label></p>
+					<p><button class="button button-primary">💾 Запази</button> <span class="description">не се публикува — важи веднага; кешът на сметките (10 мин на имейл) се чисти</span></p>
+				</form>
+				<?php self::form_open( 'favorite_test', 'tools', ' style="display:block;margin-top:6px"' ); ?>
+					<p><label>🔎 Провери имейл: <input type="email" name="fav_email" class="regular-text" placeholder="klient@example.com" required></label> <button class="button">Какво ще получи</button> <span class="description">смята наново, без кеша; показва всички продукти от картата с резултата им</span></p>
 				</form>
 				</div></section>
 				<section class="ap-sec" id="s-products"><div class="ap-sec__h"><span class="ap-sec__t">📦 Продуктите в черновата</span></div><div class="ap-sec__b">

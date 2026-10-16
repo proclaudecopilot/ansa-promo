@@ -29,6 +29,7 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
 		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
 		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
+		$s[] = array( 'id' => 'promo-favorite', 'label' => 'ansa™ Промо · любимият продукт за имейлите {{ansa_promo_fav}} (картата · метриката · сметка по имейл; ?email=…)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_favorite' ) );
 		$s[] = array( 'id' => 'promo-season', 'label' => 'ansa™ Промо · седмиците на сезона (стълбата · цените по седмица · гратисът в количката)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_season' ) );
 		return $s;
 	}
@@ -477,6 +478,45 @@ final class Probe {
 	 * 1.11.0: лийд от попъпа → FunnelKit контакт (гост) + лист + таг; „поръчка“ → тагът пада, листът остава, лийдът е конвертиран.
 	 * Ползва probe-lead@example.com (един и същ контакт, не се трупат); лийдът и тестовата поръчка се трият.
 	 */
+	/* ── favorite (1.20.0): картата се разбира и сочи реални продукти; шорткодовете/FKA таговете са регистрирани; сметката върху
+	   последната жива поръчка на сайта (или ?email=…) дава продукт от картата, ако поръчката носи такъв; нищо не се създава. ── */
+	public static function suite_favorite( $t, $params ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { $t->ok( 'WooCommerce', false ); return null; }
+		$s = Favorite::settings(); $err = array(); $rows = Favorite::parse_map( $s['map'], $err ); $st = Favorite::status();
+		$t->ok( 'картата има поне един продукт (🧰 Настройки → ⭐ Любим продукт)', count( $rows ) > 0, $st[0] );
+		$t->ok( 'картата е без грешки', ! $err, implode( '; ', $err ) );
+		foreach ( $rows as $row ) { foreach ( $row['ids'] as $pid ) { $p = wc_get_product( $pid ); $t->ok( 'карта: „' . $row['name'] . '“ ← #' . $pid . ' е WC продукт (не вариация)', $p && ! $p->is_type( 'variation' ), $p ? $p->get_name() . ' · ' . $p->get_type() : 'няма' ); } }
+		$t->ok( 'шорткод [ansa_promo_fav]', shortcode_exists( 'ansa_promo_fav' ) ); $t->ok( 'шорткод [ansa_promo_fav_url]', shortcode_exists( 'ansa_promo_fav_url' ) );
+		$t->ok( 'FunnelKit Automations {{ansa_promo_fav}} / {{ansa_promo_fav_url}}', ! defined( 'BWFAN_VERSION' ) || ( shortcode_exists( 'bwfan_ansa_promo_fav' ) && shortcode_exists( 'bwfan_ansa_promo_fav_url' ) ), Merge::fka_status() );
+		$t->eq( 'dummy preview: първото кратко име', $rows ? $rows[0]['name'] : 'Daily Greens', Favorite::dummy( 'fav' ) );
+		$t->ok( 'без имейл → празно (fallback-ът на тага)', '' === Merge::shortcode( 'fav', array() ) || '' !== $s['fallback'], Merge::shortcode( 'fav', array( 'fallback' => 'X' ) ) );
+		/* опаковките от вариациите на продуктите в картата */
+		foreach ( array_slice( $rows, 0, 3 ) as $row ) { $p = wc_get_product( $row['ids'][0] ); if ( ! $p || ! $p->is_type( 'variable' ) ) { continue; } $seen = array(); foreach ( $p->get_children() as $vid ) { $v = wc_get_product( $vid ); if ( ! $v ) { continue; } $fake = new \WC_Order_Item_Product(); $fake->set_variation_id( $vid ); $fake->set_product_id( $p->get_id() ); $seen[] = str_replace( $p->get_name(), '', $v->get_name() ) . ' → ' . Favorite::packs_of( $fake ); } $t->note( 'опаковки по вариация: ' . $row['name'], implode( ' · ', $seen ) ); }
+		/* сметката: ?email=… или последната жива поръчка с продукт от картата */
+		$email = isset( $params['email'] ) ? sanitize_email( (string) $params['email'] ) : ''; $o = null;
+		if ( '' === $email ) {
+			$map = Favorite::map( $s );
+			foreach ( wc_get_orders( array( 'limit' => 20, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => Favorite::count_statuses( $s ), 'type' => 'shop_order' ) ) as $cand ) {
+				foreach ( $cand->get_items( 'line_item' ) as $it ) { if ( isset( $map[ (int) $it->get_product_id() ] ) ) { $o = $cand; break 2; } }
+			}
+			if ( ! $o ) { $t->note( 'сметка', 'в последните 20 поръчки няма продукт от картата — подай ?email=…' ); return null; }
+			$email = (string) $o->get_billing_email();
+		}
+		$r = Favorite::compute( $email, 0, true );
+		$t->note( 'сметка за ' . $email, $r ? $r : 'няма продукт от картата в поръчките' );
+		if ( $o ) {
+			$t->ok( 'последната поръчка с продукт от картата дава резултат', (bool) $r, '#' . $o->get_id() . ' · ' . $o->get_status() );
+			if ( $r ) { $names = array(); foreach ( $o->get_items( 'line_item' ) as $it ) { $pid = (int) $it->get_product_id(); if ( isset( $map[ $pid ] ) ) { $names[] = $map[ $pid ]['name']; } } foreach ( array_unique( $names ) as $nm ) { $t->ok( 'в разбивката има „' . $nm . '“ от поръчка #' . $o->get_id(), isset( $r['breakdown'][ $nm ] ) ); } }
+		}
+		if ( $r ) {
+			$t->ok( 'победителят е с най-висок резултат', $r['score'] >= max( $r['breakdown'] ) );
+			$via = $o ? Merge::shortcode( 'fav', array( 'order_id' => $o->get_id() ) ) : Favorite::value( 'fav', $email ); $via_url = $o ? Merge::shortcode( 'fav_url', array( 'order_id' => $o->get_id() ) ) : Favorite::value( 'fav_url', $email );
+			$t->eq( $o ? 'Merge::shortcode(fav, order_id) = същото име' : 'Favorite::value(fav) = същото име', $r['name'], $via );
+			$t->ok( 'fav_url сочи продукта', '' !== $r['url'] && $via_url === $r['url'], $r['url'] );
+		}
+		return null;
+	}
+
 	public static function suite_leads( $t, $params ) {
 		global $wpdb;
 		$cfg = Config::get_published(); $l = Lead_Sync::cfg( $cfg );
