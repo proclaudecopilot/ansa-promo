@@ -298,6 +298,7 @@ final class Frontend {
 
 	/** Свеж runtime за кеширана страница (само публикуваното; без registry). */
 	public static function ajax_runtime() {
+		Insights::on_runtime(); /* 1.17.1: „view“ и от кеширана страница — sid от заявката или бисквитка */
 		$cfg = Config::get_published();
 		$r = self::runtime( $cfg, false );
 		unset( $r['registry'] );

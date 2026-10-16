@@ -121,7 +121,7 @@ final class Cart {
 			'items'  => json_decode( (string) wp_unslash( $_POST['items'] ?? '[]' ), true ), 'secret' => json_decode( (string) wp_unslash( $_POST['secret'] ?? '[]' ), true ),
 			'pay'    => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ), 'cosm' => ! isset( $_POST['cosm'] ) || '0' !== (string) $_POST['cosm'],
 			'utm'    => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
-			'sid'    => substr( preg_replace( '/[^a-zA-Z0-9_\-]/', '', (string) ( $_POST['sid'] ?? '' ) ), 0, 40 ), /* 1.17.0: сесията на Insights */
+			'sid'    => Insights::request_sid( (string) ( $_POST['sid'] ?? '' ) ), /* 1.17.0: сесията на Insights; 1.17.1: или бисквитката */
 		) );
 		if ( empty( $r['ok'] ) ) { wp_send_json_error( $r ); }
 		wp_send_json_success( $r );
