@@ -35,6 +35,7 @@ final class Insights {
 		add_action( 'wp_ajax_ansa_promo_beacon', array( __CLASS__, 'ajax_beacon' ) );
 		add_action( 'wp_ajax_nopriv_ansa_promo_beacon', array( __CLASS__, 'ajax_beacon' ) );
 		add_action( 'wp_ajax_ansa_promo_insights_feed', array( __CLASS__, 'ajax_feed' ) );
+		add_action( 'wp_ajax_ansa_promo_insights_selftest', array( __CLASS__, 'ajax_selftest' ) ); /* 1.17.1 */
 		add_action( 'ansa_promo_order_created', array( __CLASS__, 'on_order' ), 10, 2 );
 		add_action( 'ansa_promo_ticket_issued', array( __CLASS__, 'on_ticket' ), 10, 2 );
 		add_action( 'ansa_promo_ticket_activated', array( __CLASS__, 'on_activated' ), 10, 2 );
@@ -57,6 +58,19 @@ final class Insights {
 
 	/* ── Insights 2: сесии и събития ── */
 	private static function sid( $v ) { $v = substr( preg_replace( '/[^a-zA-Z0-9_\-]/', '', (string) $v ), 0, 40 ); return strlen( $v ) >= 8 ? $v : ''; }
+	/** 1.17.1: sid и от бисквитка — кешираната страница (FlyingPress) върти старото promo.js без sid, а runtime ajax-ът минава през PHP
+	 *  при всяко отваряне; така сесията се брои и без нов JS. Бисквитката се слага от ajax отговора (1 ден). */
+	const COOKIE = 'ansa_promo_sid';
+	public static function cookie_sid( $create = false ) {
+		$v = self::sid( $_COOKIE[ self::COOKIE ] ?? '' );
+		if ( '' === $v && $create && ! headers_sent() ) {
+			$v = 'c' . substr( md5( uniqid( '', true ) . wp_rand() ), 0, 16 );
+			setcookie( self::COOKIE, $v, array( 'expires' => time() + DAY_IN_SECONDS, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ) ); $_COOKIE[ self::COOKIE ] = $v;
+		}
+		return $v;
+	}
+	/** sid от заявката или от бисквитката (създава я). */
+	public static function request_sid( $v = '' ) { $s = self::sid( $v ); return '' !== $s ? $s : self::cookie_sid( true ); }
 	private static function tok( $v, $len = 64, $re = '/[^a-z0-9_\-\.]/i' ) { return substr( preg_replace( $re, '', (string) $v ), 0, $len ); }
 
 	/** Записва събитие и опреснява сесията. $d: sid, ev, box, utm, k, n, lead, items, src, med, camp, ref, dev. */
@@ -74,6 +88,12 @@ final class Insights {
 		if ( isset( $d['items'] ) && is_array( $d['items'] ) ) { $upd['items'] = wp_json_encode( array_slice( array_map( function ( $x ) { return self::tok( $x, 64 ); }, array_values( $d['items'] ) ), 0, 40 ) ); }
 		if ( ! empty( $d['order_id'] ) ) { $upd['order_id'] = (int) $d['order_id']; }
 		$ord = self::ORDER[ $ev ];
+		/* 1.17.1: сървърна дедупликация — стъпка веднъж на сесия (box: веднъж на кутия; item: веднъж на продукт); клиентът дедупира само в таба */
+		if ( $row ) {
+			$dup = 'item' === $ev ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s AND k = %s LIMIT 1", $sid, $ev, $k ) )
+				: ( 'box' === $ev ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s AND box = %s LIMIT 1", $sid, $ev, $box ) ) : $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s LIMIT 1", $sid, $ev ) ) );
+			if ( $dup ) { $wpdb->update( $ts, $upd, array( 'id' => (int) $row['id'] ) ); return true; }
+		}
 		if ( ! $row ) {
 			$ins = array_merge( array(
 				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^a-z0-9_\-\.\s]/i' ),
@@ -101,10 +121,40 @@ final class Insights {
 		if ( 'item' !== $ev ) { self::hit( $ev, $box, $utm ); }
 		$items = json_decode( (string) wp_unslash( $_POST['items'] ?? '' ), true );
 		self::track( array(
-			'sid' => (string) ( $_POST['sid'] ?? '' ), 'ev' => $ev, 'box' => $box, 'utm' => $utm, 'k' => (string) ( $_POST['k'] ?? '' ), 'n' => (int) ( $_POST['n'] ?? 0 ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
+			'sid' => self::request_sid( (string) ( $_POST['sid'] ?? '' ) ), 'ev' => $ev, 'box' => $box, 'utm' => $utm, 'k' => (string) ( $_POST['k'] ?? '' ), 'n' => (int) ( $_POST['n'] ?? 0 ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'items' => is_array( $items ) ? $items : null, 'src' => (string) ( $_POST['src'] ?? '' ), 'med' => (string) ( $_POST['med'] ?? '' ), 'camp' => (string) ( $_POST['camp'] ?? '' ), 'ref' => (string) wp_unslash( $_POST['ref'] ?? '' ), 'dev' => (string) ( $_POST['dev'] ?? '' ),
 		) );
 		wp_send_json_success( array( 'ok' => true ) );
+	}
+
+	/** 1.17.1: runtime ajax-ът (promo.js при всяко отваряне, и от кеширана страница) брои „view“ със sid от заявката или от бисквитката. */
+	public static function on_runtime() {
+		if ( Frontend::is_draft_request() || ! empty( $_GET['editor'] ) ) { return; }
+		$pub = Config::get_published(); if ( ! Config::is_live( $pub ) ) { return; }
+		$sid = self::request_sid( (string) ( $_GET['sid'] ?? '' ) ); if ( '' === $sid ) { return; }
+		$ua = (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' );
+		self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => (string) ( $_GET['utm'] ?? '' ), 'ref' => (string) ( $_SERVER['HTTP_REFERER'] ?? '' ), 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop' ) );
+	}
+
+	/** 1.17.1: самодиагностика — таблици, редове, последно събитие, режимът на играта. */
+	public static function diagnostics() {
+		global $wpdb; $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' ); $tst = Schema::table( 'stats' ); $pub = Config::get_published();
+		$ok_s = Schema::exists( $ts ); $ok_e = Schema::exists( $te );
+		$out = array( 'tables' => $ok_s && $ok_e, 'db_ver' => (string) get_option( Schema::OPT_DB_VER, '' ), 'sessions' => $ok_s ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM $ts" ) : 0, 'events' => $ok_e ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM $te" ) : 0,
+			'last_event' => $ok_e ? (string) $wpdb->get_var( "SELECT MAX(at) FROM $te" ) : '', 'legacy_today' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(SUM(n),0) FROM $tst WHERE day = %s AND step = %s", current_time( 'Y-m-d' ), 'view' ) ),
+			'live' => Config::is_live( $pub ), 'enabled' => ! empty( $pub['enabled'] ), 'preview_pw' => ! empty( Config::get_draft()['preview']['enabled'] ), 'page_id' => (int) $pub['page_id'], 'cache' => class_exists( '\\FlyingPress\\Purge' ) ? 'FlyingPress' : ( defined( 'WP_CACHE' ) && WP_CACHE ? 'да (WP_CACHE)' : 'не е засечен' ), 'db_error' => (string) $wpdb->last_error );
+		return $out;
+	}
+	public static function ajax_selftest() {
+		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
+		global $wpdb; $sid = 'selftest' . substr( md5( uniqid( '', true ) ), 0, 12 ); $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' );
+		$wpdb->last_error = '';
+		$ok1 = self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => 'selftest', 'dev' => 'desktop' ) ); $e1 = $wpdb->last_error;
+		$ok2 = self::track( array( 'sid' => $sid, 'ev' => 'item', 'k' => 'selftest', 'n' => 1 ) ); $e2 = $wpdb->last_error;
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $ts WHERE sid = %s", $sid ), ARRAY_A ); $n = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $te WHERE sid = %s", $sid ) );
+		$wpdb->delete( $ts, array( 'sid' => $sid ) ); $wpdb->delete( $te, array( 'sid' => $sid ) );
+		$ok = $ok1 && $ok2 && $row && 2 === $n;
+		wp_send_json_success( array( 'ok' => $ok, 'msg' => $ok ? 'Записът в базата работи: сесия + 2 събития (изтрити след теста).' : 'Записът НЕ минава: ' . ( $e1 ?: $e2 ?: ( $row ? 'събития: ' . $n . ' вместо 2' : 'сесията не е записана' ) ), 'diag' => self::diagnostics() ) );
 	}
 
 	/* сървърните стъпки — през sid-а, записан в поръчката (Cart::build_meta → _ansa_promo.sid) */
@@ -267,6 +317,14 @@ final class Insights {
 			. '<div class="ap-kpi good"><b data-k="paid">' . (int) $k['paid'] . '</b><span>платени (билет)</span></div>'
 			. '<div class="ap-kpi"><b data-k="conv">' . esc_html( $k['conv'] ) . '</b><span>конверсия сесия → поръчка</span></div>'
 			. '</div>';
+		/* 1.17.1: диагностика — защо е 0 */
+		$dg = self::diagnostics(); $bad = ! $dg['tables'] || ! $dg['live'];
+		echo '<div class="ap-sec' . ( $bad ? ' ap-sec--danger' : '' ) . '"><div class="ap-sec__h"><span class="ap-sec__t">🩺 Работи ли отчитането?</span><button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apInsTest">▶ Тест на записа</button></div><div class="ap-sec__b"><div class="ap-env" style="padding:0">'
+			. '<div class="ap-env__r ' . ( $dg['tables'] ? 'ok' : 'bad' ) . '"><span class="ap-env__dot ' . ( $dg['tables'] ? 'ok' : 'bad' ) . '"></span><span class="ap-env__l">Таблици</span><span class="ap-env__v">' . ( $dg['tables'] ? 'sessions + events са налице' : 'ЛИПСВАТ — деактивирай/активирай плъгина (Schema::install)' ) . ' · DB ver ' . esc_html( $dg['db_ver'] ) . ( $dg['db_error'] ? ' · грешка: ' . esc_html( $dg['db_error'] ) : '' ) . '</span></div>'
+			. '<div class="ap-env__r ' . ( $dg['events'] ? 'ok' : 'warn' ) . '"><span class="ap-env__dot ' . ( $dg['events'] ? 'ok' : 'warn' ) . '"></span><span class="ap-env__l">Записани досега</span><span class="ap-env__v">' . (int) $dg['sessions'] . ' сесии · ' . (int) $dg['events'] . ' събития · последно: ' . esc_html( $dg['last_event'] ?: 'още нищо' ) . ' · стар rollup днес (view): ' . (int) $dg['legacy_today'] . '</span></div>'
+			. '<div class="ap-env__r ' . ( $dg['live'] ? 'ok' : 'bad' ) . '"><span class="ap-env__dot ' . ( $dg['live'] ? 'ok' : 'bad' ) . '"></span><span class="ap-env__l">Играта</span><span class="ap-env__v">' . ( $dg['live'] ? 'ВКЛЮЧЕНА — публичните посещения се броят' : ( $dg['enabled'] ? 'изтекла — не се брои нищо' : 'ИЗКЛЮЧЕНА — публичната страница е „скоро“, не се брои нищо' ) ) . ( $dg['preview_pw'] ? ' · прегледът с парола е включен: екипът с паролата вижда черновата и НЕ се брои' : '' ) . '</span></div>'
+			. '<div class="ap-env__r info"><span class="ap-env__dot info"></span><span class="ap-env__l">Кеш на страницата</span><span class="ap-env__v">' . esc_html( $dg['cache'] ) . ' — от 1.17.1 „view“ се брои и от кеширана страница (runtime ajax + бисквитка), но продуктите/кутията идват от новото promo.js: след ъпдейт изчисти кеша (🧰 Настройки → Публикуване → 🧹).</span></div>'
+			. '</div><div class="ap-note" id="apInsTestOut" style="padding:8px 4px 0"></div></div></div>';
 		/* фуния */
 		$max = max( 1, (int) $f['view'] );
 		echo '<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🔻 Фунията по сесии</span></div><div class="ap-sec__hint">Всяка сесия се брои веднъж на стъпка — „докъде е стигнала“. Процентът е спрямо видели / спрямо предишната стъпка.</div><div class="ap-funnel">';
@@ -295,7 +353,8 @@ final class Insights {
 		echo '<style>.ap-funnel{padding:4px 20px 6px;display:grid;gap:7px}.ap-fn{display:grid;grid-template-columns:190px 1fr 60px 220px;gap:10px;align-items:center;font-size:12.5px}.ap-fn__l{font-weight:800}.ap-fn__bar{height:16px;background:#fdebe9;border-radius:999px;overflow:hidden}.ap-fn__bar i{display:block;height:100%;background:linear-gradient(90deg,#f8a41d,#f47a49);border-radius:999px}.ap-fn__n{font-weight:900;text-align:right}.ap-fn small{font-weight:700;color:#a08579}.ap-tl{display:flex;gap:4px;flex-wrap:wrap}.ap-tl span{font-size:10.5px;font-weight:800;background:#fdebe9;border-radius:999px;padding:1px 7px;white-space:nowrap}.ap-tl span.hi{background:#def3e7;color:#1f7a4d}.ap-tl span.ord{background:#fdeecd;color:#a86b09}@media(max-width:900px){.ap-fn{grid-template-columns:1fr 60px}.ap-fn__bar,.ap-fn small{grid-column:1/-1}}</style>';
 		echo '<script>(function(){var live=document.getElementById("apInsLive"),tb=document.querySelector("#apInsFeedT tbody"),at=document.getElementById("apInsAt"),t;var ajax=' . wp_json_encode( admin_url( 'admin-ajax.php' ) ) . ',nonce=' . wp_json_encode( wp_create_nonce( self::NONCE ) ) . ',days=' . (int) $days . ';'
 			. 'function tick(){if(!live.checked)return;fetch(ajax+"?action=ansa_promo_insights_feed&nonce="+nonce+"&days="+days+"&limit=40",{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success)return;tb.innerHTML=r.data.rows_html||tb.innerHTML;Object.keys(r.data.kpi||{}).forEach(function(k){var el=document.querySelector("#apInsKpi [data-k=\\""+k+"\\"]");if(el)el.textContent=r.data.kpi[k]});at.textContent="опреснено "+r.data.at}).catch(function(){})}'
-			. 'function arm(){clearInterval(t);if(live.checked)t=setInterval(tick,20000)}live.addEventListener("change",function(){live.parentNode.classList.toggle("on",live.checked);arm()});arm();})();</script>';
+			. 'function arm(){clearInterval(t);if(live.checked)t=setInterval(tick,20000)}live.addEventListener("change",function(){live.parentNode.classList.toggle("on",live.checked);arm()});arm();'
+			. 'var tb2=document.getElementById("apInsTest"),out=document.getElementById("apInsTestOut");if(tb2)tb2.onclick=function(){out.textContent="… тествам";fetch(ajax+"?action=ansa_promo_insights_selftest&nonce="+nonce,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){var d=r&&r.data||{};out.innerHTML=(d.ok?"<span class=\"good\">✓ ":"<span class=\"bad\">✕ ")+(d.msg||"грешка")+"</span>"}).catch(function(){out.textContent="мрежова грешка"})};})();</script>';
 	}
 	/** Редовете на фийда (HTML) — и за ajax опресняването. */
 	public static function feed_rows( $feed ) {

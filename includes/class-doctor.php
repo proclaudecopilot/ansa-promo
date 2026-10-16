@@ -47,6 +47,7 @@ final class Doctor {
 		$store = get_option( Plugin::OPTION );
 		$add( 'Option ' . Plugin::OPTION, is_array( $store ) ? 'има · ключове: ' . implode( ', ', array_keys( $store ) ) . ' · version=' . (int) Config::version() . ' · history=' . count( Config::history() ) : 'няма (seed-ва се при първо зареждане)', is_array( $store ) ? 'ok' : 'warn' );
 		$draft = Config::get_draft(); $live = Frontend::products( $draft );
+		$ig = Insights::diagnostics(); $add( 'Insights 2 (1.17.0)', ( $ig['tables'] ? 'таблици ок' : 'ТАБЛИЦИТЕ ЛИПСВАТ' ) . ' · ' . (int) $ig['sessions'] . ' сесии · ' . (int) $ig['events'] . ' събития · последно ' . ( $ig['last_event'] ?: 'нищо' ) . ( $ig['live'] ? '' : ' · играта не е на живо — не се брои' ), $ig['tables'] && $ig['events'] ? 'ok' : ( $ig['tables'] ? 'warn' : 'bad' ) );
 		$add( 'Продукти в черновата', count( $draft['products'] ) . ' · с WC продукт: ' . count( array_filter( $draft['products'], function ( $p ) { return $p['product_id'] > 0; } ) ) . ' · живи (цена>0): ' . count( $live ) . ( $draft['page_id'] ? ' · page_id=' . $draft['page_id'] : ' · БЕЗ страница' ), count( $live ) ? 'ok' : 'warn' );
 		$add( 'Копи-регистър', count( Copy::defaults() ) . ' ключа · override-и в черновата: ' . count( $draft['copy'] ), 'info' );
 		$add( 'Leads', Leads::count() . ' реда', 'info' );
