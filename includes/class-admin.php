@@ -30,7 +30,28 @@ final class Admin {
 	public static function enqueue( $hook ) {
 		if ( false === strpos( (string) $hook, Plugin::MENU_SLUG ) ) { return; }
 		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
+		/* v1.16.0: целият админ е едно приложение (Partner стил като Shrine) — рамка + карти; формите/action-ите са същите */
+		wp_enqueue_style( 'ansa-promo-nunito-admin', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap', array(), null );
+		wp_enqueue_style( 'ansa-promo-app', ANSA_PROMO_URL . 'assets/admin-app.css', array( 'ansa-promo-nunito-admin' ), ANSA_PROMO_VER );
+		wp_enqueue_script( 'ansa-promo-app', ANSA_PROMO_URL . 'assets/admin-app.js', array(), ANSA_PROMO_VER, true );
 		if ( 'products' === sanitize_key( (string) ( $_GET['tab'] ?? '' ) ) ) { Products_UI::enqueue(); } /* v1.15.0 */
+	}
+
+	/** v1.16.0: екраните на приложението — [key => [икона, име, подзаглавие]]. */
+	public static function screens() {
+		return array(
+			'status'   => array( '🩺', 'Състояние',  'Какво е живо, какво чака — Doctor на играта' ),
+			'products' => array( '📦', 'Продукти',   'Кое е в играта, свързване с WooCommerce, отстъпки, проблем и FIT' ),
+			'tools'    => array( '🧰', 'Настройки',  'Страница, игра, попъп, награди, билети, томбола, книга · публикуване' ),
+			'orders'   => array( '🎟️', 'Поръчки',    'Промо поръчките, билетите, FunnelKit таговете' ),
+			'tombola'  => array( '🎲', 'Томбола',    'Участници, билети, препоръки, теглене' ),
+			'insights' => array( '📈', 'Insights',   'Фунията по стъпки, по UTM и по дни' ),
+			'json'     => array( '{ }', 'JSON',      'Черновата като JSON — износ и внос' ),
+		);
+	}
+	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
+	public static function tool_sections() {
+		return array( 's-page' => 'Страница и игра', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** Търсене на WC продукт по име (таб Продукти). */
@@ -148,39 +169,72 @@ final class Admin {
 		$page_url = $draft['page_id'] ? get_permalink( $draft['page_id'] ) : '';
 		$tabs = array( 'status' => 'Състояние', 'tools' => '🧰 Инструменти', 'products' => '📦 Продукти', 'orders' => '🎟️ Поръчки', 'tombola' => '🎲 Томбола', 'insights' => '📈 Insights', 'json' => 'JSON' );
 		?>
-		<div class="wrap">
-			<h1>🎁 ansa™ Промо <small style="font-weight:400;color:#777">v<?php echo esc_html( ANSA_PROMO_VER ); ?></small></h1>
-			<?php if ( $msg ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
-			<nav class="nav-tab-wrapper">
-				<?php foreach ( $tabs as $k => $label ) : ?><a class="nav-tab<?php echo $k === $tab ? ' nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
-				<a class="nav-tab" href="<?php echo esc_url( Editor::url() ); ?>">✏️ Редактор</a>
-			</nav>
+		<?php $scr = self::screens(); $cur = $scr[ $tab ] ?? $scr['status']; $draft_url = $page_url ? add_query_arg( 'ansa_promo', 'draft', $page_url ) : ''; ?>
+		<script>window.AnsaPromoApp=<?php echo wp_json_encode( array( 'msg' => (string) $msg, 'tab' => $tab ) ); ?>;</script>
+		<div id="ansa-promo-app" class="ap-tab-<?php echo esc_attr( $tab ); ?>">
+			<aside class="ap-nav">
+				<div class="ap-brand"><span class="dot"></span>ansa™ Промо<small>Admin · v<?php echo esc_html( ANSA_PROMO_VER ); ?></small></div>
+				<div class="ap-state">
+					играта: <?php echo Config::is_live( $pub ) ? '<span class="ok">ВКЛЮЧЕНА</span>' : ( ! empty( $pub['enabled'] ) ? '<span class="warn">изтекла</span>' : '<span class="off">изключена</span>' ); ?><?php echo $pub['deadline'] ? ' · до <b>' . esc_html( $pub['deadline'] ) . '</b>' : ''; ?><br>
+					публикувано: <b>v<?php echo (int) Config::version(); ?></b><?php echo Config::has_published() ? ' · ' . esc_html( date_i18n( 'd.m H:i', Config::published_at() ) ) : ''; ?><br>
+					чернова: <?php echo Config::has_draft() ? '<span class="warn">има непубликувани промени</span>' : 'като публикуваното'; ?>
+					<?php if ( $page_url ) : ?><div class="ap-state__links"><a href="<?php echo esc_url( $page_url ); ?>" target="_blank" rel="noopener">страницата ↗</a><a href="<?php echo esc_url( $draft_url ); ?>" target="_blank" rel="noopener">черновата ↗</a></div><?php endif; ?>
+				</div>
+				<div class="ap-nav__list">
+					<div class="ap-nav__label">Играта</div>
+					<?php foreach ( array( 'status', 'products', 'tools' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?><?php if ( 'products' === $k ) : ?><span class="n"><?php echo count( $draft['products'] ); ?></span><?php endif; ?></a>
+					<?php if ( 'tools' === $k && 'tools' === $tab ) : ?><div class="ap-nav__sub"><?php foreach ( self::tool_sections() as $sid => $sl ) : ?><a href="#<?php echo esc_attr( $sid ); ?>"><?php echo esc_html( $sl ); ?></a><?php endforeach; ?></div><?php endif; ?>
+					<?php endforeach; ?>
+					<a class="ap-nav__it" href="<?php echo esc_url( Editor::url() ); ?>"><span class="ic">✏️</span>Редактор<span class="ext" title="текстовете и ⚙️ Двигател — отделен екран">↗</span></a>
+					<div class="ap-nav__label">Сезонът</div>
+					<?php foreach ( array( 'orders', 'tombola', 'insights' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?></a><?php endforeach; ?>
+					<div class="ap-nav__label">Още</div>
+					<a class="ap-nav__it<?php echo 'json' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'json' ) ) ); ?>"><span class="ic">{ }</span>JSON</a>
+					<a class="ap-nav__it" href="<?php echo esc_url( admin_url( 'admin.php?page=pcc-github' ) ); ?>"><span class="ic">⬆️</span>GitHub ъпдейти<span class="ext">↗</span></a>
+				</div>
+				<a class="ap-nav__foot" href="<?php echo esc_url( admin_url() ); ?>">↩ Обратно към WP админа</a>
+			</aside>
+			<div class="ap-page ap-page--<?php echo esc_attr( $tab ); ?>">
+				<div class="ap-top"><h1><?php echo $cur[0] . ' ' . esc_html( $cur[1] ); ?><small><?php echo esc_html( $cur[2] ); ?></small></h1>
+					<?php if ( 'products' !== $tab ) : ?><div class="ap-top__actions">
+						<?php if ( 'tools' === $tab ) : ?><button type="button" class="ap-btn ap-btn--secondary" data-ap-save data-ap-save-top>💾 Запази черновата</button><?php self::form_open( 'publish' ); ?><button class="ap-btn ap-btn--primary">🚀 Публикувай</button></form><?php endif; ?>
+						<?php if ( 'status' === $tab ) : ?><?php self::form_open( 'purge' ); ?><button class="ap-btn ap-btn--secondary">🧹 Изчисти кеша</button></form><a class="ap-btn ap-btn--primary" href="<?php echo esc_url( Editor::url() ); ?>">✏️ Редактор</a><?php endif; ?>
+					</div><?php endif; ?>
+				</div>
+				<div class="ap-body"><div class="ap-body-inner<?php echo in_array( $tab, array( 'orders', 'tombola', 'insights' ), true ) ? ' ap-body-inner--wide' : ''; ?>">
+			<?php if ( $msg && 'products' !== $tab ) : ?><div class="ap-msg"><?php echo esc_html( $msg ); ?><button type="button" aria-label="затвори">✕</button></div><?php endif; ?>
 			<?php if ( 'status' === $tab ) : ?>
-				<p style="margin-top:14px">Чернова: <b><?php echo count( $draft['products'] ); ?> продукта</b> (<?php echo count( array_filter( $draft['products'], function ( $p ) { return $p['product_id'] > 0; } ) ); ?> с WC продукт) · Публикувано: <b>версия <?php echo (int) Config::version(); ?></b><?php echo Config::has_published() ? ' от ' . esc_html( date_i18n( 'd.m.Y H:i', Config::published_at() ) ) : ' (още няма)'; ?> · играта е <b><?php echo Config::is_live( $pub ) ? 'ВКЛЮЧЕНА' : 'изключена'; ?></b>
-				<?php if ( $page_url ) : ?> · <a href="<?php echo esc_url( $page_url ); ?>" target="_blank">страницата</a> · <a href="<?php echo esc_url( add_query_arg( 'ansa_promo', 'draft', $page_url ) ); ?>" target="_blank">черновата</a><?php endif; ?></p>
-				<table class="widefat striped" style="max-width:1100px"><tbody>
-				<?php foreach ( Doctor::env() as $r ) : ?>
-					<tr><th style="width:260px"><?php echo esc_html( $r['label'] ); ?></th><td style="color:<?php echo esc_attr( $col[ $r['level'] ] ?? $col['info'] ); ?>"><?php echo esc_html( $r['value'] ); ?></td></tr>
-				<?php endforeach; ?>
-				</tbody></table>
+				<?php $env = Doctor::env(); $nbad = count( array_filter( $env, function ( $r ) { return 'bad' === $r['level']; } ) ); $nwarn = count( array_filter( $env, function ( $r ) { return 'warn' === $r['level']; } ) ); $live_n = count( Frontend::products( $pub ) ); ?>
+				<div class="ap-kpis" style="padding:0 0 14px">
+					<div class="ap-kpi <?php echo Config::is_live( $pub ) ? 'good' : 'bad'; ?>"><b><?php echo Config::is_live( $pub ) ? 'ВКЛЮЧЕНА' : ( ! empty( $pub['enabled'] ) ? 'изтекла' : 'изключена' ); ?></b><span>играта</span></div>
+					<div class="ap-kpi"><b>v<?php echo (int) Config::version(); ?></b><span>публикувано<?php echo Config::has_published() ? ' · ' . esc_html( date_i18n( 'd.m H:i', Config::published_at() ) ) : ''; ?></span></div>
+					<div class="ap-kpi <?php echo Config::has_draft() ? 'bad' : 'good'; ?>"><b><?php echo Config::has_draft() ? 'чака' : 'чиста'; ?></b><span>чернова</span></div>
+					<div class="ap-kpi <?php echo $live_n ? 'good' : 'bad'; ?>"><b><?php echo (int) $live_n; ?> / <?php echo count( $pub['products'] ); ?></b><span>продукта на живо</span></div>
+					<div class="ap-kpi <?php echo $nbad ? 'bad' : ( $nwarn ? '' : 'good' ); ?>"><b><?php echo $nbad ? '⛔ ' . $nbad : ( $nwarn ? '⚠ ' . $nwarn : '✓' ); ?></b><span>Doctor</span></div>
+				</div>
+				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🩺 Състояние на играта</span><?php if ( $page_url ) : ?><a class="ap-btn ap-btn--secondary ap-btn--sm" href="<?php echo esc_url( $page_url ); ?>" target="_blank" rel="noopener">страницата ↗</a> <a class="ap-btn ap-btn--secondary ap-btn--sm" href="<?php echo esc_url( $draft_url ); ?>" target="_blank" rel="noopener">черновата ↗</a><?php endif; ?></div>
+					<div class="ap-env">
+					<?php foreach ( $env as $r ) : $lv = in_array( $r['level'], array( 'ok', 'warn', 'bad', 'info' ), true ) ? $r['level'] : 'info'; ?>
+						<div class="ap-env__r <?php echo esc_attr( $lv ); ?>"><span class="ap-env__dot <?php echo esc_attr( $lv ); ?>"></span><span class="ap-env__l"><?php echo esc_html( $r['label'] ); ?></span><span class="ap-env__v"><?php echo esc_html( $r['value'] ); ?></span></div>
+					<?php endforeach; ?>
+					</div>
+				</div>
 			<?php elseif ( 'tools' === $tab ) : ?>
-				<div style="max-width:820px;margin-top:14px">
-				<?php self::form_open( 'settings', 'tools', ' style="display:block" enctype="multipart/form-data"' ); ?>
-					<table class="form-table">
-						<tr><th>Страница с [ansa_promo]</th><td><select name="page_id"><option value="0">— избери —</option>
+				<?php self::form_open( 'settings', 'tools', ' style="display:block" enctype="multipart/form-data" data-ap-main' ); ?>
+						<section class="ap-sec" id="s-page"><div class="ap-sec__h"><span class="ap-sec__t">🎯 Страница и игра</span></div><div class="ap-sec__b"><p class="ap-fl"><b>Страница с [ansa_promo]</b></p><select name="page_id"><option value="0">— избери —</option>
 							<?php foreach ( Doctor::pages_with_shortcode( true ) as $pg ) : ?><option value="<?php echo (int) $pg['id']; ?>"<?php selected( $pg['id'], $draft['page_id'] ); ?>>#<?php echo (int) $pg['id']; ?> <?php echo esc_html( $pg['title'] ); ?> (<?php echo esc_html( $pg['status'] ); ?>)</option><?php endforeach; ?>
-						</select><p class="description">Само страници, в чието съдържание има <code>[ansa_promo]</code>.</p></td></tr>
-						<tr><th>Играта е включена</th><td><label><input type="checkbox" name="enabled" value="1"<?php checked( $draft['enabled'] ); ?>> публичната страница показва играта (иначе „скоро“; черновата се вижда винаги с <code>?ansa_promo=draft</code>)</label></td></tr>
-						<tr><th>Край</th><td><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59"></td></tr>
-						<tr><th>UTM параметър</th><td><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span></td></tr>
-						<tr><th>Имейл-попъп</th><td><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label></td></tr>
-						<tr><th>📨 Лийдовете → FunnelKit</th><td><?php $ld = $draft['leads']; $ls = Leads::stats(); ?>
+						</select><p class="description">Само страници, в чието съдържание има <code>[ansa_promo]</code>.</p>
+						<p class="ap-fl"><b>Играта е включена</b></p><label><input type="checkbox" name="enabled" value="1"<?php checked( $draft['enabled'] ); ?>> публичната страница показва играта (иначе „скоро“; черновата се вижда винаги с <code>?ansa_promo=draft</code>)</label>
+						<p class="ap-fl"><b>Край</b></p><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59">
+						<p class="ap-fl"><b>UTM параметър</b></p><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span>
+						</div></section><section class="ap-sec" id="s-gate"><div class="ap-sec__h"><span class="ap-sec__t">Имейл-попъп</span></div><div class="ap-sec__b"><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label>
+						</div></section><section class="ap-sec" id="s-leads"><div class="ap-sec__h"><span class="ap-sec__t">📨 Лийдовете → FunnelKit</span></div><div class="ap-sec__b"><?php $ld = $draft['leads']; $ls = Leads::stats(); ?>
 							<p><label><input type="checkbox" name="leads_fka" value="1"<?php checked( ! empty( $ld['fka'] ) ); ?>> имейлът от попъпа става контакт във FunnelKit (и за гост, без WP акаунт) и получава лист + таг — тригърът за автоматизацията „не е завършила поръчката“</label></p>
 							<p><label>Лист: <input type="text" name="leads_list" class="regular-text" value="<?php echo esc_attr( (string) $ld['list'] ); ?>" placeholder="Сезонът на ansa — лийдове"></label> &nbsp; <label>Таг: <input type="text" name="leads_tag" value="<?php echo esc_attr( (string) $ld['tag'] ); ?>" placeholder="sezon-lead" style="width:160px"></label> <span class="description">празно = без лист / без таг; създават се сами във FKA (Contacts → Lists / Tags)</span></p>
 							<p><label><input type="checkbox" name="leads_consent_only" value="1"<?php checked( ! empty( $ld['consent_only'] ) ); ?>> само с отметнато съгласие в попъпа</label> &nbsp; <label><input type="checkbox" name="leads_untag" value="1"<?php checked( ! empty( $ld['untag_on_order'] ) ); ?>> при промо поръчка тагът пада от контакта (листът остава) — автоматизацията спира за тези, които са поръчали</label></p>
 							<p class="description">Автоматизацията във FKA: тригър <b>„Tag Added“</b> (тагът по-горе) или <b>„Contact Added to List“</b> → Delay (напр. 2 часа) → условие <b>Contact Tags — has</b> тага (т.е. още не е поръчала; при поръчка тагът пада) → Send Email → … Поръчалите получават и таговете по-горе („Сезонът на Анса“ + по кутия) от <code>Merge::tag_order</code>. Състояние: <?php echo esc_html( Lead_Sync::status( $draft ) ); ?></p>
-						</td></tr>
-						<tr><th>Снимки на наградите</th><td>
+						
+						</div></section><section class="ap-sec" id="s-images"><div class="ap-sec__h"><span class="ap-sec__t">Снимки на наградите</span></div><div class="ap-sec__b">
 							<p class="description" style="margin:0 0 8px">Снимките на наградите в имейл-попъпа, в картите на кутиите, в „Честито“ и в „Напълни кутията си“ (яхта · сет · книга · отстъпка · доставка) и на трите кутии в попъпа. Attachment ID от медийната библиотека или пълен URL. <b>Празно = примерната снимка</b> (сивият етикет „примерна снимка“ на картинката изчезва, щом сложиш своя). Наградите се показват квадратно (1:1), кутиите в попъпа — хоризонтално (16:6) — слагай снимки с мотив в центъра, ≥ 800px.</p>
 							<style>.ap-gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.ap-gi figure{margin:0;background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:8px}.ap-gi figure img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:#f6f7f7}.ap-gi figcaption{font-size:11px;color:#50575e;margin:6px 0 4px}.ap-gi .ap-gi-row{display:flex;gap:4px}.ap-gi .ap-gi-row input{flex:1;min-width:0}.ap-gi .ap-gi-dummy{font-size:10px;color:#9a6700}</style>
 							<div class="ap-gi" id="apGateImgs">
@@ -208,14 +262,14 @@ final class Admin {
 								});
 							})();
 							</script>
-						</td></tr>
-						<tr><th>Лева в поръчката</th><td><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label></td></tr>
-						<tr><th>Преглед с парола</th><td>
+						
+						</div></section><section class="ap-sec" id="s-bgn"><div class="ap-sec__h"><span class="ap-sec__t">Лева в поръчката</span></div><div class="ap-sec__b"><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label>
+						</div></section><section class="ap-sec" id="s-preview"><div class="ap-sec__h"><span class="ap-sec__t">Преглед с парола</span></div><div class="ap-sec__b">
 							<label><input type="checkbox" name="preview_enabled" value="1"<?php checked( ! empty( $draft['preview']['enabled'] ) ); ?>> докато играта не е пусната, страницата показва форма за парола; с правилна парола се вижда <b>черновата</b> (за екипа и избрани клиенти, без вход в сайта)</label>
 							<p><input type="text" name="preview_password" class="regular-text code" value="<?php echo esc_attr( $draft['preview']['password'] ); ?>" placeholder="парола"> <span class="description">паролата се помни в браузъра 30 дни; смяната ѝ изхвърля всички</span></p>
 							<?php $pl = Frontend::preview_link(); if ( $pl ) : ?><p class="description">Линк за екипа (отваря и записва паролата): <code><?php echo esc_html( $pl ); ?></code></p><?php else : ?><p class="description">Избери страницата по-горе, за да видиш линка за екипа.</p><?php endif; ?>
-						</td></tr>
-						<tr><th>🎟️ Билети и награди</th><td>
+						
+						</div></section><section class="ap-sec" id="s-tickets"><div class="ap-sec__h"><span class="ap-sec__t">🎟️ Билети и награди</span></div><div class="ap-sec__b">
 							<p><label>Портал за билетите (URL в QR кода; празно = промо страницата с <code>?ticket=КОД</code>)<br><input type="url" name="portal_url" class="regular-text code" value="<?php echo esc_attr( $draft['tickets']['portal_url'] ); ?>" placeholder="https://portal.ansa.bg/"></label></p>
 							<p><label><input type="checkbox" name="ticket_email" value="1"<?php checked( ! empty( $draft['tickets']['email'] ) ); ?>> и имейл с кода при издаване на билета (QR кодът е в пратката така или иначе)</label> &nbsp; <label>бонус билети за стандартен партньорски код (ansa Partner): <input type="number" name="partner_bonus" min="0" max="5" value="<?php echo (int) $draft['tickets']['partner_bonus']; ?>" style="width:60px"></label> <small>кодът за играта на партньора носи своя брой (Partner → картата на партньора)</small></p>
 							<p><label>FunnelKit Automations — таг на контакта при поръчка от промото (празно = без таг): <input type="text" name="fka_tag" class="regular-text" value="<?php echo esc_attr( (string) ( $draft['tickets']['fka_tag'] ?? '' ) ); ?>" placeholder="Сезонът на Анса"></label><br><span class="description">Тригърът за имейла за потвърждение: в Automations → event „Tag Added“ с този таг (или „Order Created“ + правило „Contact Tags“). Merge: <code>{{ansa_promo_tickets_text}}</code>, <code>{{ansa_promo_tickets}}</code>, <code>{{ansa_promo_bileta}}</code>, <code>{{ansa_promo_box}}</code>.</span></p>
@@ -223,20 +277,20 @@ final class Admin {
 							<p><label>Книга — WC продукт ID (влиза в количката на €0): <input type="number" name="book_product_id" value="<?php echo (int) $draft['rewards']['book']['product_id']; ?>" style="width:90px"></label> &nbsp; <label>линк към PDF-а (имейл при „Изпълнена“, ако продуктът не е downloadable): <input type="url" name="book_url" class="regular-text code" value="<?php echo esc_attr( $draft['rewards']['book']['url'] ); ?>"></label></p>
 							<p><label>Козметичен сет — WC продукт ID (само за справка/ваучера): <input type="number" name="cosm_product_id" value="<?php echo (int) $draft['rewards']['cosm']['product_id']; ?>" style="width:90px"></label></p>
 							<p class="description">Билетът се издава при „Обработва се“/„Изпълнена“; QR за стикера е в поръчката (meta box „🎁 ansa™ Промо“ → „Стикер за пратката“). Ваучерът за сета и книгата тръгват при „Изпълнена“. Текстовете са в регистъра, група „14 · Имейли · стикер“.</p>
-						</td></tr>
-						<tr><th>ℹ️ Как работи</th><td>
+						
+						</div></section><section class="ap-sec" id="s-info"><div class="ap-sec__h"><span class="ap-sec__t">ℹ️ Как работи</span></div><div class="ap-sec__b">
 							<?php $inf = $draft['info']; $inf_url = Info::url( $draft ); ?>
 							<p><label><input type="checkbox" name="info_enabled" value="1"<?php checked( ! empty( $inf['enabled'] ) ); ?>> самостоятелната страница „Как работи“ е включена</label> &nbsp; <label>път: <code><?php echo esc_html( trim( (string) wp_parse_url( Cart::promo_url( $draft ), PHP_URL_PATH ), '/' ) ); ?>/</code><input type="text" name="info_slug" value="<?php echo esc_attr( $inf['slug'] ); ?>" style="width:110px" class="code"></label> → <a href="<?php echo esc_url( $inf_url ); ?>" target="_blank"><?php echo esc_html( $inf_url ); ?></a> &nbsp; <a href="<?php echo esc_url( add_query_arg( 'ansa_promo', 'draft', $inf_url ) ); ?>" target="_blank">чернова</a></p>
 							<p class="description">Същото съдържание като попъпа „Как работи играта?“ (група „2а · Как работи“ в редактора; <code>info.title</code>/<code>info.desc</code> са заглавието и описанието за Google/споделяне), индексируема — за трафик от реклами и социални мрежи. Бутоните ѝ водят към промо страницата с избраната кутия (<code>?box=s|m|l</code>) или продукт. При включена парола или изключена игра показва „скоро“.</p>
-						</td></tr>
-						<tr><th>🎲 Томбола</th><td>
+						
+						</div></section><section class="ap-sec" id="s-tombola"><div class="ap-sec__h"><span class="ap-sec__t">🎲 Томбола</span></div><div class="ap-sec__b">
 							<?php $tb = $draft['tombola']; $tb_url = Tombola::url( $draft ); ?>
 							<p><label><input type="checkbox" name="tb_enabled" value="1"<?php checked( ! empty( $tb['enabled'] ) ); ?>> страницата за проверка на билетите е включена</label> &nbsp; <label>път: <code><?php echo esc_html( trim( (string) wp_parse_url( Cart::promo_url( $draft ), PHP_URL_PATH ), '/' ) ); ?>/</code><input type="text" name="tb_slug" value="<?php echo esc_attr( $tb['slug'] ); ?>" style="width:110px" class="code"></label> → <a href="<?php echo esc_url( $tb_url ); ?>" target="_blank"><?php echo esc_html( $tb_url ); ?></a> <small>(това е линкът за SMS-а при доставка; работи и <code>[ansa_promo_tombola]</code> на отделна страница)</small></p>
 							<p><label>Теглене на: <input type="text" name="tb_draw" value="<?php echo esc_attr( $tb['draw'] ); ?>" style="width:120px" placeholder="2027-01-25"></label> &nbsp; <label><b>„получена“ поръчка</b> = статуси: <input type="text" name="tb_statuses" value="<?php echo esc_attr( implode( ', ', (array) $tb['statuses'] ) ); ?>" class="regular-text code"></label> <small>без „wc-“; налични: <?php echo esc_html( implode( ', ', array_map( function ( $s ) { return preg_replace( '/^wc-/', '', $s ); }, array_keys( wc_get_order_statuses() ) ) ) ); ?></small></p>
 							<p><label>Препоръка — параметър в линка: <code>?</code><input type="text" name="tb_ref_param" value="<?php echo esc_attr( $tb['ref_param'] ); ?>" style="width:50px" class="code"><code>=КОД</code></label> &nbsp; <label>множител ×<input type="number" name="tb_ref_mult" min="1" max="10" value="<?php echo (int) $tb['ref_mult']; ?>" style="width:55px"></label> &nbsp; <label>най-много броени препоръки: <input type="number" name="tb_ref_max" min="0" max="1000" value="<?php echo (int) $tb['ref_max']; ?>" style="width:65px"></label> <small>(0 = без лимит)</small> &nbsp; <label>подарък за новия клиент: <input type="number" name="tb_ref_gift" min="0" max="10" value="<?php echo (int) $tb['ref_gift']; ?>" style="width:55px"> билет(а)</label></p>
 							<p class="description"><b>„Получена“ важи за всичко: томболата, ваучера за сета и книгата</b> — само тези статуси (по подразбиране само <code>delivered</code>; „Изпълнена“/<code>completed</code> НЕ брои). Ваучерът и имейлът за книгата тръгват, когато поръчката влезе в такъв статус. Клиентът въвежда телефон + имейл от поръчката; при „получена“ поръчка вижда билетите си (активират се), датата на тегленето, ваучера за сета и личния си линк <code><?php echo esc_html( Cart::promo_url( $draft ) ); ?>?<?php echo esc_html( $tb['ref_param'] ); ?>=КОД</code>. Приятел, който поръча през линка, получава +подаръка в поръчката си; първата платена препоръка умножава билетите на препоръчалия ×<?php echo (int) $tb['ref_mult']; ?>, всяка следваща добавя още толкова (до лимита). Същият имейл/телефон не се брои. Текстовете са в регистъра, група „15 · Томбола“. <code>?ref=</code> е зает от ansa Partner.</p>
-						</td></tr>
-						<tr><th>📖 Книга /kniga</th><td>
+						
+						</div></section><section class="ap-sec" id="s-book"><div class="ap-sec__h"><span class="ap-sec__t">📖 Книга /kniga</span></div><div class="ap-sec__b">
 							<?php $bk = $draft['book']; $bk_url = Book::url( $draft ); $bi = Book::file_info( $draft ); ?>
 							<p><label><input type="checkbox" name="bk_enabled" value="1"<?php checked( ! empty( $bk['enabled'] ) ); ?>> страницата на книгата е включена</label> &nbsp; <label>път: <code><?php echo esc_html( untrailingslashit( home_url( '/' ) ) ); ?>/</code><input type="text" name="bk_slug" value="<?php echo esc_attr( $bk['slug'] ); ?>" style="width:110px" class="code"></label> → <a href="<?php echo esc_url( $bk_url ); ?>" target="_blank"><?php echo esc_html( $bk_url ); ?></a> &nbsp; <a href="<?php echo esc_url( add_query_arg( 'ansa_promo', 'draft', $bk_url ) ); ?>" target="_blank">чернова</a> <small>(работи и <code>[ansa_promo_book]</code> на отделна страница)</small></p>
 							<p><b>PDF:</b> <?php if ( 'file' === $bi['source'] ) : ?><code><?php echo esc_html( $bi['name'] ); ?></code> · <?php echo esc_html( $bi['size'] ); ?> · качен <?php echo esc_html( $bi['mtime'] ); ?> &nbsp; <label><input type="checkbox" name="bk_pdf_remove" value="1"> изтрий</label><?php elseif ( $bk['file'] ) : ?><span style="color:#b91c1c">файлът <code><?php echo esc_html( $bk['file'] ); ?></code> липсва на диска — качи го пак</span><?php else : ?><span style="color:#b91c1c">още няма качен PDF</span><?php endif; ?>
@@ -248,25 +302,24 @@ final class Admin {
 							<p><label>или външен линк към PDF: <input type="url" name="bk_url" value="<?php echo esc_attr( $bk['url'] ); ?>" class="regular-text code" placeholder="https://…/kniga.pdf"></label> <small>(ползва се само ако няма качен файл; такъв линк е публичен за всеки, който го знае)</small></p>
 							<p>Отключва се при <b>„получена“ поръчка</b> — статусите от 🎲 Томбола (<code><?php echo esc_html( implode( ', ', (array) $draft['tombola']['statuses'] ) ); ?></code>); „Изпълнена“ не брои. &nbsp; <label>браузърът помни: <input type="number" name="bk_remember" min="1" max="3650" value="<?php echo (int) $bk['remember']; ?>" style="width:70px"> дни</label></p>
 							<p class="description">Клиентът отваря <code><?php echo esc_html( $bk_url ); ?></code>, въвежда телефона и имейла от поръчката и книгата се зарежда (на десктоп вградена + „Отвори“/„Свали“; на телефона — в нов таб). Поръчката трябва да носи книгата (средна/голяма кутия или ред с продукта на книгата) и да е получена (Delivered). Браузърът получава подписана бисквитка и следващия път книгата се отваря без въвеждане („Забрави този браузър“ я трие). Влезлият админ я вижда направо. PDF-ът се сервира само през <code>/<?php echo esc_html( $bk['slug'] ); ?>/pdf</code>. Имейлът при „Изпълнена“ (<code>em.book.*</code>) и merge тагът <code>{{ansa_promo_book_url}}</code> водят тук. Текстовете са в група „16 · Книгата“ в ✏️ Редактор.</p>
-						</td></tr>
-						<tr><th>🧪 Демо данни</th><td>
+						
+						</div></section><section class="ap-sec" id="s-demo"><div class="ap-sec__h"><span class="ap-sec__t">🧪 Демо данни</span></div><div class="ap-sec__b">
 							<p><label>телефон: <input type="text" name="demo_phone" value="<?php echo esc_attr( $draft['demo']['phone'] ); ?>" style="width:140px" class="code"></label> &nbsp; <label>имейл: <input type="email" name="demo_email" value="<?php echo esc_attr( $draft['demo']['email'] ); ?>" class="regular-text code"></label></p>
 							<p class="description">С тези данни формата на книгата отваря PDF-а, а формата на томболата показва примерен резултат — без поръчка и без запис в базата. Само за екипа; празно поле = изключено.</p>
-						</td></tr>
-						<tr><th>Цял екран</th><td>
+						
+						</div></section><section class="ap-sec" id="s-theme"><div class="ap-sec__h"><span class="ap-sec__t">Цял екран</span></div><div class="ap-sec__b">
 							<p>1) На страницата: Page Attributes → Template → <b>„ansa™ Промо — цял екран“</b> — без хедър и футър на темата (препоръчано).</p>
 							<label><input type="checkbox" name="theme_hide" value="1"<?php checked( $draft['theme']['hide'] ); ?>> 2) Скрий и тези елементи на темата/плъгините на промо страницата (един селектор на ред; работи и без темплейта):</label><br>
 							<textarea name="theme_selectors" rows="6" class="large-text code"><?php echo esc_textarea( $draft['theme']['selectors'] ); ?></textarea>
-						</td></tr>
-					</table>
-					<p><button class="button button-primary">💾 Запази черновата</button></p>
+						
+					</div></section>
+					<div class="ap-actions"><button class="ap-btn ap-btn--primary" data-ap-save>💾 Запази черновата</button><span class="sp"></span><small>Ctrl+S · записва черновата; публикуваш от бутона горе или от „Публикуване“</small></div>
 				</form>
-				<hr>
-				<h2>Публикуване</h2>
+				<section class="ap-sec" id="s-publish"><div class="ap-sec__h"><span class="ap-sec__t">🚀 Публикуване</span></div><div class="ap-sec__b">
 				<p>Чернова: <?php echo Config::has_draft() ? '<b>има промени, които не са публикувани</b>' : 'няма промени спрямо публикуваното'; ?>. Публикувано: версия <?php echo (int) Config::version(); ?>.</p>
-				<?php self::form_open( 'publish' ); ?><button class="button button-primary">🚀 Публикувай черновата</button></form>
-				<?php self::form_open( 'discard', 'tools', ' onsubmit="return confirm(\'Да отхвърля ли черновата?\')"' ); ?><button class="button" style="margin-left:8px">↶ Откажи черновата</button></form>
-				<?php self::form_open( 'purge' ); ?><button class="button" style="margin-left:8px">🧹 Изчисти кеша на страницата</button></form>
+				<div class="ap-actions" style="padding:0"><?php self::form_open( 'publish' ); ?><button class="button button-primary">🚀 Публикувай черновата</button></form>
+				<?php self::form_open( 'discard', 'tools', ' onsubmit="return confirm(\'Да отхвърля ли черновата?\')"' ); ?><button class="button">↶ Откажи черновата</button></form>
+				<?php self::form_open( 'purge' ); ?><button class="button">🧹 Изчисти кеша на страницата</button></form></div>
 				<?php $hist = Config::history(); if ( $hist ) : ?>
 					<h3>🕘 История на публикуванията</h3>
 					<ul>
@@ -276,8 +329,8 @@ final class Admin {
 					<?php endforeach; ?>
 					</ul>
 				<?php endif; ?>
-				<hr>
-				<h2>🔗 Линковете от SendGrid (HTTPS за url2581.ansa.bg)</h2>
+				</div></section>
+				<section class="ap-sec" id="s-linkproxy"><div class="ap-sec__h"><span class="ap-sec__t">🔗 Линковете от SendGrid (HTTPS за url2581.ansa.bg)</span></div><div class="ap-sec__b">
 				<?php $lp = Link_Proxy::settings(); $lps = Link_Proxy::status(); ?>
 				<p>SendGrid пренаписва линковете в имейлите към <code>http://url2581.ansa.bg/ls/click?…</code> и няма сертификат за домейна — браузърите, които вдигат линка към HTTPS, показват „Връзката ви не е поверителна“. Тук домейнът се обслужва от <b>този</b> сайт по HTTPS и всяка заявка се препраща към SendGrid (кликът се брои, клиентът стига до истинския адрес). Нужно е в хостинга <b>url2581.ansa.bg</b> да е добавен като допълнителен домейн на WordPress (без пренасочване), с Let's Encrypt, и DNS записът да е <b>A към IP-то на сайта</b> вместо CNAME към sendgrid.net. Вторият запис на SendGrid (<code>2581.ansa.bg</code>) остава CNAME.</p>
 				<p class="description">Състояние: <?php echo esc_html( $lps[0] ); ?> · проверка: <a href="https://<?php echo esc_attr( $lp['host'] ?: 'url2581.ansa.bg' ); ?>/__ansa_promo_ping" target="_blank" rel="noopener">https://<?php echo esc_html( $lp['host'] ?: 'url2581.ansa.bg' ); ?>/__ansa_promo_ping</a> трябва да покаже „ok <?php echo esc_html( ANSA_PROMO_VER ); ?>“ без предупреждение.</p>
@@ -287,9 +340,9 @@ final class Admin {
 					&nbsp; <label>линкът за парола важи <input type="number" name="lp_reset_days" value="<?php echo (int) $lp['reset_days']; ?>" min="0" max="60" style="width:70px"> дни</label> <small>0 = стандартно (1 ден); 7 = и ключовете от вече изпратените писма работят още една седмица</small></p>
 					<p><button class="button button-primary">💾 Запази</button><?php if ( ! empty( $lp['const'] ) ) : ?> <small>домейнът е зададен с константата <code>ANSA_PROMO_LINK_PROXY_HOST</code> в wp-config.php</small><?php endif; ?></p>
 				</form>
-				<hr>
-				<h2>Продуктите в черновата</h2>
-				<table class="widefat striped"><thead><tr><th>ключ (UTM)</th><th>име</th><th>WC продукт</th><th>ред · цена · наличност</th></tr></thead><tbody>
+				</div></section>
+				<section class="ap-sec" id="s-products"><div class="ap-sec__h"><span class="ap-sec__t">📦 Продуктите в черновата</span></div><div class="ap-sec__b">
+				<table class="widefat striped ap-table"><thead><tr><th>ключ (UTM)</th><th>име</th><th>WC продукт</th><th>ред · цена · наличност</th></tr></thead><tbody>
 				<?php foreach ( $draft['products'] as $p ) : $wc = $p['product_id'] ? Catalog::wc_line( $p['product_id'] ) : null; ?>
 					<tr><td><code><?php echo esc_html( $p['key'] ); ?></code></td><td><?php echo esc_html( $p['ph'] . ' ' . $p['name'] ); ?></td>
 						<td><?php echo $p['product_id'] ? '#' . (int) $p['product_id'] . ' ' . esc_html( $wc['wc_name'] ) : '<span style="color:#cf222e">няма — изключен от страницата</span>'; ?></td>
@@ -298,17 +351,19 @@ final class Admin {
 				</tbody></table>
 				<p class="description">Свързването ключ ↔ WC продукт е в таб <b>📦 Продукти</b>: SKU на вариацията „1 опаковка“ (печели) или WC ID чрез търсене. Там са и името, „за какво е“ и описанието — попълнените полета печелят над WooCommerce, празните се пълнят от WC.</p>
 				<?php self::form_open( 'seed', 'tools', ' onsubmit="return confirm(\'Това презаписва продуктите, FIT и проблемите в черновата с тези от мокъпа. Страницата, текстовете, срокът и чекаутът остават. Продължавам?\')"' ); ?><button class="button">🌱 Направи продуктите наново от мокъпа (търси ги в WC по име)</button></form>
-				</div>
+				</div></section>
 			<?php elseif ( 'products' === $tab ) : ?>
 				<?php Products_UI::render(); /* v1.15.0: приложението в стила на Shrine (assets/products-admin.js) */ ?>
 			<?php elseif ( 'orders' === $tab ) : ?>
 				<?php $rows = Tickets::orders( array( 'limit' => 200 ) ); $f = sanitize_key( (string) ( $_GET['f'] ?? '' ) ); if ( $f ) { $rows = array_values( array_filter( $rows, function ( $r ) use ( $f ) { $ts = $r['ticket'] ? $r['ticket']['status'] : 'none'; return 'invalid' === $f ? ! $r['valid'] : $ts === $f; } ) ); } ?>
-				<p style="margin-top:14px">Промо поръчки: <b><?php echo count( $rows ); ?></b> (последните 200) · билети: издадени <b><?php echo (int) Tickets::count( 'issued' ); ?></b> (<?php echo (int) Tickets::sum( 'issued' ); ?> бр.), активирани <b><?php echo (int) Tickets::count( 'activated' ); ?></b> (<?php echo (int) Tickets::sum( 'activated' ); ?> бр.), анулирани <?php echo (int) Tickets::count( 'void' ); ?>
-					&nbsp; · филтър: <?php foreach ( array( '' => 'всички', 'issued' => 'издаден', 'activated' => 'активиран', 'void' => 'анулиран', 'none' => 'без билет', 'invalid' => 'непълна кутия' ) as $k => $l ) : ?><a href="<?php echo esc_url( self::url( array( 'tab' => 'orders', 'f' => $k ) ) ); ?>"<?php echo $k === $f ? ' style="font-weight:700"' : ''; ?>><?php echo esc_html( $l ); ?></a> <?php endforeach; ?>
-					&nbsp; <?php self::form_open( 'export_orders', 'orders' ); ?><button class="button">⬇ CSV</button></form>
+				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🎟️ Промо поръчки</span></div><div class="ap-sec__b">
+				<p>Промо поръчки: <b><?php echo count( $rows ); ?></b> (последните 200) · билети: издадени <b><?php echo (int) Tickets::count( 'issued' ); ?></b> (<?php echo (int) Tickets::sum( 'issued' ); ?> бр.), активирани <b><?php echo (int) Tickets::count( 'activated' ); ?></b> (<?php echo (int) Tickets::sum( 'activated' ); ?> бр.), анулирани <?php echo (int) Tickets::count( 'void' ); ?>
+				</p><div class="ap-chips" style="margin:6px 0 10px"><?php foreach ( array( '' => 'всички', 'issued' => 'издаден', 'activated' => 'активиран', 'void' => 'анулиран', 'none' => 'без билет', 'invalid' => 'непълна кутия' ) as $k => $l ) : ?><a class="ap-chip<?php echo $k === $f ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'orders', 'f' => $k ) ) ); ?>"><?php echo esc_html( $l ); ?></a><?php endforeach; ?></div>
+				<div class="ap-actions" style="padding:0"><?php self::form_open( 'export_orders', 'orders' ); ?><button class="button">⬇ CSV</button></form>
 					<?php $lp = Leads::stats()['pending']; ?>&nbsp; <?php self::form_open( 'leads_sync', 'orders', ' onsubmit="return confirm(\'Да пратя ли ' . (int) $lp . ' лийда от имейл-попъпа във FunnelKit (контакт + лист + таг)? Ако автоматизацията по тага/листа е активна, имейлите ще тръгнат към тях.\')"' ); ?><button class="button"<?php disabled( 0 === $lp ); ?> title="лийдовете, които още не са минали през FunnelKit (или са за повторен опит)">📨 Лийдове → FunnelKit: <?php echo (int) $lp; ?> чакат</button></form>
-					<?php $unt = count( Merge::untagged() ); ?>&nbsp; <?php self::form_open( 'fka_backfill', 'orders', ' onsubmit="return confirm(\'Да сложа ли FunnelKit таговете (общия + по кутия) на ' . (int) $unt . ' промо поръчки, на които липсват? Ако автоматизацията „Tag Added“ е активна, имейлът ще тръгне към тези клиенти.\')"' ); ?><button class="button"<?php disabled( 0 === $unt ); ?> title="поръчките отпреди 1.8.2 нямат тага — това го слага на контактите им">🏷️ FKA таг на <?php echo (int) $unt; ?> стари поръчки</button></form></p>
-				<table class="widefat striped"><thead><tr><th>поръчка</th><th>дата</th><th>статус</th><th>клиент</th><th>кутия</th><th>билети</th><th>код</th><th>билет</th><th>FKA таг</th><th>сет</th><th>книга</th><th>UTM</th><th>сума</th></tr></thead><tbody>
+					<?php $unt = count( Merge::untagged() ); ?>&nbsp; <?php self::form_open( 'fka_backfill', 'orders', ' onsubmit="return confirm(\'Да сложа ли FunnelKit таговете (общия + по кутия) на ' . (int) $unt . ' промо поръчки, на които липсват? Ако автоматизацията „Tag Added“ е активна, имейлът ще тръгне към тези клиенти.\')"' ); ?><button class="button"<?php disabled( 0 === $unt ); ?> title="поръчките отпреди 1.8.2 нямат тага — това го слага на контактите им">🏷️ FKA таг на <?php echo (int) $unt; ?> стари поръчки</button></form></div>
+				</div></div>
+				<div class="ap-sec ap-sec--table"><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>поръчка</th><th>дата</th><th>статус</th><th>клиент</th><th>кутия</th><th>билети</th><th>код</th><th>билет</th><th>FKA таг</th><th>сет</th><th>книга</th><th>UTM</th><th>сума</th></tr></thead><tbody>
 				<?php foreach ( $rows as $r ) : ?>
 					<tr><td><a href="<?php echo esc_url( $r['edit'] ); ?>">#<?php echo esc_html( $r['number'] ); ?></a><?php echo $r['partner'] ? ' 🤝' : ''; ?></td><td><?php echo esc_html( $r['date'] ); ?></td><td><?php echo esc_html( wc_get_order_status_name( $r['status'] ) ); ?></td><td><?php echo esc_html( $r['name'] ); ?><br><small><?php echo esc_html( $r['email'] ); ?></small></td>
 						<td><?php echo esc_html( $r['box'] . ' · ' . $r['packs'] . ' · −' . $r['pct'] . '%' ); ?><?php echo $r['valid'] ? '' : ' <span style="color:#cf222e">непълна</span>'; ?></td><td><?php echo $r['ticket'] ? (int) $r['ticket']['tickets'] . ( $r['ticket']['bonus'] ? ' <b title="бонус от препоръки">+' . (int) $r['ticket']['bonus'] . '</b>' : '' ) : (int) $r['allowance'] . ' <small>(очаква)</small>'; ?><?php echo $r['ref_gift'] ? ' <small title="по препоръка ' . esc_attr( $r['ref_from'] ) . '">🎁</small>' : ''; ?></td>
@@ -318,15 +373,20 @@ final class Admin {
 						<td><?php echo esc_html( $r['cosm'] ?: '—' ); ?><?php echo $r['voucher'] ? '<br><code>' . esc_html( $r['voucher'] ) . '</code>' : ''; ?></td><td><?php echo $r['book'] ? ( $r['book_sent'] ? '✓ ' . esc_html( $r['book_sent'] ) : 'при изпълнена' ) : '—'; ?></td><td><?php echo esc_html( $r['utm'] ); ?></td><td><?php echo wp_kses_post( wc_price( $r['total'] ) ); ?></td></tr>
 				<?php endforeach; ?>
 				<?php if ( ! $rows ) : ?><tr><td colspan="13">Още няма промо поръчки.</td></tr><?php endif; ?>
-				</tbody></table>
+				</tbody></table></div></div>
 			<?php elseif ( 'tombola' === $tab ) : ?>
 				<?php $ent = Tombola::entries( $pub ); $tot = 0; $act = 0; $refs = 0; $bon = 0; foreach ( $ent as $e ) { $tot += $e['total']; $bon += $e['bonus']; $refs += $e['refs']; if ( 'activated' === $e['status'] ) { $act++; } } $boxes = array(); foreach ( $pub['boxes'] as $b ) { $boxes[ $b['id'] ] = $b['ic'] . ' ' . $b['name']; } $draws = (array) get_option( 'ansa_promo_tombola_draws', array() ); ?>
-				<p style="margin-top:14px">Страница: <a href="<?php echo esc_url( Tombola::url( $pub ) ); ?>" target="_blank"><?php echo esc_html( Tombola::url( $pub ) ); ?></a> · теглене <b><?php echo esc_html( Tombola::draw_label( $pub ) ); ?></b> · „получена“ = <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?><?php echo Tombola::enabled( $pub ) ? '' : ' · <b style="color:#cf222e">ИЗКЛЮЧЕНА</b>'; ?></p>
-				<p>Участници (получени поръчки с билет): <b><?php echo count( $ent ); ?></b> · билети общо <b><?php echo (int) $tot; ?></b> (от тях <?php echo (int) $bon; ?> бонус от препоръки) · проверили се на страницата: <b><?php echo (int) $act; ?></b> · броени препоръки: <b><?php echo (int) $refs; ?></b> (всички редове: <?php echo (int) Tombola::count_referrals(); ?> · self <?php echo (int) Tombola::count_referrals( 'self' ); ?> · dup <?php echo (int) Tombola::count_referrals( 'dup' ); ?> · void <?php echo (int) Tombola::count_referrals( 'void' ); ?>)
-					&nbsp; <?php self::form_open( 'export_tombola', 'tombola' ); ?><button class="button">⬇ CSV на участниците</button></form>
-					&nbsp; <?php self::form_open( 'draw', 'tombola', ' onsubmit="return confirm(\'Да изтегля ли случаен участник (тежест = билетите му)? Резултатът се записва в дневника.\')"' ); ?><input type="text" name="label" placeholder="етикет, напр. „Яхта – финал“" style="width:200px"> <button class="button button-primary">🎲 Изтегли печеливш</button></form></p>
-				<h3>🔎 Защо не намира поръчка?</h3>
-				<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="margin:0 0 10px"><input type="hidden" name="page" value="<?php echo esc_attr( Plugin::MENU_SLUG ); ?>"><input type="hidden" name="tab" value="tombola"><input type="email" name="diag_email" value="<?php echo esc_attr( (string) ( $_GET['diag_email'] ?? '' ) ); ?>" placeholder="имейл от поръчката" class="regular-text"> <input type="text" name="diag_phone" value="<?php echo esc_attr( (string) ( $_GET['diag_phone'] ?? '' ) ); ?>" placeholder="телефон" style="width:160px"> <button class="button">Провери като клиента</button> <span class="description">същата проверка като на страницата, но с обяснение за всяка поръчка с този имейл (не активира билети)</span></form>
+				<div class="ap-kpis" style="padding:0 0 14px">
+					<div class="ap-kpi"><b><?php echo count( $ent ); ?></b><span>участници</span></div><div class="ap-kpi"><b><?php echo (int) $tot; ?></b><span>билети общо</span></div><div class="ap-kpi"><b><?php echo (int) $bon; ?></b><span>бонус от препоръки</span></div><div class="ap-kpi"><b><?php echo (int) $act; ?></b><span>проверили се</span></div><div class="ap-kpi <?php echo Tombola::enabled( $pub ) ? 'good' : 'bad'; ?>"><b><?php echo Tombola::enabled( $pub ) ? 'включена' : 'ИЗКЛЮЧЕНА'; ?></b><span>страницата</span></div>
+				</div>
+				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🎲 Томболата</span></div><div class="ap-sec__b">
+				<p>Страница: <a href="<?php echo esc_url( Tombola::url( $pub ) ); ?>" target="_blank"><?php echo esc_html( Tombola::url( $pub ) ); ?></a> · теглене <b><?php echo esc_html( Tombola::draw_label( $pub ) ); ?></b> · „получена“ = <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?><?php echo Tombola::enabled( $pub ) ? '' : ' · <b style="color:#cf222e">ИЗКЛЮЧЕНА</b>'; ?></p>
+				<p class="description">Участници (получени поръчки с билет): <b><?php echo count( $ent ); ?></b> · билети общо <b><?php echo (int) $tot; ?></b> (от тях <?php echo (int) $bon; ?> бонус от препоръки) · проверили се на страницата: <b><?php echo (int) $act; ?></b> · броени препоръки: <b><?php echo (int) $refs; ?></b> (всички редове: <?php echo (int) Tombola::count_referrals(); ?> · self <?php echo (int) Tombola::count_referrals( 'self' ); ?> · dup <?php echo (int) Tombola::count_referrals( 'dup' ); ?> · void <?php echo (int) Tombola::count_referrals( 'void' ); ?>)
+				</p><div class="ap-actions" style="padding:0"><?php self::form_open( 'export_tombola', 'tombola' ); ?><button class="button">⬇ CSV на участниците</button></form>
+					&nbsp; <?php self::form_open( 'draw', 'tombola', ' onsubmit="return confirm(\'Да изтегля ли случаен участник (тежест = билетите му)? Резултатът се записва в дневника.\')"' ); ?><input type="text" name="label" placeholder="етикет, напр. „Яхта – финал“" style="width:200px"> <button class="button button-primary">🎲 Изтегли печеливш</button></form></div>
+				</div></div>
+				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🔎 Защо не намира поръчка?</span></div><div class="ap-sec__b">
+				<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="margin:0 0 10px" class="ap-actions" ><input type="hidden" name="page" value="<?php echo esc_attr( Plugin::MENU_SLUG ); ?>"><input type="hidden" name="tab" value="tombola"><input type="email" name="diag_email" value="<?php echo esc_attr( (string) ( $_GET['diag_email'] ?? '' ) ); ?>" placeholder="имейл от поръчката" class="regular-text"> <input type="text" name="diag_phone" value="<?php echo esc_attr( (string) ( $_GET['diag_phone'] ?? '' ) ); ?>" placeholder="телефон" style="width:160px"> <button class="button">Провери като клиента</button> <span class="description">същата проверка като на страницата, но с обяснение за всяка поръчка с този имейл (не активира билети)</span></form>
 				<?php if ( ! empty( $_GET['diag_email'] ) ) : $dg = Tombola::diagnose( sanitize_email( (string) wp_unslash( $_GET['diag_email'] ) ), sanitize_text_field( (string) wp_unslash( $_GET['diag_phone'] ?? '' ) ), $pub ); ?>
 					<p>Резултат за клиента: <b><?php echo ! empty( $dg['result']['ok'] ) ? '✅ намира — ' . (int) $dg['result']['total'] . ' билет(а) от ' . count( $dg['result']['orders'] ) . ' поръчки' : '❌ ' . esc_html( (string) ( $dg['result']['code'] ?? '' ) ); ?></b> · поръчки с този имейл: <?php echo count( $dg['orders'] ); ?></p>
 					<table class="widefat striped" style="max-width:1200px"><thead><tr><th>поръчка</th><th>статус</th><th>телефон (billing / shipping)</th><th>промо</th><th>билет</th><th>защо (не)</th></tr></thead><tbody>
@@ -334,22 +394,26 @@ final class Admin {
 					<?php if ( ! $dg['orders'] ) : ?><tr><td colspan="6">Няма нито една поръчка с billing имейл <code><?php echo esc_html( (string) $_GET['diag_email'] ); ?></code> (нито по клиент с този имейл). Провери имейла в самата поръчка.</td></tr><?php endif; ?>
 					</tbody></table>
 				<?php endif; ?>
-				<?php if ( $draws ) : ?><h3>Дневник на тегленията</h3><ul><?php foreach ( $draws as $d ) : ?><li><?php echo esc_html( $d['at'] ); ?> · <?php echo esc_html( $d['label'] ?: '—' ); ?> → <b>поръчка #<?php echo esc_html( $d['order'] ); ?></b> · <?php echo esc_html( $d['email'] ); ?> · <?php echo (int) $d['tickets']; ?> билет(а) · жребий <?php echo (int) $d['pick']; ?> от <?php echo (int) $d['pool']; ?> (<?php echo (int) $d['entries']; ?> участници)</li><?php endforeach; ?></ul><?php endif; ?>
-				<table class="widefat striped"><thead><tr><th>поръчка</th><th>клиент</th><th>телефон</th><th>кутия</th><th>билети</th><th>бонус (препоръки)</th><th>общо</th><th>билет</th><th>код за препоръка</th><th>препоръки</th><th>по препоръка</th><th>ваучер</th></tr></thead><tbody>
+				</div></div>
+				<?php if ( $draws ) : ?><div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">📜 Дневник на тегленията</span></div><div class="ap-sec__b"><ul><?php foreach ( $draws as $d ) : ?><li><?php echo esc_html( $d['at'] ); ?> · <?php echo esc_html( $d['label'] ?: '—' ); ?> → <b>поръчка #<?php echo esc_html( $d['order'] ); ?></b> · <?php echo esc_html( $d['email'] ); ?> · <?php echo (int) $d['tickets']; ?> билет(а) · жребий <?php echo (int) $d['pick']; ?> от <?php echo (int) $d['pool']; ?> (<?php echo (int) $d['entries']; ?> участници)</li><?php endforeach; ?></ul></div></div><?php endif; ?>
+				<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">👥 Участници</span></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>поръчка</th><th>клиент</th><th>телефон</th><th>кутия</th><th>билети</th><th>бонус (препоръки)</th><th>общо</th><th>билет</th><th>код за препоръка</th><th>препоръки</th><th>по препоръка</th><th>ваучер</th></tr></thead><tbody>
 				<?php foreach ( $ent as $e ) : ?>
 					<tr><td><a href="<?php echo esc_url( $e['edit'] ); ?>">#<?php echo esc_html( $e['number'] ); ?></a></td><td><?php echo esc_html( $e['name'] ); ?><br><small><?php echo esc_html( $e['email'] ); ?></small></td><td><?php echo esc_html( $e['phone'] ); ?></td><td><?php echo esc_html( $boxes[ $e['box'] ] ?? $e['box'] ); ?></td><td><?php echo (int) $e['tickets']; ?></td><td><?php echo (int) $e['bonus']; ?></td><td><b><?php echo (int) $e['total']; ?></b></td><td><code><?php echo esc_html( $e['code'] ); ?></code><br><small><?php echo esc_html( $e['status'] . ( $e['activated'] ? ' · ' . $e['activated'] : '' ) ); ?></small></td><td><code><?php echo esc_html( $e['ref_code'] ?: '—' ); ?></code></td><td><?php echo (int) $e['refs']; ?></td><td><?php echo $e['gift'] ? '🎁 +' . (int) $e['gift'] : '—'; ?></td><td><?php echo esc_html( $e['voucher'] ?: '—' ); ?></td></tr>
 				<?php endforeach; ?>
 				<?php if ( ! $ent ) : ?><tr><td colspan="12">Още няма получени промо поръчки с билет (статуси: <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?>).</td></tr><?php endif; ?>
-				</tbody></table>
+				</tbody></table></div></div>
 			<?php elseif ( 'insights' === $tab ) : ?>
-				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); ?>
+				<div class="ap-sec ap-sec--table ap-insights"><div class="ap-sec__b"><?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); ?></div></div>
 			<?php elseif ( 'json' === $tab ) : ?>
-				<?php self::form_open( 'import', 'json', ' style="display:block;max-width:900px;margin-top:14px"' ); ?>
-					<p>Черновата като JSON. Редактирай и „Внеси“ — записва се като чернова (минава през normalize), публикуваш от 🧰 Инструменти.</p>
-					<textarea name="json" style="width:100%;height:520px;font:12px/1.4 Menlo,Consolas,monospace" spellcheck="false"><?php echo esc_textarea( Config::export() ); ?></textarea>
-					<p><button class="button button-primary">⬆️ Внеси като чернова</button></p>
-				</form>
+				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">{ } Черновата като JSON</span></div><div class="ap-sec__b">
+				<?php self::form_open( 'import', 'json', ' style="display:block"' ); ?>
+					<p class="description">Редактирай и „Внеси“ — записва се като чернова (минава през normalize), публикуваш от 🧰 Настройки → Публикуване.</p>
+					<textarea name="json" class="ap-json" spellcheck="false"><?php echo esc_textarea( Config::export() ); ?></textarea>
+					<div class="ap-actions" style="padding:10px 0 0"><button class="button button-primary">⬆️ Внеси като чернова</button></div>
+				</form></div></div>
 			<?php endif; ?>
+				</div></div>
+			</div>
 		</div>
 		<?php
 	}
