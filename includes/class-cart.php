@@ -121,6 +121,7 @@ final class Cart {
 			'items'  => json_decode( (string) wp_unslash( $_POST['items'] ?? '[]' ), true ), 'secret' => json_decode( (string) wp_unslash( $_POST['secret'] ?? '[]' ), true ),
 			'pay'    => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ), 'cosm' => ! isset( $_POST['cosm'] ) || '0' !== (string) $_POST['cosm'],
 			'utm'    => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
+			'sid'    => substr( preg_replace( '/[^a-zA-Z0-9_\-]/', '', (string) ( $_POST['sid'] ?? '' ) ), 0, 40 ), /* 1.17.0: сесията на Insights */
 		) );
 		if ( empty( $r['ok'] ) ) { wp_send_json_error( $r ); }
 		wp_send_json_success( $r );
@@ -163,7 +164,7 @@ final class Cart {
 		$pay   = ( 'cod' === ( $a['pay'] ?? '' ) && ! empty( $cfg['checkout']['cod_gateway'] ) ) ? 'cod' : 'card';
 		$email = sanitize_email( (string) ( $a['email'] ?? '' ) );
 		$cosm  = ! isset( $a['cosm'] ) || (bool) $a['cosm'];
-		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'draft' => $draft, 't' => time() );
+		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
 
 		/* идемпотентно: същата кутия и същият състав вече са в количката (двойно докосване на телефона) → само контекстът се опреснява */
 		$g = self::group();
@@ -384,7 +385,7 @@ final class Cart {
 			'tickets' => array( 'allowance' => $valid ? Config::tickets_for( $box, (int) $g['sum'] ) : 0, 'partner' => false, 'issued' => array() ), /* 1.12.0: + tix_extra за всяка опаковка над packs */
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
-			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
+			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 			'secret' => array_values( array_map( function ( $it ) { return (int) $it['product_id']; }, $g['secret'] ) ),
 		);
 		return apply_filters( 'ansa_promo_order_meta', $meta, $g, $cfg );

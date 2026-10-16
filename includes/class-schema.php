@@ -6,6 +6,9 @@
  * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия; DB ver 4 (1.11.0): contact_id,
  *                               fka (резултатът от синхронизацията с FunnelKit: „лист #1 · crm; таг #2 · crm“ / retry: … / no-consent), fka_at.
  * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
+ * {prefix}ansa_promo_sessions — Insights 2 (DB ver 5, 1.17.0): една сесия на посетител (sid от браузъра): кога, откъде (utm/src/med/camp/ref),
+ *                               устройство, лийд (имейлът от попъпа), кутия, продуктите в кутията, най-далечната стъпка, поръчката.
+ * {prefix}ansa_promo_events   — Insights 2: всяко събитие на сесията (view, gate, box, item, full, order, add, created, paid, activated).
  * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
  *                               tickets получава ref_code + bonus).
  *
@@ -29,7 +32,7 @@ final class Schema {
 	}
 
 	public static function tables() {
-		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ), 'referrals' => self::table( 'referrals' ) );
+		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ), 'referrals' => self::table( 'referrals' ), 'sessions' => self::table( 'sessions' ), 'events' => self::table( 'events' ) );
 	}
 
 	/** SQL за dbDelta (формат: два интервала преди PRIMARY KEY, KEY на отделен ред). */
@@ -99,6 +102,44 @@ final class Schema {
   PRIMARY KEY  (id),
   UNIQUE KEY cell (day,step,box,utm),
   KEY day (day)
+) $collate;",
+			"CREATE TABLE {$t['sessions']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  sid varchar(40) NOT NULL,
+  started_at datetime NOT NULL,
+  last_at datetime NOT NULL,
+  utm varchar(64) NOT NULL DEFAULT '',
+  src varchar(64) NOT NULL DEFAULT '',
+  med varchar(64) NOT NULL DEFAULT '',
+  camp varchar(128) NOT NULL DEFAULT '',
+  ref varchar(191) NOT NULL DEFAULT '',
+  device varchar(8) NOT NULL DEFAULT '',
+  lead_id bigint(20) unsigned NULL,
+  box varchar(8) NOT NULL DEFAULT '',
+  items text NULL,
+  step varchar(16) NOT NULL DEFAULT 'view',
+  order_id bigint(20) unsigned NULL,
+  ip varchar(45) NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY sid (sid),
+  KEY started_at (started_at),
+  KEY last_at (last_at),
+  KEY step (step),
+  KEY order_id (order_id)
+) $collate;",
+			"CREATE TABLE {$t['events']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  sid varchar(40) NOT NULL,
+  at datetime NOT NULL,
+  ev varchar(16) NOT NULL,
+  box varchar(8) NOT NULL DEFAULT '',
+  k varchar(64) NOT NULL DEFAULT '',
+  n smallint(5) unsigned NOT NULL DEFAULT 0,
+  utm varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  KEY sid (sid),
+  KEY at (at),
+  KEY ev (ev)
 ) $collate;",
 		);
 	}

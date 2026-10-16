@@ -31,7 +31,7 @@ final class Products_UI {
 	/** Скриптовете само на таб 📦 Продукти (Admin::enqueue). */
 	public static function enqueue() {
 		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
-		wp_enqueue_style( 'ansa-promo-nunito-admin', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap', array(), null );
+		wp_enqueue_style( 'ansa-promo-nunito-admin', ANSA_PROMO_URL . 'assets/fonts/nunito.css', array(), ANSA_PROMO_VER ); /* 1.17.0: локално */
 		wp_enqueue_style( 'ansa-promo-products', ANSA_PROMO_URL . 'assets/products-admin.css', array( 'ansa-promo-nunito-admin' ), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo-products', ANSA_PROMO_URL . 'assets/products-admin.js', array(), ANSA_PROMO_VER, true );
 		$draft = Config::get_draft(); $page_url = $draft['page_id'] ? get_permalink( (int) $draft['page_id'] ) : '';
