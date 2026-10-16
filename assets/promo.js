@@ -568,7 +568,7 @@
 
   /* ── ЕКРАН 1: избор на кутия (v73: лента −%, мобилно резюме, награди, „за да отключиш“) ── */
   /* v1.19.0: редът „От петък 13.11: −31% · изпускаш €6,50“ в картата (десктоп .bweek, телефон .bmweek в мини картата); последна седмица — „до 31.12“ */
-  function weekRow(b,bv,cls){var s=SEAS();if(!s)return '';var k=s.last||nextPct(b)==null?'box.week.last':'box.week';return '<div class="'+cls+(k==='box.week.last'?' last':'')+'"'+ck(k)+'>'+T(k,bv)+'</div>'}
+  function weekRow(b,bv,cls){var s=SEAS();if(!s)return '';var k=s.last||nextPct(b)==null?'box.week.last':s.days_left<=1?'box.week.today':'box.week';return '<div class="'+cls+(k==='box.week.last'?' last':'')+'"'+ck(k)+'>'+T(k,bv)+'</div>'}
   function seasonStrip(){var s=SEAS();if(!s)return '';var k=s.last?'season.strip.last':s.days_left<=1?'season.strip.today':'season.strip';var dots='';for(var i=1;i<=s.total;i++)dots+='<i class="'+(i<s.week?'past':i===s.week?'cur':'')+'"></i>';
     return '<div class="wkbar'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wktx"><span'+ck(k)+'>'+T(k)+'</span>'+(!s.last&&loseMax()>0?'<b class="wklose"'+ck('season.strip.lose')+'>'+T('season.strip.lose')+'</b>':'')+'</div></div>'}
   function boxCard(b,i){
