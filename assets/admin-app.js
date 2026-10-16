@@ -34,15 +34,14 @@
   /* главната форма на екрана: незаписани промени + Ctrl+S */
   var main = document.querySelector('form[data-ap-main]');
   if (main) {
-    var dirty = false, btn = main.querySelector('[data-ap-save]');
-    var mark = function () { if (dirty) return; dirty = true; if (btn) { btn.classList.add('ap-btn--dirty'); btn.textContent = btn.textContent.replace(/ ●$/, '') + ' ●'; } };
+    var dirty = false, all = Array.prototype.slice.call(document.querySelectorAll('[data-ap-save]'));
+    var mark = function () { if (dirty) return; dirty = true; all.forEach(function (b) { b.classList.add('ap-btn--dirty'); b.textContent = b.textContent.replace(/ ●$/, '') + ' ●'; }); };
+    var go = function () { dirty = false; main.submit(); };
     main.addEventListener('input', mark); main.addEventListener('change', mark);
     main.addEventListener('submit', function () { dirty = false; });
     window.addEventListener('beforeunload', function (e) { if (!dirty) return; e.preventDefault(); e.returnValue = ''; });
-    document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') { e.preventDefault(); dirty = false; main.submit(); } });
-    Array.prototype.slice.call(document.querySelectorAll('[data-ap-save-top]')).forEach(function (b) { b.addEventListener('click', function () { dirty = false; main.submit(); }); });
-    var all = Array.prototype.slice.call(document.querySelectorAll('[data-ap-save]')); var mark0 = mark;
-    mark = function () { if (dirty) return; mark0(); all.forEach(function (b) { if (b !== btn) { b.classList.add('ap-btn--dirty'); b.textContent = b.textContent.replace(/ ●$/, '') + ' ●'; } }); };
+    document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') { e.preventDefault(); go(); } });
+    Array.prototype.slice.call(document.querySelectorAll('[data-ap-save-top]')).forEach(function (b) { b.addEventListener('click', go); });
   }
   /* всички форми с confirm: родният confirm(), както досега — нищо друго не се пипа */
   window.AnsaPromoAppToast = toast;
