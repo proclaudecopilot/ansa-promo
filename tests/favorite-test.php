@@ -12,7 +12,12 @@ function email_exists( $e ) { return 'user@example.com' === $e ? 7 : false; }
 function home_url( $p = '' ) { return 'http://x' . $p; }
 function wc_get_order_statuses() { return array( 'wc-pending' => 'P', 'wc-processing' => 'Pr', 'wc-on-hold' => 'H', 'wc-completed' => 'C', 'wc-cancelled' => 'X', 'wc-refunded' => 'R', 'wc-failed' => 'F', 'wc-delivered' => 'D', 'wc-at-office' => 'O', 'wc-shipped' => 'S' ); }
 function shortcode_atts( $d, $a ) { return array_merge( $d, array_intersect_key( (array) $a, $d ) ); }
-function add_shortcode() {} function current_user_can( $c ) { return ! empty( $GLOBALS['is_admin'] ); }
+function add_shortcode() {} function current_user_can( $c ) { return ! empty( $GLOBALS['is_admin'] ); } function delete_option( $k ) { unset( $GLOBALS['opts'][ $k ] ); }
+/* FunnelKit Automations: данните за merge таговете */
+class BWFAN_Merge_Tag_Loader { public static $data = array(); public static function get_data( $k = '' ) { if ( '' === $k ) { return self::$data; } return self::$data[ $k ] ?? ''; } }
+class FakeFBContact { private $e; function __construct( $e ) { $this->e = $e; } function get_email() { return $this->e; } function get_id() { return 5; } }
+class FakeCRMContact { public $contact; function __construct( $e ) { $this->contact = new FakeFBContact( $e ); } }
+class WooFunnels_Contact { private $e = ''; function __construct( $w = '', $e = '', $p = '', $cid = '', $u = '' ) { if ( 42 === (int) $cid ) { $this->e = 'maria@example.com'; } } function get_id() { return '' !== $this->e ? 42 : 0; } function get_email() { return $this->e; } }
 class FakeProduct { public $id; public $parent; public $type; public $name; public $sku; public $attrs; public $children;
 	function __construct( $id, $type, $name, $parent = 0, $attrs = array(), $sku = '', $children = array() ) { $this->id = $id; $this->type = $type; $this->name = $name; $this->parent = $parent; $this->attrs = $attrs; $this->sku = $sku; $this->children = $children; }
 	function is_type( $t ) { return $this->type === $t; } function get_id() { return $this->id; } function get_parent_id() { return $this->parent; } function get_name() { return $this->name; } function get_sku() { return $this->sku; } function get_variation_attributes() { return $this->attrs; } function get_children() { return $this->children; } function get_type() { return $this->type; } }
@@ -129,6 +134,36 @@ ok( 'status: брои продуктите и показва грешката', 
 ok( 'save → flush на кеша', $wpdb->deleted > 0 );
 Favorite::save( '', 'nope', '', '', 5 ); $s = Favorite::settings();
 ok( 'settings: непозната метрика → packs, limit ≥ 10, празна карта → по подразбиране от черновата (без WC продукти → празна)', 'packs' === $s['metric'] && 10 === $s['limit'] && ! $s['custom'] );
+
+/* ── 1.20.1: пътищата през данните на FKA + дневникът ── */
+Favorite::save( "3994 = Daily Greens\n28726 = Sakura SkinTonik", 'packs', $SKIP, 'любимата ти добавка', 100 ); Favorite::log_clear(); $GLOBALS['is_admin'] = false;
+BWFAN_Merge_Tag_Loader::$data = array( 'email' => 'Maria@Example.com' );
+ok( 'FKA data[email] → Daily Greens', 'Daily Greens' === Merge::shortcode( 'fav', array( 'fallback' => 'X' ) ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'contact' => new FakeCRMContact( 'maria@example.com' ) );
+ok( 'FKA data[contact] (BWFCRM → ->contact->get_email) → Daily Greens', 'Daily Greens' === Merge::shortcode( 'fav', array() ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'cid' => 42 );
+ok( 'FKA data[cid] → WooFunnels_Contact по id → имейл', 'Daily Greens' === Merge::shortcode( 'fav', array() ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'something' => array( 'billing_email' => 'maria@example.com' ) );
+ok( 'FKA: имейл дълбоко в данните (array[billing_email])', 'Daily Greens' === Merge::shortcode( 'fav', array() ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'wc_order' => wc_get_order( 7 ) );
+ok( 'FKA data[wc_order] → billing имейлът на поръчката', 'Daily Greens' === Merge::shortcode( 'fav', array() ) );
+/* поръчката на event-а е още pending → брои се (Sakura 3 в нея > Greens 1 от старата) */
+$GLOBALS['orders'][] = new FakeOrder( 8, 'new@example.com', 'pending', array( new FakeItem( 28726, 28727, 3, 60.0 ) ), $T );
+$GLOBALS['orders'][] = new FakeOrder( 9, 'new@example.com', 'delivered', array( new FakeItem( 3994, 3995, 1, 20.0 ) ), $T - 86400 );
+BWFAN_Merge_Tag_Loader::$data = array( 'email' => 'new@example.com', 'order_id' => 8 );
+ok( 'поръчката на event-а (pending) се брои → Sakura 3 > Greens 1', 'Sakura SkinTonik' === Merge::shortcode( 'fav', array() ), Merge::shortcode( 'fav', array() ) );
+ok( 'без event: pending не брои → Greens', 'Daily Greens' === Favorite::value( 'fav', 'new@example.com' ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'email' => 'x@example.com', 'order_id' => 8 );
+ok( 'event поръчка с друг billing имейл пак се брои (без дубли)', 'Sakura SkinTonik' === Merge::shortcode( 'fav', array() ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'is_preview' => true );
+ok( 'is_preview → dummy, не fallback', 'Daily Greens' === Merge::shortcode( 'fav', array( 'fallback' => 'X' ) ) );
+BWFAN_Merge_Tag_Loader::$data = array( 'foo' => 'bar' );
+ok( 'без имейл никъде → fallback на тага', 'X' === Merge::shortcode( 'fav', array( 'fallback' => 'X' ) ) );
+$log = Favorite::log_rows();
+ok( 'дневник: записва всяко извикване, най-новото първо, имейлът е маскиран', count( $log ) >= 9 && 'няма имейл' === $log[0]['src'] && 'foo:\'bar\'' === $log[0]['data'] && 'm***@example.com' === $log[ count( $log ) - 1 ]['email'] && false !== strpos( $log[ count( $log ) - 1 ]['src'], 'email' ) && 'email:string' === $log[ count( $log ) - 1 ]['data'], json_encode( array( $log[0], $log[ count( $log ) - 1 ] ), JSON_UNESCAPED_UNICODE ) );
+ok( 'дневник: поръчката на event-а и резултатът', '8 · pending' === $log[2]['order'] && 'Sakura SkinTonik' === $log[2]['result'] && '' === $log[0]['result'] && 'X' === $log[0]['fallback'], json_encode( $log[2], JSON_UNESCAPED_UNICODE ) );
+for ( $i = 0; $i < 40; $i++ ) { Favorite::log( array( 'key' => 'fav', 'email' => '' ) ); } ok( 'дневник: най-много 30 реда', 30 === count( Favorite::log_rows() ) );
+Favorite::log_clear(); ok( 'дневник: изчистване', array() === Favorite::log_rows() );
 
 if ( $fails ) { echo "FAIL:\n - " . implode( "\n - ", $fails ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

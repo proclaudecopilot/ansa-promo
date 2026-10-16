@@ -200,6 +200,8 @@ final class Admin {
 			case 'favorite': /* 1.20.0: {{ansa_promo_fav}} — картата с кратките имена; отделна опция, без публикуване */
 				Favorite::save( (string) wp_unslash( $_POST['fav_map'] ?? '' ), (string) wp_unslash( $_POST['fav_metric'] ?? 'packs' ), (string) wp_unslash( $_POST['fav_skip'] ?? '' ), (string) wp_unslash( $_POST['fav_fallback'] ?? '' ), (int) ( $_POST['fav_limit'] ?? 100 ) );
 				$fs = Favorite::status(); $msg = 'Любим продукт: записано. ' . $fs[0]; break;
+			case 'favorite_log_clear': /* 1.20.1 */
+				Favorite::log_clear(); $msg = 'Любим продукт: дневникът е изчистен.'; break;
 			case 'favorite_test': /* 1.20.0: какво ще получи този имейл */
 				$em = sanitize_email( (string) wp_unslash( $_POST['fav_email'] ?? '' ) );
 				if ( ! is_email( $em ) ) { $msg = 'Любим продукт: въведи имейл.'; break; }
@@ -417,6 +419,15 @@ final class Admin {
 				<?php self::form_open( 'favorite_test', 'tools', ' style="display:block;margin-top:6px"' ); ?>
 					<p><label>🔎 Провери имейл: <input type="email" name="fav_email" class="regular-text" placeholder="klient@example.com" required></label> <button class="button">Какво ще получи</button> <span class="description">смята наново, без кеша; показва всички продукти от картата с резултата им</span></p>
 				</form>
+				<?php $fvl = Favorite::log_rows(); ?>
+				<h4 style="margin:14px 0 4px">🧾 Последни извиквания на тага (<?php echo count( $fvl ); ?>)</h4>
+				<p class="description" style="margin-top:0">Всеки път, когато FunnelKit или шорткод поиска <code>{{ansa_promo_fav}}</code>: откъде е взет имейлът, какви данни е подал FunnelKit, резултатът. Ако пише „няма имейл“ — FunnelKit не е подал контакт/поръчка за това писмо (напр. тестов имейл без контакт); колоната „данни от FKA“ показва какво е имало.</p>
+				<?php if ( $fvl ) : ?>
+				<table class="widefat striped ap-table" style="font-size:12px"><thead><tr><th>кога</th><th>таг</th><th>имейлът е от</th><th>имейл</th><th>поръчка на event-а</th><th>данни от FKA</th><th>резултат</th></tr></thead><tbody>
+				<?php foreach ( array_slice( $fvl, 0, 15 ) as $lr ) : ?><tr><td><?php echo esc_html( $lr['at'] . ' · ' . $lr['ctx'] ); ?></td><td><code><?php echo esc_html( $lr['key'] ); ?></code></td><td><?php echo esc_html( $lr['src'] ); ?></td><td><?php echo esc_html( $lr['email'] ?: '—' ); ?><?php echo $lr['uid'] ? ' · user ' . (int) $lr['uid'] : ''; ?></td><td><?php echo esc_html( $lr['order'] ?: '—' ); ?></td><td style="max-width:260px;word-break:break-all"><?php echo esc_html( $lr['data'] ); ?></td><td><?php echo '' !== (string) $lr['result'] ? '<b>' . esc_html( $lr['result'] ) . '</b>' : '<span style="color:#9a6700">празно → fallback' . ( '' !== (string) $lr['fallback'] ? ' „' . esc_html( $lr['fallback'] ) . '“' : '' ) . '</span>'; ?></td></tr><?php endforeach; ?>
+				</tbody></table>
+				<?php self::form_open( 'favorite_log_clear' ); ?><button class="button button-small" style="margin-top:6px">🧹 Изчисти дневника</button></form>
+				<?php else : ?><p class="description">Още нищо — изпрати си тестов имейл с тага от FunnelKit и презареди.</p><?php endif; ?>
 				</div></section>
 				<section class="ap-sec" id="s-products"><div class="ap-sec__h"><span class="ap-sec__t">📦 Продуктите в черновата</span></div><div class="ap-sec__b">
 				<table class="widefat striped ap-table"><thead><tr><th>ключ (UTM)</th><th>име</th><th>WC продукт</th><th>ред · цена · наличност</th></tr></thead><tbody>
