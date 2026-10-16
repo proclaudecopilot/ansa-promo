@@ -570,7 +570,11 @@
   /* v1.19.0: редът „От петък 13.11: −31% · изпускаш €6,50“ в картата (десктоп .bweek, телефон .bmweek в мини картата); последна седмица — „до 31.12“ */
   function weekRow(b,bv,cls){var s=SEAS();if(!s)return '';var k=s.last||nextPct(b)==null?'box.week.last':s.days_left<=1?'box.week.today':'box.week';return '<div class="'+cls+(k==='box.week.last'?' last':'')+'"'+ck(k)+'>'+T(k,bv)+'</div>'}
   function seasonStrip(){var s=SEAS();if(!s)return '';var k=s.last?'season.strip.last':s.days_left<=1?'season.strip.today':'season.strip';var dots='';for(var i=1;i<=s.total;i++)dots+='<i class="'+(i<s.week?'past':i===s.week?'cur':'')+'"></i>';
-    return '<div class="wkbar'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wktx"><span'+ck(k)+'>'+T(k)+'</span>'+(!s.last&&loseMax()>0?'<b class="wklose"'+ck('season.strip.lose')+'>'+T('season.strip.lose')+'</b>':'')+'</div></div>'}
+    var lose=!s.last&&loseMax()>0?'<b class="wklose"'+ck('season.strip.lose')+'>'+T('season.strip.lose')+'</b>':'';
+    /* 1.19.2 (човекът): на телефон лентата е видима карта под хедъра — точките, „Остават 7 дни на тези цени“ едро, „От петък 30.10 отстъпките падат“ отдолу */
+    if(MOB()){var k1=s.last?'season.strip.m1.last':s.days_left<=1?'season.strip.m1.today':'season.strip.m1';
+      return '<div class="wkbar m'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wkm1"'+ck(k1)+'>'+T(k1)+'</div>'+(s.last?'':'<div class="wkm2"><span'+ck('season.strip.m2')+'>'+T('season.strip.m2')+'</span>'+lose+'</div>')+'</div>'}
+    return '<div class="wkbar'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wktx"><span'+ck(k)+'>'+T(k)+'</span>'+lose+'</div></div>'}
   function boxCard(b,i){
     var c=S.core&&PROD[S.core]?PROD[S.core]:null,bv=boxVars(b);
     var from=c?r2(c.price*b.packs*(1-ppct(c,b)/100)+(b.rw.indexOf('ship')>-1?0:SHIP)):null;bv.from=from!=null?m(from):'';if(c){bv.core=esc(c.name)}
