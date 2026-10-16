@@ -120,6 +120,8 @@ final class Admin {
 					foreach ( array( 'key', 'name', 'ph', 'gname', 'gsub', 'ds', 'desc', 'ing', 'who', 'rating', 'reviews', 'cat', 'pack' ) as $f ) { if ( isset( $r[ $f ] ) ) { $old[ $f ] = (string) $r[ $f ]; } }
 					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] ); $old['wc_text'] = ! empty( $r['wc_text'] ); $old['sku'] = sanitize_text_field( (string) ( $r['sku'] ?? '' ) );
 					if ( isset( $r['theme'] ) ) { $old['theme'] = array_map( 'trim', explode( ',', (string) $r['theme'] ) ); }
+					/* v1.14.0: отстъпка по кутия (празно = процентът на кутията; normalize пази само 0 < % < 100) */
+					$pp = array(); foreach ( (array) ( $r['pct'] ?? array() ) as $bid => $v ) { $v = str_replace( ',', '.', trim( (string) $v ) ); if ( '' !== $v && is_numeric( $v ) ) { $pp[ sanitize_key( (string) $bid ) ] = (float) $v; } } $old['pct'] = $pp;
 					$new[] = $old;
 				}
 				$cfg['products'] = $new; Config::save_draft( $cfg ); $msg = 'Продуктите са записани в черновата (' . count( $new ) . ').'; break;
@@ -327,6 +329,12 @@ final class Admin {
 						<div class="ap-row2" style="grid-template-columns:1fr 2fr">
 							<div><label>SKU на вариацията „1 опаковка“ (печели над WC ID)</label><input type="text" name="p[<?php echo $i; ?>][sku]" value="<?php echo esc_attr( $p['sku'] ); ?>" placeholder="напр. dgr001"></div>
 							<div style="font-size:12px;color:#50575e;align-self:end"><?php if ( '' !== $p['sku'] ) { echo $rpid ? 'SKU → WC #' . (int) $rpid . ( $wc && $wc['base_name'] ? ' · ' . esc_html( $wc['base_name'] ) : '' ) . ( $wc && $wc['variation_id'] ? ' · вариация #' . (int) $wc['variation_id'] : '' ) . ( $wc ? ' · € ' . esc_html( number_format( $wc['price'], 2 ) ) : '' ) : '<b style="color:#b32d2e">SKU не е намерен в WooCommerce</b>'; } ?></div>
+						</div>
+						<div class="ap-row2 ap-pct" style="grid-template-columns:repeat(<?php echo max( 1, count( $draft['boxes'] ) ); ?>,1fr) 2fr">
+							<?php foreach ( $draft['boxes'] as $b ) : $pv = isset( $p['pct'][ $b['id'] ] ) ? (float) $p['pct'][ $b['id'] ] : ''; ?>
+							<div><label>−% в <?php echo esc_html( $b['ic'] . ' ' . $b['name'] ); ?> <span style="color:#787c82">· празно = −<?php echo esc_html( Cart::fmt( $b['pct'] ) ); ?>%</span></label><input type="number" step="0.5" min="0.5" max="99.5" name="p[<?php echo $i; ?>][pct][<?php echo esc_attr( $b['id'] ); ?>]" value="<?php echo '' === $pv ? '' : esc_attr( Cart::fmt( $pv ) ); ?>" placeholder="<?php echo esc_attr( Cart::fmt( $b['pct'] ) ); ?>"<?php echo $wc && $wc['ok'] ? ' data-price="' . esc_attr( $wc['price'] ) . '"' : ''; ?>></div>
+							<?php endforeach; ?>
+							<div style="font-size:12px;color:#50575e;align-self:end">Отстъпката на този продукт по кутия — <b>само цената</b>; лейбълите на страницата остават −<?php echo esc_html( implode( '/−', array_map( function ( $b ) { return Cart::fmt( $b['pct'] ); }, $draft['boxes'] ) ) ); ?>%.<?php if ( $wc && $wc['ok'] ) : ?> Цена в WC: € <?php echo esc_html( number_format( $wc['price'], 2 ) ); ?> → <?php echo esc_html( implode( ' · ', array_map( function ( $b ) use ( $p, $wc ) { return $b['ic'] . ' € ' . number_format( $wc['price'] * ( 1 - Config::product_pct( $p, $b ) / 100 ), 2 ); }, $draft['boxes'] ) ) ); ?><?php endif; ?></div>
 						</div>
 						<div class="ap-row2">
 							<div><label>категория (селектор)</label><input type="text" name="p[<?php echo $i; ?>][cat]" value="<?php echo esc_attr( $p['cat'] ); ?>"></div>

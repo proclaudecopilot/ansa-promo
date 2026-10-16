@@ -216,8 +216,8 @@ final class Probe {
 			$t->ok( $label . ' · групата е валидна', Cart::group_valid( $g ), 'Σ=' . ( $g['sum'] ?? 0 ) . ' packs=' . ( $g['packs'] ?? 0 ) );
 			$t->eq( $label . ' · уникални base редове', count( array_unique( $pick ) ), count( $g['base'] ) );
 			$bad = array();
-			foreach ( $g['base'] as $it ) { $reg = (float) $it['data']->get_regular_price() ?: (float) $it['data']->get_price(); $want = round( $reg * ( 1 - $box['pct'] / 100 ), 2 ); $got = (float) $it['data']->get_price(); if ( abs( $want - $got ) > 0.011 ) { $bad[] = $it['data']->get_name() . ' ' . $got . '≠' . $want; } }
-			$t->ok( $label . ' · base цени = regular × (1 − ' . $box['pct'] . '%)', ! $bad, $bad ? implode( '; ', $bad ) : count( $g['base'] ) . ' реда ок' );
+			foreach ( $g['base'] as $it ) { $reg = (float) $it['data']->get_regular_price() ?: (float) $it['data']->get_price(); $want = round( $reg * ( 1 - Cart::item_pct( $it, $box['pct'] ) / 100 ), 2 ); /* 1.14.0: ppct на продукта в кутията */ $got = (float) $it['data']->get_price(); if ( abs( $want - $got ) > 0.011 ) { $bad[] = $it['data']->get_name() . ' ' . $got . '≠' . $want; } }
+			$t->ok( $label . ' · base цени = regular × (1 − ' . $box['pct'] . '% или ppct на продукта)', ! $bad, $bad ? implode( '; ', $bad ) : count( $g['base'] ) . ' реда ок' );
 			$has_book = in_array( 'book', $box['rw'], true ) && ! empty( $cfg['rewards']['book']['product_id'] );
 			if ( $has_book ) { $bk = $g['book'] ? WC()->cart->get_cart_item( $g['book'] ) : null; $t->ok( $label . ' · книгата е в количката на €0', $bk && 0.0 === (float) $bk['data']->get_price(), $bk ? 'цена ' . $bk['data']->get_price() : 'няма ред book' ); }
 			else { $t->ok( $label . ' · без книга', empty( $g['book'] ), in_array( 'book', $box['rw'], true ) ? 'кутията има book, но rewards.book.product_id е 0' : '' ); }

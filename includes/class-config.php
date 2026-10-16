@@ -178,6 +178,30 @@ final class Config {
 		update_option( 'ansa_promo_pct_s15', $changed ? 'migrated' : 'noop', false );
 	}
 
+	/** v1.14.0 (човекът: „сега искаме да добавим йонибиотик“, WC ID 15836): еднократно свързва ключа `yoni` с продукта, ако редът е без SKU
+	 *  и без валиден WC продукт (или сочи грешен — името не съдържа „yoni“, напр. сетът „Тайна оферта“ от търсенето по име), и го включва.
+	 *  На init (след сийда), защото ползва WC. Ако #15836 не съществува на сайта, не пипа нищо (noop) — свързването става от 📦 Продукти. */
+	const YONI_PID = 15836;
+	public static function maybe_migrate_yoni() {
+		if ( get_option( 'ansa_promo_yoni_v1' ) || ! function_exists( 'wc_get_product' ) ) { return; }
+		$target = wc_get_product( self::YONI_PID );
+		if ( ! $target ) { update_option( 'ansa_promo_yoni_v1', 'no-product', false ); return; }
+		$s = self::read_store(); $changed = false;
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['products'] ) || ! is_array( $s[ $slot ]['products'] ) ) { continue; }
+			foreach ( $s[ $slot ]['products'] as $i => $p ) {
+				if ( ! is_array( $p ) || 'yoni' !== (string) ( $p['key'] ?? '' ) || '' !== trim( (string) ( $p['sku'] ?? '' ) ) ) { continue; }
+				$pid = (int) ( $p['product_id'] ?? 0 ); $wc = $pid ? Catalog::wc_line( $pid ) : null;
+				$fine = $wc && $wc['ok'] && false !== mb_stripos( $wc['base_name'] ?: $wc['wc_name'], 'yoni' );
+				if ( $fine && ! empty( $p['enabled'] ) ) { continue; }
+				if ( ! $fine ) { $s[ $slot ]['products'][ $i ]['product_id'] = self::YONI_PID; }
+				$s[ $slot ]['products'][ $i ]['enabled'] = true; $changed = true;
+			}
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_yoni_v1', $changed ? 'migrated' : 'noop', false );
+	}
+
 	/** v1.0.38: „за какво е“ и описанието от сийда (мокъпа) се изчистват еднократно за продуктите с „текстове от WooCommerce“, за да ги попълва WC;
 	 *  всичко, което админът е променил, остава. Имената (Sakura, Daily Greens, …) не се пипат. */
 	public static function maybe_migrate_wctext() {
@@ -208,7 +232,7 @@ final class Config {
 	}
 
 	public static function product_defaults() {
-		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true, 'wc_text' => true, 'sku' => '' );
+		return array( 'key' => '', 'product_id' => 0, 'ph' => '🌿', 'img' => 0, 'name' => '', 'gname' => '', 'gsub' => '', 'ds' => '', 'desc' => '', 'ing' => '', 'who' => '', 'rating' => '', 'reviews' => '', 'cat' => '', 'pack' => '', 'theme' => array( '#fff0f6', '#ffd1e3', '#8a1147' ), 'enabled' => true, 'wc_text' => true, 'sku' => '', 'pct' => array() ); /* v1.14.0 pct: box id => % (празно = процентът на кутията) */
 	}
 
 	public static function normalize( $data ) {
@@ -244,6 +268,8 @@ final class Config {
 			$p['enabled'] = ! empty( $p['enabled'] );
 			$p['wc_text'] = ! empty( $p['wc_text'] ); /* v1.0.25: „за какво е“ и описанието идват от WooCommerce (по подразбиране) */
 			$p['sku'] = sanitize_text_field( (string) ( $p['sku'] ?? '' ) ); /* v1.0.26: SKU на вариацията „1 опаковка“ — печели над product_id */
+			/* v1.14.0: отстъпка по продукт и кутия — само валидни box id и проценти в (0,100); празно/0 = процентът на кутията */
+			$pp = array(); foreach ( (array) ( $p['pct'] ?? array() ) as $bid => $v ) { $bid = sanitize_key( (string) $bid ); $v = is_numeric( $v ) ? (float) $v : 0; if ( '' !== $bid && $v > 0 && $v < 100 ) { $pp[ $bid ] = $v; } } $p['pct'] = $pp;
 			$prods[] = $p;
 		}
 		$out['products'] = $prods;
@@ -374,6 +400,14 @@ final class Config {
 
 	/* ── помощници ── */
 	public static function product( $cfg, $key ) { foreach ( $cfg['products'] as $p ) { if ( $p['key'] === $key ) { return $p; } } return null; }
+	/** v1.14.0: ефективната отстъпка на продукт в кутия — override от 📦 Продукти (pct[box id]) или процентът на кутията. */
+	public static function product_pct( $p, $box ) {
+		$bid = is_array( $box ) ? (string) ( $box['id'] ?? '' ) : (string) $box;
+		$v = is_array( $p ) && isset( $p['pct'][ $bid ] ) ? (float) $p['pct'][ $bid ] : 0;
+		if ( $v > 0 && $v < 100 ) { return $v; }
+		return is_array( $box ) ? (float) ( $box['pct'] ?? 0 ) : 0;
+	}
+
 	public static function box( $cfg, $id ) { foreach ( $cfg['boxes'] as $b ) { if ( $b['id'] === $id ) { return $b; } } return null; }
 	private static function max_packs_floor( $boxes ) { $m = 1; foreach ( (array) $boxes as $b ) { $m = max( $m, (int) ( $b['packs'] ?? 1 ) ); } return $m; }
 	/** v1.12.0: най-много опаковки за кутията — растящата (grow) до max_packs, останалите точно packs. */

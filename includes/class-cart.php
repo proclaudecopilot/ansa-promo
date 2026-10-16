@@ -69,10 +69,12 @@ final class Cart {
 	/** Конфигът за тази количка: черновата, ако добавянето е станало в чернова (проверено на сървъра), иначе публикуваното. */
 	public static function cfg() { $ctx = self::ctx(); return ! empty( $ctx['draft'] ) ? Config::get_draft() : Config::get_published(); }
 	private static function copy( $k, $vars = array() ) { $c = Copy::effective( self::cfg()['copy'] ); return Copy::render( isset( $c[ $k ] ) ? $c[ $k ] : $k, $vars ); }
+	/** v1.14.0: отстъпката на base ред — ppct на продукта в кутията (ако е записан при добавянето), иначе процентът на групата/кутията. */
+	public static function item_pct( $item, $fallback ) { $m = is_array( $item ) ? ( $item[ self::META ] ?? array() ) : array(); return isset( $m['ppct'] ) && (float) $m['ppct'] > 0 ? (float) $m['ppct'] : (float) $fallback; }
 	private static function reg_price( $p ) { $r = (float) $p->get_regular_price(); return $r > 0 ? $r : (float) $p->get_price(); }
 	public static function promo_url( $cfg = null ) { $cfg = $cfg ?: self::cfg(); return ! empty( $cfg['page_id'] ) ? get_permalink( (int) $cfg['page_id'] ) : home_url( '/' ); }
 	public static function checkout_url() { return apply_filters( 'ansa_promo_checkout_url', wc_get_checkout_url(), self::ctx() ); }
-	private static function fmt( $n ) { return null === $n ? '' : str_replace( '.', ',', rtrim( rtrim( number_format( (float) $n, 2, '.', '' ), '0' ), '.' ) ); }
+	public static function fmt( $n ) { return null === $n ? '' : str_replace( '.', ',', rtrim( rtrim( number_format( (float) $n, 2, '.', '' ), '0' ), '.' ) ); }
 
 	/** Групата в количката: [ group, box, promo, pct, packs, spct, ship, base[key=>item], book, secret[key=>item], sum, foreign[] ] */
 	public static function group( $cart = null ) {
@@ -185,7 +187,9 @@ final class Cart {
 		$added = 0;
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
-			$key = WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'] ) ) ) );
+			/* v1.14.0: ppct = отстъпката на този продукт в тази кутия (override от 📦 Продукти или процентът на кутията) — записана в реда като pct */
+			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $box['pct'];
+			$key = WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'], 'ppct' => $ppct ) ) ) );
 			if ( $key ) { $added++; }
 		}
 		if ( ! $added ) { self::$mutating = false; WC()->cart->empty_cart(); return $err( 'add' ); }
@@ -253,7 +257,7 @@ final class Cart {
 		$g = self::group( $cart ); if ( ! $g ) { return; }
 		$valid = self::group_valid( $g );
 		$pct = $valid ? $g['pct'] : 0; $spct = $valid ? $g['spct'] : 0;
-		foreach ( $g['base'] as $key => $item ) { $item['data']->set_price( round( self::reg_price( $item['data'] ) * ( 1 - $pct / 100 ), 2 ) ); }
+		foreach ( $g['base'] as $key => $item ) { $item['data']->set_price( round( self::reg_price( $item['data'] ) * ( 1 - ( $valid ? self::item_pct( $item, $pct ) : 0 ) / 100 ), 2 ) ); }
 		foreach ( $g['secret'] as $key => $item ) { $item['data']->set_price( round( self::reg_price( $item['data'] ) * ( 1 - $spct / 100 ), 2 ) ); }
 		if ( $g['book'] ) {
 			$items = $cart->get_cart();
@@ -269,7 +273,7 @@ final class Cart {
 	public static function cart_label( $name, $item, $key ) {
 		if ( empty( $item[ self::META ] ) ) { return $name; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $item[ self::META ]['box'] ); $role = $item[ self::META ]['role'];
-		$v = array( 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
+		$v = array( 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( 'base' === $role ? self::item_pct( $item, $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) : ( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
 		$tag = self::copy( 'book' === $role ? 'co.tag.book' : ( 'secret' === $role ? 'co.tag.secret' : 'co.tag.base' ), $v );
 		/* v1.5.3: .ansa-promo-lock маркира заключените редове (base/book) и за DOM-а на FunnelKit, който не минава през
 		   woocommerce_cart_item_quantity/remove_link — степерът и ✕ в обобщението му се крият с CSS по този клас */
@@ -408,7 +412,7 @@ final class Cart {
 		if ( empty( $values[ self::META ] ) ) { return; }
 		$item->add_meta_data( '_ansa_promo_role', $values[ self::META ]['role'], true );
 		$item->add_meta_data( '_ansa_promo_box', $values[ self::META ]['box'], true );
-		$item->add_meta_data( '_ansa_promo_pct', 'secret' === $values[ self::META ]['role'] ? $values[ self::META ]['spct'] : ( 'book' === $values[ self::META ]['role'] ? 100 : $values[ self::META ]['pct'] ), true );
+		$item->add_meta_data( '_ansa_promo_pct', 'secret' === $values[ self::META ]['role'] ? $values[ self::META ]['spct'] : ( 'book' === $values[ self::META ]['role'] ? 100 : self::item_pct( $values, $values[ self::META ]['pct'] ) ), true );
 	}
 	/** След като поръчката има ID: lead → converted_order_id, бележка при непълна кутия. */
 	public static function order_created( $order ) {
