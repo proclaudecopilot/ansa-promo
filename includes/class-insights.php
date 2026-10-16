@@ -189,16 +189,19 @@ final class Insights {
 	public static function sessions_report( $days = 30 ) {
 		global $wpdb; $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' );
 		$since = self::since( $days ); $w = $since ? $wpdb->prepare( 'WHERE started_at >= %s', $since ) : '';
-		$rows = $wpdb->get_results( "SELECT utm, src, device, box, step, items, lead_id, order_id, started_at FROM $ts $w", ARRAY_A );
-		$out = array( 'sessions' => count( (array) $rows ), 'funnel' => array_fill_keys( self::FUNNEL, 0 ), 'by_utm' => array(), 'by_src' => array(), 'by_dev' => array(), 'by_box' => array(), 'by_day' => array(), 'items' => array(), 'leads' => 0, 'orders' => 0 );
+		$rows = $wpdb->get_results( "SELECT utm, src, device, box, step, items, lead_id, order_id, started_at, ip, sid FROM $ts $w", ARRAY_A );
+		$out = array( 'sessions' => count( (array) $rows ), 'visitors' => 0, 'funnel' => array_fill_keys( self::FUNNEL, 0 ), 'by_utm' => array(), 'by_src' => array(), 'by_dev' => array(), 'by_box' => array(), 'by_day' => array(), 'items' => array(), 'leads' => 0, 'orders' => 0 );
+		/* 1.20.4 (човекът): уникални посетители = различни IP (без IP — сесията е свой посетител); общо и във всяка разбивка (v) */
+		$vis = array(); $vg = array();
 		foreach ( (array) $rows as $r ) {
+			$vk = '' !== (string) $r['ip'] ? (string) $r['ip'] : 'sid:' . $r['sid']; $vis[ $vk ] = 1;
 			$o = self::ORDER[ $r['step'] ] ?? 1;
 			foreach ( self::FUNNEL as $st ) { if ( $o >= self::ORDER[ $st ] ) { $out['funnel'][ $st ]++; } }
 			if ( $r['lead_id'] ) { $out['leads']++; } if ( $r['order_id'] ) { $out['orders']++; }
 			$day = substr( (string) $r['started_at'], 0, 10 );
 			foreach ( array( 'by_utm' => $r['utm'] ?: '—', 'by_src' => $r['src'] ?: ( $r['utm'] ? 'utm' : 'директно' ), 'by_dev' => $r['device'] ?: '—', 'by_box' => $r['box'] ?: '—', 'by_day' => $day ) as $grp => $key ) {
-				if ( ! isset( $out[ $grp ][ $key ] ) ) { $out[ $grp ][ $key ] = array( 'n' => 0, 'gate' => 0, 'box' => 0, 'full' => 0, 'add' => 0, 'created' => 0, 'paid' => 0 ); }
-				$out[ $grp ][ $key ]['n']++;
+				if ( ! isset( $out[ $grp ][ $key ] ) ) { $out[ $grp ][ $key ] = array( 'n' => 0, 'v' => 0, 'gate' => 0, 'box' => 0, 'full' => 0, 'add' => 0, 'created' => 0, 'paid' => 0 ); }
+				$out[ $grp ][ $key ]['n']++; $vg[ $grp ][ $key ][ $vk ] = 1;
 				foreach ( array( 'gate', 'box', 'full', 'add', 'created', 'paid' ) as $st ) { if ( $o >= self::ORDER[ $st ] ) { $out[ $grp ][ $key ][ $st ]++; } }
 			}
 			$items = $r['items'] ? json_decode( $r['items'], true ) : null;
@@ -207,6 +210,7 @@ final class Insights {
 		/* „цъкнал“ продукт — събитията item (и без да е напълнил) */
 		$we = $since ? $wpdb->prepare( 'WHERE at >= %s AND ev = %s', $since, 'item' ) : $wpdb->prepare( 'WHERE ev = %s', 'item' );
 		foreach ( (array) $wpdb->get_results( "SELECT k, COUNT(DISTINCT sid) AS s, COUNT(*) AS c FROM $te $we GROUP BY k", ARRAY_A ) as $r ) { if ( ! isset( $out['items'][ $r['k'] ] ) ) { $out['items'][ $r['k'] ] = array( 'sessions' => 0, 'packs' => 0, 'ordered' => 0 ); } $out['items'][ $r['k'] ]['clicked'] = (int) $r['s']; $out['items'][ $r['k'] ]['clicks'] = (int) $r['c']; }
+		$out['visitors'] = count( $vis ); foreach ( $vg as $grp => $keys ) { foreach ( $keys as $key => $set ) { $out[ $grp ][ $key ]['v'] = count( $set ); } }
 		foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
 		ksort( $out['by_day'] ); uasort( $out['items'], function ( $a, $b ) { return ( $b['sessions'] + ( $b['clicked'] ?? 0 ) ) <=> ( $a['sessions'] + ( $a['clicked'] ?? 0 ) ); } );
 		return $out;
@@ -221,10 +225,14 @@ final class Insights {
 		$in = implode( ',', array_fill( 0, count( $sids ), '%s' ) );
 		$evs = $wpdb->get_results( $wpdb->prepare( "SELECT sid, at, ev, box, k, n FROM $te WHERE sid IN ($in) ORDER BY id ASC", $sids ), ARRAY_A );
 		$by = array(); foreach ( (array) $evs as $e ) { $by[ $e['sid'] ][] = $e; }
+		/* 1.20.4: същият посетител (IP) — колко сесии има общо и анонимен етикет (хеш, не адресът) */
+		$ips = array_values( array_unique( array_filter( array_map( function ( $r ) { return (string) $r['ip']; }, $rows ) ) ) ); $visits = array();
+		if ( $ips ) { $inp = implode( ',', array_fill( 0, count( $ips ), '%s' ) ); foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT ip, COUNT(*) AS c FROM $ts WHERE ip IN ($inp) GROUP BY ip", $ips ), ARRAY_A ) as $v ) { $visits[ $v['ip'] ] = (int) $v['c']; } }
 		$names = self::product_names(); $boxes = self::box_names();
 		$out = array();
 		foreach ( $rows as $r ) {
 			$o = $r['order_id'] ? wc_get_order( (int) $r['order_id'] ) : null;
+			$ip = (string) $r['ip']; $vlabel = '' !== $ip ? substr( md5( $ip . '|' . wp_salt( 'nonce' ) ), 0, 4 ) : ''; $vn = '' !== $ip ? (int) ( $visits[ $ip ] ?? 1 ) : 1;
 			$items = $r['items'] ? json_decode( $r['items'], true ) : array(); $items = is_array( $items ) ? $items : array();
 			$ic = array(); foreach ( array_count_values( array_map( 'strval', $items ) ) as $k => $q ) { $ic[] = ( $q > 1 ? $q . '× ' : '' ) . ( $names[ $k ] ?? $k ); }
 			$timeline = array(); $seen = array();
@@ -233,7 +241,7 @@ final class Insights {
 				$timeline[] = array( 'ev' => $e['ev'], 't' => substr( $e['at'], 11, 5 ), 'l' => self::SHORT[ $e['ev'] ] ?? $e['ev'], 'x' => 'item' === $e['ev'] ? ( $names[ $e['k'] ] ?? $e['k'] ) : ( 'box' === $e['ev'] ? ( $boxes[ $e['box'] ] ?? $e['box'] ) : '' ) );
 			}
 			$out[] = array(
-				'id' => (int) $r['id'], 'sid' => $r['sid'], 'started' => $r['started_at'], 'last' => $r['last_at'], 'ago' => human_time_diff( strtotime( $r['last_at'] ), current_time( 'timestamp' ) ),
+				'id' => (int) $r['id'], 'sid' => $r['sid'], 'visitor' => $vlabel, 'visits' => $vn, 'started' => $r['started_at'], 'last' => $r['last_at'], 'ago' => human_time_diff( strtotime( $r['last_at'] ), current_time( 'timestamp' ) ),
 				'utm' => $r['utm'], 'utm_name' => $r['utm'] ? ( $names[ $r['utm'] ] ?? $r['utm'] ) : '', 'src' => trim( $r['src'] . ( $r['med'] ? ' / ' . $r['med'] : '' ) . ( $r['camp'] ? ' · ' . $r['camp'] : '' ) ), 'ref' => $r['ref'] ? (string) wp_parse_url( $r['ref'], PHP_URL_HOST ) : '', 'device' => $r['device'],
 				'email' => $r['lead_email'] ? (string) $r['lead_email'] : ( $o ? (string) $o->get_billing_email() : '' ), 'name' => $o ? trim( $o->get_billing_first_name() . ' ' . $o->get_billing_last_name() ) : '',
 				'box' => $r['box'], 'box_name' => $boxes[ $r['box'] ] ?? $r['box'], 'items' => $ic, 'step' => $r['step'], 'step_label' => self::SHORT[ $r['step'] ] ?? $r['step'], 'timeline' => $timeline,
@@ -253,7 +261,7 @@ final class Insights {
 	}
 	public static function kpi( $r ) {
 		$f = $r['funnel'];
-		return array( 'sessions' => $r['sessions'], 'gate' => $f['gate'], 'box' => $f['box'], 'full' => $f['full'], 'add' => $f['add'], 'created' => $f['created'], 'paid' => $f['paid'], 'leads' => $r['leads'], 'orders' => $r['orders'], 'conv' => self::pct( $f['created'], $r['sessions'] ) );
+		return array( 'sessions' => $r['sessions'], 'visitors' => (int) ( $r['visitors'] ?? 0 ), 'per' => $r['visitors'] ? number_format( $r['sessions'] / $r['visitors'], 1, ',', '' ) : '—', 'gate' => $f['gate'], 'box' => $f['box'], 'full' => $f['full'], 'add' => $f['add'], 'created' => $f['created'], 'paid' => $f['paid'], 'leads' => $r['leads'], 'orders' => $r['orders'], 'conv' => self::pct( $f['created'], $r['sessions'] ) );
 	}
 
 	/* ── v1.3.0: старият rollup (CSV, съвместимост) ── */
@@ -284,9 +292,9 @@ final class Insights {
 	public static function csv_sessions( $days = 30 ) {
 		global $wpdb; $ts = Schema::table( 'sessions' ); $tl = Schema::table( 'leads' );
 		$since = self::since( $days ); $w = $since ? $wpdb->prepare( 'WHERE s.started_at >= %s', $since ) : '';
-		$rows = $wpdb->get_results( "SELECT s.sid, s.started_at, s.last_at, s.utm, s.src, s.med, s.camp, s.ref, s.device, l.email, s.box, s.items, s.step, s.order_id FROM $ts s LEFT JOIN $tl l ON l.id = s.lead_id $w ORDER BY s.started_at", ARRAY_A );
-		$fh = fopen( 'php://temp', 'w+' ); fputs( $fh, "\xEF\xBB\xBF" ); fputcsv( $fh, array( 'sid', 'започната', 'последно', 'utm', 'source', 'medium', 'campaign', 'referrer', 'устройство', 'имейл', 'кутия', 'продукти', 'стъпка', 'поръчка' ), ';' );
-		foreach ( (array) $rows as $r ) { $it = $r['items'] ? json_decode( $r['items'], true ) : array(); $r['items'] = is_array( $it ) ? implode( ' ', $it ) : ''; fputcsv( $fh, $r, ';' ); }
+		$rows = $wpdb->get_results( "SELECT s.sid, s.started_at, s.last_at, s.utm, s.src, s.med, s.camp, s.ref, s.device, l.email, s.box, s.items, s.step, s.order_id, s.ip FROM $ts s LEFT JOIN $tl l ON l.id = s.lead_id $w ORDER BY s.started_at", ARRAY_A );
+		$fh = fopen( 'php://temp', 'w+' ); fputs( $fh, "\xEF\xBB\xBF" ); fputcsv( $fh, array( 'sid', 'започната', 'последно', 'utm', 'source', 'medium', 'campaign', 'referrer', 'устройство', 'имейл', 'кутия', 'продукти', 'стъпка', 'поръчка', 'посетител' ), ';' );
+		foreach ( (array) $rows as $r ) { $it = $r['items'] ? json_decode( $r['items'], true ) : array(); $r['items'] = is_array( $it ) ? implode( ' ', $it ) : ''; $r['ip'] = '' !== (string) $r['ip'] ? substr( md5( $r['ip'] . '|' . wp_salt( 'nonce' ) ), 0, 8 ) : ''; fputcsv( $fh, $r, ';' ); } /* 1.20.4: посетител = хеш на IP (същият човек = същият код), не адресът */
 		rewind( $fh ); $csv = stream_get_contents( $fh ); fclose( $fh ); return $csv;
 	}
 	public static function pct( $a, $b ) { return $b > 0 ? number_format( 100 * $a / $b, 1, ',', '' ) . '%' : '—'; }
@@ -295,12 +303,12 @@ final class Insights {
 	public static function render( $days ) {
 		$days = in_array( (int) $days, array( 1, 7, 30, 90, 0 ), true ) ? (int) $days : 30;
 		$r = self::sessions_report( $days ); $f = $r['funnel']; $names = self::product_names(); $boxes = self::box_names(); $legacy = self::report( $days );
-		$cols = array( 'n' => 'сесии', 'gate' => 'попъп', 'box' => 'кутия', 'full' => 'пълна', 'add' => 'плащане', 'created' => 'поръчка', 'paid' => 'платена' );
+		$cols = array( 'n' => 'сесии', 'v' => 'посетители', 'gate' => 'попъп', 'box' => 'кутия', 'full' => 'пълна', 'add' => 'плащане', 'created' => 'поръчка', 'paid' => 'платена' );
 		$tbl = function ( $title, $rows, $first, $fmt = null ) use ( $cols ) {
 			$h = '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">' . $title . '</span></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>' . esc_html( $first ) . '</th>';
 			foreach ( $cols as $c ) { $h .= '<th>' . esc_html( $c ) . '</th>'; } $h .= '<th>конверсия</th></tr></thead><tbody>';
-			foreach ( $rows as $k => $v ) { $h .= '<tr><td><b>' . esc_html( $fmt ? $fmt( $k ) : $k ) . '</b></td>'; foreach ( array_keys( $cols ) as $c ) { $h .= '<td>' . (int) $v[ $c ] . '</td>'; } $h .= '<td>' . esc_html( self::pct( $v['created'], $v['n'] ) ) . '</td></tr>'; }
-			if ( ! $rows ) { $h .= '<tr><td colspan="9"><small>още няма данни за периода</small></td></tr>'; }
+			foreach ( $rows as $k => $v ) { $h .= '<tr><td><b>' . esc_html( $fmt ? $fmt( $k ) : $k ) . '</b></td>'; foreach ( array_keys( $cols ) as $c ) { $h .= '<td>' . ( 'v' === $c ? '<b>' . (int) ( $v['v'] ?? 0 ) . '</b>' : (int) $v[ $c ] ) . '</td>'; } $h .= '<td>' . esc_html( self::pct( $v['created'], $v['n'] ) ) . '</td></tr>'; }
+			if ( ! $rows ) { $h .= '<tr><td colspan="10"><small>още няма данни за периода</small></td></tr>'; }
 			return $h . '</tbody></table></div></div>';
 		};
 		$chips = ''; foreach ( array( 1 => 'днес', 7 => '7 дни', 30 => '30 дни', 90 => '90 дни', 0 => 'всичко' ) as $d => $l ) { $chips .= '<a class="ap-chip' . ( $d === $days ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'days' => $d ) ) ) . '">' . esc_html( $l ) . '</a>'; }
@@ -311,6 +319,7 @@ final class Insights {
 		$k = self::kpi( $r ); global $wpdb; $first = (string) $wpdb->get_var( 'SELECT MIN(started_at) FROM ' . Schema::table( 'sessions' ) );
 		echo '<div class="ap-kpis" style="padding:0 0 14px" id="apInsKpi">'
 			. '<div class="ap-kpi"><b data-k="sessions">' . (int) $k['sessions'] . '</b><span>сесии (влезли)' . ( $first ? ' · от ' . esc_html( date_i18n( 'd.m H:i', strtotime( $first ) ) ) : '' ) . '</span></div>'
+			. '<div class="ap-kpi good"><b data-k="visitors">' . (int) $k['visitors'] . '</b><span>уникални посетители (по IP) · <span data-k="per">' . esc_html( $k['per'] ) . '</span> сесии на посетител</span></div>'
 			. '<div class="ap-kpi"><b>' . (int) $legacy['by_step']['view'] . '</b><span>видели (стар брояч, цял период)</span></div>'
 			. '<div class="ap-kpi"><b data-k="gate">' . (int) $k['gate'] . '</b><span>минали попъпа</span></div>'
 			. '<div class="ap-kpi"><b data-k="box">' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
@@ -336,7 +345,7 @@ final class Insights {
 		echo '</div></div>';
 		/* жив фийд */
 		echo '<div class="ap-sec ap-sec--table" id="apInsFeed"><div class="ap-sec__h"><span class="ap-sec__t">🟢 На живо — последните сесии</span><label class="ap-tglwrap on" style="margin-left:auto"><input type="checkbox" id="apInsLive" checked><span class="ap-tgl"></span>опреснява на 20 с</label><small id="apInsAt" style="margin-left:8px"></small></div>'
-			. '<div class="ap-sec__hint">Кой е влязъл (имейлът от попъпа или от поръчката), откъде, какво е цъкнал и докъде е стигнал. Статусът на поръчката е на живо от WooCommerce.</div><div class="ap-sec__b"><table class="widefat striped" id="apInsFeedT"><thead><tr><th>кога</th><th>кой</th><th>откъде</th><th>устр.</th><th>кутия · продукти</th><th>пътят</th><th>поръчка</th></tr></thead><tbody>' . self::feed_rows( self::feed( 40 ) ) . '</tbody></table></div></div>';
+			. '<div class="ap-sec__hint">Кой е влязъл (имейлът от попъпа или от поръчката), откъде, какво е цъкнал и докъде е стигнал. Статусът на поръчката е на живо от WooCommerce. 👤xxxx е един и същ посетител (по IP): „5 сесии“ значи, че същият човек е влизал 5 пъти, не че са 5 души.</div><div class="ap-sec__b"><table class="widefat striped" id="apInsFeedT"><thead><tr><th>кога</th><th>кой</th><th>откъде</th><th>устр.</th><th>кутия · продукти</th><th>пътят</th><th>поръчка</th></tr></thead><tbody>' . self::feed_rows( self::feed( 40 ) ) . '</tbody></table></div></div>';
 		/* продукти */
 		echo '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🧴 Продуктите — цъкнати и в кутиите</span></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>продукт</th><th>цъкнали (сесии)</th><th>цъквания</th><th>в пълни кутии (сесии)</th><th>опаковки</th><th>поръчани опаковки</th></tr></thead><tbody>';
 		foreach ( $r['items'] as $kk => $v ) { echo '<tr><td><b>' . esc_html( $names[ $kk ] ?? $kk ) . '</b> <small>' . esc_html( $kk ) . '</small></td><td>' . (int) ( $v['clicked'] ?? 0 ) . '</td><td>' . (int) ( $v['clicks'] ?? 0 ) . '</td><td>' . (int) $v['sessions'] . '</td><td>' . (int) $v['packs'] . '</td><td>' . (int) $v['ordered'] . '</td></tr>'; }
@@ -364,7 +373,9 @@ final class Insights {
 		if ( ! $feed ) { return '<tr><td colspan="7"><small>Още няма сесии — стъпките се записват, когато играта е публикувана и някой отвори страницата (черновата и редакторът не броят).</small></td></tr>'; }
 		$h = '';
 		foreach ( $feed as $s ) {
-			$who = $s['email'] ? '<b>' . esc_html( $s['email'] ) . '</b>' . ( $s['name'] ? '<br><small>' . esc_html( $s['name'] ) . '</small>' : '' ) : '<small>анонимна</small>';
+			/* 1.20.4: същият посетител (IP) се познава по етикета 👤xxxx; „5 сесии“ = колко пъти е влизал общо (не е 5 различни човека) */
+			$vis = ! empty( $s['visitor'] ) ? '<small class="ap-vis" title="един и същ посетител (IP) — не е адресът, а етикет">👤' . esc_html( $s['visitor'] ) . ( ( $s['visits'] ?? 1 ) > 1 ? ' · <b>' . (int) $s['visits'] . ' сесии</b>' : ' · 1-ва сесия' ) . '</small>' : '';
+			$who = ( $s['email'] ? '<b>' . esc_html( $s['email'] ) . '</b>' . ( $s['name'] ? '<br><small>' . esc_html( $s['name'] ) . '</small>' : '' ) : '<small>анонимна</small>' ) . ( $vis ? '<br>' . $vis : '' );
 			$from = ( $s['utm_name'] ? '🏷️ ' . esc_html( $s['utm_name'] ) : '' ) . ( $s['src'] ? ( $s['utm_name'] ? '<br>' : '' ) . '<small>' . esc_html( $s['src'] ) . '</small>' : '' ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
 			$tl = '<div class="ap-tl">'; foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
 			$ord = $s['order'] ? '<a href="' . esc_url( $s['order']['edit'] ) . '">#' . esc_html( $s['order']['number'] ) . '</a><br><small>' . esc_html( $s['order']['status'] ) . ' · ' . esc_html( number_format( (float) $s['order']['total'], 2, ',', '' ) ) . ' €</small>' : '<small>' . esc_html( $s['step_label'] ) . '</small>';
