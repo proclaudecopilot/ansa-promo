@@ -1658,10 +1658,10 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .fsc.on{border-color:var(--o);box-shadow:0 0 0 2px rgba(232,114,42,.15)}
 .ansa-promo .fsc.in{background:#eafbf0;border-color:#16a34a;color:#166534}
 .ansa-promo .fsc.in::after{content:"✓";font-size:11px;font-weight:900;color:#16a34a}
-.ansa-promo .fp3 .mpg2{justify-content:flex-end;gap:8px;margin:-4px 0 10px;padding:0}
-.ansa-promo .fp3 .mpg2 .mpgb{width:34px;height:34px;font-size:18px}
-.ansa-promo .fp3 .mpg2 .mpgb span{display:none}
-.ansa-promo .fp3 .mpg2 .mpgn{font-size:13px;font-weight:800;color:var(--ink2)}
+.ansa-promo .dc.fpw .fp3 .mpg2{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-6px 0 10px;padding:0;background:none;border:0}
+.ansa-promo .dc.fpw .fp3 .mpg2 .mpgb{width:34px;height:34px;min-width:0;padding:0;border-radius:50%;font-size:18px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ansa-promo .dc.fpw .fp3 .mpg2 .mpgb span{display:none}
+.ansa-promo .dc.fpw .fp3 .mpg2 .mpgn{flex:none;font-size:13px;font-weight:800;color:var(--ink2);white-space:nowrap}
 .ansa-promo .mpgl{font-size:12px;font-weight:800;color:var(--od)}
 .ansa-promo .dc.fpm .fstrip{margin:0 16px 10px;flex:none}
 .ansa-promo .dc.fpm .fstripn{font-size:11px}
