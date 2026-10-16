@@ -1677,6 +1677,8 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .bweek.last{color:var(--goldd)}
 .ansa-promo .bmweek{display:none}
 @media(max-width:999px){.ansa-promo #apS1>.wkbar{margin:10px 0 4px}}
+/* 1.19.4 (човекът): на телефон хедърът е само „Сезонът на ansa“ — чипът на седмицата повтаря картата под него; на /info (без карта) остава */
+@media(max-width:640px){.ansa-promo:not(.info) .timer.wk{display:none}}
 @media(max-width:640px){.ansa-promo .wkbar.m{display:block;padding:12px 14px 11px;margin:8px 0 2px;border-radius:14px;border:1.5px solid var(--o);background:linear-gradient(135deg,#fff7ef,#fff);box-shadow:0 8px 24px rgba(232,114,42,.16)}
 .ansa-promo .wkbar.m.last{border-color:var(--gold);background:linear-gradient(135deg,#fffdf5,#fff)}
 .ansa-promo .wkbar.m .wkdots{flex:none;width:100%;margin:0 0 9px}
