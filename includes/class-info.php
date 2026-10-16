@@ -55,7 +55,7 @@ final class Info {
 	public static function no_404( $pre, $q ) { return self::is_route() ? true : $pre; }
 	public static function render_route() {
 		if ( ! self::is_route() ) { return; }
-		$draft = Frontend::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
+		$draft = Frontend::is_draft_request(); Frontend::preview_week(); $cfg = Config::at( $draft ? Config::get_draft() : Config::get_published() ); /* v1.19.0: седмицата */
 		status_header( 200 ); header( 'Content-Type: text/html; charset=utf-8' );
 		if ( Frontend::gate_shown() || ( ! $draft && ! Config::is_live( $cfg ) ) ) { header( 'X-Robots-Tag: noindex' ); nocache_headers(); echo self::soon_html( $cfg ); exit; }
 		if ( $draft ) { header( 'X-Robots-Tag: noindex' ); nocache_headers(); }

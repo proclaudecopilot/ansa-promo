@@ -1,6 +1,6 @@
 <?php
 /* минимален WP stub за офлайн тестове на Copy/Config/Seed */
-define('ABSPATH', __DIR__.'/'); define('MINUTE_IN_SECONDS',60); define('HOUR_IN_SECONDS',3600); define('DAY_IN_SECONDS',86400);
+define('ABSPATH', __DIR__.'/'); define('MINUTE_IN_SECONDS',60); define('HOUR_IN_SECONDS',3600); define('DAY_IN_SECONDS',86400); define('WEEK_IN_SECONDS',604800); if(!function_exists('apply_filters')){ function apply_filters($h,$v){ return $v; } }
 define('ANSA_PROMO_VER','1.0.2'); define('ANSA_PROMO_PATH',dirname(__DIR__).'/'); define('ANSA_PROMO_URL','http://x/wp-content/plugins/ansa-promo/');
 function sanitize_text_field($s){ return trim(strip_tags((string)$s)); } function sanitize_key($s){ return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(string)$s)); }
 function wp_kses($s,$a){ return strip_tags((string)$s,'<b><strong><em><br>'); } function esc_url_raw($u){ return (string)$u; } function sanitize_email($e){ return trim((string)$e); } function is_email($e){ return (bool)filter_var($e,FILTER_VALIDATE_EMAIL); }

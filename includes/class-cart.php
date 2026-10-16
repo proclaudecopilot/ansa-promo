@@ -67,7 +67,7 @@ final class Cart {
 	private static function set_ctx( $c ) { if ( function_exists( 'WC' ) && WC()->session ) { WC()->session->set( self::CTX, $c ); } }
 	public static function clear_ctx() { if ( function_exists( 'WC' ) && WC()->session ) { WC()->session->set( self::CTX, null ); } }
 	/** Конфигът за тази количка: черновата, ако добавянето е станало в чернова (проверено на сървъра), иначе публикуваното. */
-	public static function cfg() { $ctx = self::ctx(); return ! empty( $ctx['draft'] ) ? Config::get_draft() : Config::get_published(); }
+	public static function cfg() { $ctx = self::ctx(); return Config::at( ! empty( $ctx['draft'] ) ? Config::get_draft() : Config::get_published() ); } /* v1.19.0: кутиите с процента на текущата седмица */
 	private static function copy( $k, $vars = array() ) { $c = Copy::effective( self::cfg()['copy'] ); return Copy::render( isset( $c[ $k ] ) ? $c[ $k ] : $k, $vars ); }
 	/** v1.14.0: отстъпката на base ред — ppct на продукта в кутията (ако е записан при добавянето), иначе процентът на групата/кутията. */
 	public static function item_pct( $item, $fallback ) { $m = is_array( $item ) ? ( $item[ self::META ] ?? array() ) : array(); return isset( $m['ppct'] ) && (float) $m['ppct'] > 0 ? (float) $m['ppct'] : (float) $fallback; }
@@ -83,7 +83,7 @@ final class Cart {
 		foreach ( $cart->get_cart() as $key => $item ) {
 			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { $foreign[] = $key; continue; }
 			$m = $item[ self::META ];
-			if ( null === $g ) { $g = array( 'group' => (string) $m['group'], 'box' => (string) $m['box'], 'promo' => (string) $m['promo'], 'pct' => (float) ( $m['pct'] ?? 0 ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'spct' => (float) ( $m['spct'] ?? 0 ), 'ship' => ! empty( $m['ship'] ), 'draft' => ! empty( $m['draft'] ), 'base' => array(), 'book' => null, 'secret' => array(), 'sum' => 0 ); }
+			if ( null === $g ) { $g = array( 'group' => (string) $m['group'], 'box' => (string) $m['box'], 'promo' => (string) $m['promo'], 'pct' => (float) ( $m['pct'] ?? 0 ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'spct' => (float) ( $m['spct'] ?? 0 ), 'ship' => ! empty( $m['ship'] ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'base' => array(), 'book' => null, 'secret' => array(), 'sum' => 0 ); }
 			if ( 'base' === $m['role'] ) { $g['base'][ $key ] = $item; $g['sum'] += (int) $item['quantity']; }
 			elseif ( 'book' === $m['role'] ) { $g['book'] = $key; }
 			elseif ( 'secret' === $m['role'] ) { $g['secret'][ $key ] = $item; }
@@ -136,7 +136,7 @@ final class Cart {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) { return array( 'ok' => false, 'code' => 'add', 'msg' => 'WooCommerce' ); }
 		$may_draft = ! empty( $a['trusted'] ) || current_user_can( Plugin::CAP ) || Frontend::preview_ok();
 		$draft = ! empty( $a['draft'] ) && $may_draft;
-		$cfg   = $draft ? Config::get_draft() : Config::get_published();
+		$cfg   = Config::at( $draft ? Config::get_draft() : Config::get_published() ); /* v1.19.0: процентът на кутията е този на текущата седмица */
 		$copy  = Copy::effective( $cfg['copy'] );
 		$err   = function ( $code, $vars = array() ) use ( $copy ) { return array( 'ok' => false, 'code' => $code, 'msg' => Copy::render( $copy[ 'err.' . $code ] ?? $code, $vars ) ); };
 		if ( ! $draft && ! Config::is_live( $cfg ) ) { return $err( 'live' ); }
@@ -184,7 +184,7 @@ final class Cart {
 		$_POST['ansa_no_gift'] = 1; /* Shrine Cart_Gift: без подаръци по вариация в промо количката */
 		WC()->cart->empty_cart();
 		$group = 'ap_' . substr( md5( uniqid( '', true ) ), 0, 10 );
-		$meta  = array( 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $box['pct'], 'packs' => (int) $box['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $box['rw'], true ), 'draft' => $draft, 'cv' => (int) Config::version() );
+		$meta  = array( 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $box['pct'], 'packs' => (int) $box['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $box['rw'], true ), 'draft' => $draft, 'cv' => (int) Config::version(), 't' => time(), 'week' => (int) ( $cfg['season']['cur']['i'] ?? 0 ) ); /* v1.19.0: t/week — кога и в коя седмица е добавено (гратисът при смяна на седмицата) */
 		$added = 0;
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
@@ -256,6 +256,7 @@ final class Cart {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) { return; }
 		self::strip_foreign( $cart );
 		$g = self::group( $cart ); if ( ! $g ) { return; }
+		self::maybe_reprice( $cart, $g ); /* v1.19.0 */
 		$valid = self::group_valid( $g );
 		$pct = $valid ? $g['pct'] : 0; $spct = $valid ? $g['spct'] : 0;
 		foreach ( $g['base'] as $key => $item ) { $item['data']->set_price( round( self::reg_price( $item['data'] ) * ( 1 - ( $valid ? self::item_pct( $item, $pct ) : 0 ) / 100 ), 2 ) ); }
@@ -266,6 +267,23 @@ final class Cart {
 			elseif ( ! $valid ) { self::$mutating = true; $cart->remove_cart_item( $g['book'] ); self::$mutating = false; }
 		}
 		$ctx = self::ctx(); if ( isset( $ctx['group'] ) && ( $ctx['invalid'] ?? null ) !== ! $valid ) { $ctx['invalid'] = ! $valid; self::set_ctx( $ctx ); }
+	}
+
+	/** v1.19.0: седмиците на сезона — цената от добавянето се пази season.grace_hours (човекът: 24 ч.) след смяната на седмицата; после
+	 *  по-ниската отстъпка на текущата седмица влиза в редовете (само тези на процента на кутията — override-ите по продукт не се пипат),
+	 *  а клиентът вижда бележка в количката/чекаута (co.reprice). Нагоре никога не се преоценява. */
+	private static function maybe_reprice( $cart, &$g ) {
+		$cfg = self::cfg(); if ( empty( $cfg['season']['cur'] ) || empty( $g['base'] ) ) { return; }
+		$t = (int) ( $g['t'] ?? 0 ); if ( ! $t || time() - $t < (int) $cfg['season']['grace_hours'] * HOUR_IN_SECONDS ) { return; }
+		$box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return; }
+		$new = (float) $box['pct']; $old = (float) $g['pct']; if ( $new >= $old ) { return; }
+		foreach ( $cart->cart_contents as $key => $item ) {
+			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { continue; }
+			$m = $item[ self::META ];
+			if ( 'base' === ( $m['role'] ?? '' ) && isset( $m['ppct'] ) && abs( (float) $m['ppct'] - $old ) < 0.001 ) { $cart->cart_contents[ $key ][ self::META ]['ppct'] = $new; }
+			$cart->cart_contents[ $key ][ self::META ]['pct'] = $new; $cart->cart_contents[ $key ][ self::META ]['t'] = time(); $cart->cart_contents[ $key ][ self::META ]['week'] = (int) $cfg['season']['cur']['i']; $cart->cart_contents[ $key ][ self::META ]['repriced_from'] = $old;
+		}
+		$g = self::group( $cart ); $ctx = self::ctx(); $ctx['repriced'] = array( 'from' => $old, 'to' => $new ); self::set_ctx( $ctx );
 	}
 
 	/* ═══ ЗАКЛЮЧВАНЕ ═══ */
@@ -289,6 +307,7 @@ final class Cart {
 		$cfg = self::cfg();
 		if ( ! self::group_valid( $g ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.broken', array( 'url' => esc_url( self::promo_url( $cfg ) ) ) ) ), 'error' ); }
 		if ( ! $g['draft'] && ! current_user_can( Plugin::CAP ) && ! Config::is_live( $cfg ) ) { wc_add_notice( esc_html( self::copy( 'co.expired' ) ), 'error' ); }
+		$ctx = self::ctx(); if ( ! empty( $ctx['repriced'] ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.reprice', array( 'pct' => self::fmt( $ctx['repriced']['to'] ), 'pct_old' => self::fmt( $ctx['repriced']['from'] ) ) ) ), 'notice' ); unset( $ctx['repriced'] ); self::set_ctx( $ctx ); } /* v1.19.0 */
 	}
 
 	/* ═══ ДОСТАВКА · КУПОНИ · ИМЕЙЛ ═══ */
@@ -310,6 +329,7 @@ final class Cart {
 
 	/* ═══ ЧЕКАУТ ═══ */
 	public static function vars( $cfg, $box, $count = 0 ) {
+		$cfg = Config::at( $cfg ); $box['pct'] = Config::box_pct_at( $cfg, $box ); /* v1.19.0: {{pct}}/{{pct_*}} са на текущата седмица */
 		$bl = Config::box( $cfg, 'l' ); $bm = Config::box( $cfg, 'm' ); $tix = Config::tickets_for( $box, $count ); /* v1.12.0: + билетите за опаковките над packs */
 		return array( 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ), 'box_ic' => $box['ic'], 'packs' => $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'pct' => self::fmt( $box['pct'] ), 'tickets' => $tix, 'shans' => 1 === $tix ? 'шанс' : 'шанса', 'bileta' => 1 === $tix ? 'билет' : 'билета', 'n' => (int) $count, 'opk_n' => 1 === (int) $count ? 'опаковка' : 'опаковки',
 			'yacht' => number_format( (float) $cfg['rewards']['yacht']['value'], 0, '', ' ' ), 'ship' => wc_price( $cfg['ship']['paid'] ), 'book_value' => self::fmt( $cfg['rewards']['book']['value'] ), 'cosm_value' => self::fmt( $cfg['rewards']['cosm']['value'] ), 'cosm_pay' => self::fmt( $box['cosm_pay'] ), 'cosm_save' => self::fmt( null === $box['cosm_pay'] ? null : max( 0, (float) $cfg['rewards']['cosm']['value'] - (float) $box['cosm_pay'] ) ), 'cosm_pay_m' => self::fmt( $bm ? $bm['cosm_pay'] : null ), 'cosm_pay_l' => self::fmt( $bl ? $bl['cosm_pay'] : null ), 'cosm_min' => self::fmt( $bl ? $bl['cosm_pay'] : null ),
@@ -381,7 +401,7 @@ final class Cart {
 		$ctx = self::ctx(); $valid = self::group_valid( $g );
 		if ( null !== $box['cosm_pay'] ) { $cosm_on = null !== $cosm_posted ? (bool) $cosm_posted : ( isset( $ctx['cosm'] ) ? (bool) $ctx['cosm'] : true ); } else { $cosm_on = false; }
 		$meta = array(
-			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
+			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'week' => (int) ( $g['week'] ?? 0 ), 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
 			'tickets' => array( 'allowance' => $valid ? Config::tickets_for( $box, (int) $g['sum'] ) : 0, 'partner' => false, 'issued' => array() ), /* 1.12.0: + tix_extra за всяка опаковка над packs */
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
@@ -401,6 +421,7 @@ final class Cart {
 		$order->update_meta_data( '_ansa_promo_cosm_status', $meta['cosm'] ? $meta['cosm']['status'] : '' );
 		$order->update_meta_data( '_ansa_promo_utm', $meta['utm'] );
 		$order->update_meta_data( '_ansa_promo_lead', (int) $meta['lead_id'] );
+		$order->update_meta_data( '_ansa_promo_week', (int) ( $meta['week'] ?? 0 ) ); /* v1.19.0: седмицата на сезона, в която е добавена кутията */
 	}
 	public static function order_meta( $order, $data ) {
 		/* небутнат чекбокс не се POST-ва → hidden „seen“ казва, че полето е било на екрана */
@@ -421,7 +442,7 @@ final class Cart {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return; }
 		if ( ! empty( $m['lead_id'] ) ) { Leads::convert( (int) $m['lead_id'], $order->get_id() ); }
 		if ( empty( $m['valid'] ) ) { $order->add_order_note( 'ansa™ Промо: кутията е била непълна при поръчката — цените са регулярни, без награди.' ); }
-		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · %d опак. · −%s%% · %d билет(а)%s%s', $m['box'], (int) ( $m['count'] ?? $m['packs'] ), self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] : '', $m['ship_free'] ? ' · безплатна доставка' : '' ) ); }
+		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · %d опак. · −%s%% · %d билет(а)%s%s', $m['box'], (int) ( $m['count'] ?? $m['packs'] ), self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] : '', ( $m['ship_free'] ? ' · безплатна доставка' : '' ) . ( ! empty( $m['week'] ) ? ' · седмица ' . (int) $m['week'] : '' ) ) ); }
 		do_action( 'ansa_promo_order_created', $order, $m );
 	}
 	public static function order_label( $name, $item ) {

@@ -53,6 +53,8 @@ final class Plugin {
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
+		add_action( Config::FLIP_HOOK, array( 'AnsaPromo\\Config', 'on_flip' ) ); /* v1.19.0: смяната на седмицата чисти кеша */
+		add_action( 'ansa_promo_daily', array( 'AnsaPromo\\Config', 'schedule_flip' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
 		add_action( 'init', array( 'AnsaPromo\\Config', 'maybe_migrate_yoni' ), 31 ); /* 1.14.0: Yonibiotic → WC #15836 (еднократно, след сийда) */
 	}
@@ -69,7 +71,7 @@ final class Plugin {
 		}
 	}
 
-	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); }
+	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); }
 
 	/* ── Shrine (съжителство) ───────────────────────────────────── */
 
