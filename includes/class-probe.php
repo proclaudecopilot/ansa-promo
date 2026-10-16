@@ -41,7 +41,7 @@ final class Probe {
 		$rows = Config::season_weeks( $cfg ); $n = count( $rows ); $e = Config::deadline_ts( $cfg );
 		$t->ok( 'има седмици', $n >= 1, $n . ' от ' . $cfg['season']['start'] . ' до ' . $cfg['deadline'] . ' · гратис ' . (int) $cfg['season']['grace_hours'] . ' ч.' );
 		$gaps = array(); foreach ( $rows as $i => $r ) { if ( isset( $rows[ $i + 1 ] ) && $r['to'] !== $rows[ $i + 1 ]['from'] ) { $gaps[] = $r['i']; } if ( $r['to'] <= $r['from'] ) { $gaps[] = $r['i'] . '!'; } }
-		$t->ok( 'без дупки; границите са 00:00 по часа на сайта', ! $gaps && ( ! $e || end( $rows )['to'] === $e ), $gaps ? 'дупки след седм. ' . implode( ',', $gaps ) : implode( ' · ', array_map( function ( $r ) { return $r['i'] . ': ' . date_i18n( 'd.m H:i', $r['from'] ); }, array_slice( $rows, 0, 4 ) ) ) . ( $n > 4 ? ' …' : '' ) );
+		$t->ok( 'без дупки; границите са 00:00 по часа на сайта', ! $gaps && ( ! $e || end( $rows )['to'] === $e ), $gaps ? 'дупки след седм. ' . implode( ',', $gaps ) : implode( ' · ', array_map( function ( $r ) { return $r['i'] . ': ' . wp_date( 'd.m H:i', $r['from'] ); }, array_slice( $rows, 0, 4 ) ) ) . ( $n > 4 ? ' …' : '' ) );
 		$fixed = null; $hook = function ( $v ) use ( &$fixed ) { return null === $fixed ? $v : $fixed; }; add_filter( 'ansa_promo_now', $hook );
 		$bad = array(); $labels = array();
 		foreach ( $rows as $r ) { $fixed = (int) $r['from'] + 3 * HOUR_IN_SECONDS; $at = Config::at( $cfg ); $w = $at['season']['cur'] ?? null; $sr = Frontend::season_runtime( $at );
@@ -56,7 +56,7 @@ final class Probe {
 		$fixed = (int) $rows[0]['from'] + HOUR_IN_SECONDS; $rt = Frontend::runtime( Config::at( $cfg ), true );
 		$t->ok( 'runtime.copy: FAQ 8 е week-aware (или редактиран)', isset( $cfg['copy']['how.faq.8.a'] ) || false === strpos( (string) $rt['copy']['how.faq.8.a'], 'остава до' ), isset( $cfg['copy']['how.faq.8.a'] ) ? 'редактиран от админа' : mb_substr( (string) $rt['copy']['how.faq.8.a'], 0, 80 ) . '…' );
 		$t->ok( 'runtime.season.ladder = ' . $n . ' реда', count( (array) ( $rt['season']['ladder'] ?? array() ) ) === $n );
-		$t->ok( 'cron за смяната на седмицата е планиран', (bool) wp_next_scheduled( Config::FLIP_HOOK ) || $n < 2 || ! Config::is_live( $pub ), wp_next_scheduled( Config::FLIP_HOOK ) ? date_i18n( 'd.m H:i', wp_next_scheduled( Config::FLIP_HOOK ) ) : 'не е (планира се при публикуване / дневния cron)' );
+		$t->ok( 'cron за смяната на седмицата е планиран', (bool) wp_next_scheduled( Config::FLIP_HOOK ) || $n < 2 || ! Config::is_live( $pub ), wp_next_scheduled( Config::FLIP_HOOK ) ? wp_date( 'd.m H:i', wp_next_scheduled( Config::FLIP_HOOK ) ) : 'не е (планира се при публикуване / дневния cron)' );
 		/* количката: гратисът */
 		if ( $n >= 2 && function_exists( 'WC' ) && ! empty( $params['cart'] ) ) {
 			if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
