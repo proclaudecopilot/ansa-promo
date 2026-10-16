@@ -67,6 +67,7 @@ final class Doctor {
 		Lead_Sync::ensure_terms(); /* 1.11.0: листът и тагът на лийдовете да съществуват преди първия лийд */
 		$add( 'FKA лийдове (1.11.0)', Lead_Sync::status( $draft ), Lead_Sync::enabled( $draft ) ? ( Lead_Sync::available() ? 'ok' : 'warn' ) : 'info' );
 		$lps = Link_Proxy::status(); $add( 'SendGrid линкове (1.13.1)', $lps[0], $lps[1] );
+		$fvs = Favorite::status(); $add( 'Любим продукт {{ansa_promo_fav}} (1.20.0)', $fvs[0], $fvs[1] );
 		$add( 'WC checkout page', (int) wc_get_page_id( 'checkout' ) . ' · ' . wc_get_checkout_url(), 'info' );
 
 		if ( function_exists( 'WC' ) && WC()->payment_gateways() ) {

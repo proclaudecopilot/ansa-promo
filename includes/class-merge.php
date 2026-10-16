@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
 final class Merge {
 
 	/** key → примерна стойност за преглед на имейла в FKA. */
-	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/', 'ref_link' => 'https://ansa.bg/sezonut-na-ansa/?r=XXXXXXXX', 'ref_code' => 'XXXXXXXX' ); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката · 1.13.0 ref_link / ref_code: личният линк за препоръка на поръчката (работи от заявката, преди пратката) */
+	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/', 'ref_link' => 'https://ansa.bg/sezonut-na-ansa/?r=XXXXXXXX', 'ref_code' => 'XXXXXXXX', 'fav' => 'Daily Greens', 'fav_url' => 'https://ansa.bg/' ); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката · 1.13.0 ref_link / ref_code: личният линк за препоръка на поръчката (работи от заявката, преди пратката) · 1.20.0 fav / fav_url: най-купуваният продукт на човека с КРАТКОТО име от картата (Favorite) — по имейла на контакта, не по поръчката */
 
 	/** Състоянието на FKA регистрацията за Doctor/Probe: '' = още не е опитвано. */
 	private static $status = '';
@@ -116,6 +116,7 @@ final class Merge {
 
 	/** Примерните стойности за прегледа на имейла в FKA (без поръчка). */
 	public static function dummy( $key ) {
+		if ( in_array( $key, Favorite::TAGS, true ) ) { return Favorite::dummy( $key ); } /* 1.20.0 */
 		if ( 'book_url' === $key ) { return Book::link( Config::get_published() ) ?: self::TAGS['book_url']; }
 		if ( 'ref_link' === $key ) { $cfg = Config::get_published(); return Tombola::enabled( $cfg ) ? Tombola::ref_link( self::TAGS['ref_code'], $cfg ) : self::TAGS['ref_link']; }
 		if ( 'tickets_text' !== $key ) { return (string) ( self::TAGS[ $key ] ?? '' ); }
@@ -129,12 +130,27 @@ final class Merge {
 
 	/** Шорткодът [ansa_promo_<key> order_id="" fallback=""] — и ядрото на FKA таговете. */
 	public static function shortcode( $key, $attr = array() ) {
-		$attr = shortcode_atts( array( 'order_id' => 0, 'fallback' => '' ), is_array( $attr ) ? $attr : array() );
+		$attr = shortcode_atts( array( 'order_id' => 0, 'fallback' => '', 'email' => '' ), is_array( $attr ) ? $attr : array() );
 		if ( empty( $attr['order_id'] ) && self::is_preview() ) { return self::dummy( $key ); }
+		if ( in_array( $key, Favorite::TAGS, true ) ) { $val = self::favorite( $key, $attr ); return '' !== $val ? $val : (string) $attr['fallback']; } /* 1.20.0 */
 		$v = self::values( self::order( $attr ) );
 		$val = (string) ( $v[ $key ] ?? '' );
 		if ( 'tickets' === $key && 0 === (int) $v['tickets'] ) { $val = ''; }
 		return '' !== $val ? $val : ( '' !== (string) $attr['fallback'] ? (string) $attr['fallback'] : ( 'tickets' === $key ? '0' : '' ) );
+	}
+
+	/**
+	 * 1.20.0: {{ansa_promo_fav}} / {{ansa_promo_fav_url}} — човекът, не поръчката: имейлът на FKA контакта (broadcast, Tag Added, …);
+	 * при WC event без контакт в данните — billing имейлът на поръчката; order_id="" / email="" (само с manage_woocommerce) за тестове.
+	 */
+	public static function favorite( $key, $attr = array() ) {
+		$attr = is_array( $attr ) ? $attr : array(); $email = ''; $uid = 0;
+		if ( ! empty( $attr['email'] ) && function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' ) && is_email( (string) $attr['email'] ) ) { $email = (string) $attr['email']; }
+		if ( '' === $email && ! empty( $attr['order_id'] ) && function_exists( 'wc_get_order' ) ) { $o = wc_get_order( (int) $attr['order_id'] ); if ( $o ) { $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); } }
+		if ( '' === $email ) { $email = self::fka_email(); }
+		if ( '' === $email ) { $o = self::order( array() ); if ( $o ) { $email = (string) $o->get_billing_email(); $uid = (int) $o->get_customer_id(); } }
+		if ( '' === $email && $uid <= 0 ) { return ''; }
+		return Favorite::value( $key, $email, $uid );
 	}
 
 	/* ── тагът „Сезонът на Анса“ на контакта във FunnelKit ── */
@@ -378,7 +394,7 @@ final class Merge {
 		if ( '' !== $why ) { self::$status = 'прескочено: ' . $why; return; }
 		require_once ANSA_PROMO_PATH . 'includes/fka/merge-tags.php';
 		$n = 0; $err = '';
-		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url', 'Ansa_Promo_FKA_Ref_Link', 'Ansa_Promo_FKA_Ref_Code' ) as $c ) {
+		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url', 'Ansa_Promo_FKA_Ref_Link', 'Ansa_Promo_FKA_Ref_Code', 'Ansa_Promo_FKA_Fav', 'Ansa_Promo_FKA_Fav_Url' ) as $c ) {
 			if ( ! class_exists( $c ) ) { continue; }
 			try { $c::get_instance(); $n++; self::fka_register( $c ); } catch ( \Throwable $e ) { $err = $err ?: $e->getMessage(); }
 		}
