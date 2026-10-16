@@ -29,7 +29,59 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
 		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
 		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
+		$s[] = array( 'id' => 'promo-season', 'label' => 'ansa™ Промо · седмиците на сезона (стълбата · цените по седмица · гратисът в количката)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_season' ) );
 		return $s;
+	}
+
+	/* ── season (1.19.0): седмиците без дупки; за всяка седмица „сега“ се подменя (filter ansa_promo_now) и кутиите/runtime-ът носят нейния процент;
+	   количката: добавяне в седмица k, после k+1 с ред по-стар от гратиса → base цените падат на новия процент (override по продукт остава), ctx.repriced. ── */
+	public static function suite_season( $t, $params ) {
+		$pub = Config::get_published(); $draft = ! Config::is_live( $pub ); $cfg = $draft ? Config::get_draft() : $pub;
+		if ( ! Config::weekly_on( $cfg ) ) { $t->note( 'седмиците', 'изключени в ' . ( $draft ? 'черновата' : 'публикуваното' ) . ' — процентите на кутиите важат целия сезон (🧰 Настройки → 📅 Седмици на сезона)' ); $t->ok( 'без седмици: Config::at не пипа кутиите', Config::at( $cfg )['boxes'] === $cfg['boxes'] ); return null; }
+		$rows = Config::season_weeks( $cfg ); $n = count( $rows ); $e = Config::deadline_ts( $cfg );
+		$t->ok( 'има седмици', $n >= 1, $n . ' от ' . $cfg['season']['start'] . ' до ' . $cfg['deadline'] . ' · гратис ' . (int) $cfg['season']['grace_hours'] . ' ч.' );
+		$gaps = array(); foreach ( $rows as $i => $r ) { if ( isset( $rows[ $i + 1 ] ) && $r['to'] !== $rows[ $i + 1 ]['from'] ) { $gaps[] = $r['i']; } if ( $r['to'] <= $r['from'] ) { $gaps[] = $r['i'] . '!'; } }
+		$t->ok( 'без дупки; границите са 00:00 по часа на сайта', ! $gaps && ( ! $e || end( $rows )['to'] === $e ), $gaps ? 'дупки след седм. ' . implode( ',', $gaps ) : implode( ' · ', array_map( function ( $r ) { return $r['i'] . ': ' . date_i18n( 'd.m H:i', $r['from'] ); }, array_slice( $rows, 0, 4 ) ) ) . ( $n > 4 ? ' …' : '' ) );
+		$fixed = null; $hook = function ( $v ) use ( &$fixed ) { return null === $fixed ? $v : $fixed; }; add_filter( 'ansa_promo_now', $hook );
+		$bad = array(); $labels = array();
+		foreach ( $rows as $r ) { $fixed = (int) $r['from'] + 3 * HOUR_IN_SECONDS; $at = Config::at( $cfg ); $w = $at['season']['cur'] ?? null; $sr = Frontend::season_runtime( $at );
+			foreach ( $at['boxes'] as $b ) { if ( abs( (float) $b['pct'] - (float) $r['pct'][ $b['id'] ] ) > 0.001 ) { $bad[] = 'седм. ' . $r['i'] . ' ' . $b['id'] . ': ' . $b['pct'] . '≠' . $r['pct'][ $b['id'] ]; } }
+			if ( ! $w || (int) $w['i'] !== (int) $r['i'] || (int) $sr['week'] !== (int) $r['i'] || (int) $sr['total'] !== $n ) { $bad[] = 'седм. ' . $r['i'] . ': cur=' . ( $w['i'] ?? '—' ) . ' runtime=' . $sr['week'] . '/' . $sr['total']; }
+			if ( isset( $rows[ $r['i'] ] ) && ( ! $sr['next'] || $sr['next'] !== $rows[ $r['i'] ]['pct'] ) ) { $bad[] = 'седм. ' . $r['i'] . ': next≠следващата'; }
+			$labels[] = $r['i'] . ':−' . implode( '/−', array_map( array( 'AnsaPromo\\Cart', 'fmt' ), $r['pct'] ) ); }
+		$t->ok( 'всяка седмица: кутиите и runtime.season носят нейния процент (+ next)', ! $bad, $bad ? implode( '; ', array_slice( $bad, 0, 6 ) ) : implode( ' ', $labels ) );
+		$fixed = (int) $rows[0]['from'] - DAY_IN_SECONDS; $t->ok( 'преди старта важи седмица 1', (int) ( Config::at( $cfg )['season']['cur']['i'] ?? 0 ) === 1 );
+		$fixed = ( $e ?: end( $rows )['to'] ) + DAY_IN_SECONDS; $t->ok( 'след края важи последната', (int) ( Config::at( $cfg )['season']['cur']['i'] ?? 0 ) === $n );
+		/* копи: при включени седмици FAQ 8 / hero note са week-aware, освен ако са редактирани */
+		$fixed = (int) $rows[0]['from'] + HOUR_IN_SECONDS; $rt = Frontend::runtime( Config::at( $cfg ), true );
+		$t->ok( 'runtime.copy: FAQ 8 е week-aware (или редактиран)', isset( $cfg['copy']['how.faq.8.a'] ) || false === strpos( (string) $rt['copy']['how.faq.8.a'], 'остава до' ), isset( $cfg['copy']['how.faq.8.a'] ) ? 'редактиран от админа' : mb_substr( (string) $rt['copy']['how.faq.8.a'], 0, 80 ) . '…' );
+		$t->ok( 'runtime.season.ladder = ' . $n . ' реда', count( (array) ( $rt['season']['ladder'] ?? array() ) ) === $n );
+		$t->ok( 'cron за смяната на седмицата е планиран', (bool) wp_next_scheduled( Config::FLIP_HOOK ) || $n < 2 || ! Config::is_live( $pub ), wp_next_scheduled( Config::FLIP_HOOK ) ? date_i18n( 'd.m H:i', wp_next_scheduled( Config::FLIP_HOOK ) ) : 'не е (планира се при публикуване / дневния cron)' );
+		/* количката: гратисът */
+		if ( $n >= 2 && function_exists( 'WC' ) && ! empty( $params['cart'] ) ) {
+			if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
+			if ( WC()->cart && WC()->session ) {
+				$live = Frontend::products( $cfg ); $ok = array(); foreach ( $live as $k => $p ) { if ( $p['stock'] ) { $ok[] = $k; } }
+				$box = Config::box( $cfg, 'l' ) ?: $cfg['boxes'][0]; $k0 = 0; $pick = array(); for ( $i = 0; $i < (int) $box['packs']; $i++ ) { $pick[] = $ok[ $i % max( 1, count( $ok ) ) ]; }
+				if ( $ok ) {
+					$fixed = (int) $rows[ $k0 ]['from'] + HOUR_IN_SECONDS;
+					$r = Cart::perform_add( array( 'trusted' => true, 'draft' => $draft, 'box' => $box['id'], 'items' => array_map( function ( $k ) use ( $live ) { return (int) $live[ $k ]['id']; }, $pick ), 'pay' => 'cod', 'email' => 'probe@example.com', 'cosm' => true, 'utm' => 'probe', 'lead' => 0 ) );
+					if ( $t->ok( 'количка: добавяне в седмица 1', ! empty( $r['ok'] ), $r['ok'] ?? false ? 'group ' . $r['group'] : ( $r['code'] ?? '' ) . ': ' . ( $r['msg'] ?? '' ) ) ) {
+						WC()->cart->calculate_totals(); $g = Cart::group(); $p1 = (float) $rows[ $k0 ]['pct'][ $box['id'] ]; $p2 = (float) $rows[ $k0 + 1 ]['pct'][ $box['id'] ];
+						$t->ok( 'количка: pct = седмица 1 (−' . $p1 . '%), week=1', abs( (float) $g['pct'] - $p1 ) < 0.001 && 1 === (int) $g['week'], 'pct=' . $g['pct'] . ' week=' . $g['week'] );
+						$fixed = (int) $rows[ $k0 + 1 ]['from'] + HOUR_IN_SECONDS; WC()->cart->calculate_totals(); $g = Cart::group();
+						$t->ok( 'седмица 2, в гратиса → цената от добавянето остава (−' . $p1 . '%)', abs( (float) $g['pct'] - $p1 ) < 0.001, 'pct=' . $g['pct'] );
+						foreach ( WC()->cart->cart_contents as $key => $it ) { if ( ! empty( $it[ Cart::META ] ) ) { WC()->cart->cart_contents[ $key ][ Cart::META ]['t'] = time() - ( (int) $cfg['season']['grace_hours'] + 1 ) * HOUR_IN_SECONDS; } }
+						WC()->cart->calculate_totals(); $g = Cart::group(); $bad = array();
+						foreach ( $g['base'] as $it ) { $reg = (float) $it['data']->get_regular_price() ?: (float) $it['data']->get_price(); $pp = (array) ( $live[ $it[ Cart::META ]['key'] ]['pct'] ?? array() ); $ov = isset( $pp[ $box['id'] ] ) && abs( (float) $pp[ $box['id'] ] - $p1 ) > 0.001 ? (float) $pp[ $box['id'] ] : null; $want = round( $reg * ( 1 - ( null !== $ov ? $ov : $p2 ) / 100 ), 2 ); if ( abs( (float) $it['data']->get_price() - $want ) > 0.011 ) { $bad[] = $it['data']->get_name() . ' ' . $it['data']->get_price() . '≠' . $want; } }
+						$t->ok( 'след гратиса → −' . $p2 . '% (override по продукт остава), бележка co.reprice', abs( (float) $g['pct'] - $p2 ) < 0.001 && ! $bad && ! empty( Cart::ctx()['repriced'] ), $bad ? implode( '; ', $bad ) : 'pct=' . $g['pct'] . ' · repriced ' . wp_json_encode( Cart::ctx()['repriced'] ?? null ) );
+					}
+					WC()->cart->empty_cart(); Cart::clear_ctx();
+				}
+			}
+		} else { $t->note( 'количката', 'гратисът се проверява с ?cart=1 (добавя и чисти пробна количка)' ); }
+		remove_filter( 'ansa_promo_now', $hook ); $fixed = null;
+		return null;
 	}
 
 	/* ── book (1.9.0): страницата /kniga, PDF-ът само с бисквитка, токенът, демо данните, проверка с измислени данни (→ notfound).

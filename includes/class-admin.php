@@ -55,7 +55,40 @@ final class Admin {
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-products' => 'Продуктите в черновата' );
+	}
+
+	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
+	 *  „Преглед като седмица N“ (черновата с ?week=N). Датите се смятат от старта и срока; въвеждат се само процентите. */
+	private static function season_section( $draft, $draft_url = '' ) {
+		$sn = $draft['season']; $rows = Config::season_weeks( $draft ); $now = time(); $cur = Config::weekly_on( $draft ) ? Config::week_for( $draft, $now ) : null;
+		$base = array(); foreach ( $draft['boxes'] as $b ) { $base[ $b['id'] ] = $b; }
+		$fmt = function ( $v ) { return null === $v ? '' : str_replace( '.', ',', rtrim( rtrim( number_format( (float) $v, 2, '.', '' ), '0' ), '.' ) ); };
+		$dow = array( 'нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб' );
+		echo '<section class="ap-sec" id="s-season"><div class="ap-sec__h"><span class="ap-sec__t">📅 Седмици на сезона</span>' . ( $draft_url && $rows ? '<a class="ap-btn ap-btn--secondary ap-btn--sm" href="' . esc_url( add_query_arg( 'week', $cur && $cur['next'] ? (int) $cur['next']['i'] : 1, $draft_url ) ) . '" target="_blank" rel="noopener">👁 Преглед като седмица ' . ( $cur && $cur['next'] ? (int) $cur['next']['i'] : 1 ) . '</a>' : '' ) . '</div><div class="ap-sec__b">';
+		echo '<p><label><input type="checkbox" name="season_weekly" value="1"' . checked( ! empty( $sn['weekly'] ), true, false ) . '> <b>отстъпките падат по седмици</b> — всяка кутия има свой процент за всяка седмица; количката, страницата, „Как работи“ и /info четат оттук</label></p>';
+		echo '<p class="description">Седмиците тръгват от старта (00:00 по часа на сайта) и свършват на срока на играта (последната може да е по-къса). Празна клетка = процентът на кутията. Цената от добавянето в количката се пази толкова часа след смяната, после по-ниската отстъпка влиза с бележка за клиента. Override-ите по продукт (📦 Продукти) не се пипат. Прегледът: <code>?ansa_promo=draft&amp;week=N</code>.</p>';
+		echo '<p class="ap-fl"><b>Старт на сезона</b></p><input type="date" name="season_start" value="' . esc_attr( $sn['start'] ) . '"> <span class="description">краят е „Край“ от 🎯 Страница и игра (' . esc_html( $draft['deadline'] ?: 'няма' ) . ')</span>';
+		echo '<p class="ap-fl"><b>Гратис след смяната</b></p><input type="number" name="season_grace" min="0" max="168" step="1" value="' . (int) $sn['grace_hours'] . '" style="width:80px"> часа';
+		echo '<p class="ap-fl"><b>Стълбата на отстъпките</b></p>';
+		echo '<div class="ap-season-fill" style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:#faf7f2;border:1px dashed rgba(26,26,46,.12);border-radius:10px;padding:10px 12px;margin:0 0 10px"><b>Запълни линейно:</b>';
+		foreach ( $base as $bid => $b ) { echo '<span style="white-space:nowrap">' . esc_html( $b['ic'] ) . ' от −<input type="text" inputmode="decimal" data-sf="' . esc_attr( $bid ) . '" value="' . esc_attr( $fmt( $b['pct'] ) ) . '" style="width:52px;text-align:center"> → −<input type="text" inputmode="decimal" data-st="' . esc_attr( $bid ) . '" value="" placeholder="?" style="width:52px;text-align:center">%</span>'; }
+		echo '<button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apSeasonFill">Запълни ' . count( $rows ) . '-те седмици</button><span class="description">после всяко число може да се пипне ръчно</span></div>';
+		echo '<div style="overflow-x:auto"><table class="widefat striped" id="apSeasonT" style="min-width:560px"><thead><tr><th style="width:36px">#</th><th>Седмица</th><th>Статус</th>';
+		foreach ( $base as $b ) { echo '<th>' . esc_html( $b['ic'] . ' ' . $b['name'] ) . '<br><small style="font-weight:600;color:#6b5f58">кутията: −' . esc_html( $fmt( $b['pct'] ) ) . '%</small></th>'; }
+		echo '</tr></thead><tbody>';
+		if ( ! $rows ) { echo '<tr><td colspan="6">Няма седмици — въведи старт и край.</td></tr>'; }
+		foreach ( $rows as $r ) {
+			$i = (int) $r['i'] - 1; $is_cur = $cur && (int) $cur['i'] === (int) $r['i']; $past = $now >= $r['to']; $next = $cur && $cur['next'] && (int) $cur['next']['i'] === (int) $r['i'];
+			$st = $is_cur ? '<span style="background:#e8722a;color:#fff;border-radius:999px;padding:2px 8px;font-weight:900;font-size:11px">текуща</span>' : ( $past ? '<span style="color:#6b5f58">минала</span>' : ( $next ? '<span style="color:#c2410c;font-weight:800">следваща</span>' : ( (int) $r['i'] === count( $rows ) ? 'последна' : 'предстояща' ) ) );
+			$lbl = $dow[ (int) date_i18n( 'w', (int) $r['from'] ) ] . ' ' . date_i18n( 'd.m', (int) $r['from'] ) . ' – ' . $dow[ (int) date_i18n( 'w', (int) $r['to'] - MINUTE_IN_SECONDS ) ] . ' ' . date_i18n( 'd.m', (int) $r['to'] - MINUTE_IN_SECONDS );
+			echo '<tr' . ( $is_cur ? ' style="background:rgba(232,114,42,.07)"' : ( $past ? ' style="color:#6b5f58"' : '' ) ) . '><td><b>' . (int) $r['i'] . '</b></td><td style="white-space:nowrap">' . esc_html( $lbl ) . '</td><td>' . $st . '</td>';
+			foreach ( $base as $bid => $b ) { $v = isset( $sn['weeks'][ $i ][ $bid ] ) ? $sn['weeks'][ $i ][ $bid ] : null; echo '<td>−<input type="text" inputmode="decimal" name="season_pct[' . $i . '][' . esc_attr( $bid ) . ']" data-sp="' . esc_attr( $bid ) . '" value="' . esc_attr( $fmt( $v ) ) . '" placeholder="' . esc_attr( $fmt( $b['pct'] ) ) . '" style="width:64px;text-align:right">%</td>'; }
+			echo '</tr>';
+		}
+		echo '</tbody></table></div>';
+		echo '<script>(function(){var b=document.getElementById("apSeasonFill");if(!b)return;b.addEventListener("click",function(){var rows=document.querySelectorAll("#apSeasonT tbody tr"),n=rows.length;["s","m","l"].forEach(function(id){var f=document.querySelector("[data-sf=\"+id+\"]"),t=document.querySelector("[data-st=\"+id+\"]");if(!f||!t)return;var a=parseFloat(String(f.value).replace(",",".")),z=parseFloat(String(t.value).replace(",","."));if(isNaN(a))return;if(isNaN(z))z=a;rows.forEach(function(tr,i){var inp=tr.querySelector("[data-sp=\"+id+\"]");if(!inp)return;var v=n>1?a+(z-a)*i/(n-1):a;v=Math.round(v*2)/2;inp.value=String(v).replace(".",",");inp.dispatchEvent(new Event("input",{bubbles:true}))})})})})();</script>';
+		echo '</div></section>';
 	}
 
 	/** Търсене на WC продукт по име (таб Продукти). */
@@ -97,6 +130,10 @@ final class Admin {
 				$cfg['page_id'] = (int) ( $_POST['page_id'] ?? 0 );
 				$cfg['enabled'] = ! empty( $_POST['enabled'] );
 				$cfg['deadline'] = sanitize_text_field( (string) wp_unslash( $_POST['deadline'] ?? '' ) );
+				/* v1.19.0: седмиците на сезона — season_pct[i][s|m|l]; празно = процентът на кутията; запетая = точка */
+				$cfg['season']['weekly'] = ! empty( $_POST['season_weekly'] ); $cfg['season']['start'] = sanitize_text_field( (string) wp_unslash( $_POST['season_start'] ?? '' ) ); $cfg['season']['grace_hours'] = (int) ( $_POST['season_grace'] ?? 24 );
+				$wk = (array) ( $_POST['season_pct'] ?? array() ); $cfg['season']['weeks'] = array(); $nmax = -1; foreach ( $wk as $i => $row ) { $nmax = max( $nmax, (int) $i ); }
+				for ( $i = 0; $i <= $nmax; $i++ ) { $row = array(); foreach ( array( 's', 'm', 'l' ) as $bid ) { $v = isset( $wk[ $i ][ $bid ] ) ? str_replace( ',', '.', trim( (string) wp_unslash( $wk[ $i ][ $bid ] ) ) ) : ''; $row[ $bid ] = ( '' === $v || ! is_numeric( $v ) ) ? null : (float) $v; } $cfg['season']['weeks'][] = $row; }
 				$cfg['utm_param'] = sanitize_text_field( (string) wp_unslash( $_POST['utm_param'] ?? 'utm_content' ) );
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
 				$gi = (array) ( $_POST['gate_img'] ?? array() ); $cfg['gate']['images'] = array();
@@ -183,6 +220,7 @@ final class Admin {
 				<div class="ap-brand"><span class="dot"></span>ansa™ Промо<small>Admin · v<?php echo esc_html( ANSA_PROMO_VER ); ?></small></div>
 				<div class="ap-state">
 					играта: <?php echo Config::is_live( $pub ) ? '<span class="ok">ВКЛЮЧЕНА</span>' : ( ! empty( $pub['enabled'] ) ? '<span class="warn">изтекла</span>' : '<span class="off">изключена</span>' ); ?><?php echo $pub['deadline'] ? ' · до <b>' . esc_html( $pub['deadline'] ) . '</b>' : ''; ?><br>
+					<?php $pw = Config::week_for( $pub, time() ); if ( $pw ) : /* v1.19.0 */ ?>седмица: <b><?php echo (int) $pw['i']; ?>/<?php echo (int) $pw['total']; ?></b> · −<?php echo esc_html( implode( ' / −', array_map( array( 'AnsaPromo\\Cart', 'fmt' ), array_values( $pw['pct'] ) ) ) ); ?>%<?php echo $pw['next'] ? ' · смяна <b>' . esc_html( date_i18n( 'd.m H:i', (int) $pw['next']['from'] ) ) . '</b>' : ' · последна'; ?><br><?php endif; ?>
 					публикувано: <b>v<?php echo (int) Config::version(); ?></b><?php echo Config::has_published() ? ' · ' . esc_html( date_i18n( 'd.m H:i', Config::published_at() ) ) : ''; ?><br>
 					чернова: <?php echo Config::has_draft() ? '<span class="warn">има непубликувани промени</span>' : 'като публикуваното'; ?>
 					<?php if ( $page_url ) : ?><div class="ap-state__links"><a href="<?php echo esc_url( $page_url ); ?>" target="_blank" rel="noopener">страницата ↗</a><a href="<?php echo esc_url( $draft_url ); ?>" target="_blank" rel="noopener">черновата ↗</a></div><?php endif; ?>
@@ -234,7 +272,7 @@ final class Admin {
 						<p class="ap-fl"><b>Играта е включена</b></p><label><input type="checkbox" name="enabled" value="1"<?php checked( $draft['enabled'] ); ?>> публичната страница показва играта (иначе „скоро“; черновата се вижда винаги с <code>?ansa_promo=draft</code>)</label>
 						<p class="ap-fl"><b>Край</b></p><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59">
 						<p class="ap-fl"><b>UTM параметър</b></p><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span>
-						</div></section><section class="ap-sec" id="s-gate"><div class="ap-sec__h"><span class="ap-sec__t">Имейл-попъп</span></div><div class="ap-sec__b"><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label>
+						</div></section><?php self::season_section( $draft, $draft_url ); ?><section class="ap-sec" id="s-gate"><div class="ap-sec__h"><span class="ap-sec__t">Имейл-попъп</span></div><div class="ap-sec__b"><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label>
 							<p class="description">Промяната важи след <b>🚀 Публикувай</b>. Кешираната страница се оправя сама до секунда след отваряне (свежият конфиг идва по ajax и затваря попъпа), но изчисти кеша (Публикуване → 🧹), за да не трепва. <b>Кацане от имейл е без попъп</b> винаги: линк с <code>utm_medium=email</code> или <code>utm_source</code>, съдържащ mail/sendgrid/newsletter/fka, или <code>?gate=0</code> — имейлът вече е известен.</p>
 						</div></section><section class="ap-sec" id="s-leads"><div class="ap-sec__h"><span class="ap-sec__t">📨 Лийдовете → FunnelKit</span></div><div class="ap-sec__b"><?php $ld = $draft['leads']; $ls = Leads::stats(); ?>
 							<p><label><input type="checkbox" name="leads_fka" value="1"<?php checked( ! empty( $ld['fka'] ) ); ?>> имейлът от попъпа става контакт във FunnelKit (и за гост, без WP акаунт) и получава лист + таг — тригърът за автоматизацията „не е завършила поръчката“</label></p>

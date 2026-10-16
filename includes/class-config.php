@@ -25,6 +25,10 @@ final class Config {
 			'name'      => 'Сезонът на ansa™',
 			'enabled'   => false,
 			'deadline'  => '2026-12-31 23:59',
+			/* v1.19.0: седмиците на сезона — отстъпката на всяка кутия пада всяка седмица от start (петък 00:00 по часа на сайта) до deadline.
+			   weeks[i] = { s, m, l } проценти за седмица i+1 (null = процентът на кутията); grace_hours = колко часа цената от добавянето в количката
+			   се пази след смяната на седмицата (човекът: 24). Override-ите по продукт (📦 Продукти) не се пипат от седмиците. weekly=false = както досега. */
+			'season'    => array( 'weekly' => false, 'start' => '2026-10-23', 'grace_hours' => 24, 'weeks' => array() ),
 			'page_id'   => 0,
 			'utm_param' => 'utm_content',
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
@@ -292,11 +296,20 @@ final class Config {
 			$b['rw'] = array_values( array_filter( array_map( 'strval', (array) $b['rw'] ) ) ); $b['no'] = array_values( array_filter( array_map( 'strval', (array) $b['no'] ) ) );
 			$b['cosm_pay'] = ( null === $b['cosm_pay'] || '' === $b['cosm_pay'] ) ? null : round( (float) $b['cosm_pay'], 2 );
 			$b['grow'] = ! empty( $b['grow'] ); $b['tix_extra'] = max( 0, min( 10, (int) ( $b['tix_extra'] ?? 0 ) ) ); /* v1.12.0 */
+			if ( isset( $b['base_pct'] ) ) { if ( ! empty( $out['season']['applied'] ) ) { $b['pct'] = max( 0, min( 90, (float) $b['base_pct'] ) ); } unset( $b['base_pct'] ); } /* v1.19.0: конфиг „сега“ (Config::at) никога не се записва с процента на седмицата */
 			$bx[] = $b;
 		}
 		$out['boxes'] = $bx;
 		/* v1.10.0: таванът никога не е под най-голямата кутия */
 		$out['max_packs'] = max( self::max_packs_floor( $bx ), min( 50, (int) ( $out['max_packs'] ?? 20 ) ?: 20 ) );
+		/* v1.19.0: седмиците на сезона */
+		$sn = is_array( $out['season'] ?? null ) ? $out['season'] : array(); unset( $sn['applied'], $sn['cur'] ); $out['season'] = self::merge( $d['season'], $sn );
+		$out['season']['weekly'] = ! empty( $out['season']['weekly'] );
+		$st = trim( (string) $out['season']['start'] ); $out['season']['start'] = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $st ) ? $st : $d['season']['start'];
+		$out['season']['grace_hours'] = max( 0, min( 168, (int) $out['season']['grace_hours'] ) );
+		$wk = array();
+		foreach ( (array) $out['season']['weeks'] as $w ) { $row = array(); foreach ( $bx as $b ) { $v = is_array( $w ) && isset( $w[ $b['id'] ] ) && is_numeric( $w[ $b['id'] ] ) ? (float) $w[ $b['id'] ] : null; $row[ $b['id'] ] = ( null !== $v && $v > 0 && $v < 100 ) ? $v : null; } $wk[] = $row; }
+		$out['season']['weeks'] = array_slice( $wk, 0, 60 );
 		foreach ( array( 'desktop', 'mobile' ) as $dev ) {
 			$ord = array_values( array_unique( array_filter( array_map( 'strval', (array) ( $out['order'][ $dev ] ?? array() ) ), function ( $x ) { return in_array( $x, array( 's', 'm', 'l' ), true ); } ) ) );
 			$out['order'][ $dev ] = count( $ord ) === 3 ? $ord : $d['order'][ $dev ];
@@ -386,6 +399,7 @@ final class Config {
 
 	private static function after_publish( $cfg ) {
 		Catalog::purge_runtime();
+		self::schedule_flip( $cfg ); /* v1.19.0: кешът се чисти точно при смяната на седмицата */
 		if ( ! empty( $cfg['page_id'] ) ) { self::purge_page( (int) $cfg['page_id'] ); }
 		do_action( 'ansa_promo_published', $cfg );
 	}
@@ -428,6 +442,77 @@ final class Config {
 	public static function deadline_ts( $cfg ) { if ( empty( $cfg['deadline'] ) ) { return 0; } $t = strtotime( $cfg['deadline'] . ' ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
 	/** 1.8.9: броячът „Първите N са резервирани“ (попъпът „Как работи“ + /info) се показва чак от rewards.cosm.bar_from (00:00 по часа на сайта); празно = винаги. */
 	public static function cosm_bar_on( $cfg ) { $bf = (string) ( $cfg['rewards']['cosm']['bar_from'] ?? '' ); if ( '' === $bf ) { return true; } $t = strtotime( $bf . ' 00:00 ' . wp_timezone_string() ); return ! $t || time() >= $t; }
+	/* ── v1.19.0: седмиците на сезона ──
+	   Сезонът е N седмици от season.start (00:00 по часа на сайта) до deadline (последната може да е по-къса). Всяка седмица има свой
+	   процент за всяка кутия (season.weeks); празно = процентът на кутията. Config::at($cfg) връща конфига „сега“ — кутиите с процента на
+	   текущата седмица (base_pct пази въведения); количката, runtime JSON-ът, „Как работи“ и /info минават оттук. Преди старта важи
+	   седмица 1, след края — последната. „Сега“ може да се подмени: ?ansa_promo=draft&week=N (Frontend::preview_week) и filter ansa_promo_now (Probe). */
+	const FLIP_HOOK = 'ansa_promo_week_flip';
+	private static $now = null;
+	public static function now() { $t = null !== self::$now ? (int) self::$now : time(); return (int) apply_filters( 'ansa_promo_now', $t ); }
+	public static function set_now( $ts ) { self::$now = $ts ? (int) $ts : null; }
+	public static function weekly_on( $cfg ) { return ! empty( $cfg['season']['weekly'] ) && self::season_start_ts( $cfg ) > 0; }
+	public static function season_start_ts( $cfg ) { $s = (string) ( $cfg['season']['start'] ?? '' ); if ( '' === $s ) { return 0; } $t = strtotime( $s . ' 00:00 ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
+	/** Колко седмици има сезонът: броят на началата на седмици (start + 7 дни, 00:00 по часа на сайта, DST-safe) преди deadline; без срок — колкото са въведени (поне 1). */
+	public static function season_count( $cfg ) {
+		$s = self::season_start_ts( $cfg ); $e = self::deadline_ts( $cfg );
+		if ( $s && $e && $e > $s ) { $n = 0; $cur = ( new \DateTimeImmutable( '@' . $s ) )->setTimezone( self::tz() ); while ( $cur->getTimestamp() < $e && $n < 60 ) { $n++; $cur = $cur->modify( '+7 days' )->setTime( 0, 0 ); } return max( 1, $n ); }
+		return max( 1, count( (array) ( $cfg['season']['weeks'] ?? array() ) ) );
+	}
+	private static function tz() { try { return new \DateTimeZone( wp_timezone_string() ); } catch ( \Exception $x ) { return new \DateTimeZone( 'UTC' ); } }
+	/** Седмиците: [{ i (1…N), from, to (ts; to = началото на следващата или deadline), pct { box id => % }, set (има въведен ред) }]. Границите са 00:00 по часа на сайта (DST-safe). */
+	public static function season_weeks( $cfg ) {
+		$s = self::season_start_ts( $cfg ); if ( ! $s ) { return array(); }
+		$n = self::season_count( $cfg ); $e = self::deadline_ts( $cfg ); $in = (array) ( $cfg['season']['weeks'] ?? array() ); $rows = array();
+		$cur = ( new \DateTimeImmutable( '@' . $s ) )->setTimezone( self::tz() );
+		for ( $i = 0; $i < $n; $i++ ) {
+			$next = $cur->modify( '+7 days' )->setTime( 0, 0 ); $to = $next->getTimestamp();
+			if ( $e && ( $i === $n - 1 || $to > $e ) ) { $to = $e; }
+			$pct = array(); foreach ( (array) $cfg['boxes'] as $b ) { $v = isset( $in[ $i ][ $b['id'] ] ) && null !== $in[ $i ][ $b['id'] ] ? (float) $in[ $i ][ $b['id'] ] : (float) ( $b['base_pct'] ?? $b['pct'] ); $pct[ (string) $b['id'] ] = $v; }
+			$rows[] = array( 'i' => $i + 1, 'from' => $cur->getTimestamp(), 'to' => $to, 'pct' => $pct, 'set' => isset( $in[ $i ] ) );
+			$cur = $next;
+		}
+		return $rows;
+	}
+	/** Текущата седмица (+ total, next, last, days_left) или null, когато седмиците са изключени. */
+	public static function week_for( $cfg, $ts = null ) {
+		if ( ! self::weekly_on( $cfg ) ) { return null; }
+		$rows = self::season_weeks( $cfg ); if ( ! $rows ) { return null; }
+		$ts = null === $ts ? self::now() : (int) $ts; $k = 0;
+		foreach ( $rows as $j => $r ) { if ( $ts >= $r['from'] ) { $k = $j; } }
+		$w = $rows[ $k ]; $w['total'] = count( $rows ); $w['next'] = $rows[ $k + 1 ] ?? null; $w['last'] = ! isset( $rows[ $k + 1 ] );
+		$w['days_left'] = max( 0, (int) ceil( ( $w['to'] - $ts ) / DAY_IN_SECONDS ) );
+		return $w;
+	}
+	/** Процентът на кутия „сега“ (или в момент $ts). */
+	public static function box_pct_at( $cfg, $box, $ts = null ) {
+		$bid = is_array( $box ) ? (string) ( $box['id'] ?? '' ) : (string) $box; $w = self::week_for( $cfg, $ts );
+		if ( $w && isset( $w['pct'][ $bid ] ) ) { return (float) $w['pct'][ $bid ]; }
+		$b = is_array( $box ) ? $box : self::box( $cfg, $bid ); return $b ? (float) ( $b['base_pct'] ?? $b['pct'] ) : 0;
+	}
+	/** Конфигът „сега“: кутиите с процента на текущата седмица; season.cur = седмицата, season.applied = маркер (normalize го маха и връща base_pct). */
+	public static function at( $cfg, $ts = null ) {
+		if ( ! is_array( $cfg ) || ! empty( $cfg['season']['applied'] ) ) { return $cfg; }
+		$w = self::week_for( $cfg, $ts ); if ( ! $w ) { return $cfg; }
+		foreach ( $cfg['boxes'] as $i => $b ) { $cfg['boxes'][ $i ]['base_pct'] = (float) $b['pct']; $cfg['boxes'][ $i ]['pct'] = (float) ( $w['pct'][ $b['id'] ] ?? $b['pct'] ); }
+		$cfg['season']['applied'] = true; $cfg['season']['cur'] = $w;
+		return $cfg;
+	}
+	/** Еднократен cron в началото на следващата седмица: кешът на runtime-а, страницата и /info се чистят точно при смяната. */
+	public static function schedule_flip( $cfg = null ) {
+		if ( ! function_exists( 'wp_schedule_single_event' ) ) { return; }
+		$cfg = $cfg ?: self::get_published();
+		$next = wp_next_scheduled( self::FLIP_HOOK ); if ( $next ) { wp_unschedule_event( $next, self::FLIP_HOOK ); }
+		$w = self::week_for( $cfg, time() ); if ( ! $w ) { return; }
+		$at = (int) ( $w['next'] ? $w['next']['from'] : $w['to'] ) + 5; if ( $at <= time() ) { return; }
+		wp_schedule_single_event( $at, self::FLIP_HOOK );
+	}
+	public static function on_flip() {
+		Catalog::purge_runtime(); $pub = self::get_published();
+		if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); }
+		if ( class_exists( __NAMESPACE__ . '\\Info' ) ) { Info::purge( $pub ); }
+		self::schedule_flip( $pub );
+	}
 	public static function is_live( $cfg ) {
 		if ( empty( $cfg['enabled'] ) ) { return false; }
 		$t = self::deadline_ts( $cfg ); if ( $t && time() > $t ) { return false; }

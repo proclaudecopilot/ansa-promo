@@ -24,9 +24,11 @@ final class Catalog {
 		}
 	}
 
-	public static function runtime_key( $version ) { return 'ansa_promo_runtime_' . (int) $version; }
+	/** v1.19.0: ключът носи и седмицата на сезона — продуктовите проценти в кеша са на седмицата (0 = без седмици). */
+	public static function runtime_key( $version, $week = 0 ) { return 'ansa_promo_runtime_' . (int) $version . ( $week ? '_w' . (int) $week : '' ); }
 	public static function purge_runtime() {
-		for ( $v = max( 0, Config::version() - 1 ); $v <= Config::version() + 1; $v++ ) { delete_transient( self::runtime_key( $v ) ); }
+		$nw = 0; try { $nw = Config::weekly_on( Config::get_published() ) ? Config::season_count( Config::get_published() ) : 0; } catch ( \Throwable $e ) {}
+		for ( $v = max( 0, Config::version() - 1 ); $v <= Config::version() + 1; $v++ ) { for ( $w = 0; $w <= $nw + 1; $w++ ) { delete_transient( self::runtime_key( $v, $w ) ); } }
 		update_option( 'ansa_promo_runtime_stamp', time(), false );
 	}
 

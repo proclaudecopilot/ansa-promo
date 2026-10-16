@@ -86,7 +86,16 @@ final class Frontend {
 		return $url ? add_query_arg( 'ansa_pw', rawurlencode( (string) $d['preview']['password'] ), $url ) : '';
 	}
 	public static function is_editor_request() { return self::is_draft_request() && ! empty( $_GET['ansa_editor'] ); }
-	public static function cfg() { return self::is_draft_request() ? Config::get_draft() : Config::get_published(); }
+	/** v1.19.0: конфигът „сега“ — кутиите с процента на текущата седмица (Config::at); в чернова ?week=N подменя „сега“ (preview_week). */
+	public static function cfg() { self::preview_week(); return Config::at( self::is_draft_request() ? Config::get_draft() : Config::get_published() ); }
+	private static $pw_week = false;
+	/** ?ansa_promo=draft&week=N → страницата се рендира, сякаш е N-тата седмица на сезона (преглед от админа). */
+	public static function preview_week() {
+		if ( self::$pw_week ) { return; } self::$pw_week = true;
+		if ( ! isset( $_GET['week'] ) || ! self::is_draft_request() ) { return; }
+		$n = (int) $_GET['week']; $rows = Config::season_weeks( Config::get_draft() );
+		if ( $n >= 1 && isset( $rows[ $n - 1 ] ) ) { Config::set_now( (int) $rows[ $n - 1 ]['from'] + HOUR_IN_SECONDS ); }
+	}
 
 	/** Страницата с shortcode-а ли е това? */
 	public static function is_promo_page() {
@@ -249,7 +258,8 @@ final class Frontend {
 	/** Всичко, което promo.js трябва да знае. Никакви цени не идват от клиента. */
 	public static function runtime( $cfg, $draft = false ) {
 		$editor = self::is_editor_request();
-		$key = Catalog::runtime_key( Config::version() );
+		$cfg = Config::at( $cfg ); $wk = (int) ( $cfg['season']['cur']['i'] ?? 0 ); /* v1.19.0: процентите по продукт в кеша са на седмицата */
+		$key = Catalog::runtime_key( Config::version(), $wk );
 		$prods = ( ! $draft ) ? get_transient( $key ) : false;
 		if ( ! is_array( $prods ) ) { $prods = self::products( $cfg ); if ( ! $draft ) { set_transient( $key, $prods, Catalog::RUNTIME_TTL ); } }
 		$deadline = $cfg['deadline'] ? date_i18n( 'd.m.Y', Config::deadline_ts( $cfg ) ?: time() ) : '';
@@ -291,15 +301,30 @@ final class Frontend {
 			'utm'       => $utm,
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
 			'deadline'  => $deadline,
-			'copy'      => Copy::effective( $cfg['copy'] ),
+			'season'    => self::season_runtime( $cfg ), /* v1.19.0: седмицата на сезона, следващите проценти, стълбата */
+			'copy'      => $wk ? Copy::weekly( Copy::effective( $cfg['copy'] ), $cfg['copy'] ) : Copy::effective( $cfg['copy'] ),
 			'registry'  => $editor ? array( 'groups' => Copy::groups(), 'keys' => Copy::registry(), 'vars' => Copy::vars() ) : null,
+		);
+	}
+
+	/** v1.19.0: седмицата на сезона за promo.js — [on, week, total, from, to, to_day, days_left, last, next {box id => %}, next_from, ladder[{i, from, to, pct}]]. */
+	public static function season_runtime( $cfg ) {
+		$w = $cfg['season']['cur'] ?? null; if ( ! $w ) { return array( 'on' => false ); }
+		$dow = array( 'неделя', 'понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота' );
+		$dm = function ( $ts ) { return date_i18n( 'j.m', (int) $ts ); }; $dw = function ( $ts ) use ( $dow ) { return $dow[ (int) date_i18n( 'w', (int) $ts ) ]; };
+		$end = (int) $w['to'] - MINUTE_IN_SECONDS;
+		return array(
+			'on' => true, 'week' => (int) $w['i'], 'total' => (int) $w['total'], 'from' => $dm( $w['from'] ), 'to' => $dm( $end ), 'to_day' => $dw( $end ), 'ends' => (int) $w['to'], 'now' => Config::now(),
+			'days_left' => (int) $w['days_left'], 'last' => ! empty( $w['last'] ), 'next' => $w['next'] ? $w['next']['pct'] : null, 'next_from' => $w['next'] ? $dw( $w['next']['from'] ) . ' ' . $dm( $w['next']['from'] ) : '',
+			'grace_hours' => (int) $cfg['season']['grace_hours'],
+			'ladder' => array_map( function ( $r ) use ( $dm ) { return array( 'i' => (int) $r['i'], 'from' => $dm( $r['from'] ), 'to' => $dm( (int) $r['to'] - MINUTE_IN_SECONDS ), 'pct' => $r['pct'] ); }, Config::season_weeks( $cfg ) ),
 		);
 	}
 
 	/** Свеж runtime за кеширана страница (само публикуваното; без registry). */
 	public static function ajax_runtime() {
 		Insights::on_runtime(); /* 1.17.1: „view“ и от кеширана страница — sid от заявката или бисквитка */
-		$cfg = Config::get_published();
+		$cfg = Config::at( Config::get_published() );
 		$r = self::runtime( $cfg, false );
 		unset( $r['registry'] );
 		wp_send_json_success( $r );

@@ -2,6 +2,14 @@
 require __DIR__.'/../wpstub.php';
 use AnsaPromo\Config; use AnsaPromo\Copy; use AnsaPromo\Seed;
 list($cfg,$rep)=Seed::build(false); $cfg=Config::normalize($cfg);
+/* v1.19.0: седмиците на сезона — ANSA_WEEK=N (по подразбиране 3) рендира харнеса като N-тата седмица; ANSA_WEEK=0 = без седмици */
+date_default_timezone_set('Europe/Sofia'); $WEEK=getenv('ANSA_WEEK'); $WEEK=('' === (string)$WEEK) ? 3 : (int)$WEEK; $season=['on'=>false];
+if($WEEK>0){ $cfg['season']['weekly']=true; $lad=[]; for($i=0;$i<10;$i++){ $lad[]=['s'=>15-$i,'m'=>30-2*$i,'l'=>40-3*$i]; } $cfg['season']['weeks']=$lad; $cfg=Config::normalize($cfg);
+  $rows=Config::season_weeks($cfg); $w=$rows[min($WEEK,count($rows))-1]; Config::set_now($w['from']+4*86400+10*3600); $cfg=Config::at($cfg); $cur=$cfg['season']['cur'];
+  $dow=['неделя','понеделник','вторник','сряда','четвъртък','петък','събота']; $dm=function($t){return date('j.m',$t);}; $dw=function($t)use($dow){return $dow[(int)date('w',$t)];};
+  $season=['on'=>true,'week'=>$cur['i'],'total'=>$cur['total'],'from'=>$dm($cur['from']),'to'=>$dm($cur['to']-60),'to_day'=>$dw($cur['to']-60),'ends'=>$cur['to'],'now'=>Config::now(),'days_left'=>$cur['days_left'],'last'=>$cur['last'],
+    'next'=>$cur['next']?$cur['next']['pct']:null,'next_from'=>$cur['next']?$dw($cur['next']['from']).' '.$dm($cur['next']['from']):'','grace_hours'=>24,
+    'ladder'=>array_map(function($r)use($dm){return ['i'=>$r['i'],'from'=>$dm($r['from']),'to'=>$dm($r['to']-60),'pct'=>$r['pct']];},$rows)]; }
 $prices=['greens'=>39.90,'sakura'=>44.90,'red'=>42.90,'berber'=>39.90,'meno'=>45.90,'thyro'=>42.90,'yoni'=>34.90,'ahcc'=>49.90,'veno'=>29.90,'ashwa'=>27.90];
 $prods=[]; $i=100;
 foreach($cfg['products'] as $p){ $i++; $prods[$p['key']]=['key'=>$p['key'],'id'=>$i,'vid'=>0,'ph'=>$p['ph'],'img'=>'','name'=>$p['name'],'gname'=>$p['gname'],'gsub'=>$p['gsub'],'ds'=>$p['ds'],'desc'=>$p['desc'],'ing'=>$p['ing'],'who'=>$p['who'],'rating'=>$p['rating'],'pack'=>$p['pack'],
@@ -14,5 +22,5 @@ $utm=$argv[1]??'sakura';
 $gate=$cfg['gate']; $gate['images']=[]; foreach(array_keys(Config::gate_image_slots()) as $k){ $gate['images'][$k]='file://'.ANSA_PROMO_PATH.'assets/img/gate/'.$k.'.svg'; }
 $rt=['ver'=>ANSA_PROMO_VER,'id'=>$cfg['id'],'name'=>$cfg['name'],'version'=>1,'ajax'=>'','nonce'=>'x','live'=>true,'draft'=>false,'editor'=>!empty($argv[2]),'cart'=>false,'refresh'=>false,
  'checkout'=>['cod'=>true],'products'=>(object)$prods,'order'=>array_keys($prods),'fit'=>(object)$cfg['fit'],'problems'=>$cfg['problems'],'boxes'=>$cfg['boxes'],'max_packs'=>Config::max_packs($cfg),'box_order'=>$cfg['order'],
- 'rewards'=>$cfg['rewards'],'secret'=>$cfg['secret'],'ship'=>$cfg['ship']['paid'],'timer'=>$cfg['timer'],'gate'=>$gate,'bgn'=>$cfg['bgn'],'utm'=>$utm,'deadline'=>'31.12.2026','mode'=>!empty($argv[3])?'info':'','promo_url'=>'https://ansa.bg/sezonut-na-ansa/','tombola_url'=>'https://ansa.bg/sezonut-na-ansa/tombola/','draw'=>'10.01.2027','cosm_reserved'=>1000,'copy'=>Copy::effective([]),'registry'=>null];
+ 'rewards'=>$cfg['rewards'],'secret'=>$cfg['secret'],'ship'=>$cfg['ship']['paid'],'timer'=>$cfg['timer'],'gate'=>$gate,'bgn'=>$cfg['bgn'],'utm'=>$utm,'deadline'=>'31.12.2026','season'=>$season,'mode'=>!empty($argv[3])?'info':'','promo_url'=>'https://ansa.bg/sezonut-na-ansa/','tombola_url'=>'https://ansa.bg/sezonut-na-ansa/tombola/','draw'=>'10.01.2027','cosm_reserved'=>1000,'copy'=>$WEEK>0?Copy::weekly(Copy::effective([]),[]):Copy::effective([]),'registry'=>null];
 echo json_encode($rt,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);

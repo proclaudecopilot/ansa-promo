@@ -1660,3 +1660,38 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.fpw .f3more:hover{background:#fff5ee}
 .ansa-promo .dc.fpw .f3more[hidden]{display:none}
 @media(max-width:900px){.ansa-promo .dc.fpw .f3f{grid-template-columns:1fr}.ansa-promo .fp3 .f3arr{top:120px}.ansa-promo .fp3 .f3arr.pv{left:-10px}.ansa-promo .fp3 .f3arr.nx{right:-10px}}
+
+/* ═══ v1.19.0 · седмиците на сезона: чипът в хедъра, лентата над кутиите, редът „от петък“ в картата, стълбата в „Как работи“ ═══ */
+.ansa-promo .timer.wk{white-space:normal;text-align:right;line-height:1.25}
+.ansa-promo .wkbar{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:8px 14px;border-radius:12px;background:#fff;border:1.5px solid var(--ol);box-shadow:0 4px 14px rgba(232,114,42,.10)}
+.ansa-promo .wkbar.last{border-color:var(--gold)}
+.ansa-promo .wkdots{display:flex;gap:4px;flex:0 0 160px;align-items:center}
+.ansa-promo .wkdots i{flex:1;height:6px;border-radius:999px;background:rgba(232,114,42,.18)}
+.ansa-promo .wkdots i.past{background:var(--tan);opacity:.45}
+.ansa-promo .wkdots i.cur{background:linear-gradient(90deg,var(--o),var(--o2));height:8px;box-shadow:0 0 0 3px rgba(232,114,42,.18)}
+.ansa-promo .wktx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;font-weight:700;color:var(--ink2);min-width:0}
+.ansa-promo .wktx b{color:var(--od);font-weight:900}
+.ansa-promo .wklose{margin-left:auto;color:#b91c1c;background:rgba(207,34,46,.08);border-radius:8px;padding:3px 9px;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ansa-promo .bweek{text-align:center;font-size:12.5px;font-weight:700;color:var(--muted);border-top:1px dashed var(--ol);padding:8px 0 0;margin:0 0 10px;font-variant-numeric:tabular-nums}
+.ansa-promo .bweek b{color:#b91c1c;font-weight:900;background:rgba(207,34,46,.08);border-radius:8px;padding:2px 7px;margin-left:2px}
+.ansa-promo .bweek.last{color:var(--goldd)}
+.ansa-promo .bmweek{display:none}
+@media(max-width:640px){.ansa-promo .wkbar{gap:8px;padding:7px 10px;margin:0 0 10px}.ansa-promo .wkdots{flex:0 0 72px;gap:3px}.ansa-promo .wktx{font-size:12px;gap:6px}.ansa-promo .wklose{font-size:11.5px;padding:2px 7px}
+.ansa-promo .box .bweek{display:none}
+.ansa-promo .bmweek{display:block;margin:7px 0 0;font-size:11.5px;font-weight:700;color:var(--muted);text-align:left;font-variant-numeric:tabular-nums}
+.ansa-promo .bmweek b{color:#b91c1c;font-weight:900}.ansa-promo .bmweek.last{color:var(--goldd)}}
+.ansa-promo .dc.hw .hw-lad .hw-ladw{overflow-x:auto;margin:0 0 12px}
+.ansa-promo .dc.hw .hw-ladt{width:100%;border-collapse:separate;border-spacing:0 4px;font-variant-numeric:tabular-nums;min-width:420px}
+.ansa-promo .dc.hw .hw-ladt th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tan);font-weight:900;text-align:right;padding:0 10px 2px}
+.ansa-promo .dc.hw .hw-ladt th:first-child,.ansa-promo .dc.hw .hw-ladt td:first-child{text-align:left}
+.ansa-promo .dc.hw .hw-ladt td{padding:7px 10px;background:var(--cream);font-weight:800;font-size:14px;text-align:right;white-space:nowrap}
+.ansa-promo .dc.hw .hw-ladt td:first-child{border-radius:10px 0 0 10px}.ansa-promo .dc.hw .hw-ladt td:last-child{border-radius:0 10px 10px 0}
+.ansa-promo .dc.hw .hw-ladt td .d{font-weight:700;color:var(--muted);font-size:12.5px;margin-left:4px}
+.ansa-promo .dc.hw .hw-ladt tr.past td{color:var(--muted);opacity:.55;text-decoration:line-through;text-decoration-color:var(--tan)}
+.ansa-promo .dc.hw .hw-ladt tr.cur td{background:linear-gradient(90deg,rgba(232,114,42,.16),rgba(245,158,11,.12));color:var(--od);font-weight:900;box-shadow:inset 0 2px 0 var(--o),inset 0 -2px 0 var(--o)}
+.ansa-promo .dc.hw .hw-ladt tr.cur td:first-child{box-shadow:inset 2px 2px 0 var(--o),inset 0 -2px 0 var(--o),inset 2px 0 0 var(--o)}
+.ansa-promo .dc.hw .hw-ladt tr.cur td:last-child{box-shadow:inset -2px 2px 0 var(--o),inset 0 -2px 0 var(--o),inset -2px 0 0 var(--o)}
+.ansa-promo .dc.hw .hw-ladt tr.cur td .d{color:var(--od)}
+.ansa-promo .dc.hw .hw-ladt tr.next td{background:#fff7ef}
+.ansa-promo .dc.hw .hw-ladt .you{display:inline-block;background:var(--o);color:#fff;border-radius:999px;font-size:10px;padding:2px 8px;margin-left:6px;letter-spacing:.06em;vertical-align:middle;font-style:normal;text-decoration:none}
+@media(max-width:640px){.ansa-promo .dc.hw .hw-ladt{min-width:0}.ansa-promo .dc.hw .hw-ladt td{padding:6px 7px;font-size:13px}.ansa-promo .dc.hw .hw-ladt td .d{display:block;margin:0;font-size:11px}}
