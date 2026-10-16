@@ -311,7 +311,7 @@ final class Frontend {
 	public static function season_runtime( $cfg ) {
 		$w = $cfg['season']['cur'] ?? null; if ( ! $w ) { return array( 'on' => false ); }
 		$dow = array( 'неделя', 'понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота' );
-		$dm = function ( $ts ) { return date_i18n( 'j.m', (int) $ts ); }; $dw = function ( $ts ) use ( $dow ) { return $dow[ (int) date_i18n( 'w', (int) $ts ) ]; };
+		$dm = function ( $ts ) { return wp_date( 'j.m', (int) $ts ); }; $dw = function ( $ts ) use ( $dow ) { return $dow[ (int) wp_date( 'w', (int) $ts ) ]; }; /* 1.19.1: wp_date — date_i18n очаква „WP timestamp“ с добавен offset и местеше датите с ден */
 		$end = (int) $w['to'] - MINUTE_IN_SECONDS;
 		return array(
 			'on' => true, 'week' => (int) $w['i'], 'total' => (int) $w['total'], 'from' => $dm( $w['from'] ), 'to' => $dm( $end ), 'to_day' => $dw( $end ), 'ends' => (int) $w['to'], 'now' => Config::now(),
