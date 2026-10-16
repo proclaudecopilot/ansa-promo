@@ -5,6 +5,7 @@
  * Фаза 0: меню „🎁 ansa Промо“ (top-level) с екран „Състояние“ (Doctor::env()).
  * Фаза 1: 🧰 Инструменти — страница, игра вкл./срок, чернова ↔ публикувано, история, JSON export/import, seed.
  * Фаза 2 носи редактора (региони · канвас · инспектор · ⚙️ Двигател).
+ * v1.15.0: таб 📦 Продукти е отделно приложение (Products_UI, стил ansa™ Shrine) — списък, търсачка в WC, отстъпки, проблем/FIT.
  *
  * @package AnsaPromo
  * @since 1.0.0
@@ -29,6 +30,7 @@ final class Admin {
 	public static function enqueue( $hook ) {
 		if ( false === strpos( (string) $hook, Plugin::MENU_SLUG ) ) { return; }
 		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
+		if ( 'products' === sanitize_key( (string) ( $_GET['tab'] ?? '' ) ) ) { Products_UI::enqueue(); } /* v1.15.0 */
 	}
 
 	/** Търсене на WC продукт по име (таб Продукти). */
@@ -110,21 +112,6 @@ final class Admin {
 				$rows = Tickets::orders( array( 'limit' => 2000 ) );
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-orders-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 				echo Tickets::csv( $rows ); exit;
-			case 'products':
-				$cfg = Config::get_draft(); $rows = (array) ( $_POST['p'] ?? array() ); $new = array();
-				foreach ( $rows as $r ) {
-					if ( ! is_array( $r ) || ! empty( $r['del'] ) ) { continue; }
-					$r = wp_unslash( $r ); $key = strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) ( $r['key'] ?? '' ) ) );
-					if ( '' === $key && '' === trim( (string) ( $r['name'] ?? '' ) ) ) { continue; }
-					$old = Config::product( $cfg, $key ) ?: Config::product_defaults();
-					foreach ( array( 'key', 'name', 'ph', 'gname', 'gsub', 'ds', 'desc', 'ing', 'who', 'rating', 'reviews', 'cat', 'pack' ) as $f ) { if ( isset( $r[ $f ] ) ) { $old[ $f ] = (string) $r[ $f ]; } }
-					$old['product_id'] = (int) ( $r['product_id'] ?? 0 ); $old['img'] = (int) ( $r['img'] ?? 0 ); $old['enabled'] = ! empty( $r['enabled'] ); $old['wc_text'] = ! empty( $r['wc_text'] ); $old['sku'] = sanitize_text_field( (string) ( $r['sku'] ?? '' ) );
-					if ( isset( $r['theme'] ) ) { $old['theme'] = array_map( 'trim', explode( ',', (string) $r['theme'] ) ); }
-					/* v1.14.0: отстъпка по кутия (празно = процентът на кутията; normalize пази само 0 < % < 100) */
-					$pp = array(); foreach ( (array) ( $r['pct'] ?? array() ) as $bid => $v ) { $v = str_replace( ',', '.', trim( (string) $v ) ); if ( '' !== $v && is_numeric( $v ) ) { $pp[ sanitize_key( (string) $bid ) ] = (float) $v; } } $old['pct'] = $pp;
-					$new[] = $old;
-				}
-				$cfg['products'] = $new; Config::save_draft( $cfg ); $msg = 'Продуктите са записани в черновата (' . count( $new ) . ').'; break;
 			case 'publish':
 				$msg = Config::publish() ? 'Публикувано — версия ' . Config::version() . '.' : 'Няма какво да се публикува.'; break;
 			case 'discard':
@@ -313,68 +300,7 @@ final class Admin {
 				<?php self::form_open( 'seed', 'tools', ' onsubmit="return confirm(\'Това презаписва продуктите, FIT и проблемите в черновата с тези от мокъпа. Страницата, текстовете, срокът и чекаутът остават. Продължавам?\')"' ); ?><button class="button">🌱 Направи продуктите наново от мокъпа (търси ги в WC по име)</button></form>
 				</div>
 			<?php elseif ( 'products' === $tab ) : ?>
-				<?php $plist = $draft['products']; $plist[] = array_merge( Config::product_defaults(), array( 'key' => '', 'name' => '', 'enabled' => true, '_new' => true ) ); ?>
-				<?php self::form_open( 'products', 'products', ' style="display:block;margin-top:14px" id="apProducts"' ); ?>
-					<p>Ключът е UTM стойността (<code>?<?php echo esc_html( $draft['utm_param'] ); ?>=ключ</code>). Снимката и цената идват от избрания WC продукт (при variable — вариацията „1 брой“); „Снимка (attachment id)“ я заменя. Последният ред е за нов продукт. Записва се в <b>черновата</b> — публикуваш от 🧰 Инструменти.</p>
-					<style>.ap-prod{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:10px 12px;margin-bottom:10px}.ap-prod .ap-row{display:grid;grid-template-columns:70px 110px 1fr 1fr 70px;gap:8px;align-items:end}.ap-prod .ap-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}.ap-prod label{font-size:11px;color:#50575e;display:block}.ap-prod input[type=text],.ap-prod input[type=number],.ap-prod textarea{width:100%}.ap-prod .ap-wc{display:flex;gap:6px;align-items:center}.ap-prod .ap-wc input{width:90px}.ap-prod .ap-res{position:absolute;z-index:10;background:#fff;border:1px solid #c3c4c7;box-shadow:0 4px 14px rgba(0,0,0,.12);max-height:260px;overflow:auto;min-width:320px}.ap-prod .ap-res button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:#fff;padding:6px 8px;cursor:pointer}.ap-prod .ap-res button:hover{background:#f0f6fc}.ap-prod .ap-res img{width:32px;height:32px;object-fit:contain}.ap-prod .ap-thumb{width:48px;height:48px;object-fit:contain;border:1px solid #dcdcde;border-radius:6px;background:#fff}.ap-prod details{margin-top:6px}.ap-prod summary{cursor:pointer;color:#2271b1;font-size:12px}</style>
-					<?php foreach ( $plist as $i => $p ) : $rpid = '' !== $p['sku'] ? ( Catalog::find_by_sku( $p['sku'] ) ?: (int) $p['product_id'] ) : (int) $p['product_id']; $wc = $rpid ? Catalog::wc_line( $rpid ) : null; list( $wn, $wds, $wdesc ) = $wc ? Frontend::wc_texts( $wc ) : array( '', '', '' ); ?>
-					<div class="ap-prod"<?php echo ! empty( $p['_new'] ) ? ' style="border-style:dashed"' : ''; ?>>
-						<div class="ap-row">
-							<div><label>вкл.</label><input type="checkbox" name="p[<?php echo $i; ?>][enabled]" value="1"<?php checked( ! empty( $p['enabled'] ) ); ?>> <label style="display:inline">изтрий</label> <input type="checkbox" name="p[<?php echo $i; ?>][del]" value="1"></div>
-							<div><label>ключ (UTM)</label><input type="text" name="p[<?php echo $i; ?>][key]" value="<?php echo esc_attr( $p['key'] ); ?>" placeholder="<?php echo ! empty( $p['_new'] ) ? 'нов' : ''; ?>"></div>
-							<div><label>име на страницата <?php echo $wn ? '<span style="color:#787c82">· празно = „' . esc_html( $wn ) . '“ от WC</span>' : ''; ?></label><input type="text" name="p[<?php echo $i; ?>][name]" value="<?php echo esc_attr( $p['name'] ); ?>" placeholder="<?php echo esc_attr( $wn ); ?>"></div>
-							<div style="position:relative"><label>WC продукт (търси по име или ID)</label><div class="ap-wc"><input type="number" name="p[<?php echo $i; ?>][product_id]" value="<?php echo (int) $p['product_id']; ?>" class="ap-pid"><input type="text" class="ap-q" placeholder="търси…" style="flex:1" autocomplete="off"><img class="ap-thumb" src="<?php echo esc_url( $wc && $wc['img'] ? $wc['img'] : '' ); ?>" alt="" <?php echo $wc && $wc['img'] ? '' : 'style="visibility:hidden"'; ?>></div><div class="ap-res" hidden></div><small class="ap-note"><?php echo $wc ? esc_html( ( $wc['ok'] ? $wc['wc_name'] . ' · €' . number_format( $wc['price'], 2, ',', '' ) . ( $wc['variation_id'] ? ' · вар.#' . $wc['variation_id'] : '' ) . ( $wc['stock'] ? '' : ' · НЕ Е НАЛИЧЕН' ) : 'ПРОБЛЕМ: ' . $wc['note'] ) ) : 'не е свързан — няма да се показва'; ?></small></div>
-							<div><label>емоджи</label><input type="text" name="p[<?php echo $i; ?>][ph]" value="<?php echo esc_attr( $p['ph'] ); ?>"></div>
-						</div>
-						<div class="ap-row2" style="grid-template-columns:1fr 2fr">
-							<div><label>SKU на вариацията „1 опаковка“ (печели над WC ID)</label><input type="text" name="p[<?php echo $i; ?>][sku]" value="<?php echo esc_attr( $p['sku'] ); ?>" placeholder="напр. dgr001"></div>
-							<div style="font-size:12px;color:#50575e;align-self:end"><?php if ( '' !== $p['sku'] ) { echo $rpid ? 'SKU → WC #' . (int) $rpid . ( $wc && $wc['base_name'] ? ' · ' . esc_html( $wc['base_name'] ) : '' ) . ( $wc && $wc['variation_id'] ? ' · вариация #' . (int) $wc['variation_id'] : '' ) . ( $wc ? ' · € ' . esc_html( number_format( $wc['price'], 2 ) ) : '' ) : '<b style="color:#b32d2e">SKU не е намерен в WooCommerce</b>'; } ?></div>
-						</div>
-						<div class="ap-row2 ap-pct" style="grid-template-columns:repeat(<?php echo max( 1, count( $draft['boxes'] ) ); ?>,1fr) 2fr">
-							<?php foreach ( $draft['boxes'] as $b ) : $pv = isset( $p['pct'][ $b['id'] ] ) ? (float) $p['pct'][ $b['id'] ] : ''; ?>
-							<div><label>−% в <?php echo esc_html( $b['ic'] . ' ' . $b['name'] ); ?> <span style="color:#787c82">· празно = −<?php echo esc_html( Cart::fmt( $b['pct'] ) ); ?>%</span></label><input type="number" step="0.5" min="0.5" max="99.5" name="p[<?php echo $i; ?>][pct][<?php echo esc_attr( $b['id'] ); ?>]" value="<?php echo '' === $pv ? '' : esc_attr( Cart::fmt( $pv ) ); ?>" placeholder="<?php echo esc_attr( Cart::fmt( $b['pct'] ) ); ?>"<?php echo $wc && $wc['ok'] ? ' data-price="' . esc_attr( $wc['price'] ) . '"' : ''; ?>></div>
-							<?php endforeach; ?>
-							<div style="font-size:12px;color:#50575e;align-self:end">Отстъпката на този продукт по кутия — <b>само цената</b>; лейбълите на страницата остават −<?php echo esc_html( implode( '/−', array_map( function ( $b ) { return Cart::fmt( $b['pct'] ); }, $draft['boxes'] ) ) ); ?>%.<?php if ( $wc && $wc['ok'] ) : ?> Цена в WC: € <?php echo esc_html( number_format( $wc['price'], 2 ) ); ?> → <?php echo esc_html( implode( ' · ', array_map( function ( $b ) use ( $p, $wc ) { return $b['ic'] . ' € ' . number_format( $wc['price'] * ( 1 - Config::product_pct( $p, $b ) / 100 ), 2 ); }, $draft['boxes'] ) ) ); ?><?php endif; ?></div>
-						</div>
-						<div class="ap-row2">
-							<div><label>категория (селектор)</label><input type="text" name="p[<?php echo $i; ?>][cat]" value="<?php echo esc_attr( $p['cat'] ); ?>"></div>
-							<div><label>кратко „за какво е“ (ds) <?php echo $wds ? '<span style="color:#787c82">· празно = от WC</span>' : ''; ?></label><input type="text" name="p[<?php echo $i; ?>][ds]" value="<?php echo esc_attr( $p['ds'] ); ?>" placeholder="<?php echo esc_attr( $wds ); ?>"></div>
-							<div><label>снимка (attachment id, по избор)</label><input type="number" name="p[<?php echo $i; ?>][img]" value="<?php echo (int) $p['img']; ?>"></div>
-						</div>
-						<p style="margin:8px 0 0;font-size:12px"><label><input type="checkbox" name="p[<?php echo $i; ?>][wc_text]" value="1"<?php checked( ! empty( $p['wc_text'] ) ); ?>> <b>празните полета се пълнят от WooCommerce</b> — име, „за какво е“ и описание идват от продукта (марката без „ansa™“, заглавието на Shrine, краткото описание), но <b>всичко, което напишеш тук, печели</b>. Без отметка се ползват само полетата тук.</label><?php if ( $wc && ! empty( $p['wc_text'] ) ) : ?><br><span style="color:#50575e">WC сега: <?php echo esc_html( $wc['subtitle'] ?: mb_substr( $wc['short'], 0, 90 ) ); ?><?php echo mb_strlen( $wc['short'] ) > 90 && ! $wc['subtitle'] ? '…' : ''; ?></span><?php endif; ?></p>
-						<details><summary>още: описание · съставки · за кого · опаковка · рейтинг · отзиви · gate име/подзаглавие · цветове</summary>
-							<div class="ap-row2">
-								<div><label>описание (desc) <?php echo $wdesc ? '<span style="color:#787c82">· празно = от WC</span>' : ''; ?></label><textarea name="p[<?php echo $i; ?>][desc]" rows="3" placeholder="<?php echo esc_attr( $wdesc ); ?>"><?php echo esc_textarea( $p['desc'] ); ?></textarea></div>
-								<div><label>какво съдържа (ing)</label><textarea name="p[<?php echo $i; ?>][ing]" rows="3"><?php echo esc_textarea( $p['ing'] ); ?></textarea></div>
-								<div><label>за кого е (who)</label><textarea name="p[<?php echo $i; ?>][who]" rows="3"><?php echo esc_textarea( $p['who'] ); ?></textarea></div>
-								<div><label>опаковка (напр. 60 капсули · за 30 дни)</label><input type="text" name="p[<?php echo $i; ?>][pack]" value="<?php echo esc_attr( $p['pack'] ); ?>"></div>
-								<div><label>рейтинг (напр. 4.9 · 1 120 отзива)</label><input type="text" name="p[<?php echo $i; ?>][rating]" value="<?php echo esc_attr( $p['rating'] ); ?>"></div>
-								<div><label>цветове на gate-а (3 hex, със запетая)</label><input type="text" name="p[<?php echo $i; ?>][theme]" value="<?php echo esc_attr( implode( ',', (array) $p['theme'] ) ); ?>"></div>
-								<div><label>gate: пълно име (gname)</label><input type="text" name="p[<?php echo $i; ?>][gname]" value="<?php echo esc_attr( $p['gname'] ); ?>"></div>
-								<div><label>gate: подзаглавие (gsub)</label><input type="text" name="p[<?php echo $i; ?>][gsub]" value="<?php echo esc_attr( $p['gsub'] ); ?>"></div>
-								<div><label>отзиви (ред = име|звезди|текст)</label><textarea name="p[<?php echo $i; ?>][reviews]" rows="3"><?php echo esc_textarea( $p['reviews'] ); ?></textarea></div>
-							</div>
-						</details>
-					</div>
-					<?php endforeach; ?>
-					<p><button class="button button-primary">💾 Запази продуктите в черновата</button></p>
-				</form>
-				<script>
-				(function(){
-					var nonce=<?php echo wp_json_encode( wp_create_nonce( self::NONCE ) ); ?>,ajax=<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,t;
-					document.querySelectorAll('#apProducts .ap-q').forEach(function(q){
-						var box=q.closest('.ap-wc').parentNode.querySelector('.ap-res'),pid=q.closest('.ap-wc').querySelector('.ap-pid'),img=q.closest('.ap-wc').querySelector('.ap-thumb'),note=q.closest('.ap-wc').parentNode.querySelector('.ap-note');
-						q.addEventListener('input',function(){clearTimeout(t);var v=q.value.trim();if(v.length<2){box.hidden=true;return}
-							t=setTimeout(function(){fetch(ajax+'?action=ansa_promo_admin_search&nonce='+nonce+'&q='+encodeURIComponent(v),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
-								if(!r||!r.success){box.hidden=true;return}
-								box.innerHTML=r.data.length?r.data.map(function(x){return '<button type="button" data-id="'+x.id+'" data-img="'+(x.img||'')+'" data-name="'+x.name.replace(/"/g,'&quot;')+'" data-price="'+x.price+'"><img src="'+(x.img||'')+'" alt="">#'+x.id+' '+x.name+' <small>'+x.type+' · €'+x.price+(x.note?' · '+x.note:'')+'</small></button>'}).join(''):'<div style="padding:8px">нищо</div>';
-								box.hidden=false;
-								box.querySelectorAll('button').forEach(function(b){b.onclick=function(){pid.value=b.dataset.id;img.src=b.dataset.img;img.style.visibility=b.dataset.img?'visible':'hidden';note.textContent=b.dataset.name+' · €'+b.dataset.price+' (запази, за да влезе в черновата)';box.hidden=true;q.value=''}});
-							})},300)});
-						document.addEventListener('click',function(e){if(!box.contains(e.target)&&e.target!==q)box.hidden=true});
-					});
-				})();
-				</script>
+				<?php Products_UI::render(); /* v1.15.0: приложението в стила на Shrine (assets/products-admin.js) */ ?>
 			<?php elseif ( 'orders' === $tab ) : ?>
 				<?php $rows = Tickets::orders( array( 'limit' => 200 ) ); $f = sanitize_key( (string) ( $_GET['f'] ?? '' ) ); if ( $f ) { $rows = array_values( array_filter( $rows, function ( $r ) use ( $f ) { $ts = $r['ticket'] ? $r['ticket']['status'] : 'none'; return 'invalid' === $f ? ! $r['valid'] : $ts === $f; } ) ); } ?>
 				<p style="margin-top:14px">Промо поръчки: <b><?php echo count( $rows ); ?></b> (последните 200) · билети: издадени <b><?php echo (int) Tickets::count( 'issued' ); ?></b> (<?php echo (int) Tickets::sum( 'issued' ); ?> бр.), активирани <b><?php echo (int) Tickets::count( 'activated' ); ?></b> (<?php echo (int) Tickets::sum( 'activated' ); ?> бр.), анулирани <?php echo (int) Tickets::count( 'void' ); ?>

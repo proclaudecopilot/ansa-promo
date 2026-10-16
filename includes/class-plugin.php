@@ -51,7 +51,7 @@ final class Plugin {
 		Info::register(); /* v1.8.0: {промо}/info */
 		Merge::register(); /* v1.8.2: merge tags за имейлите (FunnelKit Automations + шорткодове) */
 		Probe::register();
-		if ( is_admin() ) { Admin::register(); Editor::register(); }
+		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
 		add_action( 'init', array( 'AnsaPromo\\Config', 'maybe_migrate_yoni' ), 31 ); /* 1.14.0: Yonibiotic → WC #15836 (еднократно, след сийда) */
