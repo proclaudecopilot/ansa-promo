@@ -31,10 +31,13 @@ final class Admin {
 		if ( false === strpos( (string) $hook, Plugin::MENU_SLUG ) ) { return; }
 		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); }
 		/* v1.16.0: целият админ е едно приложение (Partner стил като Shrine) — рамка + карти; формите/action-ите са същите */
-		wp_enqueue_style( 'ansa-promo-nunito-admin', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap', array(), null );
+		/* 1.17.0: Nunito локално (assets/fonts) — Google Fonts беше блокиран/бавен и админът падаше на системния шрифт */
+		wp_enqueue_style( 'ansa-promo-nunito-admin', ANSA_PROMO_URL . 'assets/fonts/nunito.css', array(), ANSA_PROMO_VER );
 		wp_enqueue_style( 'ansa-promo-app', ANSA_PROMO_URL . 'assets/admin-app.css', array( 'ansa-promo-nunito-admin' ), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo-app', ANSA_PROMO_URL . 'assets/admin-app.js', array(), ANSA_PROMO_VER, true );
-		if ( 'products' === sanitize_key( (string) ( $_GET['tab'] ?? '' ) ) ) { Products_UI::enqueue(); } /* v1.15.0 */
+		$tab = sanitize_key( (string) ( $_GET['tab'] ?? '' ) );
+		if ( 'products' === $tab ) { Products_UI::enqueue(); } /* v1.15.0 */
+		if ( 'editor' === $tab ) { Editor::enqueue_now(); } /* v1.17.0: редакторът е таб в приложението */
 	}
 
 	/** v1.16.0: екраните на приложението — [key => [икона, име, подзаглавие]]. */
@@ -43,6 +46,7 @@ final class Admin {
 			'status'   => array( '🩺', 'Състояние',  'Какво е живо, какво чака — Doctor на играта' ),
 			'products' => array( '📦', 'Продукти',   'Кое е в играта, свързване с WooCommerce, отстъпки, проблем и FIT' ),
 			'tools'    => array( '🧰', 'Настройки',  'Страница, игра, попъп, награди, билети, томбола, книга · публикуване' ),
+			'editor'   => array( '✏️', 'Редактор',   'Текстовете на страницата върху живия канвас · ⚙️ Двигател' ),
 			'orders'   => array( '🎟️', 'Поръчки',    'Промо поръчките, билетите, FunnelKit таговете' ),
 			'tombola'  => array( '🎲', 'Томбола',    'Участници, билети, препоръки, теглене' ),
 			'insights' => array( '📈', 'Insights',   'Фунията по стъпки, по UTM и по дни' ),
@@ -129,6 +133,9 @@ final class Admin {
 			case 'export_stats':
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-insights-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 				echo Insights::csv( (int) ( $_POST['days'] ?? 30 ) ); exit;
+			case 'export_sessions': /* 1.17.0 */
+				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-sessions-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
+				echo Insights::csv_sessions( (int) ( $_POST['days'] ?? 30 ) ); exit;
 			case 'export_orders':
 				$rows = Tickets::orders( array( 'limit' => 2000 ) );
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-orders-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
@@ -185,7 +192,7 @@ final class Admin {
 					<?php foreach ( array( 'status', 'products', 'tools' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?><?php if ( 'products' === $k ) : ?><span class="n"><?php echo count( $draft['products'] ); ?></span><?php endif; ?></a>
 					<?php if ( 'tools' === $k && 'tools' === $tab ) : ?><div class="ap-nav__sub"><?php foreach ( self::tool_sections() as $sid => $sl ) : ?><a href="#<?php echo esc_attr( $sid ); ?>"><?php echo esc_html( $sl ); ?></a><?php endforeach; ?></div><?php endif; ?>
 					<?php endforeach; ?>
-					<a class="ap-nav__it" href="<?php echo esc_url( Editor::url() ); ?>"><span class="ic">✏️</span>Редактор<span class="ext" title="текстовете и ⚙️ Двигател — отделен екран">↗</span></a>
+					<a class="ap-nav__it<?php echo 'editor' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'editor' ) ) ); ?>"><span class="ic">✏️</span>Редактор</a>
 					<div class="ap-nav__label">Сезонът</div>
 					<?php foreach ( array( 'orders', 'tombola', 'insights' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?></a><?php endforeach; ?>
 					<div class="ap-nav__label">Още</div>
@@ -195,14 +202,14 @@ final class Admin {
 				<a class="ap-nav__foot" href="<?php echo esc_url( admin_url() ); ?>">↩ Обратно към WP админа</a>
 			</aside>
 			<div class="ap-page ap-page--<?php echo esc_attr( $tab ); ?>">
-				<div class="ap-top"><h1><?php echo $cur[0] . ' ' . esc_html( $cur[1] ); ?><small><?php echo esc_html( $cur[2] ); ?></small></h1>
+				<?php if ( 'editor' !== $tab ) : ?><div class="ap-top"><h1><?php echo $cur[0] . ' ' . esc_html( $cur[1] ); ?><small><?php echo esc_html( $cur[2] ); ?></small></h1>
 					<?php if ( 'products' !== $tab ) : ?><div class="ap-top__actions">
 						<?php if ( 'tools' === $tab ) : ?><button type="button" class="ap-btn ap-btn--secondary" data-ap-save data-ap-save-top>💾 Запази черновата</button><?php self::form_open( 'publish' ); ?><button class="ap-btn ap-btn--primary">🚀 Публикувай</button></form><?php endif; ?>
 						<?php if ( 'status' === $tab ) : ?><?php self::form_open( 'purge' ); ?><button class="ap-btn ap-btn--secondary">🧹 Изчисти кеша</button></form><a class="ap-btn ap-btn--primary" href="<?php echo esc_url( Editor::url() ); ?>">✏️ Редактор</a><?php endif; ?>
 					</div><?php endif; ?>
-				</div>
-				<div class="ap-body"><div class="ap-body-inner<?php echo in_array( $tab, array( 'orders', 'tombola', 'insights' ), true ) ? ' ap-body-inner--wide' : ''; ?>">
-			<?php if ( $msg && 'products' !== $tab ) : ?><div class="ap-msg"><?php echo esc_html( $msg ); ?><button type="button" aria-label="затвори">✕</button></div><?php endif; ?>
+				</div><?php endif; ?>
+				<div class="ap-body"><div class="ap-body-inner<?php echo in_array( $tab, array( 'orders', 'tombola', 'insights', 'editor' ), true ) ? ' ap-body-inner--wide' : ''; ?>">
+			<?php if ( $msg && ! in_array( $tab, array( 'products', 'editor' ), true ) ) : ?><div class="ap-msg"><?php echo esc_html( $msg ); ?><button type="button" aria-label="затвори">✕</button></div><?php endif; ?>
 			<?php if ( 'status' === $tab ) : ?>
 				<?php $env = Doctor::env(); $nbad = count( array_filter( $env, function ( $r ) { return 'bad' === $r['level']; } ) ); $nwarn = count( array_filter( $env, function ( $r ) { return 'warn' === $r['level']; } ) ); $live_n = count( Frontend::products( $pub ) ); ?>
 				<div class="ap-kpis" style="padding:0 0 14px">
@@ -354,6 +361,8 @@ final class Admin {
 				</div></section>
 			<?php elseif ( 'products' === $tab ) : ?>
 				<?php Products_UI::render(); /* v1.15.0: приложението в стила на Shrine (assets/products-admin.js) */ ?>
+			<?php elseif ( 'editor' === $tab ) : ?>
+				<?php Editor::page(); /* v1.17.0: редакторът живее в приложението (assets/editor.js/.css, вграден) */ ?>
 			<?php elseif ( 'orders' === $tab ) : ?>
 				<?php $rows = Tickets::orders( array( 'limit' => 200 ) ); $f = sanitize_key( (string) ( $_GET['f'] ?? '' ) ); if ( $f ) { $rows = array_values( array_filter( $rows, function ( $r ) use ( $f ) { $ts = $r['ticket'] ? $r['ticket']['status'] : 'none'; return 'invalid' === $f ? ! $r['valid'] : $ts === $f; } ) ); } ?>
 				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🎟️ Промо поръчки</span></div><div class="ap-sec__b">
@@ -403,7 +412,7 @@ final class Admin {
 				<?php if ( ! $ent ) : ?><tr><td colspan="12">Още няма получени промо поръчки с билет (статуси: <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?>).</td></tr><?php endif; ?>
 				</tbody></table></div></div>
 			<?php elseif ( 'insights' === $tab ) : ?>
-				<div class="ap-sec ap-sec--table ap-insights"><div class="ap-sec__b"><?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); ?></div></div>
+				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); /* 1.17.0: Insights 2 — сесии, фуния, жив фийд; рендира своите карти */ ?>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">{ } Черновата като JSON</span></div><div class="ap-sec__b">
 				<?php self::form_open( 'import', 'json', ' style="display:block"' ); ?>

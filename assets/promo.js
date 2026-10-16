@@ -164,10 +164,16 @@
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(r&&r.success&&r.data&&r.data.lead){S.lead=r.data.lead;saveS()}}).catch(function(){});
   }
 
-  /* ── Insights (v1.3.0): всяка стъпка се праща веднъж на сесия (view/gate/box/full/order/add); черновата и редакторът не броят ── */
-  function beacon(step){
-    if(!A.ajax||A.editor||A.draft)return;var k='ansa_promo_bc_'+A.id+'_'+step;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}
-    var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('step',step);fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');
+  /* ── Insights (v1.3.0): всяка стъпка се праща веднъж на сесия (view/gate/box/full/order/add); черновата и редакторът не броят ──
+     v1.17.0 (Insights 2): сесия с sid (sessionStorage), контекст при view (utm_source/medium/campaign, referrer, устройство), „item“ при
+     всеки сложен продукт (веднъж на продукт на сесия), продуктите в кутията при full/order/add, лийдът при gate; без nonce (кешът го чупеше) */
+  function sid(){try{var v=sessionStorage.getItem('ansa_promo_sid');if(!v){v='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);sessionStorage.setItem('ansa_promo_sid',v)}return v}catch(e){return S._sid||(S._sid='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))}}
+  function beacon(step,k){
+    if(!A.ajax||A.editor||A.draft)return;var key='ansa_promo_bc_'+A.id+'_'+step+(k?'_'+k:'')+(step==='box'?'_'+(S.box!==null&&BX()?BX().id:''):'');try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1')}catch(e){}
+    var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);
+    if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);
+    if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(S.slots.filter(Boolean)));
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop')}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -368,6 +374,7 @@
   function addSlot(k){
     var i=S.slots.indexOf(null);
     if(i<0){if(boxes()>=maxFor(BX())){toast(T(grows(BX())?'ms.max':'ms.full'),true);return false}S.slots.push(k);i=S.slots.length-1}else S.slots[i]=k;
+    setTimeout(function(){beacon('item',k)},0); /* v1.17.0: Insights — „цъкнал“ продукт */
     var wasFull=full(),prev=syncBox(),up=prev!==S.box;S._undo=i;
     if(full()&&(!wasFull||up)){render();saveS();setTimeout(celebrate,350);return 'celeb'}
     else if(i===0)toast(T('ms.first'),false,true);
@@ -786,7 +793,7 @@
     if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
     var b=BX();beacon('order');sending=true;var html=btn?btn.innerHTML:'';if(btn){btn.disabled=true;btn.innerHTML=T('or.sending')}
     var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=label||html}};
-    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);if(A.draft)fd.append('draft','1');
+    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');
     fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
     /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
     var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){

@@ -23,13 +23,19 @@ final class Editor {
 	public static function register() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_redirect' ) ); /* 1.17.0 */
 		foreach ( array( 'get', 'save', 'publish', 'discard', 'restore', 'doctor' ) as $a ) { add_action( 'wp_ajax_ansa_promo_editor_' . $a, array( __CLASS__, 'ajax_' . $a ) ); }
 	}
 	public static function menu() { add_submenu_page( Plugin::MENU_SLUG, 'ansa™ Промо — редактор', '✏️ Редактор', Plugin::CAP, self::SLUG, array( __CLASS__, 'page' ) ); }
-	public static function url() { return admin_url( 'admin.php?page=' . self::SLUG ); }
+	/** 1.17.0: редакторът е таб в приложението (🎁 ansa Промо → ✏️ Редактор); старият URL ?page=ansa-promo-editor редиректва натам. */
+	public static function url() { return Admin::url( array( 'tab' => 'editor' ) ); }
+	public static function maybe_redirect() { if ( self::SLUG === sanitize_key( (string) ( $_GET['page'] ?? '' ) ) && ! isset( $_GET['embed'] ) ) { wp_safe_redirect( self::url() ); exit; } }
 
 	public static function enqueue( $hook ) {
 		if ( false === strpos( (string) $hook, self::SLUG ) ) { return; }
+		self::enqueue_now();
+	}
+	public static function enqueue_now() {
 		wp_enqueue_style( 'ansa-promo-editor', ANSA_PROMO_URL . 'assets/editor.css', array(), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo-editor', ANSA_PROMO_URL . 'assets/editor.js', array(), ANSA_PROMO_VER, true );
 		wp_add_inline_script( 'ansa-promo-editor', 'window.AnsaPromoEditor=' . wp_json_encode( self::boot(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';', 'before' );
