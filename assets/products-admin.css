@@ -22,7 +22,8 @@
 #ansa-promo-products ::-webkit-scrollbar-track { background: transparent; }
 #ansa-promo-products ::-webkit-scrollbar-thumb { background: var(--coral-soft); border-radius: 999px; }
 #ansa-promo-products ::-webkit-scrollbar-thumb:hover { background: var(--coral); }
-#ansa-promo-products a { color: var(--coral-deep); }
+#ansa-promo-products .ap-sec a, #ansa-promo-products .ap-note a, #ansa-promo-products .ap-wccard a, #ansa-promo-products .ap-top h1 a { color: var(--coral-deep); } /* 1.17.3: не за всички линкове */
+#ansa-promo-products .ap-wccard a { color: inherit; text-decoration: underline; }
 #ansa-promo-products input, #ansa-promo-products textarea, #ansa-promo-products select, #ansa-promo-products button { font-family: inherit; }
 
 /* ═══ SIDEBAR ═══ */
