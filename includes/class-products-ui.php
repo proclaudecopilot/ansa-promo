@@ -40,6 +40,7 @@ final class Products_UI {
 			'nonce'        => wp_create_nonce( self::NONCE ),
 			'search_nonce' => wp_create_nonce( Admin::NONCE ),
 			'ver'          => ANSA_PROMO_VER,
+			'embedded'     => true, /* 1.16.0: вътре в рамката на админа (admin-app.css) — без своя brand/foot */
 			'back'         => Admin::url(),
 			'tools'        => Admin::url( array( 'tab' => 'tools' ) ),
 			'editor'       => Editor::url(),

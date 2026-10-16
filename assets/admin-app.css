@@ -1,0 +1,223 @@
+/**
+ * ansa™ Промо 1.16.0 — админът като standalone приложение (Partner стил като ansa™ Shrine admin)
+ * Рамката: ляво меню + топ бар + съдържание в бели карти. Екраните са същите PHP форми/таблици — само визията е нова.
+ * Корал #f47a49 · Blush #fdebe9 · Amber #f8a41d · Ink #43302a
+ */
+#ansa-promo-app, .ap-toast, .ap-modal-overlay {
+  --coral: #f47a49; --coral-deep: #e0602c; --coral-soft: #fde4d9; --blush: #fdebe9;
+  --amber: #f8a41d; --amber-soft: #fdeecd; --card: #fff; --ink: #43302a; --muted: #a08579; --line: #f6ddd5;
+  --good: #3bb273; --good-soft: #def3e7; --bad: #d64545; --bad-soft: #fadddd; --info: #2469a8; --info-soft: #ddeefc;
+  --r-lg: 20px; --r-md: 14px; --shadow: 0 8px 24px rgba(224, 96, 44, .09);
+  font-family: 'Nunito', -apple-system, 'Segoe UI', sans-serif; color: var(--ink);
+}
+#ansa-promo-app {
+  position: fixed; inset: 0; z-index: 100000; background: var(--blush);
+  font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums;
+  display: grid; grid-template-columns: 264px 1fr; overflow: hidden;
+}
+#ansa-promo-app *, #ansa-promo-app *::before, #ansa-promo-app *::after { box-sizing: border-box; }
+#ansa-promo-app ::-webkit-scrollbar { width: 8px; height: 8px; }
+#ansa-promo-app ::-webkit-scrollbar-track { background: transparent; }
+#ansa-promo-app ::-webkit-scrollbar-thumb { background: var(--coral-soft); border-radius: 999px; }
+#ansa-promo-app ::-webkit-scrollbar-thumb:hover { background: var(--coral); }
+#ansa-promo-app a { color: var(--coral-deep); }
+#ansa-promo-app input, #ansa-promo-app textarea, #ansa-promo-app select, #ansa-promo-app button { font-family: inherit; }
+#ansa-promo-app code { font-size: 11.5px; background: var(--blush); border-radius: 6px; padding: 1px 6px; color: var(--coral-deep); font-weight: 700; }
+#ansa-promo-app small { font-weight: 700; color: var(--muted); }
+
+/* ═══ NAV (ляво) ═══ */
+.ap-nav { background: var(--card); margin: 14px 0 14px 14px; border-radius: var(--r-lg); box-shadow: var(--shadow); display: flex; flex-direction: column; padding: 18px 0 12px; max-height: calc(100vh - 28px); overflow: hidden; }
+.ap-brand { padding: 0 20px 10px; font-size: 19px; font-weight: 800; color: var(--coral-deep); }
+.ap-brand .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--coral); margin-right: 9px; box-shadow: 0 0 0 4px var(--coral-soft); }
+.ap-brand small { display: block; color: var(--muted); font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin: 3px 0 0 21px; }
+.ap-state { margin: 4px 14px 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--blush); font-size: 11.5px; font-weight: 700; color: var(--muted); line-height: 1.6; }
+.ap-state b { color: var(--ink); }
+.ap-state .ok { color: #1f7a4d; font-weight: 800; }
+.ap-state .warn { color: #a86b09; font-weight: 800; }
+.ap-state .off { color: var(--bad); font-weight: 800; }
+.ap-state__links { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.ap-state__links a { font-size: 10.5px; font-weight: 800; color: var(--coral-deep); background: #fff; border-radius: 999px; padding: 3px 9px; text-decoration: none; }
+.ap-state__links a:hover { background: var(--coral-soft); }
+.ap-nav__list { flex: 1; overflow-y: auto; padding: 0 10px; }
+.ap-nav__label { padding: 8px 10px 4px; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ap-nav__it { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin: 2px 0; border-radius: var(--r-md); font-size: 13px; font-weight: 800; color: var(--ink); text-decoration: none; transition: .12s; }
+.ap-nav__it:hover { background: var(--blush); color: var(--coral-deep); }
+.ap-nav__it.on { background: var(--coral); color: #fff; box-shadow: 0 6px 14px rgba(244, 122, 73, .35); }
+.ap-nav__it .ic { width: 22px; text-align: center; font-size: 15px; }
+.ap-nav__it .n { margin-left: auto; font-size: 10px; font-weight: 800; background: var(--blush); color: var(--muted); border-radius: 999px; padding: 1px 7px; }
+.ap-nav__it.on .n { background: rgba(255, 255, 255, .25); color: #fff; }
+.ap-nav__it .ext { margin-left: auto; font-size: 11px; opacity: .6; }
+.ap-nav__sub { margin: 0 0 6px 22px; border-left: 2px solid var(--line); padding-left: 8px; }
+.ap-nav__sub a { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); text-decoration: none; padding: 3px 8px; border-radius: 8px; }
+.ap-nav__sub a:hover, .ap-nav__sub a.on { color: var(--coral-deep); background: var(--blush); }
+.ap-nav__foot { display: block; padding: 10px 20px 2px; border-top: 2px dashed var(--line); font-size: 11.5px; font-weight: 700; color: var(--muted); text-decoration: none; }
+.ap-nav__foot:hover { color: var(--coral-deep); }
+
+/* ═══ MAIN ═══ */
+.ap-page { display: flex; flex-direction: column; min-width: 0; overflow: hidden; height: 100vh; }
+.ap-top { display: flex; align-items: center; gap: 12px; padding: 20px 26px 8px; flex-wrap: wrap; }
+.ap-top h1 { font-size: 21px; font-weight: 800; flex: 1; min-width: 200px; margin: 0; padding: 0; color: var(--ink); line-height: 1.25; }
+.ap-top h1 small { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.ap-top__actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ap-top__actions form { display: inline; margin: 0; }
+.ap-body { flex: 1; overflow-y: auto; padding: 10px 26px 60px; }
+.ap-body-inner { max-width: 1120px; }
+.ap-body-inner--wide { max-width: none; }
+.ap-page--products .ap-body { padding: 0; overflow: hidden; }
+.ap-page--products .ap-body-inner { max-width: none; height: 100%; }
+.ap-page--products .ap-top { padding-bottom: 4px; }
+
+/* Съобщение (notice) → лента */
+.ap-msg { margin: 0 0 14px; padding: 11px 16px; border-radius: var(--r-md); background: var(--good-soft); color: #1f7a4d; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.ap-msg.warn { background: var(--amber-soft); color: #a86b09; }
+.ap-msg.bad { background: var(--bad-soft); color: var(--bad); }
+.ap-msg button { margin-left: auto; border: 0; background: transparent; color: inherit; font-weight: 900; cursor: pointer; font-size: 14px; }
+
+/* ═══ Карти ═══ */
+.ap-sec { background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow); margin-bottom: 16px; padding: 0 0 14px; scroll-margin-top: 12px; }
+.ap-sec__h { display: flex; align-items: center; gap: 10px; padding: 15px 20px 6px; }
+.ap-sec__t { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 800; flex: 1; }
+.ap-sec__h .ap-btn { margin-left: auto; }
+.ap-sec__b { padding: 2px 20px 0; font-size: 13px; font-weight: 600; line-height: 1.6; }
+.ap-sec__b > p { margin: 0 0 8px; }
+.ap-sec__b > p:last-child { margin-bottom: 0; }
+.ap-sec__b .ap-fl { margin: 12px 0 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ap-sec__b .ap-fl:first-child { margin-top: 2px; }
+.ap-sec__b .ap-fl b { color: var(--muted); font-weight: 800; }
+.ap-insights .ap-sec__b { padding: 10px 16px 4px; }
+.ap-insights h3 { margin: 18px 0 6px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.ap-insights > .ap-sec__b > p { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.ap-sec__b .description, .ap-sec__b p.description { font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.55; }
+.ap-sec__b .description b { color: var(--ink); }
+.ap-sec__b label { font-weight: 700; }
+.ap-sec__b h3, .ap-sec__b h4 { margin: 14px 0 6px; font-size: 13px; font-weight: 800; }
+.ap-sec__b ul { margin: 6px 0 6px 18px; }
+.ap-sec__b li { margin: 4px 0; }
+.ap-sec__b hr { border: 0; border-top: 2px dashed var(--line); margin: 12px 0; }
+.ap-sec--danger .ap-sec__t { color: var(--bad); }
+
+/* Полета вътре в картите (WP-овите класове → пил стил) */
+#ansa-promo-app .ap-sec__b input[type=text], #ansa-promo-app .ap-sec__b input[type=url], #ansa-promo-app .ap-sec__b input[type=email],
+#ansa-promo-app .ap-sec__b input[type=number], #ansa-promo-app .ap-sec__b input[type=password], #ansa-promo-app .ap-sec__b select {
+  font-size: 13px; font-weight: 700; color: var(--ink); background: var(--blush); border: 2px solid transparent; border-radius: 999px;
+  padding: 7px 14px; outline: none; transition: .15s; min-height: 0; line-height: 1.4; box-shadow: none; max-width: 100%;
+}
+#ansa-promo-app .ap-sec__b input:focus, #ansa-promo-app .ap-sec__b select:focus, #ansa-promo-app .ap-sec__b textarea:focus { border-color: var(--coral); background: #fff; box-shadow: none; }
+#ansa-promo-app .ap-sec__b input::placeholder { color: var(--muted); font-weight: 600; }
+#ansa-promo-app .ap-sec__b input.regular-text, #ansa-promo-app .ap-sec__b select { width: min(100%, 420px); }
+#ansa-promo-app .ap-sec__b input.large-text, #ansa-promo-app .ap-sec__b textarea.large-text { width: 100%; }
+#ansa-promo-app .ap-sec__b input.code, #ansa-promo-app .ap-sec__b textarea.code { font-family: Menlo, Consolas, monospace; font-size: 12px; }
+#ansa-promo-app .ap-sec__b select { -webkit-appearance: none; appearance: none; padding-right: 34px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e0602c' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; }
+#ansa-promo-app .ap-sec__b textarea { width: 100%; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--blush); border: 2px solid transparent; border-radius: var(--r-md); padding: 11px 15px; outline: none; transition: .15s; resize: vertical; line-height: 1.55; box-shadow: none; }
+#ansa-promo-app .ap-sec__b input[type=checkbox], #ansa-promo-app .ap-sec__b input[type=radio] { width: 18px; height: 18px; margin: 0 6px 0 0; vertical-align: -4px; border: 2px solid var(--coral-soft); border-radius: 6px; box-shadow: none; accent-color: var(--coral); }
+#ansa-promo-app .ap-sec__b input[type=checkbox]:checked { background: var(--coral); border-color: var(--coral); }
+#ansa-promo-app .ap-sec__b input[type=checkbox]:checked::before { content: ''; display: block; width: 100%; height: 100%; margin: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 11px no-repeat; }
+#ansa-promo-app .ap-sec__b input[type=file] { font-size: 12px; font-weight: 700; }
+#ansa-promo-app .ap-sec__b input:disabled, #ansa-promo-app .ap-sec__b select:disabled { opacity: .55; }
+
+/* Бутони (WP .button → пил) */
+#ansa-promo-app .button, #ansa-promo-app .button-primary, #ansa-promo-app .button-secondary, .ap-btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 800; border: none !important; border-radius: 999px !important; padding: 8px 16px; cursor: pointer; transition: .15s;
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none; line-height: 1.3; background: var(--card); color: var(--ink); box-shadow: var(--shadow); min-height: 0; vertical-align: middle; text-shadow: none;
+}
+#ansa-promo-app .button:hover, #ansa-promo-app .button-secondary:hover, .ap-btn--secondary:hover { color: var(--coral-deep); background: #fff; }
+#ansa-promo-app .button-primary, .ap-btn--primary { background: var(--coral); color: #fff; box-shadow: 0 6px 16px rgba(244, 122, 73, .4); }
+#ansa-promo-app .button-primary:hover, .ap-btn--primary:hover { background: var(--coral-deep); color: #fff; }
+#ansa-promo-app .button-small, .ap-btn--sm { font-size: 11px; padding: 5px 11px; }
+#ansa-promo-app .button:focus, #ansa-promo-app .button-primary:focus { box-shadow: 0 0 0 3px var(--coral-soft); outline: none; }
+.ap-btn--danger { color: var(--bad); }
+.ap-btn--danger:hover { background: var(--bad-soft); }
+.ap-sec__b .button + .button, .ap-sec__b form + form { margin-left: 6px; }
+.ap-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 20px 0; }
+.ap-actions form { display: inline; margin: 0; }
+.ap-actions .sp { flex: 1; }
+
+/* Чипове / филтри */
+.ap-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ap-chip { font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 999px; background: var(--blush); color: var(--muted); text-decoration: none; transition: .13s; white-space: nowrap; border: 0; cursor: pointer; }
+.ap-chip:hover { color: var(--coral-deep); }
+.ap-chip.on { background: var(--coral); color: #fff; box-shadow: 0 4px 10px rgba(244, 122, 73, .3); }
+.ap-pill { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--blush); color: var(--muted); white-space: nowrap; vertical-align: middle; }
+.ap-pill--ok { background: var(--good-soft); color: #1f7a4d; }
+.ap-pill--warn { background: var(--amber-soft); color: #a86b09; }
+.ap-pill--bad { background: var(--bad-soft); color: var(--bad); }
+.ap-pill--info { background: var(--info-soft); color: var(--info); }
+
+/* Статистики (KPI плочки) */
+.ap-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 4px 20px 6px; }
+.ap-kpi { background: var(--blush); border-radius: var(--r-md); padding: 10px 14px; }
+.ap-kpi b { display: block; font-size: 20px; font-weight: 900; line-height: 1.2; color: var(--ink); }
+.ap-kpi span { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.ap-kpi.good b { color: #1f7a4d; }
+.ap-kpi.bad b { color: var(--bad); }
+
+/* Състояние (Doctor env) */
+.ap-env { padding: 4px 12px 2px; }
+.ap-env__r { display: grid; grid-template-columns: 16px 240px 1fr; gap: 12px; align-items: start; padding: 8px 8px; border-radius: 10px; font-size: 12.5px; }
+.ap-env__r:nth-child(odd) { background: #fff8f5; }
+.ap-env__dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--line); }
+.ap-env__dot.ok { background: var(--good); box-shadow: 0 0 0 3px var(--good-soft); }
+.ap-env__dot.warn { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.ap-env__dot.bad { background: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.ap-env__dot.info { background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
+.ap-env__l { font-weight: 800; }
+.ap-env__v { font-weight: 700; color: var(--muted); word-break: break-word; }
+.ap-env__r.bad .ap-env__v { color: var(--bad); }
+.ap-env__r.warn .ap-env__v { color: #a86b09; }
+.ap-env__r.ok .ap-env__v { color: var(--ink); }
+
+/* Таблици (WP .widefat → карта) */
+#ansa-promo-app .ap-sec table.widefat, #ansa-promo-app .ap-sec table { width: 100%; border: 0; box-shadow: none; background: transparent; border-collapse: separate; border-spacing: 0; font-size: 12.5px; margin: 4px 0 0; }
+#ansa-promo-app .ap-sec table thead th { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 0; padding: 8px 10px; background: transparent; text-align: left; }
+#ansa-promo-app .ap-sec table tbody td, #ansa-promo-app .ap-sec table tbody th { border: 0; padding: 9px 10px; vertical-align: top; font-weight: 700; color: var(--ink); line-height: 1.45; background: transparent; }
+#ansa-promo-app .ap-sec table.striped tbody tr:nth-child(odd) td, #ansa-promo-app .ap-sec table.striped tbody tr:nth-child(odd) th { background: #fff8f5; }
+#ansa-promo-app .ap-sec table tbody tr td:first-child { border-radius: 10px 0 0 10px; }
+#ansa-promo-app .ap-sec table tbody tr td:last-child { border-radius: 0 10px 10px 0; }
+#ansa-promo-app .ap-sec table tbody tr:hover td { background: var(--blush); }
+#ansa-promo-app .ap-sec table a { font-weight: 800; text-decoration: none; }
+#ansa-promo-app .ap-sec table small { font-weight: 700; color: var(--muted); }
+.ap-sec--table { padding-bottom: 8px; }
+.ap-sec--table .ap-sec__b { padding: 0 12px; overflow-x: auto; }
+
+/* Снимки на наградите (ap-gi в Инструменти) */
+#ansa-promo-app .ap-gi { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+#ansa-promo-app .ap-gi figure { margin: 0; background: var(--blush); border: 0; border-radius: var(--r-md); padding: 8px; }
+#ansa-promo-app .ap-gi figure img { display: block; width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; background: #fff; }
+#ansa-promo-app .ap-gi figcaption { font-size: 11px; font-weight: 800; margin: 6px 0 4px; }
+#ansa-promo-app .ap-gi .ap-gi-dummy { color: var(--muted); font-weight: 700; }
+#ansa-promo-app .ap-gi .ap-gi-row { display: flex; gap: 4px; }
+#ansa-promo-app .ap-gi .ap-gi-row input { flex: 1; min-width: 0; padding: 5px 10px; font-size: 11.5px; background: #fff; }
+#ansa-promo-app .ap-gi .ap-gi-row .button { padding: 4px 8px; font-size: 12px; }
+
+/* JSON */
+#ansa-promo-app textarea.ap-json { width: 100%; height: 60vh; font: 12px/1.45 Menlo, Consolas, monospace; background: #fff8f5; border: 2px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; color: var(--ink); outline: none; }
+#ansa-promo-app textarea.ap-json:focus { border-color: var(--coral); }
+
+/* Empty */
+.ap-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 40vh; gap: 8px; color: var(--muted); text-align: center; padding: 0 26px; }
+.ap-empty__icon { font-size: 48px; }
+.ap-empty__t { font-size: 16px; font-weight: 800; color: var(--ink); }
+
+/* Toast (съобщението след действие) */
+.ap-toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px); z-index: 100050; background: var(--good); color: #fff; font-size: 13px; font-weight: 800; padding: 11px 20px; border-radius: 999px; box-shadow: 0 10px 30px rgba(67, 48, 42, .25); opacity: 0; transition: .25s; pointer-events: none; max-width: 90vw; }
+.ap-toast--show { opacity: 1; transform: translate(-50%, 0); }
+.ap-toast--error { background: var(--bad); }
+.ap-toast--info { background: var(--info); }
+
+/* 📦 Продукти вградено в рамката: без своя рамка, списъкът е втора колона */
+#ansa-promo-app #ansa-promo-products { position: relative; inset: auto; z-index: auto; height: 100%; grid-template-columns: 290px 1fr; background: transparent; }
+#ansa-promo-app #ansa-promo-products .ap-side { margin: 0 0 14px 14px; max-height: 100%; padding-top: 12px; }
+#ansa-promo-app #ansa-promo-products .ap-main { height: 100%; }
+#ansa-promo-app #ansa-promo-products .ap-main .ap-top { padding-top: 6px; }
+
+@media (max-width: 900px) {
+  #ansa-promo-app { grid-template-columns: 1fr; overflow-y: auto; }
+  .ap-nav { max-height: none; margin: 10px 10px 0; }
+  .ap-nav__list { max-height: 40vh; }
+  .ap-page { height: auto; }
+  .ap-env__r { grid-template-columns: 16px 1fr; }
+  .ap-env__v { grid-column: 2; }
+  #ansa-promo-app #ansa-promo-products { grid-template-columns: 1fr; height: auto; }
+}

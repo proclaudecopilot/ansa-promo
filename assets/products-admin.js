@@ -76,14 +76,14 @@
   function shell() {
     root.className = ''; root.innerHTML = ''
       + '<aside class="ap-side">'
-      + '<div class="ap-brand"><span class="dot"></span>ansa™ Промо<small>📦 Продукти · v' + esc(A.ver) + '</small></div>'
-      + '<div class="ap-side__links"><a class="ap-side__lnk" href="' + esc(A.tools) + '">🧰 Инструменти</a><a class="ap-side__lnk" href="' + esc(A.editor) + '">✏️ Редактор</a>' + (A.draft_url ? '<a class="ap-side__lnk" href="' + esc(A.draft_url) + '" target="_blank" rel="noopener">👁 Черновата ↗</a>' : '') + '</div>'
+      + (A.embedded ? '' : '<div class="ap-brand"><span class="dot"></span>ansa™ Промо<small>📦 Продукти · v' + esc(A.ver) + '</small></div>'
+      + '<div class="ap-side__links"><a class="ap-side__lnk" href="' + esc(A.tools) + '">🧰 Настройки</a><a class="ap-side__lnk" href="' + esc(A.editor) + '">✏️ Редактор</a>' + (A.draft_url ? '<a class="ap-side__lnk" href="' + esc(A.draft_url) + '" target="_blank" rel="noopener">👁 Черновата ↗</a>' : '') + '</div>')
       + '<div class="ap-search"><input type="text" id="apQ" placeholder="Търси в списъка…" autocomplete="off"></div>'
       + '<div class="ap-fchips" id="apFchips"></div>'
       + '<div class="ap-side__label">Продукти <button type="button" class="ap-side__new" id="apAdd" title="Търси продукт в WooCommerce и го добави в промото">＋ Добави продукт</button></div>'
       + '<div class="ap-plist" id="apList"></div>'
       + '<div class="ap-plist__hint">влачи ⋮⋮ за да смениш реда на страницата</div>'
-      + '<a class="ap-side__foot" href="' + esc(A.back) + '">↩ Обратно към ansa™ Промо</a>'
+      + (A.embedded ? '' : '<a class="ap-side__foot" href="' + esc(A.back) + '">↩ Обратно към ansa™ Промо</a>')
       + '</aside><div class="ap-main" id="apMain"></div>';
     $('apQ').addEventListener('input', function () { S.q = this.value.trim().toLowerCase(); renderList(); });
     $('apAdd').addEventListener('click', addModal);
