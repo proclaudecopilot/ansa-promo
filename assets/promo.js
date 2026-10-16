@@ -403,6 +403,9 @@
   /* ── ЕДИН попъп за пълнене: наградите на кутията + категории със степери (десктоп) / пълноекранен лист (мобилно) ── */
   var needQ={},needOrder=[];
   function fillModePopup(){S._fillPg=0;needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
+  /* v1.18.0 (човекът: „не се вижда, че има още продукти“): лента с ВСИЧКИ продукти като чипове над картите — броят се вижда
+     от първия поглед; клик = страницата с продукта (десктоп) / скрол до картата (телефон) + примигване */
+  function strip(rows,MPP){return '<div class="fstrip" id="fStrip"><span class="fstripn"'+ck('fill.all.n')+'>'+T('fill.all.n',{n:rows.length})+'</span><div class="fstripl">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<button type="button" class="fsc'+(qtyOf(r.key)?' in':'')+'" data-sk="'+esc(r.key)+'" data-spg="'+Math.floor(ri/MPP)+'" title="'+esc(pr.name)+'">'+pic(pr,'fsci')+'<span>'+esc(pr.name)+'</span></button>'}).join('')+'</div></div>'}
   function fillPopup(again){ /* again (v1.10.0): прерисуване след като броят вдигна кутията — без интро попъпа, скролът и страницата се пазят */
     var b=BX(),c=S.core&&PROD[S.core]?PROD[S.core]:null,P=b.packs,bv=boxVars(b);
     var rows=[];if(c)rows.push({key:S.core,t:T('fill.cat.core'),why:c.ds,core:true});
@@ -437,6 +440,7 @@
       +'<div class="f3g"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t',bv)+'</b><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div>'
       +'<div class="f3mixr"><p class="f3mix"'+ck(grows(b)?'fill.combine.grow':'fill.combine')+'>'+T(grows(b)?'fill.combine.grow':'fill.combine',bv)+'</p><button class="fqzb'+(qz?' on':'')+'" id="fQuiz" type="button"'+ck('fill.quiz.l')+'><i>?</i><span>'+T('fill.quiz.l')+'</span></button></div>'
       +'<div class="f3p"><span class="f3n"><span'+ck('fill.sel.a')+'>'+T('fill.sel.a')+'</span> <span id="fSlotsN"></span> <span'+ck('fill.sel.b')+'>'+T('fill.sel.b')+'</span></span><span class="f3bar"><i id="fBar"></i></span><em id="fPct">0%</em></div>'
+      +strip(rows,MPP)+(rows.length>MPP?'<div class="mpg mpg2" id="mPg2"></div>':'') /* v1.18.0: пейджърът и горе, над картите — вижда се без скрол */
       +'<div class="fnext" id="fNext" style="display:none"></div>' /* v1.10.0: „Още 2 опаковки и отключваш голяма кутия с −40%“ */
       +'<div class="fslots" id="fSlots" hidden></div>'
       +'<div class="fcats f3grid">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="f3item" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="f3cat'+(r.core?' core':r.pick?' pick':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):r.pick?pcat(String(pr.cat||'').trim()||r.t):mcat(pr,r))+'</h5>'+fcard(r,'drow')+'</div>'}).join('')+'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
@@ -468,6 +472,7 @@
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck('fill.quiz.l')+'>'+T('fill.quiz.l')+'</button>'
+        +strip(rows,MPP) /* v1.18.0 */
         /* v1.0.25: 2 продукта на страница; категорията е заглавие над картата (.mcath), не вътре в нея */
         +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',r.pick?pcat(String(pr.cat||'').trim()||r.t):esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
@@ -477,10 +482,14 @@
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
-    var pgEl=$('mPg');if(pgEl){var pages=Math.ceil(rows.length/MPP),pg=Math.min(Math.max(0,S._fillPg||0),pages-1);var showPg=function(){S._fillPg=pg;dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
+    var pgEl=$('mPg'),pgEl2=$('mPg2'),pages=1,pg=0,showPg=null;if(pgEl){pages=Math.ceil(rows.length/MPP);pg=Math.min(Math.max(0,S._fillPg||0),pages-1);showPg=function(){S._fillPg=pg;dc.querySelectorAll('.mitem,.f3item').forEach(function(x){x.classList.toggle('pg-off',Number(x.dataset.pg)!==pg)});
         /* v1.0.27: по средата само текст „1 от 3“ (без точки и контейнер — беше пренаселено) */
-        pgEl.innerHTML='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+'</span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
-        pgEl.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0;else{var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest'})}}})};showPg()}
+        var left=rows.length-(pg+1)*MPP;
+        var html='<button class="mpgb pv" data-pg="prev"'+(pg===0?' disabled':'')+' aria-label="предишна"><i>‹</i><span'+ck('mfill.prev')+'>'+T('mfill.prev')+'</span></button><span class="mpgn"'+ck('mfill.page')+'>'+T('mfill.page',{pg:pg+1,pages:pages})+(left>0?' <small class="mpgl"'+ck('fill.pg.left')+'>'+T('fill.pg.left',{n:left})+'</small>':'')+'</span><button class="mpgb nx" data-pg="next"'+(pg>=pages-1?' disabled':'')+' aria-label="следваща"><span'+ck('mfill.next')+'>'+T('mfill.next')+'</span><i>›</i></button>';
+        [pgEl,pgEl2].forEach(function(el){if(!el)return;el.innerHTML=html;el.querySelectorAll('[data-pg]').forEach(function(x){x.onclick=function(){var v=x.dataset.pg;pg=v==='prev'?Math.max(0,pg-1):v==='next'?Math.min(pages-1,pg+1):Number(v);showPg();var sc=$('mfS')||$('mfL');if(sc)sc.scrollTop=0;else{var g=dc.querySelector('.f3grid');if(g&&el===pgEl)g.scrollIntoView({block:'nearest'})}}})});
+        dc.querySelectorAll('.fsc').forEach(function(c){c.classList.toggle('on',Number(c.dataset.spg)===pg)})};showPg()}
+    /* v1.18.0: чиповете в лентата → страницата/картата на продукта + примигване */
+    dc.querySelectorAll('.fsc').forEach(function(c){c.onclick=function(){var k=c.dataset.sk;if(showPg&&!mob){pg=Number(c.dataset.spg)||0;showPg()}var card=dc.querySelector('.fcat[data-nq="'+k+'"]');if(!card)return;var it=card.closest('.mitem,.f3item')||card;if(mob){var ms0=$('mfS');if(ms0){var top=it.getBoundingClientRect().top-ms0.getBoundingClientRect().top+ms0.scrollTop-8;ms0.scrollTo({top:top,behavior:'smooth'})}}else{it.scrollIntoView({block:'nearest',behavior:'smooth'})}card.classList.remove('flash');void card.offsetWidth;card.classList.add('flash')}});
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
     if(mob&&!again)unlockPopup(b,P);
@@ -512,6 +521,7 @@
       dc.querySelectorAll('[data-tix]').forEach(function(x){x.innerHTML=T(x.dataset.tix,Object.assign({},bv,tixVars(b,t)))});
       $('fSlots').innerHTML=cnt+Array.from({length:Math.max(goal,t)},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*(PROD[k].price-disc(PROD[k],b))});save=r2(save);
+      dc.querySelectorAll('.fsc[data-sk]').forEach(function(c){c.classList.toggle('in',(needQ[c.dataset.sk]||0)>0)}); /* v1.18.0 */
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2((pr.price-disc(pr,b))*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
