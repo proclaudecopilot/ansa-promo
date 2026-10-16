@@ -1703,3 +1703,108 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-ladt tr.next td{background:#fff7ef}
 .ansa-promo .dc.hw .hw-ladt .you{display:inline-block;background:var(--o);color:#fff;border-radius:999px;font-size:10px;padding:2px 8px;margin-left:6px;letter-spacing:.06em;vertical-align:middle;font-style:normal;text-decoration:none}
 @media(max-width:640px){.ansa-promo .dc.hw .hw-ladt{min-width:0}.ansa-promo .dc.hw .hw-ladt td{padding:6px 7px;font-size:13px}.ansa-promo .dc.hw .hw-ladt td .d{display:block;margin:0;font-size:11px}}
+
+/* ── 45 · v1.20.0 (човекът: „инфо страницата е супер комплексна — трябва да изчета всичко, за да схвана“): „Как работи“ (попъпът и /info)
+      с един поглед. Hero: заглавието + трите числа (.hw-sum: отстъпка · билети · сетът) вместо трите булета, един бутон + текстов линк.
+      Чипове (.hw-nav, лепкави под хедъра: --ap-hdr) → секциите. Стъпките по един ред (+ „Подробно ▾“ .hw-more). Кутиите като таблица
+      (.hw-tb). Стълбата: „сега / от …“ (.hw-now) + таблицата под „Всички седмици“. Останалото е сгънато (.hw-fold: иконка · заглавие ·
+      ред резюме · ▾; съдържанието вътре е старите секции без промяна). ── */
+.ansa-promo .dc.hw .hw-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px}
+.ansa-promo .dc.hw .hw-sum1{background:rgba(255,255,255,.82);border:1.5px solid rgba(232,114,42,.3);border-radius:14px;padding:10px 10px 9px;text-align:center}
+.ansa-promo .dc.hw .hw-sum1 b{display:block;font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:var(--od);white-space:nowrap}
+.ansa-promo .dc.hw .hw-sum1.s2 b{color:var(--ink)}
+.ansa-promo .dc.hw .hw-sum1.s3 b{color:var(--goldd)}
+.ansa-promo .dc.hw .hw-sum1 span{display:block;margin-top:3px;font-size:12px;font-weight:700;line-height:1.25;color:var(--tan)}
+.ansa-promo .dc.hw .hw-ctas{align-items:center}
+.ansa-promo .dc.hw .hw-lnk{background:none;border:0;padding:8px 6px;font:800 15px/1 inherit;color:var(--od);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ansa-promo .dc.hw .hw-nav{position:sticky;top:0;z-index:5;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:10px 32px;background:rgba(246,228,209,.94);backdrop-filter:blur(8px);border-bottom:1.5px solid rgba(232,114,42,.22)}
+.ansa-promo .dc.hw .hw-nav::-webkit-scrollbar{display:none}
+.ansa-promo .dc.hw .hw-nav button{flex:0 0 auto;background:#fff;border:1.5px solid var(--ol);border-radius:999px;padding:7px 14px;font:800 13px/1 inherit;color:var(--od);cursor:pointer;white-space:nowrap}
+.ansa-promo .dc.hw .hw-nav button:hover{border-color:var(--o);background:#fff7ef}
+.ansa-promo .dc.hw .hw-sec,.ansa-promo .dc.hw .hw-fold{scroll-margin-top:56px}
+/* /info: от 1.0.52 html.ansa-promo-html .ansa-promo е с overflow-x:hidden (= скрол-контейнер) и нищо вътре не лепне; clip реже хоризонталния скрол
+   по същия начин, но без скрол-контейнер — чиповете лепнат горе. Хедърът на /info не лепне (и без това не лепнеше), за да не заема 68px на телефон. */
+html.ansa-promo-html body.ansa-promo-info-page{overflow-x:clip!important}
+html.ansa-promo-html .ansa-promo.info{overflow-x:clip}
+.ansa-promo.info .hdr{position:static}
+/* стъпките — по един ред */
+.ansa-promo .dc.hw .hw-steps{gap:10px;margin-bottom:8px}
+.ansa-promo .dc.hw .hw-steps li{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start;align-content:start;padding:14px 14px 12px}
+.ansa-promo .dc.hw .hw-steps li i{grid-row:1/3;margin:0}
+.ansa-promo .dc.hw .hw-steps li b{font-size:16px;margin-bottom:3px;line-height:1.2}
+.ansa-promo .dc.hw .hw-steps li p{font-size:13.5px;line-height:1.4}
+.ansa-promo .dc.hw .hw-more{margin:6px 0 0}
+.ansa-promo .dc.hw .hw-more>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--od);padding:6px 0}
+.ansa-promo .dc.hw .hw-more>summary::-webkit-details-marker{display:none}
+.ansa-promo .dc.hw .hw-more>summary i{font-style:normal;transition:transform .2s}
+.ansa-promo .dc.hw .hw-more[open]>summary i{transform:rotate(180deg)}
+.ansa-promo .dc.hw .hw-moreb{padding:8px 0 0}
+.ansa-promo .dc.hw .hw-stx{background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.ansa-promo .dc.hw .hw-stx b{display:block;font-size:14px;font-weight:900;color:var(--ink);margin-bottom:4px}
+.ansa-promo .dc.hw .hw-stx p{font-size:14px;line-height:1.45;font-weight:600;color:var(--ink2);margin:0}
+.ansa-promo .dc.hw p.hw-more-p{font-size:14px;line-height:1.45;font-weight:600;color:var(--ink2);margin:6px 0 0}
+/* кутиите — таблица */
+.ansa-promo .dc.hw .hw-tbw{overflow-x:auto;margin:0 0 12px}
+.ansa-promo .dc.hw .hw-tb{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1.5px solid var(--ol);border-radius:16px;overflow:hidden;font-size:14px}
+.ansa-promo .dc.hw .hw-tb th,.ansa-promo .dc.hw .hw-tb td{padding:10px 10px;border-top:1px solid #f1e4d7;text-align:center;vertical-align:middle;color:var(--ink)}
+.ansa-promo .dc.hw .hw-tb thead th{border-top:0;padding:12px 8px 10px;font-size:14px;font-weight:900;background:#faf3ec}
+.ansa-promo .dc.hw .hw-tb thead th em{display:block;font-style:normal;font-size:22px;line-height:1;margin-bottom:4px}
+.ansa-promo .dc.hw .hw-tb thead th.m{color:var(--od)}
+.ansa-promo .dc.hw .hw-tb thead th.l{color:var(--goldd);background:#fff3c4}
+.ansa-promo .dc.hw .hw-tb tbody th{text-align:left;font-size:13px;font-weight:700;color:var(--tan)}
+.ansa-promo .dc.hw .hw-tb td b{font-weight:900}
+.ansa-promo .dc.hw .hw-tb td b.pc{font-size:20px;letter-spacing:-.02em}
+.ansa-promo .dc.hw .hw-tb td b.gd{color:var(--goldd)}
+.ansa-promo .dc.hw .hw-tb td s{display:block;font-size:11.5px;font-weight:600;color:var(--tan)}
+.ansa-promo .dc.hw .hw-tb td .ok{color:#2e7d32;font-weight:900;font-size:18px}
+.ansa-promo .dc.hw .hw-tb td .no{color:#b8a08a;font-weight:700}
+.ansa-promo .dc.hw .hw-tb td:last-child{background:#fffbea}
+.ansa-promo .dc.hw .hw-tb tr.ctas td{padding:10px 6px 12px}
+.ansa-promo .dc.hw .hw-tb tr.ctas .cta{width:100%;min-height:40px;padding:8px 6px;font-size:13px;border-radius:10px}
+/* стълбата — „сега / от …“ */
+.ansa-promo .dc.hw .hw-now{background:#fff;border:2px solid var(--o);border-radius:14px;padding:12px 16px;margin:0 0 6px}
+.ansa-promo .dc.hw .hw-now1{font-size:18px;font-weight:900;color:var(--ink);line-height:1.2}
+.ansa-promo .dc.hw .hw-now1 b{color:var(--od)}
+.ansa-promo .dc.hw .hw-now2{font-size:14px;font-weight:700;color:var(--tan);margin-top:4px}
+.ansa-promo .dc.hw .hw-lad>.cta{margin-top:12px}
+/* сгънатите секции */
+.ansa-promo .dc.hw .hw-fold{border-top:1.5px solid rgba(232,114,42,.22)}
+.ansa-promo .dc.hw .hw-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;padding:18px 32px}
+.ansa-promo .dc.hw .hw-fold>summary::-webkit-details-marker{display:none}
+.ansa-promo .dc.hw .hw-fold>summary:hover{background:rgba(255,255,255,.4)}
+.ansa-promo .dc.hw .hw-fic{flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:#fff;border:1.5px solid var(--ol);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:var(--od)}
+.ansa-promo .dc.hw .hw-ftx{flex:1;min-width:0}
+.ansa-promo .dc.hw .hw-ftx b{display:block;font-size:18px;font-weight:900;letter-spacing:-.01em;line-height:1.2;color:var(--ink)}
+.ansa-promo .dc.hw .hw-ftx span{display:block;margin-top:2px;font-size:13.5px;font-weight:600;color:var(--muted);line-height:1.35}
+.ansa-promo .dc.hw .hw-fold>summary>i{flex:0 0 auto;font-style:normal;color:var(--o);font-size:18px;transition:transform .2s}
+.ansa-promo .dc.hw .hw-fold[open]>summary>i{transform:rotate(180deg)}
+.ansa-promo .dc.hw .hw-fold[open]>summary{border-bottom:1.5px dashed rgba(232,114,42,.3)}
+.ansa-promo .dc.hw .hw-fold .hw-sec{padding-top:22px}
+.ansa-promo .dc.hw .hw-prs>.hw-lead{margin-bottom:14px}
+@media(max-width:760px){
+.ansa-promo .dc.hw .hw-hero{display:block;position:relative;padding-right:16px}
+.ansa-promo .dc.hw .hw-hpic{position:absolute;top:18px;right:14px;width:96px}
+.ansa-promo .dc.hw .hw-hpic img{max-width:96px;transform:rotate(3deg);border-radius:14px;box-shadow:0 10px 24px rgba(120,60,20,.28)}
+.ansa-promo .dc.hw .hw-hpic span{font-size:64px}
+.ansa-promo .dc.hw .hw-hero .hw-kick,.ansa-promo .dc.hw .hw-dates{max-width:calc(100% - 104px)}
+.ansa-promo .dc.hw .hw-dates{font-size:11.5px;padding:4px 10px}
+.ansa-promo .dc.hw .hw-hero h2{font-size:24px;padding-right:0}
+.ansa-promo .dc.hw p.hw-sub{font-size:15px;margin-bottom:12px}
+.ansa-promo .dc.hw .hw-sum{gap:6px}
+.ansa-promo .dc.hw .hw-sum1{padding:9px 6px 8px;border-radius:12px}
+.ansa-promo .dc.hw .hw-sum1 b{font-size:17px}
+.ansa-promo .dc.hw .hw-sum1 span{font-size:11px}
+.ansa-promo .dc.hw .hw-ctas{flex-direction:column;gap:4px}
+.ansa-promo .dc.hw .hw-nav{padding:8px 12px}
+.ansa-promo .dc.hw .hw-steps{gap:8px}
+.ansa-promo .dc.hw .hw-tb{font-size:13px}
+.ansa-promo .dc.hw .hw-tb th,.ansa-promo .dc.hw .hw-tb td{padding:8px 5px}
+.ansa-promo .dc.hw .hw-tb tbody th{font-size:12px;padding-left:10px}
+.ansa-promo .dc.hw .hw-tb thead th{font-size:13px}
+.ansa-promo .dc.hw .hw-tb td b.pc{font-size:18px}
+.ansa-promo .dc.hw .hw-tb tr.ctas .cta{font-size:12px;padding:8px 4px;min-height:38px}
+.ansa-promo .dc.hw .hw-fold>summary{padding:14px 16px;gap:10px}
+.ansa-promo .dc.hw .hw-fic{width:34px;height:34px;font-size:17px}
+.ansa-promo .dc.hw .hw-ftx b{font-size:16px}
+.ansa-promo .dc.hw .hw-ftx span{font-size:12.5px}
+}
