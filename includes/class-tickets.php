@@ -178,6 +178,8 @@ final class Tickets {
 		$v = Cart::vars( $cfg, $box ); $row = self::for_order( $order->get_id() );
 		$v = array_merge( $v, array( 'customer' => $order->get_billing_first_name() ?: $order->get_billing_last_name(), 'order' => $order->get_order_number(), 'code' => $row ? self::pretty( $row['code'] ) : '', 'tickets' => self::count_for_order( $order ), 'voucher' => (string) $order->get_meta( '_ansa_promo_voucher' ), 'book_url' => Book::link( $cfg ), 'book_how' => Book::enabled( $cfg ) ? ' — отваря се с телефона и имейла от поръчката' : '', 'portal_url' => Merge::portal_url( $cfg ), 'tombola_url' => Tombola::enabled( $cfg ) ? Tombola::url( $cfg ) : '' ), $extra );
 		$v['bileta'] = 1 === (int) $v['tickets'] ? 'билет' : 'билета';
+		/* 1.13.0: личният линк за препоръка — от билета или от order meta (дава се при заявката; генерира се тук при първа нужда за стари поръчки) */
+		$v['ref_code'] = Tombola::ref_code_for_order( $order, $row, $cfg ); $v['ref_link'] = '' !== $v['ref_code'] ? Tombola::ref_link( $v['ref_code'], $cfg ) : ''; $v['mult'] = (int) $cfg['tombola']['ref_mult'];
 		return array( 'cfg' => $cfg, 'box' => $box, 'vars' => $v );
 	}
 
@@ -291,6 +293,7 @@ final class Tickets {
 			echo '<p><a class="button button-primary" target="_blank" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_print&order=' . $order->get_id() ), 'ansa_promo_ticket_print' ) ) . '">🖨 Стикер за пратката</a> <a class="button" target="_blank" href="' . esc_url( self::qr_url( $order->get_id() ) ) . '">PNG</a></p>';
 		} else {
 			echo '<p>Няма издаден билет' . ( empty( $m['valid'] ) ? ' (кутията е непълна).' : ' — издава се при „Обработва се“/„Изпълнена“.' ) . '</p>';
+			if ( $order->get_meta( Tombola::META_REF ) ) { echo '<p>🎲 Томбола: код за препоръка <code>' . esc_html( (string) $order->get_meta( Tombola::META_REF ) ) . '</code> (работи от заявката; билетът го наследява) · препоръки: ' . count( Tombola::referrals( (string) $order->get_meta( Tombola::META_REF ), 'credited' ) ) . '</p>'; }
 			if ( ! empty( $m['valid'] ) ) { echo '<p><a class="button" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_issue&order=' . $order->get_id() ), 'ansa_promo_ticket_issue' ) ) . '">🎟 Издай билет сега</a></p>'; }
 		}
 		if ( ! empty( $m['cosm'] ) ) { echo '<p>Сет: <b>' . esc_html( (string) $order->get_meta( '_ansa_promo_cosm_status' ) ) . '</b>' . ( $order->get_meta( '_ansa_promo_voucher' ) ? ' · ваучер <code>' . esc_html( $order->get_meta( '_ansa_promo_voucher' ) ) . '</code>' : '' ) . '</p>'; }

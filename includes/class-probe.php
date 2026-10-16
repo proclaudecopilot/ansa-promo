@@ -91,6 +91,10 @@ final class Probe {
 		/* проверка с измислени данни */
 		$x = Tombola::lookup( 'probe-' . wp_generate_password( 8, false ) . '@example.invalid', '0888000000', $pub, false );
 		$t->ok( 'измислени данни → notfound', empty( $x['ok'] ) && 'notfound' === ( $x['code'] ?? '' ), wp_json_encode( $x ) );
+		/* 1.13.0: последната жива промо поръчка без билет → кодът за препоръка е в order meta и by_ref_code го намира (псевдо-ред) */
+		$pend = null; foreach ( wc_get_orders( array( 'limit' => 20, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => array( 'wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed' ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) ) as $po ) { $pm = $po->get_meta( '_ansa_promo' ); if ( is_array( $pm ) && ! empty( $pm['valid'] ) && ! Tickets::for_order( $po->get_id() ) ) { $pend = $po; break; } }
+		if ( $pend ) { $pc = Tombola::ref_code_for_order( $pend ); $pf = Tombola::by_ref_code( $pc ); $t->ok( 'поръчка без билет има код за препоръка (meta)', Tombola::CODE_LEN === strlen( $pc ) && $pf && 'pending' === $pf['status'] && (int) $pf['order_id'] === $pend->get_id(), '#' . $pend->get_order_number() . ' · ' . $pend->get_status() . ' · ' . $pc . ' · ' . Tombola::ref_link( $pc, $pub ) ); }
+		else { $t->note( 'поръчки без билет', 'няма жива промо поръчка без издаден билет — псевдо-редът се проверява в promo-tickets' ); }
 		/* кодове */
 		$t->ok( 'невалиден код за препоръка → null', null === Tombola::valid_ref( 'ZZZZZZZZ' ) && '' === Tombola::norm_code( 'abc' ) );
 		$row = $wpdb->get_row( 'SELECT * FROM ' . Schema::table( 'tickets' ) . " WHERE status <> 'void' ORDER BY id DESC LIMIT 1", ARRAY_A );
@@ -352,6 +356,17 @@ final class Probe {
 		$mails = array(); $hook = function ( $pre, $atts ) use ( &$mails ) { $mails[] = array( 'to' => $atts['to'], 'subject' => $atts['subject'], 'bytes' => strlen( (string) $atts['message'] ) ); return true; };
 		add_filter( 'pre_wp_mail', $hook, 10, 2 );
 		$t->ok( 'преди processing няма билет', ! Tickets::for_order( $oid ) );
+		/* 1.13.0: линкът за препоръка работи преди билета/пратката — кодът е в order meta, merge tag-ът го дава, by_ref_code го намира като псевдо-ред */
+		if ( Tombola::enabled( $cfg ) ) {
+			$rc = Tombola::ref_code_for_order( $oid ); $pr = Tombola::valid_ref( $rc );
+			$t->ok( 'ref: код преди билета (order meta)', Tombola::CODE_LEN === strlen( $rc ) && $rc === Tombola::norm_code( (string) $o->get_meta( Tombola::META_REF ) ), $rc );
+			$t->ok( 'ref: valid_ref → псевдо-ред pending на тази поръчка', $pr && 'pending' === $pr['status'] && (int) $pr['order_id'] === $oid, wp_json_encode( $pr ) );
+			$t->eq( 'merge: [ansa_promo_ref_link] преди пратката', Tombola::ref_link( $rc, $cfg ), do_shortcode( '[ansa_promo_ref_link order_id="' . $oid . '"]' ) );
+			$t->eq( 'merge: [ansa_promo_ref_code]', $rc, do_shortcode( '[ansa_promo_ref_code order_id="' . $oid . '"]' ) );
+			$lk = Tombola::lookup( $o->get_billing_email(), $o->get_billing_phone(), $cfg, false );
+			$t->ok( 'tombola: пътуваща поръчка → резултат с линк, без активирани билети', ! empty( $lk['ok'] ) && ! empty( $lk['pending'] ) && 0 === (int) $lk['total'] && $lk['ref_link'] === Tombola::ref_link( $lk['ref_code'], $cfg ), wp_json_encode( array( 'ok' => $lk['ok'] ?? null, 'code' => $lk['code'] ?? '', 'pending' => count( $lk['pending'] ?? array() ), 'pending_total' => $lk['pending_total'] ?? 0, 'total' => $lk['total'] ?? 0 ) ) );
+			if ( ! empty( $lk['ok'] ) ) { $html = Tombola::result_html( $lk, $cfg ); $t->ok( 'tombola: HTML „пътува“ с линка, без {{ }}', false !== strpos( $html, 'ansa-tb__ref' ) && false !== strpos( $html, 'li class="pend"' ) && false === strpos( $html, '{{' ), strlen( $html ) . ' B' ); }
+		}
 		$o->update_status( 'processing', 'probe' ); $row = Tickets::for_order( $oid );
 		$t->ok( 'processing → билет', (bool) $row, $row ? Tickets::pretty( $row['code'] ) . ' · ' . $row['tickets'] . ' бр. · ' . $row['status'] : 'няма ред' );
 		if ( ! $row ) { remove_filter( 'pre_wp_mail', $hook, 10 ); if ( ! $keep ) { $o->delete( true ); } return null; }
@@ -366,6 +381,8 @@ final class Probe {
 		$tagm = (string) wc_get_order( $oid )->get_meta( '_ansa_promo_fka_tag' );
 		$t->ok( 'merge: FunnelKit таг на контакта (тригърът)', '' === Merge::tag_name( $cfg ) || ! function_exists( 'bwf_get_contact' ) || ( '' !== $tagm && 0 !== strpos( $tagm, 'retry' ) ), $tagm ?: ( '' === Merge::tag_name( $cfg ) ? 'тагът е изключен' : 'FunnelKit контакти липсват' ) );
 		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_tickets}}', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_tickets' ), Merge::fka_status() );
+		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_ref_link}} (1.13.0)', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_ref_link' ), Merge::fka_status() );
+		if ( Tombola::enabled( $cfg ) && ! empty( $rc ) ) { $t->eq( 'ref: билетът наследи кода от meta-то', $rc, (string) $row['ref_code'] ); }
 		$t->ok( 'кодът е валиден', Tickets::normalize( $row['code'] ) === $row['code'] );
 		$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code/qr_url', $o->get_meta( '_ansa_promo_ticket_code' ) === $row['code'] && '' !== $o->get_meta( '_ansa_promo_qr_url' ), (string) $o->get_meta( '_ansa_promo_qr_url' ) );
 		$t->ok( 'ваучер при запазен сет', null === $box['cosm_pay'] || '' !== (string) $o->get_meta( '_ansa_promo_voucher' ), (string) $o->get_meta( '_ansa_promo_voucher' ) );
