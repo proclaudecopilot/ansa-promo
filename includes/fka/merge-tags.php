@@ -1,7 +1,7 @@
 <?php
 /**
  * ansa™ Промо 1.8.2 — merge tag класовете за FunnelKit Automations ({{ansa_promo_tickets}}, {{ansa_promo_bileta}},
- * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}, 1.9.0: {{ansa_promo_book_url}}, 1.13.0: {{ansa_promo_ref_link}} / {{ansa_promo_ref_code}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
+ * {{ansa_promo_tickets_text}}, {{ansa_promo_box}}, 1.9.0: {{ansa_promo_book_url}}, 1.13.0: {{ansa_promo_ref_link}} / {{ansa_promo_ref_code}}, 1.20.0: {{ansa_promo_fav}} / {{ansa_promo_fav_url}}). Зарежда се САМО от AnsaPromo\Merge::fka(), след като Reflection
  * gate-ът е потвърдил, че BWFAN_Merge_Tag е съвместим. Глобален namespace — FKA класовете са глобални.
  * Логиката е в Merge::shortcode(); тук е само обвивката, която FKA очаква (tag_name, parse_shortcode, dummy preview).
  *
@@ -77,4 +77,11 @@ class Ansa_Promo_FKA_Ref_Link extends Ansa_Promo_FKA_Tag {
 }
 class Ansa_Promo_FKA_Ref_Code extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'ref_code'; protected $ansa_desc = 'ansa™ Промо: самият код за препоръка (8 знака) от линка; празно извън играта';
+}
+/* 1.20.0: най-купуваният продукт на човека (по имейла на контакта), с краткото име от картата в 🧰 Настройки → ⭐ Любим продукт */
+class Ansa_Promo_FKA_Fav extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'fav'; protected $ansa_desc = 'ansa™ Промо: най-купуваният продукт на човека с краткото му име (Daily Greens / Sakura SkinTonik / YoniBiotic / MenoStop / Dihydroberberine / Thyrozen — картата в 🧰 Настройки); празно (или fallback), ако няма поръчки с тези продукти';
+}
+class Ansa_Promo_FKA_Fav_Url extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'fav_url'; protected $ansa_desc = 'ansa™ Промо: линкът към продуктовата страница на най-купувания продукт на човека; празно, ако няма';
 }
