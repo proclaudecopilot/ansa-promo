@@ -871,9 +871,14 @@
       if(d.season!==undefined&&JSON.stringify(d.season||null)!==JSON.stringify(A.season||null)){A.season=d.season;changed=true}
       if(d.boxes&&JSON.stringify(d.boxes)!==JSON.stringify(A.boxes)){A.boxes=d.boxes;changed=true}
       if(d.deadline!==undefined&&d.deadline!==A.deadline)A.deadline=d.deadline;
+      /* 1.22.1 (човекът: „запазвам в редактора новото копи, не излиза LIVE“): кешираната страница (FlyingPress/CDN/браузър) носи СТАРОТО копи в inline
+         runtime-а, а дотук се опресняваха само продукти/кутии/седмица/попъп. Щом публикуваната версия е друга или текстовете се различават, свежите
+         текстове (и наградите, тайният продукт, таймерът, редът на кутиите, FIT/проблемите, линкът на томболата) печелят и екранът се рисува наново. */
+      var fresh=(d.version!==undefined&&String(d.version)!==String(A.version))||(d.copy&&JSON.stringify(d.copy)!==JSON.stringify(A.copy||null));
+      if(fresh){if(d.copy)A.copy=d.copy;['rewards','secret','timer','bgn','ship','max_packs','box_order','fit','problems','tombola_url','draw','checkout'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});if(d.version!==undefined)A.version=d.version;changed=true}
       Object.keys(d.products).forEach(function(k){if(!PROD[k]||PROD[k].price!==d.products[k].price||PROD[k].stock!==d.products[k].stock||JSON.stringify(PROD[k].pct||null)!==JSON.stringify(d.products[k].pct||null))changed=true});
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
-      if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render()}
+      if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render();if(fresh&&!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.22.1: отвореният попъп („Как работи“) също се прерисува с новото копи */
       /* 1.8.9: броячът „Първите N са резервирани“ идва свеж (кешираната страница носи 0 до rewards.cosm.bar_from); на /info се рендира наново */
       if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo()}
     }).catch(function(){});
