@@ -26,7 +26,8 @@ final class Config {
 			'enabled'   => false,
 			'deadline'  => '2026-12-31 23:59',
 			/* v1.19.0: седмиците на сезона — отстъпката на всяка кутия пада всяка седмица от start (петък 00:00 по часа на сайта) до deadline.
-			   weeks[i] = { s, m, l } проценти за седмица i+1 (null = процентът на кутията); grace_hours = колко часа цената от добавянето в количката
+			   weeks[i] = { s, m, l, to } проценти за седмица i+1 (null = процентът на кутията); to (1.22.0) = последният ден на седмицата (Y-m-d,
+			   включително) по избор — следващата започва на другия ден в 00:00; празно = 7 дни; grace_hours = колко часа цената от добавянето в количката
 			   се пази след смяната на седмицата (човекът: 24). Override-ите по продукт (📦 Продукти) не се пипат от седмиците. weekly=false = както досега. */
 			'season'    => array( 'weekly' => false, 'start' => '2026-10-23', 'grace_hours' => 24, 'weeks' => array() ),
 			'page_id'   => 0,
@@ -308,7 +309,7 @@ final class Config {
 		$st = trim( (string) $out['season']['start'] ); $out['season']['start'] = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $st ) ? $st : $d['season']['start'];
 		$out['season']['grace_hours'] = max( 0, min( 168, (int) $out['season']['grace_hours'] ) );
 		$wk = array();
-		foreach ( (array) $out['season']['weeks'] as $w ) { $row = array(); foreach ( $bx as $b ) { $v = is_array( $w ) && isset( $w[ $b['id'] ] ) && is_numeric( $w[ $b['id'] ] ) ? (float) $w[ $b['id'] ] : null; $row[ $b['id'] ] = ( null !== $v && $v > 0 && $v < 100 ) ? $v : null; } $wk[] = $row; }
+		foreach ( (array) $out['season']['weeks'] as $w ) { $row = array(); foreach ( $bx as $b ) { $v = is_array( $w ) && isset( $w[ $b['id'] ] ) && is_numeric( $w[ $b['id'] ] ) ? (float) $w[ $b['id'] ] : null; $row[ $b['id'] ] = ( null !== $v && $v > 0 && $v < 100 ) ? $v : null; } $to = is_array( $w ) ? trim( (string) ( $w['to'] ?? '' ) ) : ''; $row['to'] = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $to ) && checkdate( (int) substr( $to, 5, 2 ), (int) substr( $to, 8, 2 ), (int) substr( $to, 0, 4 ) ) ? $to : ''; $wk[] = $row; } /* 1.22.0: + to (краят на седмицата по избор) */
 		$out['season']['weeks'] = array_slice( $wk, 0, 60 );
 		foreach ( array( 'desktop', 'mobile' ) as $dev ) {
 			$ord = array_values( array_unique( array_filter( array_map( 'strval', (array) ( $out['order'][ $dev ] ?? array() ) ), function ( $x ) { return in_array( $x, array( 's', 'm', 'l' ), true ); } ) ) );
@@ -453,23 +454,28 @@ final class Config {
 	public static function set_now( $ts ) { self::$now = $ts ? (int) $ts : null; }
 	public static function weekly_on( $cfg ) { return ! empty( $cfg['season']['weekly'] ) && self::season_start_ts( $cfg ) > 0; }
 	public static function season_start_ts( $cfg ) { $s = (string) ( $cfg['season']['start'] ?? '' ); if ( '' === $s ) { return 0; } $t = strtotime( $s . ' 00:00 ' . wp_timezone_string() ); return $t ? (int) $t : 0; }
-	/** Колко седмици има сезонът: броят на началата на седмици (start + 7 дни, 00:00 по часа на сайта, DST-safe) преди deadline; без срок — колкото са въведени (поне 1). */
-	public static function season_count( $cfg ) {
-		$s = self::season_start_ts( $cfg ); $e = self::deadline_ts( $cfg );
-		if ( $s && $e && $e > $s ) { $n = 0; $cur = ( new \DateTimeImmutable( '@' . $s ) )->setTimezone( self::tz() ); while ( $cur->getTimestamp() < $e && $n < 60 ) { $n++; $cur = $cur->modify( '+7 days' )->setTime( 0, 0 ); } return max( 1, $n ); }
-		return max( 1, count( (array) ( $cfg['season']['weeks'] ?? array() ) ) );
-	}
+	/** Колко седмици има сезонът = броят редове на season_weeks(): началата на седмици преди deadline (по 7 дни или по въведения край); без срок — колкото са въведени (поне 1). */
+	public static function season_count( $cfg ) { return max( 1, count( self::season_weeks( $cfg ) ) ); }
 	private static function tz() { try { return new \DateTimeZone( wp_timezone_string() ); } catch ( \Exception $x ) { return new \DateTimeZone( 'UTC' ); } }
-	/** Седмиците: [{ i (1…N), from, to (ts; to = началото на следващата или deadline), pct { box id => % }, set (има въведен ред) }]. Границите са 00:00 по часа на сайта (DST-safe). */
+	/** Седмиците: [{ i (1…N), from, to (ts; to = началото на следващата или deadline), pct { box id => % }, set (има въведен ред), to_custom (краят е въведен), to_bad (въведеният край е преди началото — ползва се 1 ден) }].
+	 *  Границите са 00:00 по часа на сайта (DST-safe). 1.22.0 (човекът: „една по-дълга и по-кратка седмица“): weeks[i].to = последният ден на седмицата по избор (включително);
+	 *  следващата тръгва на другия ден; празно = 7 дни. Последната винаги свършва на срока. Без срок — колкото реда са въведени. */
 	public static function season_weeks( $cfg ) {
 		$s = self::season_start_ts( $cfg ); if ( ! $s ) { return array(); }
-		$n = self::season_count( $cfg ); $e = self::deadline_ts( $cfg ); $in = (array) ( $cfg['season']['weeks'] ?? array() ); $rows = array();
-		$cur = ( new \DateTimeImmutable( '@' . $s ) )->setTimezone( self::tz() );
-		for ( $i = 0; $i < $n; $i++ ) {
-			$next = $cur->modify( '+7 days' )->setTime( 0, 0 ); $to = $next->getTimestamp();
-			if ( $e && ( $i === $n - 1 || $to > $e ) ) { $to = $e; }
+		$e = self::deadline_ts( $cfg ); $in = (array) ( $cfg['season']['weeks'] ?? array() ); $rows = array(); $tz = self::tz();
+		if ( $e && $e <= $s ) { $e = 0; } /* стартът е след края — Doctor го казва; тук се броят въведените редове */
+		$n_in = max( 1, count( $in ) );
+		$cur = ( new \DateTimeImmutable( '@' . $s ) )->setTimezone( $tz );
+		for ( $i = 0; $i < 60; $i++ ) {
+			$custom = (string) ( $in[ $i ]['to'] ?? '' ); $bad = false;
+			if ( '' !== $custom && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $custom ) ) { try { $next = ( new \DateTimeImmutable( $custom . ' 00:00', $tz ) )->modify( '+1 day' )->setTime( 0, 0 ); } catch ( \Exception $x ) { $custom = ''; } } else { $custom = ''; }
+			if ( '' === $custom ) { $next = $cur->modify( '+7 days' )->setTime( 0, 0 ); }
+			if ( $next->getTimestamp() <= $cur->getTimestamp() ) { $next = $cur->modify( '+1 day' )->setTime( 0, 0 ); $bad = true; } /* краят е преди началото — 1 ден, не 0 */
+			$to = $next->getTimestamp(); $last = $e ? ( $to >= $e ) : ( $i >= $n_in - 1 );
+			if ( $e && $last ) { $to = $e; }
 			$pct = array(); foreach ( (array) $cfg['boxes'] as $b ) { $v = isset( $in[ $i ][ $b['id'] ] ) && null !== $in[ $i ][ $b['id'] ] ? (float) $in[ $i ][ $b['id'] ] : (float) ( $b['base_pct'] ?? $b['pct'] ); $pct[ (string) $b['id'] ] = $v; }
-			$rows[] = array( 'i' => $i + 1, 'from' => $cur->getTimestamp(), 'to' => $to, 'pct' => $pct, 'set' => isset( $in[ $i ] ) );
+			$rows[] = array( 'i' => $i + 1, 'from' => $cur->getTimestamp(), 'to' => $to, 'pct' => $pct, 'set' => isset( $in[ $i ] ), 'to_custom' => '' !== $custom, 'to_bad' => $bad );
+			if ( $last ) { break; }
 			$cur = $next;
 		}
 		return $rows;
