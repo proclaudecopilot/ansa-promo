@@ -360,12 +360,81 @@ final class Insights {
 		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
 		$days = (int) ( $_GET['days'] ?? 30 );
 		$feed = self::feed( (int) ( $_GET['limit'] ?? 40 ) );
-		wp_send_json_success( array( 'feed' => $feed, 'rows_html' => self::feed_rows( $feed ), 'kpi' => self::kpi( self::sessions_report( $days ) ), 'at' => date_i18n( 'H:i:s' ) ) );
+		$r = self::sessions_report( $days ); $flat = self::dashboard_flat( self::dashboard_data( $r, self::orders_stats( self::range_for_days( $days ) ), array( 'period' => 1 === $days ? 'днес' : '' ) ) ); /* 1.23.0: всички плочки */
+		wp_send_json_success( array_merge( array( 'feed' => $feed, 'rows_html' => self::feed_rows( $feed ), 'at' => date_i18n( 'H:i:s' ) ), $flat ) );
 	}
 	public static function kpi( $r ) {
 		$f = $r['funnel'];
 		return array( 'sessions' => $r['sessions'], 'visitors' => (int) ( $r['visitors'] ?? 0 ), 'per' => $r['visitors'] ? number_format( $r['sessions'] / $r['visitors'], 1, ',', '' ) : '—', 'gate' => $f['gate'], 'box' => $f['box'], 'full' => $f['full'], 'add' => $f['add'], 'created' => $f['created'], 'paid' => $f['paid'], 'leads' => $r['leads'], 'orders' => $r['orders'], 'conv' => self::pct( $f['created'], $r['sessions'] ) );
 	}
+
+	/* ── 1.23.0 (човекът: „професионален dashboard … колко от Поръчали са Взети (Delivered), реализиран и нереализиран оборот“) ──
+	   Поръчките от WooCommerce (промо, без чернови) за период: ВЗЕТИ = „получена“ (tombola.statuses — само Delivered, решение от 1.9.0) → реализиран оборот;
+	   отказани / неуспешни / възстановени → загубен оборот; всичко останало (чака, обработва се, пътува, „изпълнена“) → нереализиран — още може да бъде взет. */
+	const LOST_STATUSES = array( 'cancelled', 'failed', 'refunded', 'trash', 'checkout-draft' );
+	public static function money( $v ) { return number_format( (float) $v, 2, ',', ' ' ) . ' €'; }
+	/** Периодът за $days (1 = днес, 7, 30, 90; 0 = null = всичко). */
+	public static function range_for_days( $days ) { $days = (int) $days; if ( $days <= 0 ) { return null; } return self::range( substr( self::since( $days ), 0, 10 ), current_time( 'Y-m-d' ) ); }
+	public static function orders_stats( $rg = null ) {
+		$z = array( 'n' => 0, 'total' => 0.0 ); $out = array( 'n' => 0, 'total' => 0.0, 'delivered' => $z, 'open' => $z, 'lost' => $z, 'by_status' => array(), 'avg' => 0.0, 'delivered_pct' => '—' );
+		if ( ! function_exists( 'wc_get_orders' ) ) { return $out; }
+		$extra = array();
+		if ( is_array( $rg ) ) {
+			$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new \DateTimeZone( 'UTC' );
+			try { $a = ( new \DateTime( $rg['from'] . ' 00:00:00', $tz ) )->getTimestamp(); $b = ( new \DateTime( $rg['to'] . ' 23:59:59', $tz ) )->getTimestamp(); $extra['date_created'] = $a . '...' . $b; } catch ( \Exception $e ) {}
+		}
+		$cfg = Config::get_published();
+		foreach ( (array) wc_get_orders( array_merge( array( 'limit' => -1, 'return' => 'objects', 'status' => array_keys( wc_get_order_statuses() ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ), $extra ) ) as $o ) {
+			$m = (array) $o->get_meta( '_ansa_promo' ); if ( ! empty( $m['draft'] ) ) { continue; }
+			$st = (string) $o->get_status(); $t = (float) $o->get_total();
+			$grp = Tombola::delivered( $o, $cfg ) ? 'delivered' : ( in_array( $st, self::LOST_STATUSES, true ) ? 'lost' : 'open' );
+			$out['n']++; $out['total'] += $t; $out[ $grp ]['n']++; $out[ $grp ]['total'] += $t;
+			if ( ! isset( $out['by_status'][ $st ] ) ) { $out['by_status'][ $st ] = array( 'n' => 0, 'total' => 0.0, 'name' => wc_get_order_status_name( $st ), 'grp' => $grp ); }
+			$out['by_status'][ $st ]['n']++; $out['by_status'][ $st ]['total'] += $t;
+		}
+		$out['avg'] = $out['n'] ? $out['total'] / $out['n'] : 0.0; $out['delivered_pct'] = self::pct( $out['delivered']['n'], $out['n'] );
+		uasort( $out['by_status'], function ( $a, $b ) { return $b['n'] <=> $a['n']; } );
+		return $out;
+	}
+	/** Плочките на дашборда: k => [group, label, value, sub (HTML), tone, hero]. Същите в трите екрана; живото опресняване праща value/sub по k. */
+	public static function dashboard_data( $r, $os, $ctx = array() ) {
+		$f = $r['funnel']; $k = self::kpi( $r ); $n = (int) $r['sessions']; $of = function ( $x ) use ( $n ) { return esc_html( self::pct( $x, $n ) ) . ' от сесиите'; };
+		$per = (string) ( $ctx['period'] ?? '' ); $sfx = $per ? ' · ' . esc_html( $per ) : '';
+		$t = array(
+			'sessions'    => array( 'traffic', 'Сесии', (string) $n, ( ! empty( $ctx['first'] ) ? 'броят се от ' . esc_html( $ctx['first'] ) : 'влизания в страницата' ) . $sfx, '', false ),
+			'visitors'    => array( 'traffic', 'Уникални посетители', (string) $k['visitors'], 'по IP · <b data-k="per">' . esc_html( $k['per'] ) . '</b> сесии на посетител', 'good', false ),
+			'leads'       => array( 'traffic', 'Имейли от попъпа', (string) $k['leads'], $of( $k['leads'] ), '', false ),
+			'gate'        => array( 'funnel', 'Минали попъпа', (string) $f['gate'], $of( $f['gate'] ), '', false ),
+			'box'         => array( 'funnel', 'Избрали кутия', (string) $f['box'], $of( $f['box'] ) . ' · ' . esc_html( self::pct( $f['box'], $f['gate'] ) ) . ' от попъпа', '', false ),
+			'full'        => array( 'funnel', 'Напълнили кутията', (string) $f['full'], $of( $f['full'] ) . ' · ' . esc_html( self::pct( $f['full'], $f['box'] ) ) . ' от избралите', '', false ),
+			'add'         => array( 'funnel', 'Към плащане', (string) $f['add'], $of( $f['add'] ) . ' · ' . esc_html( self::pct( $f['add'], $f['full'] ) ) . ' от напълнилите', '', false ),
+			'created'     => array( 'funnel', 'Поръчали (сесии)', (string) $f['created'], $of( $f['created'] ) . ' · ' . esc_html( self::pct( $f['created'], $f['add'] ) ) . ' от плащане', 'good', false ),
+			'conv'        => array( 'funnel', 'Конверсия сесия → поръчка', (string) $k['conv'], 'напълнили, но не поръчали: <b data-k="full_no">' . (int) max( 0, $f['full'] - $f['created'] ) . '</b>', 'info', false ),
+			'o_n'         => array( 'orders', 'Поръчани', (string) $os['n'], 'промо поръчки в WooCommerce · <b data-k="o_total">' . esc_html( self::money( $os['total'] ) ) . '</b>', 'info', false ),
+			'o_delivered' => array( 'orders', 'Взети (Delivered)', (string) $os['delivered']['n'], '<b data-k="o_delivered_pct">' . esc_html( $os['delivered_pct'] ) . '</b> от поръчаните · ' . esc_html( self::money( $os['delivered']['total'] ) ), 'good', false ),
+			'o_open'      => array( 'orders', 'В път / чакат', (string) $os['open']['n'], 'още не са взети · ' . esc_html( self::money( $os['open']['total'] ) ), 'warn', false ),
+			'o_lost'      => array( 'orders', 'Отказани / неуспешни', (string) $os['lost']['n'], 'отказани, неуспешни, възстановени · ' . esc_html( self::money( $os['lost']['total'] ) ), 'bad', false ),
+			'rev_real'    => array( 'revenue', 'Реализиран оборот', self::money( $os['delivered']['total'] ), 'взетите поръчки (Delivered) · <b data-k="o_delivered2">' . (int) $os['delivered']['n'] . '</b> бр.', 'good', true ),
+			'rev_open'    => array( 'revenue', 'Нереализиран оборот', self::money( $os['open']['total'] ), 'поръчани, още не взети · <b data-k="o_open2">' . (int) $os['open']['n'] . '</b> бр.', 'warn', false ),
+			'rev_lost'    => array( 'revenue', 'Загубен оборот', self::money( $os['lost']['total'] ), 'отказани / неуспешни · <b data-k="o_lost2">' . (int) $os['lost']['n'] . '</b> бр.', 'bad', false ),
+			'avg'         => array( 'revenue', 'Среден кош', self::money( $os['avg'] ), 'на поръчка · общо <b data-k="o_total2">' . esc_html( self::money( $os['total'] ) ) . '</b>', '', false ),
+		);
+		return $t;
+	}
+	const GROUPS = array( 'traffic' => '👥 Трафик', 'funnel' => '🔻 Фуния по сесии', 'orders' => '🛒 Поръчки (WooCommerce)', 'revenue' => '💶 Оборот' );
+	const GROUP_HINTS = array( 'traffic' => 'сесия = едно влизане; посетител = различен IP', 'funnel' => 'докъде стига всяка сесия, веднъж на стъпка', 'orders' => 'взети = статус „получена“ (Delivered); в път = всичко между поръчка и получаване', 'revenue' => 'сумите на поръчките с ДДС и доставка, както са в WooCommerce' );
+	private static function tile( $label, $value, $sub = '', $tone = '', $k = '', $hero = false ) {
+		return '<div class="ap-st' . ( $tone ? ' ap-st--' . $tone : '' ) . ( $hero ? ' ap-st--hero' : '' ) . '"><span class="ap-st__l">' . esc_html( $label ) . '</span><b class="ap-st__v"' . ( $k ? ' data-k="' . esc_attr( $k ) . '"' : '' ) . '>' . esc_html( $value ) . '</b>' . ( '' !== $sub ? '<small class="ap-st__s"' . ( $k ? ' data-ks="' . esc_attr( $k ) . '"' : '' ) . '>' . $sub . '</small>' : '' ) . '</div>';
+	}
+	private static function group_html( $title, $tiles, $hint = '', $id = '' ) { return '<div class="ap-stg"' . ( $id ? ' id="' . esc_attr( $id ) . '"' : '' ) . '><div class="ap-stg__h"><span class="ap-stg__t">' . $title . '</span>' . ( $hint ? '<span class="ap-stg__hint">' . $hint . '</span>' : '' ) . '</div><div class="ap-stg__g">' . $tiles . '</div></div>'; }
+	/** Целият дашборд (4 групи) от dashboard_data(). */
+	public static function dashboard_html( $data, $id = 'apInsDash' ) {
+		$h = '<div class="ap-dash" id="' . esc_attr( $id ) . '">';
+		foreach ( self::GROUPS as $g => $title ) { $tiles = ''; foreach ( $data as $k => $t ) { if ( $t[0] === $g ) { $tiles .= self::tile( $t[1], $t[2], $t[3], $t[4], $k, $t[5] ); } } $h .= self::group_html( $title, $tiles, self::GROUP_HINTS[ $g ] ?? '' ); }
+		return $h . '</div>';
+	}
+	/** За живото опресняване: k => value и k => sub (HTML) — плюс вложените data-k в sub-овете (per, full_no, o_total…), които се сменят с innerHTML на sub-а. */
+	public static function dashboard_flat( $data ) { $v = array(); $sub = array(); foreach ( $data as $k => $t ) { $v[ $k ] = $t[2]; $sub[ $k ] = $t[3]; } return array( 'kpi' => $v, 'kpi_sub' => $sub ); }
 
 	/* ── v1.3.0: старият rollup (CSV, съвместимост) ── */
 	public static function report( $days = 30 ) {
@@ -445,20 +514,11 @@ final class Insights {
 		echo '<div class="ap-actions" style="padding:0 0 12px"><div class="ap-chips">' . $chips . '</div><span class="sp"></span>';
 		Admin::form_open_public( 'export_sessions', 'insights' ); echo '<input type="hidden" name="days" value="' . (int) $days . '"><button class="button">⬇ CSV сесии</button></form> ';
 		Admin::form_open_public( 'export_stats', 'insights' ); echo '<input type="hidden" name="days" value="' . (int) $days . '"><button class="button">⬇ CSV стар rollup</button></form></div>';
-		/* KPI */
-		$k = self::kpi( $r ); global $wpdb; $first = (string) $wpdb->get_var( 'SELECT MIN(started_at) FROM ' . Schema::table( 'sessions' ) );
-		echo '<div class="ap-kpis" style="padding:0 0 14px" id="apInsKpi">'
-			. '<div class="ap-kpi"><b data-k="sessions">' . (int) $k['sessions'] . '</b><span>сесии (влезли)' . ( $first ? ' · от ' . esc_html( date_i18n( 'd.m H:i', strtotime( $first ) ) ) : '' ) . '</span></div>'
-			. '<div class="ap-kpi good"><b data-k="visitors">' . (int) $k['visitors'] . '</b><span>уникални посетители (по IP) · <span data-k="per">' . esc_html( $k['per'] ) . '</span> сесии на посетител</span></div>'
-			. '<div class="ap-kpi"><b>' . (int) $legacy['by_step']['view'] . '</b><span>видели (стар брояч, цял период)</span></div>'
-			. '<div class="ap-kpi"><b data-k="gate">' . (int) $k['gate'] . '</b><span>минали попъпа</span></div>'
-			. '<div class="ap-kpi"><b data-k="box">' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
-			. '<div class="ap-kpi"><b data-k="full">' . (int) $k['full'] . '</b><span>напълнили</span></div>'
-			. '<div class="ap-kpi"><b data-k="add">' . (int) $k['add'] . '</b><span>към плащане</span></div>'
-			. '<div class="ap-kpi good"><b data-k="created">' . (int) $k['created'] . '</b><span>поръчали</span></div>'
-			. '<div class="ap-kpi good"><b data-k="paid">' . (int) $k['paid'] . '</b><span>платени (билет)</span></div>'
-			. '<div class="ap-kpi"><b data-k="conv">' . esc_html( $k['conv'] ) . '</b><span>конверсия сесия → поръчка</span></div>'
-			. '</div>';
+		/* 1.23.0: дашбордът — плочки в групи Трафик · Фуния · Поръчки · Оборот */
+		global $wpdb; $first = (string) $wpdb->get_var( 'SELECT MIN(started_at) FROM ' . Schema::table( 'sessions' ) );
+		$os = self::orders_stats( self::range_for_days( $days ) ); $plabel = array( 1 => 'днес', 7 => 'последните 7 дни', 30 => 'последните 30 дни', 90 => 'последните 90 дни', 0 => 'целия период' )[ $days ];
+		echo self::dashboard_html( self::dashboard_data( $r, $os, array( 'period' => $plabel, 'first' => 0 === $days && $first ? date_i18n( 'd.m H:i', strtotime( $first ) ) : '' ) ) );
+		echo self::status_table_html( $os, $plabel );
 		/* 1.17.1: диагностика — защо е 0 */
 		$dg = self::diagnostics(); $bad = ! $dg['tables'] || ! $dg['live'];
 		echo '<div class="ap-sec' . ( $bad ? ' ap-sec--danger' : '' ) . '"><div class="ap-sec__h"><span class="ap-sec__t">🩺 Работи ли отчитането?</span><button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apInsTest">▶ Тест на записа</button></div><div class="ap-sec__b"><div class="ap-env" style="padding:0">'
@@ -493,23 +553,14 @@ final class Insights {
 	/* ── 🟢 На живо (1.21.0: отделен таб) ── */
 	private static function render_live() {
 		$n = (int) ( $_GET['n'] ?? 40 ); if ( ! in_array( $n, array( 40, 100, 200 ), true ) ) { $n = 40; }
-		$k = self::kpi( self::sessions_report( 1 ) );
 		$chips = ''; foreach ( array( 40, 100, 200 ) as $c ) { $chips .= '<a class="ap-chip' . ( $c === $n ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'view' => 'live', 'n' => $c ) ) ) . '">последните ' . $c . '</a>'; }
 		echo '<div class="ap-actions" style="padding:0 0 12px"><div class="ap-chips">' . $chips . '</div><span class="sp"></span><label class="ap-tglwrap on"><input type="checkbox" id="apInsLive" checked><span class="ap-tgl"></span>опреснява на 20 с</label><small id="apInsAt" style="margin-left:8px"></small></div>';
-		echo '<div class="ap-kpis" style="padding:0 0 14px" id="apInsKpi">'
-			. '<div class="ap-kpi"><b data-k="sessions">' . (int) $k['sessions'] . '</b><span>сесии днес</span></div>'
-			. '<div class="ap-kpi good"><b data-k="visitors">' . (int) $k['visitors'] . '</b><span>посетители днес (по IP)</span></div>'
-			. '<div class="ap-kpi"><b data-k="gate">' . (int) $k['gate'] . '</b><span>минали попъпа</span></div>'
-			. '<div class="ap-kpi"><b data-k="box">' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
-			. '<div class="ap-kpi"><b data-k="full">' . (int) $k['full'] . '</b><span>напълнили</span></div>'
-			. '<div class="ap-kpi"><b data-k="add">' . (int) $k['add'] . '</b><span>към плащане</span></div>'
-			. '<div class="ap-kpi good"><b data-k="created">' . (int) $k['created'] . '</b><span>поръчали днес</span></div>'
-			. '<div class="ap-kpi"><b data-k="conv">' . esc_html( $k['conv'] ) . '</b><span>конверсия днес</span></div>'
-			. '</div>';
+		/* 1.23.0: същите плочки като в Преглед, но за днес — и всичките се опресняват на живо */
+		echo self::dashboard_html( self::dashboard_data( self::sessions_report( 1 ), self::orders_stats( self::range_for_days( 1 ) ), array( 'period' => 'днес' ) ) );
 		echo '<div class="ap-sec ap-sec--table" id="apInsFeed"><div class="ap-sec__h"><span class="ap-sec__t">🟢 На живо — последните сесии</span></div>'
 			. '<div class="ap-sec__hint">Кой е влязъл (имейлът от попъпа или от поръчката), откъде, какво е цъкнал и докъде е стигнал. Статусът на поръчката е на живо от WooCommerce. 👤xxxx е един и същ посетител (по IP): „5 сесии“ значи, че същият човек е влизал 5 пъти, не че са 5 души. Подредено по последна активност. За анализ по период и филтри — <a href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'view' => 'history' ) ) ) . '">📜 История</a>.</div><div class="ap-sec__b">' . self::feed_table_html( 'apInsFeedT', self::feed_rows( self::feed( $n ) ) ) . '</div></div>';
 		echo '<script>(function(){var live=document.getElementById("apInsLive"),tb=document.querySelector("#apInsFeedT tbody"),at=document.getElementById("apInsAt"),t;' . self::ajax_vars() . 'var limit=' . (int) $n . ';'
-			. 'function tick(){if(!live.checked)return;fetch(ajax+"?action=ansa_promo_insights_feed&nonce="+nonce+"&days=1&limit="+limit,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success)return;tb.innerHTML=r.data.rows_html||tb.innerHTML;Object.keys(r.data.kpi||{}).forEach(function(k){var el=document.querySelector("#apInsKpi [data-k=\\""+k+"\\"]");if(el)el.textContent=r.data.kpi[k]});at.textContent="опреснено "+r.data.at}).catch(function(){})}'
+			. 'function tick(){if(!live.checked)return;fetch(ajax+"?action=ansa_promo_insights_feed&nonce="+nonce+"&days=1&limit="+limit,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success)return;tb.innerHTML=r.data.rows_html||tb.innerHTML;Object.keys(r.data.kpi||{}).forEach(function(k){var el=document.querySelector("#apInsDash .ap-st__v[data-k=\\""+k+"\\"]");if(el)el.textContent=r.data.kpi[k];var sb=document.querySelector("#apInsDash .ap-st__s[data-ks=\\""+k+"\\"]");if(sb&&r.data.kpi_sub&&r.data.kpi_sub[k]!=null)sb.innerHTML=r.data.kpi_sub[k]});at.textContent="опреснено "+r.data.at}).catch(function(){})}'
 			. 'function arm(){clearInterval(t);if(live.checked)t=setInterval(tick,20000)}live.addEventListener("change",function(){live.parentNode.classList.toggle("on",live.checked);arm()});arm();})();</script>';
 	}
 
@@ -532,30 +583,20 @@ final class Insights {
 			. '<label>от <input type="date" name="from" value="' . esc_attr( $rg['from'] ) . '" max="' . esc_attr( $today ) . '"></label><label>до <input type="date" name="to" value="' . esc_attr( $rg['to'] ) . '" max="' . esc_attr( $today ) . '"></label><button class="button">Покажи</button></form><span class="sp"></span>';
 		Admin::form_open_public( 'export_sessions', 'insights' ); foreach ( array( 'from' => $rg['from'], 'to' => $rg['to'], 'step' => $step, 'mode' => $mode, 'box' => $box, 'ord' => $ord, 'dev' => $dev ) as $hk => $hv ) { echo '<input type="hidden" name="' . esc_attr( $hk ) . '" value="' . esc_attr( $hv ) . '">'; } echo '<button class="button" title="сесиите за периода с текущия филтър на списъка">⬇ CSV сесии (този филтър)</button></form></div>';
 		$ptxt = date_i18n( 'd.m.Y', strtotime( $rg['from'] ) ) . ( $rg['from'] !== $rg['to'] ? ' – ' . date_i18n( 'd.m.Y', strtotime( $rg['to'] ) ) : '' );
-		/* KPI за периода */
-		echo '<div class="ap-kpis" style="padding:0 0 10px">'
-			. '<div class="ap-kpi"><b>' . (int) $k['sessions'] . '</b><span>сесии · ' . esc_html( $ptxt ) . '</span></div>'
-			. '<div class="ap-kpi good"><b>' . (int) $k['visitors'] . '</b><span>уникални посетители (по IP) · ' . esc_html( $k['per'] ) . ' сесии на посетител</span></div>'
-			. '<div class="ap-kpi"><b>' . (int) $k['gate'] . '</b><span>минали попъпа</span></div>'
-			. '<div class="ap-kpi"><b>' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
-			. '<div class="ap-kpi"><b>' . (int) $k['full'] . '</b><span>напълнили</span></div>'
-			. '<div class="ap-kpi"><b>' . (int) $k['add'] . '</b><span>към плащане</span></div>'
-			. '<div class="ap-kpi good"><b>' . (int) $k['created'] . '</b><span>поръчали (сесии)</span></div>'
-			. ( null !== $wc ? '<div class="ap-kpi' . ( $wc === (int) $k['created'] ? ' good' : ' warn' ) . '"><b>' . (int) $wc . '</b><span>поръчки в WooCommerce за периода' . ( $wc === (int) $k['created'] ? ' — съвпадат' : ' — сесията на поръчката може да е започнала в друг ден; ако разликата е голяма, 🩺 → 🔄 Сверка' ) . '</span></div>' : '' )
-			. '<div class="ap-kpi good"><b>' . (int) $k['paid'] . '</b><span>платени (билет)</span></div>'
-			. '<div class="ap-kpi"><b>' . esc_html( $k['conv'] ) . '</b><span>конверсия сесия → поръчка</span></div>'
-			. '</div>';
-		/* „загубените“ — най-честите въпроси на човека: напълнили, но не поръчали и т.н. */
+		/* 1.23.0: дашбордът за периода (Трафик · Фуния · Поръчки · Оборот), после „загубените по пътя“ като плочки с линк към списъка */
+		$os = self::orders_stats( $rg ); $data = self::dashboard_data( $r, $os, array( 'period' => $ptxt ) );
+		if ( null !== $wc && $wc !== (int) $k['created'] ) { $data['created'][3] .= ' · <span title="сесията на поръчката може да е започнала в друг ден от самата поръчка; ако разликата е голяма — 🩺 → 🔄 Сверка">⚠ в WooCommerce за периода: ' . (int) $wc . '</span>'; }
+		echo self::dashboard_html( $data, 'apInsDashH' );
 		$lost = array(
-			array( $f['gate'] - $f['box'], 'минали попъпа, но не избрали кутия', $link( array( 'step' => 'gate', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ) ),
-			array( $f['box'] - $f['full'], 'избрали кутия, но не я напълнили', $link( array( 'step' => 'box', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ) ),
-			array( $f['full'] - $f['created'], 'напълнили кутията, но НЕ поръчали', $link( array( 'step' => 'full', 'mode' => 'min', 'ord' => 'no', 'pg' => '' ) ) ),
-			array( $f['add'] - $f['created'], 'стигнали до плащане, но НЕ поръчали', $link( array( 'step' => 'add', 'mode' => 'min', 'ord' => 'no', 'pg' => '' ) ) ),
-			array( $f['created'] - $f['paid'], 'поръчали, но още без платен билет', $link( array( 'step' => 'created', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ) ),
+			array( $f['gate'] - $f['box'], 'Минали попъпа, но не избрали кутия', $link( array( 'step' => 'gate', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ), $f['gate'] ),
+			array( $f['box'] - $f['full'], 'Избрали кутия, но не я напълнили', $link( array( 'step' => 'box', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ), $f['box'] ),
+			array( $f['full'] - $f['created'], 'Напълнили кутията, но НЕ поръчали', $link( array( 'step' => 'full', 'mode' => 'min', 'ord' => 'no', 'pg' => '' ) ), $f['full'] ),
+			array( $f['add'] - $f['created'], 'Стигнали до плащане, но НЕ поръчали', $link( array( 'step' => 'add', 'mode' => 'min', 'ord' => 'no', 'pg' => '' ) ), $f['add'] ),
+			array( $f['created'] - $f['paid'], 'Поръчали, но още без платен билет', $link( array( 'step' => 'created', 'mode' => 'exact', 'ord' => '', 'pg' => '' ) ), $f['created'] ),
 		);
-		echo '<div class="ap-kpis" style="padding:0 0 14px">';
-		foreach ( $lost as $l ) { echo '<div class="ap-kpi warn"><b>' . (int) max( 0, $l[0] ) . '</b><span>' . esc_html( $l[1] ) . ' · <a href="' . $l[2] . '">кои →</a></span></div>'; }
-		echo '</div>';
+		$tiles = ''; foreach ( $lost as $l ) { $tiles .= self::tile( $l[1], (string) (int) max( 0, $l[0] ), esc_html( self::pct( max( 0, $l[0] ), $l[3] ) ) . ' от стигналите дотам · <a href="' . $l[2] . '">кои →</a>', 'warn' ); }
+		echo self::group_html( '🛑 Загубени по пътя', $tiles, 'сесии, спрели преди следващата стъпка; „кои →“ филтрира списъка долу' );
+		echo self::status_table_html( $os, $ptxt );
 		/* фуния + докъде/къде спират */
 		echo '<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">🔻 Фунията за периода</span></div><div class="ap-sec__hint">Сесии, стигнали поне до стъпката; % спрямо видели / спрямо предишната; 👤 = уникални посетители (по IP), стигнали дотам.</div>' . self::funnel_html( $f, $r['vfunnel'] ) . '</div>';
 		echo '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛑 Докъде са стигнали и къде са спрели</span></div><div class="ap-sec__hint">„Спрели тук“ = най-далечната стъпка на сесията е точно тази (не е направила следващата). Цъкни числото — списъкът долу се филтрира по него.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>стъпка</th><th>стигнали (сесии)</th><th>👤 посетители</th><th>% от видели</th><th>продължили нататък</th><th>спрели тук (сесии)</th><th>👤 посетители</th><th>% от стигналите</th></tr></thead><tbody>';
@@ -588,10 +629,24 @@ final class Insights {
 		echo '</div>';
 	}
 
+	/** 1.23.0: поръчките по статус (WooCommerce) — брой, сума, група (взети / в път / загубени). */
+	public static function status_table_html( $os, $period = '' ) {
+		$gl = array( 'delivered' => '✅ взети', 'open' => '🚚 в път / чакат', 'lost' => '✕ загубени' );
+		$h = '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">📦 Поръчките по статус' . ( $period ? ' · ' . esc_html( $period ) : '' ) . '</span><small>' . (int) $os['n'] . ' поръчки · ' . esc_html( self::money( $os['total'] ) ) . '</small></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>статус (WooCommerce)</th><th>поръчки</th><th>% от всички</th><th>сума</th><th>група</th></tr></thead><tbody>';
+		foreach ( $os['by_status'] as $st => $v ) { $h .= '<tr><td><b>' . esc_html( $v['name'] ) . '</b> <small>' . esc_html( $st ) . '</small></td><td>' . (int) $v['n'] . '</td><td>' . esc_html( self::pct( $v['n'], $os['n'] ) ) . '</td><td>' . esc_html( self::money( $v['total'] ) ) . '</td><td>' . esc_html( $gl[ $v['grp'] ] ?? $v['grp'] ) . '</td></tr>'; }
+		if ( ! $os['by_status'] ) { $h .= '<tr><td colspan="5"><small>няма промо поръчки за периода</small></td></tr>'; }
+		return $h . '</tbody></table></div></div>';
+	}
 	/** Стиловете на екрана (веднъж). */
 	private static function styles() {
 		static $done = false; if ( $done ) { return; } $done = true;
-		echo '<style>.ap-ins-views .ap-chip{font-size:12.5px;padding:8px 16px}.ap-funnel{padding:4px 20px 6px;display:grid;gap:7px}.ap-fn{display:grid;grid-template-columns:190px 1fr 60px 260px;gap:10px;align-items:center;font-size:12.5px}.ap-fn__l{font-weight:800}.ap-fn__bar{height:16px;background:#fdebe9;border-radius:999px;overflow:hidden}.ap-fn__bar i{display:block;height:100%;background:linear-gradient(90deg,#f8a41d,#f47a49);border-radius:999px}.ap-fn__n{font-weight:900;text-align:right}.ap-fn small{font-weight:700;color:#a08579}.ap-tl{display:flex;gap:4px;flex-wrap:wrap}.ap-tl span{font-size:10.5px;font-weight:800;background:#fdebe9;border-radius:999px;padding:1px 7px;white-space:nowrap}.ap-tl span.hi{background:#def3e7;color:#1f7a4d}.ap-tl span.ord{background:#fdeecd;color:#a86b09}'
+		echo '<style>.ap-ins-views .ap-chip{font-size:12.5px;padding:8px 16px}'
+			/* 1.23.0: дашбордът — групи карти с плочки; лентата отляво носи тона (добро / внимание / лошо / инфо), числата са в мастило */
+			. '.ap-dash{display:grid;gap:14px;margin:0 0 16px}.ap-stg{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(224,96,44,.09);padding:14px 20px 16px}.ap-stg__h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 10px}.ap-stg__t{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a08579;font-weight:800}.ap-stg__hint{font-size:11px;font-weight:700;color:#a08579}'
+			. '.ap-stg__g{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.ap-st{position:relative;background:#fdebe9;border-radius:14px;padding:12px 14px 12px 18px;min-height:88px;display:flex;flex-direction:column;gap:5px;overflow:hidden}.ap-st::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:#f47a49}'
+			. '.ap-st--good::before{background:#3bb273}.ap-st--warn::before{background:#f8a41d}.ap-st--bad::before{background:#d64545}.ap-st--info::before{background:#2469a8}.ap-st__l{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#a08579}.ap-st__v{display:block;font-size:26px;font-weight:900;line-height:1.1;color:#43302a;font-variant-numeric:normal}.ap-st--hero{grid-column:span 2}.ap-st--hero .ap-st__v{font-size:48px}'
+			. '.ap-st__s{font-size:11px;font-weight:700;color:#a08579;line-height:1.35}.ap-st__s b{color:#43302a;font-weight:900}.ap-st__s a{color:#e0602c;font-weight:900;text-decoration:none}@media(max-width:600px){.ap-st--hero{grid-column:span 1}.ap-st--hero .ap-st__v{font-size:34px}}'
+			. '.ap-funnel{padding:4px 20px 6px;display:grid;gap:7px}.ap-fn{display:grid;grid-template-columns:190px 1fr 60px 260px;gap:10px;align-items:center;font-size:12.5px}.ap-fn__l{font-weight:800}.ap-fn__bar{height:16px;background:#fdebe9;border-radius:999px;overflow:hidden}.ap-fn__bar i{display:block;height:100%;background:linear-gradient(90deg,#f8a41d,#f47a49);border-radius:999px}.ap-fn__n{font-weight:900;text-align:right}.ap-fn small{font-weight:700;color:#a08579}.ap-tl{display:flex;gap:4px;flex-wrap:wrap}.ap-tl span{font-size:10.5px;font-weight:800;background:#fdebe9;border-radius:999px;padding:1px 7px;white-space:nowrap}.ap-tl span.hi{background:#def3e7;color:#1f7a4d}.ap-tl span.ord{background:#fdeecd;color:#a86b09}'
 			. '.ap-ins-range{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ap-ins-range label{font-size:12px;font-weight:800;color:#a08579}.ap-ins-range input[type=date]{border:0;border-radius:999px;padding:5px 12px;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,.06);font:inherit;font-size:12px;font-weight:800;color:#3b2a24;margin-left:4px}'
 			. '.ap-kpi.warn b{color:#a86b09}.ap-kpi span a{text-transform:none;letter-spacing:0;font-weight:900;color:#d9603a;text-decoration:none}.ap-ins-f{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:3px 20px}.ap-ins-f__l{font-size:10.5px;font-weight:800;color:#a08579;text-transform:uppercase;letter-spacing:.06em;min-width:84px}.ap-pg{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px 20px 4px;font-size:12px;font-weight:800;color:#a08579}'
 			. '@media(max-width:900px){.ap-fn{grid-template-columns:1fr 60px}.ap-fn__bar,.ap-fn small{grid-column:1/-1}}</style>';
