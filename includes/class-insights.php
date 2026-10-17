@@ -41,6 +41,7 @@ final class Insights {
 		add_action( 'wp_ajax_nopriv_ansa_promo_beacon', array( __CLASS__, 'ajax_beacon' ) );
 		add_action( 'wp_ajax_ansa_promo_insights_feed', array( __CLASS__, 'ajax_feed' ) );
 		add_action( 'wp_ajax_ansa_promo_insights_selftest', array( __CLASS__, 'ajax_selftest' ) ); /* 1.17.1 */
+		add_action( 'wp_ajax_ansa_promo_insights_backfill', array( __CLASS__, 'ajax_backfill' ) ); /* 1.21.1: сверка с поръчките */
 		add_action( 'ansa_promo_order_created', array( __CLASS__, 'on_order' ), 10, 2 );
 		add_action( 'ansa_promo_ticket_issued', array( __CLASS__, 'on_ticket' ), 10, 2 );
 		add_action( 'ansa_promo_ticket_activated', array( __CLASS__, 'on_activated' ), 10, 2 );
@@ -149,6 +150,8 @@ final class Insights {
 		$ok_s = Schema::exists( $ts ); $ok_e = Schema::exists( $te );
 		$out = array( 'tables' => $ok_s && $ok_e, 'db_ver' => (string) get_option( Schema::OPT_DB_VER, '' ), 'sessions' => $ok_s ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM $ts" ) : 0, 'events' => $ok_e ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM $te" ) : 0,
 			'last_event' => $ok_e ? (string) $wpdb->get_var( "SELECT MAX(at) FROM $te" ) : '', 'legacy_today' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(SUM(n),0) FROM $tst WHERE day = %s AND step = %s", current_time( 'Y-m-d' ), 'view' ) ),
+			'orders_wc' => count( self::promo_order_ids() ), /* 1.21.1: без черновите */
+			'orders_sess' => $ok_s ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM $ts WHERE order_id IS NOT NULL AND order_id > 0" ) : 0,
 			'live' => Config::is_live( $pub ), 'enabled' => ! empty( $pub['enabled'] ), 'preview_pw' => ! empty( Config::get_draft()['preview']['enabled'] ), 'page_id' => (int) $pub['page_id'], 'cache' => class_exists( '\\FlyingPress\\Purge' ) ? 'FlyingPress' : ( defined( 'WP_CACHE' ) && WP_CACHE ? 'да (WP_CACHE)' : 'не е засечен' ), 'db_error' => (string) $wpdb->last_error );
 		return $out;
 	}
@@ -164,27 +167,85 @@ final class Insights {
 		wp_send_json_success( array( 'ok' => $ok, 'msg' => $ok ? 'Записът в базата работи: сесия + 2 събития (изтрити след теста).' : 'Записът НЕ минава: ' . ( $e1 ?: $e2 ?: ( $row ? 'събития: ' . $n . ' вместо 2' : 'сесията не е записана' ) ), 'diag' => self::diagnostics() ) );
 	}
 
-	/* сървърните стъпки — през sid-а, записан в поръчката (Cart::build_meta → _ansa_promo.sid) */
-	private static function order_sid( $order ) { $m = $order ? (array) $order->get_meta( '_ansa_promo' ) : array(); return (string) ( $m['sid'] ?? '' ); }
+	/* сървърните стъпки — през sid-а, записан в поръчката (Cart::build_meta → _ansa_promo.sid).
+	   1.21.1 (човекът: „има 43 поръчки, а Insights отчита 16“): Insights брои сесии, а сесия имаше само поръчка със sid (от 1.17.0, 16.10 следобед) —
+	   по-ранните поръчки и тези без sid (стар promo.js от кеша) изобщо не влизаха. Сега поръчка без sid получава сесия „order-<id>“ (стъпка
+	   created/paid/activated по билета), и назад за старите (backfill_orders), и занапред. Така „поръчали“ в Insights = промо поръчките в WooCommerce. */
+	const ORDER_SID = 'order-';
+	public static function order_sid_for( $order_id ) { return self::ORDER_SID . (int) $order_id; }
+	public static function is_order_sid( $sid ) { return 0 === strpos( (string) $sid, self::ORDER_SID ); }
+	/** sid-ът на поръчката: от meta, иначе order-<id>. */
+	private static function order_sid( $order, $m = null ) { $m = null === $m ? ( $order ? (array) $order->get_meta( '_ansa_promo' ) : array() ) : (array) $m; $s = self::sid( $m['sid'] ?? '' ); return '' !== $s ? $s : ( $order ? self::order_sid_for( $order->get_id() ) : '' ); }
 	public static function on_order( $order, $m ) {
 		if ( ! empty( $m['draft'] ) ) { return; }
 		self::hit( 'created', (string) ( $m['box'] ?? '' ), (string) ( $m['utm'] ?? '' ) );
-		if ( ! empty( $m['sid'] ) ) { self::track( array( 'sid' => $m['sid'], 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ) ) ); }
+		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ), 'dev' => self::device_of( (string) $order->get_customer_user_agent() ) ) );
 	}
 	public static function on_ticket( $row, $order ) {
 		$m = (array) $order->get_meta( '_ansa_promo' ); if ( ! empty( $m['draft'] ) ) { return; }
 		self::hit( 'paid', (string) ( $row['box'] ?? '' ), (string) ( $m['utm'] ?? '' ) );
-		if ( ! empty( $m['sid'] ) ) { self::track( array( 'sid' => $m['sid'], 'ev' => 'paid', 'box' => (string) ( $row['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'n' => (int) ( $row['tickets'] ?? 0 ) ) ); }
+		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'paid', 'box' => (string) ( $row['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'n' => (int) ( $row['tickets'] ?? 0 ) ) );
 	}
 	public static function on_activated( $row, $user ) {
 		$o = wc_get_order( (int) $row['order_id'] ); $m = $o ? (array) $o->get_meta( '_ansa_promo' ) : array();
 		self::hit( 'activated', (string) ( $row['box'] ?? '' ), (string) ( $m['utm'] ?? '' ) );
-		if ( ! empty( $m['sid'] ) ) { self::track( array( 'sid' => $m['sid'], 'ev' => 'activated', 'box' => (string) ( $row['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => (int) $row['order_id'] ) ); }
+		if ( $o ) { self::track( array( 'sid' => self::order_sid( $o, $m ), 'ev' => 'activated', 'box' => (string) ( $row['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => (int) $row['order_id'] ) ); }
 	}
 	/** Статусът на поръчката се чете на живо във фийда; тук само опресняваме last_at, за да изплува сесията. */
 	public static function on_status( $order_id, $from, $to ) {
-		global $wpdb; $o = wc_get_order( (int) $order_id ); $sid = self::order_sid( $o ); if ( '' === $sid ) { return; }
+		global $wpdb; $o = wc_get_order( (int) $order_id ); if ( ! $o || ! $o->get_meta( '_ansa_promo_id' ) ) { return; } $sid = self::order_sid( $o ); if ( '' === $sid ) { return; }
 		$wpdb->update( Schema::table( 'sessions' ), array( 'last_at' => current_time( 'mysql' ) ), array( 'sid' => $sid ) );
+	}
+	private static function device_of( $ua ) { return '' === $ua ? '' : ( preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop' ); }
+
+	/** 1.21.1: сесия за всяка промо поръчка без такава (назад във времето). Връща броя добавени/свързани. Без $force — най-много веднъж на 10 мин. */
+	public static function backfill_orders( $force = false ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return 0; }
+		if ( ! $force && get_transient( 'ansa_promo_ins_backfill' ) ) { return 0; }
+		set_transient( 'ansa_promo_ins_backfill', 1, 10 * MINUTE_IN_SECONDS );
+		global $wpdb; $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' );
+		$have = array(); foreach ( (array) $wpdb->get_results( "SELECT order_id FROM $ts WHERE order_id IS NOT NULL AND order_id > 0", ARRAY_A ) as $r ) { $have[ (int) $r['order_id'] ] = 1; }
+		$ids = wc_get_orders( array( 'limit' => 2000, 'return' => 'ids', 'orderby' => 'date', 'order' => 'DESC', 'status' => array_keys( wc_get_order_statuses() ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) );
+		$n = 0;
+		foreach ( (array) $ids as $oid ) {
+			$oid = (int) $oid; if ( isset( $have[ $oid ] ) ) { continue; }
+			$o = wc_get_order( $oid ); if ( ! $o ) { continue; }
+			$m = (array) $o->get_meta( '_ansa_promo' ); if ( ! empty( $m['draft'] ) ) { continue; }
+			$sid = self::order_sid( $o, $m ); $t = Tickets::for_order( $oid );
+			$step = $t ? ( 'activated' === $t['status'] ? 'activated' : ( 'void' === $t['status'] ? 'created' : 'paid' ) ) : 'created';
+			$dc = $o->get_date_created(); $at = $dc ? $dc->date( 'Y-m-d H:i:s' ) : current_time( 'mysql' );
+			$box = self::tok( $m['box'] ?? '', 8, '/[^a-z]/' ); $utm = self::tok( $m['utm'] ?? '', 64 );
+			$row = $wpdb->get_row( $wpdb->prepare( "SELECT id, step, box, utm, last_at FROM $ts WHERE sid = %s", $sid ), ARRAY_A );
+			if ( $row ) {
+				$upd = array( 'order_id' => $oid ); if ( ( self::ORDER[ $step ] ?? 0 ) > ( self::ORDER[ $row['step'] ] ?? 0 ) ) { $upd['step'] = $step; } if ( $box && ! $row['box'] ) { $upd['box'] = $box; } if ( $utm && ! $row['utm'] ) { $upd['utm'] = $utm; } if ( $at > (string) $row['last_at'] ) { $upd['last_at'] = $at; }
+				$wpdb->update( $ts, $upd, array( 'id' => (int) $row['id'] ) );
+			} else {
+				$wpdb->insert( $ts, array( 'sid' => $sid, 'started_at' => $at, 'last_at' => $at, 'utm' => $utm, 'device' => self::device_of( (string) $o->get_customer_user_agent() ), 'lead_id' => ! empty( $m['lead_id'] ) ? (int) $m['lead_id'] : null, 'box' => $box, 'step' => $step, 'order_id' => $oid, 'ip' => substr( (string) $o->get_customer_ip_address(), 0, 45 ) ) );
+			}
+			$evs = array( array( 'created', $at ) ); if ( $t && 'void' !== $t['status'] ) { $evs[] = array( 'paid', (string) ( $t['created_at'] ?: $at ) ); } if ( $t && 'activated' === $t['status'] ) { $evs[] = array( 'activated', (string) ( $t['activated_at'] ?: $at ) ); }
+			foreach ( $evs as $e ) { if ( ! $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s LIMIT 1", $sid, $e[0] ) ) ) { $wpdb->insert( $te, array( 'sid' => $sid, 'at' => $e[1], 'ev' => $e[0], 'box' => $box, 'k' => '', 'n' => (int) ( $m['count'] ?? 0 ), 'utm' => $utm ), array( '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) ); } }
+			$n++;
+		}
+		return $n;
+	}
+	public static function ajax_backfill() {
+		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
+		$n = self::backfill_orders( true ); $d = self::diagnostics();
+		wp_send_json_success( array( 'ok' => true, 'n' => $n, 'msg' => ( $n ? 'Добавени ' . $n . ' сесии за поръчки без такава.' : 'Няма поръчки без сесия.' ) . ' Промо поръчки в WooCommerce: ' . (int) $d['orders_wc'] . ' · със сесия в Insights: ' . (int) $d['orders_sess'] . '. Презареди страницата.', 'diag' => $d ) );
+	}
+	/** 1.21.1: промо поръчките в WooCommerce (всички статуси, без черновите — те не броят никъде в Insights). $extra — още аргументи за wc_get_orders. */
+	public static function promo_order_ids( $extra = array() ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return array(); }
+		$ids = array();
+		foreach ( (array) wc_get_orders( array_merge( array( 'limit' => -1, 'return' => 'objects', 'status' => array_keys( wc_get_order_statuses() ), 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ), $extra ) ) as $o ) { $m = (array) $o->get_meta( '_ansa_promo' ); if ( empty( $m['draft'] ) ) { $ids[] = $o->get_id(); } }
+		return $ids;
+	}
+	/** 1.21.1: промо поръчките за период (по датата на поръчката, в часовата зона на сайта); null без WooCommerce. */
+	public static function wc_orders_count( $rg ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return null; }
+		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new \DateTimeZone( 'UTC' );
+		try { $a = ( new \DateTime( $rg['from'] . ' 00:00:00', $tz ) )->getTimestamp(); $b = ( new \DateTime( $rg['to'] . ' 23:59:59', $tz ) )->getTimestamp(); } catch ( \Exception $e ) { return null; }
+		return count( self::promo_order_ids( array( 'date_created' => $a . '...' . $b ) ) );
 	}
 
 	/* ── отчети ── */
@@ -283,7 +344,7 @@ final class Insights {
 				$timeline[] = array( 'ev' => $e['ev'], 't' => substr( $e['at'], 11, 5 ), 'l' => self::SHORT[ $e['ev'] ] ?? $e['ev'], 'x' => 'item' === $e['ev'] ? ( $names[ $e['k'] ] ?? $e['k'] ) : ( 'box' === $e['ev'] ? ( $boxes[ $e['box'] ] ?? $e['box'] ) : '' ) );
 			}
 			$out[] = array(
-				'id' => (int) $r['id'], 'sid' => $r['sid'], 'visitor' => $vlabel, 'visits' => $vn, 'started' => $r['started_at'], 'last' => $r['last_at'], 'ago' => human_time_diff( strtotime( $r['last_at'] ), current_time( 'timestamp' ) ),
+				'id' => (int) $r['id'], 'sid' => $r['sid'], 'nosess' => self::is_order_sid( $r['sid'] ), 'visitor' => $vlabel, 'visits' => $vn, 'started' => $r['started_at'], 'last' => $r['last_at'], 'ago' => human_time_diff( strtotime( $r['last_at'] ), current_time( 'timestamp' ) ),
 				'utm' => $r['utm'], 'utm_name' => $r['utm'] ? ( $names[ $r['utm'] ] ?? $r['utm'] ) : '', 'src' => trim( $r['src'] . ( $r['med'] ? ' / ' . $r['med'] : '' ) . ( $r['camp'] ? ' · ' . $r['camp'] : '' ) ), 'ref' => $r['ref'] ? (string) wp_parse_url( $r['ref'], PHP_URL_HOST ) : '', 'device' => $r['device'],
 				'email' => $r['lead_email'] ? (string) $r['lead_email'] : ( $o ? (string) $o->get_billing_email() : '' ), 'name' => $o ? trim( $o->get_billing_first_name() . ' ' . $o->get_billing_last_name() ) : '',
 				'box' => $r['box'], 'box_name' => $boxes[ $r['box'] ] ?? $r['box'], 'items' => $ic, 'step' => $r['step'], 'step_label' => self::SHORT[ $r['step'] ] ?? $r['step'], 'timeline' => $timeline,
@@ -349,6 +410,7 @@ final class Insights {
 	public static function current_view() { $v = sanitize_key( (string) ( $_GET['view'] ?? 'overview' ) ); return isset( self::views()[ $v ] ) ? $v : 'overview'; }
 	public static function render( $days = 30 ) {
 		$view = self::current_view();
+		self::backfill_orders(); /* 1.21.1: поръчки без сесия → сесия order-<id> (най-много веднъж на 10 мин) */
 		self::styles();
 		echo '<div class="ap-actions ap-ins-views" style="padding:0 0 12px"><div class="ap-chips">';
 		foreach ( self::views() as $v => $l ) { echo '<a class="ap-chip' . ( $v === $view ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'view' => $v ) ) ) . '">' . esc_html( $l ) . '</a>'; }
@@ -402,6 +464,7 @@ final class Insights {
 		echo '<div class="ap-sec' . ( $bad ? ' ap-sec--danger' : '' ) . '"><div class="ap-sec__h"><span class="ap-sec__t">🩺 Работи ли отчитането?</span><button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apInsTest">▶ Тест на записа</button></div><div class="ap-sec__b"><div class="ap-env" style="padding:0">'
 			. '<div class="ap-env__r ' . ( $dg['tables'] ? 'ok' : 'bad' ) . '"><span class="ap-env__dot ' . ( $dg['tables'] ? 'ok' : 'bad' ) . '"></span><span class="ap-env__l">Таблици</span><span class="ap-env__v">' . ( $dg['tables'] ? 'sessions + events са налице' : 'ЛИПСВАТ — деактивирай/активирай плъгина (Schema::install)' ) . ' · DB ver ' . esc_html( $dg['db_ver'] ) . ( $dg['db_error'] ? ' · грешка: ' . esc_html( $dg['db_error'] ) : '' ) . '</span></div>'
 			. '<div class="ap-env__r ' . ( $dg['events'] ? 'ok' : 'warn' ) . '"><span class="ap-env__dot ' . ( $dg['events'] ? 'ok' : 'warn' ) . '"></span><span class="ap-env__l">Записани досега</span><span class="ap-env__v">' . (int) $dg['sessions'] . ' сесии · ' . (int) $dg['events'] . ' събития · последно: ' . esc_html( $dg['last_event'] ?: 'още нищо' ) . ' · стар rollup днес (view): ' . (int) $dg['legacy_today'] . '</span></div>'
+			. '<div class="ap-env__r ' . ( $dg['orders_wc'] === $dg['orders_sess'] ? 'ok' : 'warn' ) . '"><span class="ap-env__dot ' . ( $dg['orders_wc'] === $dg['orders_sess'] ? 'ok' : 'warn' ) . '"></span><span class="ap-env__l">Поръчките</span><span class="ap-env__v">' . (int) $dg['orders_wc'] . ' промо поръчки в WooCommerce (без чернови) · ' . (int) $dg['orders_sess'] . ' със сесия в Insights' . ( $dg['orders_wc'] === $dg['orders_sess'] ? ' — съвпадат' : ' — <b>не съвпадат</b>: поръчки преди 16.10 следобед или от стар JS (кеш) нямат сесия; „🔄 Сверка“ им прави сесия order-№ от датата на поръчката (става и само при отваряне на Insights, на 10 мин)' ) . ' <button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apInsBackfill" style="margin-left:8px">🔄 Сверка с поръчките</button></span></div>'
 			. '<div class="ap-env__r ' . ( $dg['live'] ? 'ok' : 'bad' ) . '"><span class="ap-env__dot ' . ( $dg['live'] ? 'ok' : 'bad' ) . '"></span><span class="ap-env__l">Играта</span><span class="ap-env__v">' . ( $dg['live'] ? 'ВКЛЮЧЕНА — публичните посещения се броят' : ( $dg['enabled'] ? 'изтекла — не се брои нищо' : 'ИЗКЛЮЧЕНА — публичната страница е „скоро“, не се брои нищо' ) ) . ( $dg['preview_pw'] ? ' · прегледът с парола е включен: екипът с паролата вижда черновата и НЕ се брои' : '' ) . '</span></div>'
 			. '<div class="ap-env__r info"><span class="ap-env__dot info"></span><span class="ap-env__l">Кеш на страницата</span><span class="ap-env__v">' . esc_html( $dg['cache'] ) . ' — от 1.17.1 „view“ се брои и от кеширана страница (runtime ajax + бисквитка), но продуктите/кутията идват от новото promo.js: след ъпдейт изчисти кеша (🧰 Настройки → Публикуване → 🧹).</span></div>'
 			. '</div><div class="ap-note" id="apInsTestOut" style="padding:8px 4px 0"></div></div></div>';
@@ -423,7 +486,8 @@ final class Insights {
 		foreach ( self::STEPS as $s ) { echo '<tr><td>' . esc_html( self::LABELS[ $s ] ) . ' <small>' . esc_html( $s ) . '</small></td><td><b>' . (int) $legacy['by_step'][ $s ] . '</b></td><td>' . esc_html( self::pct( $legacy['by_step'][ $s ], $legacy['by_step']['view'] ) ) . '</td></tr>'; }
 		echo '</tbody></table></div></div>';
 		/* тестът на записа */
-		echo '<script>(function(){' . self::ajax_vars() . 'var tb2=document.getElementById("apInsTest"),out=document.getElementById("apInsTestOut");if(tb2)tb2.onclick=function(){out.textContent="… тествам";fetch(ajax+"?action=ansa_promo_insights_selftest&nonce="+nonce,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){var d=r&&r.data||{};out.innerHTML=(d.ok?"<span class=\"good\">✓ ":"<span class=\"bad\">✕ ")+(d.msg||"грешка")+"</span>"}).catch(function(){out.textContent="мрежова грешка"})};})();</script>';
+		echo '<script>(function(){' . self::ajax_vars() . 'var tb2=document.getElementById("apInsTest"),out=document.getElementById("apInsTestOut");if(tb2)tb2.onclick=function(){out.textContent="… тествам";fetch(ajax+"?action=ansa_promo_insights_selftest&nonce="+nonce,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){var d=r&&r.data||{};out.innerHTML=(d.ok?"<span class=\"good\">✓ ":"<span class=\"bad\">✕ ")+(d.msg||"грешка")+"</span>"}).catch(function(){out.textContent="мрежова грешка"})};'
+			. 'var bf=document.getElementById("apInsBackfill");if(bf)bf.onclick=function(){out.textContent="… сверявам с поръчките";bf.disabled=true;fetch(ajax+"?action=ansa_promo_insights_backfill&nonce="+nonce,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){var d=r&&r.data||{};out.innerHTML="<span class=\"good\">✓ "+(d.msg||"готово")+"</span>";bf.disabled=false}).catch(function(){out.textContent="мрежова грешка";bf.disabled=false})};})();</script>';
 	}
 
 	/* ── 🟢 На живо (1.21.0: отделен таб) ── */
@@ -452,7 +516,7 @@ final class Insights {
 	/* ── 📜 История (1.21.0) ── */
 	private static function render_history() {
 		$rg = self::range( (string) ( $_GET['from'] ?? '' ), (string) ( $_GET['to'] ?? '' ) ); $today = current_time( 'Y-m-d' ); $now = current_time( 'timestamp' );
-		$r = self::sessions_report( 0, $rg ); $f = $r['funnel']; $k = self::kpi( $r ); $boxes = self::box_names();
+		$r = self::sessions_report( 0, $rg ); $f = $r['funnel']; $k = self::kpi( $r ); $boxes = self::box_names(); $wc = self::wc_orders_count( $rg ); /* 1.21.1: сверка с WooCommerce */
 		/* филтрите на списъка */
 		$step = sanitize_key( (string) ( $_GET['step'] ?? '' ) ); if ( ! in_array( $step, self::FUNNEL, true ) ) { $step = ''; }
 		$mode = 'exact' === ( $_GET['mode'] ?? '' ) ? 'exact' : 'min';
@@ -476,7 +540,8 @@ final class Insights {
 			. '<div class="ap-kpi"><b>' . (int) $k['box'] . '</b><span>избрали кутия</span></div>'
 			. '<div class="ap-kpi"><b>' . (int) $k['full'] . '</b><span>напълнили</span></div>'
 			. '<div class="ap-kpi"><b>' . (int) $k['add'] . '</b><span>към плащане</span></div>'
-			. '<div class="ap-kpi good"><b>' . (int) $k['created'] . '</b><span>поръчали</span></div>'
+			. '<div class="ap-kpi good"><b>' . (int) $k['created'] . '</b><span>поръчали (сесии)</span></div>'
+			. ( null !== $wc ? '<div class="ap-kpi' . ( $wc === (int) $k['created'] ? ' good' : ' warn' ) . '"><b>' . (int) $wc . '</b><span>поръчки в WooCommerce за периода' . ( $wc === (int) $k['created'] ? ' — съвпадат' : ' — сесията на поръчката може да е започнала в друг ден; ако разликата е голяма, 🩺 → 🔄 Сверка' ) . '</span></div>' : '' )
 			. '<div class="ap-kpi good"><b>' . (int) $k['paid'] . '</b><span>платени (билет)</span></div>'
 			. '<div class="ap-kpi"><b>' . esc_html( $k['conv'] ) . '</b><span>конверсия сесия → поръчка</span></div>'
 			. '</div>';
@@ -540,7 +605,7 @@ final class Insights {
 			$vis = ! empty( $s['visitor'] ) ? '<small class="ap-vis" title="един и същ посетител (IP) — не е адресът, а етикет">👤' . esc_html( $s['visitor'] ) . ( ( $s['visits'] ?? 1 ) > 1 ? ' · <b>' . (int) $s['visits'] . ' сесии</b>' : ' · 1-ва сесия' ) . '</small>' : '';
 			$who = ( $s['email'] ? '<b>' . esc_html( $s['email'] ) . '</b>' . ( $s['name'] ? '<br><small>' . esc_html( $s['name'] ) . '</small>' : '' ) : '<small>анонимна</small>' ) . ( $vis ? '<br>' . $vis : '' );
 			$from = ( $s['utm_name'] ? '🏷️ ' . esc_html( $s['utm_name'] ) : '' ) . ( $s['src'] ? ( $s['utm_name'] ? '<br>' : '' ) . '<small>' . esc_html( $s['src'] ) . '</small>' : '' ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
-			$tl = '<div class="ap-tl">'; foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
+			$tl = '<div class="ap-tl">' . ( ! empty( $s['nosess'] ) ? '<small title="поръчка преди 16.10 следобед или от стар promo.js (кеш): пътят до нея не е записан">🧾 само поръчката, сесията не е проследена</small> ' : '' ); foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
 			$ord = $s['order'] ? '<a href="' . esc_url( $s['order']['edit'] ) . '">#' . esc_html( $s['order']['number'] ) . '</a><br><small>' . esc_html( $s['order']['status'] ) . ' · ' . esc_html( number_format( (float) $s['order']['total'], 2, ',', '' ) ) . ' €</small>' : '<small>' . esc_html( $s['step_label'] ) . '</small>';
 			$h .= '<tr><td><b>' . esc_html( substr( $s['last'], 11, 5 ) ) . '</b><br><small>' . esc_html( substr( $s['started'], 0, 10 ) ) . ' · преди ' . esc_html( $s['ago'] ) . '</small></td><td>' . $who . '</td><td>' . ( $from ?: '<small>директно</small>' ) . '</td><td>' . ( 'mobile' === $s['device'] ? '📱' : ( 'desktop' === $s['device'] ? '🖥️' : '—' ) ) . '</td><td>' . ( $s['box'] ? '<b>' . esc_html( $s['box_name'] ) . '</b>' : '<small>—</small>' ) . ( $s['items'] ? '<br><small>' . esc_html( implode( ', ', $s['items'] ) ) . '</small>' : '' ) . '</td><td>' . $tl . '</td><td>' . $ord . '</td></tr>';
 		}
