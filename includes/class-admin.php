@@ -49,7 +49,7 @@ final class Admin {
 			'editor'   => array( '✏️', 'Редактор',   'Текстовете на страницата върху живия канвас · ⚙️ Двигател' ),
 			'orders'   => array( '🎟️', 'Поръчки',    'Промо поръчките, билетите, FunnelKit таговете' ),
 			'tombola'  => array( '🎲', 'Томбола',    'Участници, билети, препоръки, теглене' ),
-			'insights' => array( '📈', 'Insights',   'Фунията по стъпки, по UTM и по дни' ),
+			'insights' => array( '📈', 'Insights',   'Преглед по период · 🟢 На живо · 📜 История: докъде стигат и къде спират хората' ),
 			'json'     => array( '{ }', 'JSON',      'Черновата като JSON — износ и внос' ),
 		);
 	}
@@ -172,7 +172,9 @@ final class Admin {
 				echo Insights::csv( (int) ( $_POST['days'] ?? 30 ) ); exit;
 			case 'export_sessions': /* 1.17.0 */
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-sessions-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
-				echo Insights::csv_sessions( (int) ( $_POST['days'] ?? 30 ) ); exit;
+				/* 1.21.0: от 📜 История идва период + филтърът на списъка (from/to/step/mode/box/ord/dev) — CSV на точно тези редове; от 📊 Преглед — days както досега */
+				$q = ! empty( $_POST['from'] ) || ! empty( $_POST['to'] ) ? array_map( 'sanitize_text_field', array_intersect_key( (array) wp_unslash( $_POST ), array_flip( array( 'from', 'to', 'step', 'mode', 'box', 'ord', 'dev' ) ) ) ) : null;
+				echo Insights::csv_sessions( (int) ( $_POST['days'] ?? 30 ), $q ); exit;
 			case 'export_orders':
 				$rows = Tickets::orders( array( 'limit' => 2000 ) );
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-orders-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
@@ -244,7 +246,9 @@ final class Admin {
 					<?php endforeach; ?>
 					<a class="ap-nav__it<?php echo 'editor' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'editor' ) ) ); ?>"><span class="ic">✏️</span>Редактор</a>
 					<div class="ap-nav__label">Сезонът</div>
-					<?php foreach ( array( 'orders', 'tombola', 'insights' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?></a><?php endforeach; ?>
+					<?php foreach ( array( 'orders', 'tombola', 'insights' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?></a>
+					<?php if ( 'insights' === $k && 'insights' === $tab ) : ?><div class="ap-nav__sub"><?php $iv = Insights::current_view(); foreach ( Insights::views() as $vk => $vl ) : ?><a class="<?php echo $vk === $iv ? 'on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'insights', 'view' => $vk ) ) ); ?>"><?php echo esc_html( $vl ); ?></a><?php endforeach; ?></div><?php endif; /* 1.21.0: подменю Преглед · На живо · История */ ?>
+					<?php endforeach; ?>
 					<div class="ap-nav__label">Още</div>
 					<a class="ap-nav__it<?php echo 'json' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'json' ) ) ); ?>"><span class="ic">{ }</span>JSON</a>
 					<a class="ap-nav__it" href="<?php echo esc_url( admin_url( 'admin.php?page=pcc-github' ) ); ?>"><span class="ic">⬆️</span>GitHub ъпдейти<span class="ext">↗</span></a>
@@ -493,7 +497,7 @@ final class Admin {
 				<?php if ( ! $ent ) : ?><tr><td colspan="12">Още няма получени промо поръчки с билет (статуси: <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?>).</td></tr><?php endif; ?>
 				</tbody></table></div></div>
 			<?php elseif ( 'insights' === $tab ) : ?>
-				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); /* 1.17.0: Insights 2 — сесии, фуния, жив фийд; рендира своите карти */ ?>
+				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); /* 1.17.0: Insights 2 — сесии, фуния; 1.21.0: ?view=overview|live|history (📊 Преглед · 🟢 На живо · 📜 История); рендира своите карти */ ?>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">{ } Черновата като JSON</span></div><div class="ap-sec__b">
 				<?php self::form_open( 'import', 'json', ' style="display:block"' ); ?>
