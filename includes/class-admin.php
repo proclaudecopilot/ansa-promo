@@ -59,7 +59,8 @@ final class Admin {
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
-	 *  „Преглед като седмица N“ (черновата с ?week=N). Датите се смятат от старта и срока; въвеждат се само процентите. */
+	 *  „Преглед като седмица N“ (черновата с ?week=N). Датите се смятат от старта и срока; 1.22.0: краят на всяка седмица може да се зададе (колона „до“) —
+	 *  следващата тръгва на другия ден; празно = 7 дни. Таблицата се преизчислява след 💾 Запази. */
 	private static function season_section( $draft, $draft_url = '' ) {
 		$sn = $draft['season']; $rows = Config::season_weeks( $draft ); $now = time(); $cur = Config::weekly_on( $draft ) ? Config::week_for( $draft, $now ) : null;
 		$base = array(); foreach ( $draft['boxes'] as $b ) { $base[ $b['id'] ] = $b; }
@@ -67,22 +68,24 @@ final class Admin {
 		$dow = array( 'нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб' );
 		echo '<section class="ap-sec" id="s-season"><div class="ap-sec__h"><span class="ap-sec__t">📅 Седмици на сезона</span>' . ( $draft_url && $rows ? '<a class="ap-btn ap-btn--secondary ap-btn--sm" href="' . esc_url( add_query_arg( 'week', $cur && $cur['next'] ? (int) $cur['next']['i'] : 1, $draft_url ) ) . '" target="_blank" rel="noopener">👁 Преглед като седмица ' . ( $cur && $cur['next'] ? (int) $cur['next']['i'] : 1 ) . '</a>' : '' ) . '</div><div class="ap-sec__b">';
 		echo '<p><label><input type="checkbox" name="season_weekly" value="1"' . checked( ! empty( $sn['weekly'] ), true, false ) . '> <b>отстъпките падат по седмици</b> — всяка кутия има свой процент за всяка седмица; количката, страницата, „Как работи“ и /info четат оттук</label></p>';
-		echo '<p class="description">Седмиците тръгват от старта (00:00 по часа на сайта) и свършват на срока на играта (последната може да е по-къса). Празна клетка = процентът на кутията. Цената от добавянето в количката се пази толкова часа след смяната, после по-ниската отстъпка влиза с бележка за клиента. Override-ите по продукт (📦 Продукти) не се пипат. Прегледът: <code>?ansa_promo=draft&amp;week=N</code>.</p>';
+		echo '<p class="description">Седмиците тръгват от старта (00:00 по часа на сайта) и свършват на срока на играта (последната може да е по-къса). По подразбиране са по 7 дни; в колоната <b>до</b> може да сложиш друг последен ден на седмицата (включително) — следващата тръгва на другия ден, а празно = 7 дни; броят седмици и датите се преизчисляват след 💾 Запази. Празна клетка за процент = процентът на кутията. Цената от добавянето в количката се пази толкова часа след смяната, после по-ниската отстъпка влиза с бележка за клиента. Override-ите по продукт (📦 Продукти) не се пипат. Прегледът: <code>?ansa_promo=draft&amp;week=N</code>.</p>';
 		echo '<p class="ap-fl"><b>Старт на сезона</b></p><input type="date" name="season_start" value="' . esc_attr( $sn['start'] ) . '"> <span class="description">краят е „Край“ от 🎯 Страница и игра (' . esc_html( $draft['deadline'] ?: 'няма' ) . ')</span>';
 		echo '<p class="ap-fl"><b>Гратис след смяната</b></p><input type="number" name="season_grace" min="0" max="168" step="1" value="' . (int) $sn['grace_hours'] . '" style="width:80px"> часа';
 		echo '<p class="ap-fl"><b>Стълбата на отстъпките</b></p>';
 		echo '<div class="ap-season-fill" style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:#faf7f2;border:1px dashed rgba(26,26,46,.12);border-radius:10px;padding:10px 12px;margin:0 0 10px"><b>Запълни линейно:</b>';
 		foreach ( $base as $bid => $b ) { echo '<span style="white-space:nowrap">' . esc_html( $b['ic'] ) . ' от −<input type="text" inputmode="decimal" data-sf="' . esc_attr( $bid ) . '" value="' . esc_attr( $fmt( $b['pct'] ) ) . '" style="width:52px;text-align:center"> → −<input type="text" inputmode="decimal" data-st="' . esc_attr( $bid ) . '" value="" placeholder="?" style="width:52px;text-align:center">%</span>'; }
 		echo '<button type="button" class="ap-btn ap-btn--secondary ap-btn--sm" id="apSeasonFill">Запълни ' . count( $rows ) . '-те седмици</button><span class="description">после всяко число може да се пипне ръчно</span></div>';
-		echo '<div style="overflow-x:auto"><table class="widefat striped" id="apSeasonT" style="min-width:560px"><thead><tr><th style="width:36px">#</th><th>Седмица</th><th>Статус</th>';
+		echo '<div style="overflow-x:auto"><table class="widefat striped" id="apSeasonT" style="min-width:640px"><thead><tr><th style="width:36px">#</th><th>Седмица</th><th>до <small style="font-weight:600;color:#6b5f58">(посл. ден; празно = 7 дни)</small></th><th>Статус</th>';
 		foreach ( $base as $b ) { echo '<th>' . esc_html( $b['ic'] . ' ' . $b['name'] ) . '<br><small style="font-weight:600;color:#6b5f58">кутията: −' . esc_html( $fmt( $b['pct'] ) ) . '%</small></th>'; }
 		echo '</tr></thead><tbody>';
-		if ( ! $rows ) { echo '<tr><td colspan="6">Няма седмици — въведи старт и край.</td></tr>'; }
+		if ( ! $rows ) { echo '<tr><td colspan="7">Няма седмици — въведи старт и край.</td></tr>'; }
 		foreach ( $rows as $r ) {
 			$i = (int) $r['i'] - 1; $is_cur = $cur && (int) $cur['i'] === (int) $r['i']; $past = $now >= $r['to']; $next = $cur && $cur['next'] && (int) $cur['next']['i'] === (int) $r['i'];
 			$st = $is_cur && $now < $r['from'] ? '<span style="color:#c2410c;font-weight:800">стартира ' . esc_html( wp_date( 'd.m', (int) $r['from'] ) ) . '</span>' : ( $is_cur ? '<span style="background:#e8722a;color:#fff;border-radius:999px;padding:2px 8px;font-weight:900;font-size:11px">текуща</span>' : ( $past ? '<span style="color:#6b5f58">минала</span>' : ( $next ? '<span style="color:#c2410c;font-weight:800">следваща</span>' : ( (int) $r['i'] === count( $rows ) ? 'последна' : 'предстояща' ) ) ) );
-			$lbl = $dow[ (int) wp_date( 'w', (int) $r['from'] ) ] . ' ' . wp_date( 'd.m', (int) $r['from'] ) . ' – ' . $dow[ (int) wp_date( 'w', (int) $r['to'] - MINUTE_IN_SECONDS ) ] . ' ' . wp_date( 'd.m', (int) $r['to'] - MINUTE_IN_SECONDS );
-			echo '<tr' . ( $is_cur ? ' style="background:rgba(232,114,42,.07)"' : ( $past ? ' style="color:#6b5f58"' : '' ) ) . '><td><b>' . (int) $r['i'] . '</b></td><td style="white-space:nowrap">' . esc_html( $lbl ) . '</td><td>' . $st . '</td>';
+			$days = max( 1, (int) round( ( (int) $r['to'] - (int) $r['from'] ) / DAY_IN_SECONDS ) );
+			$lbl = $dow[ (int) wp_date( 'w', (int) $r['from'] ) ] . ' ' . wp_date( 'd.m', (int) $r['from'] ) . ' – ' . $dow[ (int) wp_date( 'w', (int) $r['to'] - MINUTE_IN_SECONDS ) ] . ' ' . wp_date( 'd.m', (int) $r['to'] - MINUTE_IN_SECONDS ) . ( 7 !== $days ? ' · ' . $days . ' ' . ( 1 === $days ? 'ден' : 'дни' ) : '' );
+			$to_v = (string) ( $sn['weeks'][ $i ]['to'] ?? '' ); /* 1.22.0: краят по избор; в полето стои само въведеното, датата по подразбиране е в „Седмица“ */
+			echo '<tr' . ( $is_cur ? ' style="background:rgba(232,114,42,.07)"' : ( $past ? ' style="color:#6b5f58"' : '' ) ) . '><td><b>' . (int) $r['i'] . '</b></td><td style="white-space:nowrap">' . esc_html( $lbl ) . '</td><td style="white-space:nowrap"><input type="date" name="season_to[' . $i . ']" value="' . esc_attr( $to_v ) . '" min="' . esc_attr( wp_date( 'Y-m-d', (int) $r['from'] ) ) . '"' . ( $draft['deadline'] ? ' max="' . esc_attr( substr( (string) $draft['deadline'], 0, 10 ) ) . '"' : '' ) . ' title="последният ден на седмицата (включително); празно = 7 дни">' . ( ! empty( $r['to_bad'] ) ? ' <span style="color:#cf222e" title="въведеният край е преди началото на седмицата — ползва се 1 ден">⚠</span>' : '' ) . '</td><td>' . $st . '</td>';
 			foreach ( $base as $bid => $b ) { $v = isset( $sn['weeks'][ $i ][ $bid ] ) ? $sn['weeks'][ $i ][ $bid ] : null; echo '<td>−<input type="text" inputmode="decimal" name="season_pct[' . $i . '][' . esc_attr( $bid ) . ']" data-sp="' . esc_attr( $bid ) . '" value="' . esc_attr( $fmt( $v ) ) . '" placeholder="' . esc_attr( $fmt( $b['pct'] ) ) . '" style="width:64px;text-align:right">%</td>'; }
 			echo '</tr>';
 		}
@@ -133,7 +136,8 @@ final class Admin {
 				/* v1.19.0: седмиците на сезона — season_pct[i][s|m|l]; празно = процентът на кутията; запетая = точка */
 				$cfg['season']['weekly'] = ! empty( $_POST['season_weekly'] ); $cfg['season']['start'] = sanitize_text_field( (string) wp_unslash( $_POST['season_start'] ?? '' ) ); $cfg['season']['grace_hours'] = (int) ( $_POST['season_grace'] ?? 24 );
 				$wk = (array) ( $_POST['season_pct'] ?? array() ); $cfg['season']['weeks'] = array(); $nmax = -1; foreach ( $wk as $i => $row ) { $nmax = max( $nmax, (int) $i ); }
-				for ( $i = 0; $i <= $nmax; $i++ ) { $row = array(); foreach ( array( 's', 'm', 'l' ) as $bid ) { $v = isset( $wk[ $i ][ $bid ] ) ? str_replace( ',', '.', trim( (string) wp_unslash( $wk[ $i ][ $bid ] ) ) ) : ''; $row[ $bid ] = ( '' === $v || ! is_numeric( $v ) ) ? null : (float) $v; } $cfg['season']['weeks'][] = $row; }
+				$wto = (array) ( $_POST['season_to'] ?? array() ); foreach ( $wto as $i => $v ) { $nmax = max( $nmax, (int) $i ); } /* 1.22.0: краят на седмицата по избор */
+				for ( $i = 0; $i <= $nmax; $i++ ) { $row = array(); foreach ( array( 's', 'm', 'l' ) as $bid ) { $v = isset( $wk[ $i ][ $bid ] ) ? str_replace( ',', '.', trim( (string) wp_unslash( $wk[ $i ][ $bid ] ) ) ) : ''; $row[ $bid ] = ( '' === $v || ! is_numeric( $v ) ) ? null : (float) $v; } $row['to'] = sanitize_text_field( (string) wp_unslash( $wto[ $i ] ?? '' ) ); $cfg['season']['weeks'][] = $row; }
 				$cfg['utm_param'] = sanitize_text_field( (string) wp_unslash( $_POST['utm_param'] ?? 'utm_content' ) );
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
 				$gi = (array) ( $_POST['gate_img'] ?? array() ); $cfg['gate']['images'] = array();

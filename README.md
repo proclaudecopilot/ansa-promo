@@ -17,7 +17,7 @@ ansa-promo.php          header, константи (ANSA_PROMO_VER, ANSA_PROMO_P
                         при смяна на версията, HPOS compat, boot на plugins_loaded (5), mu-updater инсталатор
 includes/class-plugin.php    boot, activate/deactivate, cron, Shrine helpers (shrine_version, shrine_promo_module_loaded, shortcode_owner)
 includes/class-schema.php    таблици {prefix}ansa_promo_tickets / _leads / _stats (dbDelta при активация и при смяна на ANSA_PROMO_DB_VER)
-includes/class-config.php    option ansa_promo_store {draft, published, published_at, version, history[10]}; normalize; publish/discard/restore; export/import
+includes/class-config.php    option ansa_promo_store {draft, published, published_at, version, history[10]}; normalize; publish/discard/restore; export/import; 1.19.0: седмиците на сезона (season_weeks/week_for/at), 1.22.0: край на седмица по избор (weeks[i].to)
 includes/class-copy.php      копи-регистърът (мокъп v73): groups → keys → defaults; effective/diff/validate/render; vars()
 includes/class-catalog.php   WC адаптери: wc_line (вариация „1 брой“), search, find_by_name; runtime transient + purge
 includes/class-frontend.php  [ansa_promo] (init 20), enqueue, runtime JSON (window.AnsaPromoRuntime), ?ansa_promo=draft, noindex, ajax runtime
@@ -101,6 +101,15 @@ docs/                        планът + мокъпът + port-css.py + shots
 **1.0.51 — имейл-попъп на телефон: полето и бутонът са на два отделни реда** (забележка на човека; иначе 1.0.50 е одобрен). Проверено: на 390×780 попъпът пак се събира без скрол.
 
 **1.0.52 — iPhone Safari: листът не е на цял екран + хоризонтален скрол (забележка на човека):** (1) iOS Safari игнорира `overflow:hidden` на body при докосване — страницата зад листа се местеше и листът „падаше“ (хедърът отрязан, страницата прозира отдолу). Сега `lockBody()` прави body `position:fixed` на запазената позиция (`html.ap-lock`, `top:-Ypx`), `unlockBody()` я връща при затваряне. (2) Хоризонтален скрол е забранен навсякъде на промо страницата: `html.ansa-promo-html` (слага се от promo.js) + body са с `overflow-x:hidden; max-width:100vw; touch-action: pan-y pinch-zoom`; листът, скрол зоната и картите са с `overflow-x:hidden; touch-action: pan-y`. В харнеса (Chromium) нищо не е по-широко от екрана на 360/390 на gate/boxes/fill — проблемът е специфичен за Safari, затова мерките са защитни. CSS: promo-extra.css секция 40 + html.ap-lock.
+
+### 1.22.0 — седмиците на сезона с край по избор: „една по-дълга и по-кратка седмица“ (човекът)
+
+Човекът: „Искам да мога да настроя датите на седмиците. Примерно първата седмица да приключи 20.10 и след това да е от 21.10 до Х… искам да имам една по-дълга и по-кратка седмица, но в момента датите са фиксирани.“
+
+- **Модел** (`Config`): `season.weeks[i].to` = последният ден на седмицата (Y-m-d, включително) по избор; следващата тръгва на другия ден в 00:00 по часа на сайта (DST-safe). Празно = 7 дни, както досега. `season_weeks()` върви седмица по седмица (по 7 дни или до въведения край) до срока; последната винаги свършва на срока; броят седмици вече е броят редове (`season_count()` = `count(season_weeks())`), т.е. ако скъсиш една седмица, в края се появява още една, а ако удължиш — изчезва. Край преди началото на седмицата → седмица от 1 ден + флаг `to_bad` (⚠ в таблицата, предупреждение в Doctor); край след срока → последната, до срока. Без срок — колкото реда са въведени. Редовете носят `to_custom`.
+- **Админът**: 🧰 Настройки → 📅 Седмици на сезона → нова колона **„до“** (дата, последният ден включително; min = началото на седмицата, max = срокът) до всяка седмица; в колоната „Седмица“ се вижда и дължината, когато не е 7 дни („пт 16.10 – вт 20.10 · 5 дни“). Датите и броят се преизчисляват след 💾 Запази (и важат на живо след 🚀 Публикувай). Процентите остават по ред на седмицата.
+- Doctor: „N с избран край“ в реда „Седмици на сезона“, предупреждение за край преди началото. Количката (гратисът), фронтът (чип, лента, стълбата), cron-ът на смяната, `?week=N` и probe `promo-season` четат същите редове — нищо друго не се променя.
+- Офлайн тест: `php tests/season-test.php` (20 проверки: по подразбиране 11×7 дни, край 20.10 → 21.10 и 12 седмици, по-дълга 12-дневна през DST, край преди началото / след срока / на срока, без срок, normalize, box_pct_at и Config::at през границата).
 
 ### 1.21.1 — Insights брои и поръчките без сесия: „има 43 поръчки, а Insights отчита 16“ (човекът)
 
