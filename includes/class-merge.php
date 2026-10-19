@@ -229,7 +229,7 @@ final class Merge {
 	/**
 	 * Слага таговете (общия + на кутията) на контакта на промо поръчка. Идемпотентно: meta `_ansa_promo_fka_tags` = сложените
 	 * имена (масив), `_ansa_promo_fka_tag` = четим низ „таг #id · crm|db|има; …“ или „retry: …“. При липсващи FunnelKit
-	 * функции / контакт / таг се опитва пак на следващия hook. Връща 'crm' | 'db' | 'има' | 'retry' | 'off' | ….
+	 * функции / контакт / таг се опитва пак на следващия hook. Връща 'crm' | 'db' | 'има' | 'retry' | 'off' | 'paused' (1.24.0) | ….
 	 */
 	public static function tag_order( $order_id ) {
 		$order = is_object( $order_id ) ? $order_id : ( function_exists( 'wc_get_order' ) ? wc_get_order( (int) $order_id ) : null );
@@ -237,6 +237,7 @@ final class Merge {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return 'not-promo'; }
 		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published();
 		$names = self::tag_names_for( $cfg, (string) ( $m['box'] ?? '' ) ); if ( ! $names ) { return 'off'; }
+		if ( FKA_Pause::paused() ) { return 'paused'; } /* 1.24.0: имейлите от FunnelKit са спрени → без таг (и без meta, за да го хване „🏷️ Сложи тага“ при включване) */
 		$done = array_values( array_filter( array_map( 'strval', (array) $order->get_meta( '_ansa_promo_fka_tags' ) ) ) );
 		$todo = array_values( array_diff( $names, $done ) );
 		if ( ! $todo ) { return 'има'; }

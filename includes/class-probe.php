@@ -432,7 +432,8 @@ final class Probe {
 		$t->ok( 'merge: [ansa_promo_tickets_text] носи броя, без {{ }}', false !== strpos( $txt, (string) (int) $row['tickets'] ) && false === strpos( $txt, '{{' ), wp_strip_all_tags( $txt ) );
 		$t->eq( 'merge: без промо поръчка → 0 / празно', '0|', do_shortcode( '[ansa_promo_tickets order_id="999999999"]' ) . '|' . do_shortcode( '[ansa_promo_tickets_text order_id="999999999"]' ) );
 		$tagm = (string) wc_get_order( $oid )->get_meta( '_ansa_promo_fka_tag' );
-		$t->ok( 'merge: FunnelKit таг на контакта (тригърът)', '' === Merge::tag_name( $cfg ) || ! function_exists( 'bwf_get_contact' ) || ( '' !== $tagm && 0 !== strpos( $tagm, 'retry' ) ), $tagm ?: ( '' === Merge::tag_name( $cfg ) ? 'тагът е изключен' : 'FunnelKit контакти липсват' ) );
+		$t->ok( 'merge: FunnelKit таг на контакта (тригърът)', FKA_Pause::paused() || '' === Merge::tag_name( $cfg ) || ! function_exists( 'bwf_get_contact' ) || ( '' !== $tagm && 0 !== strpos( $tagm, 'retry' ) ), $tagm ?: ( FKA_Pause::paused() ? 'имейлите от FunnelKit са спрени (1.24.0) — без таг, както трябва' : ( '' === Merge::tag_name( $cfg ) ? 'тагът е изключен' : 'FunnelKit контакти липсват' ) ) );
+		if ( FKA_Pause::paused() ) { $tr = (string) Merge::tag_order( $oid ); $t->ok( 'merge: спрени имейли → tag_order = paused (или off без таг), без meta', in_array( $tr, array( 'paused', 'off' ), true ) && '' === $tagm, $tr . '|' . $tagm ); }
 		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_tickets}}', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_tickets' ), Merge::fka_status() );
 		$t->ok( 'merge: FunnelKit Automations {{ansa_promo_ref_link}} (1.13.0)', ! defined( 'BWFAN_VERSION' ) || shortcode_exists( 'bwfan_ansa_promo_ref_link' ), Merge::fka_status() );
 		if ( Tombola::enabled( $cfg ) && ! empty( $rc ) ) { $t->eq( 'ref: билетът наследи кода от meta-то', $rc, (string) $row['ref_code'] ); }
@@ -523,6 +524,11 @@ final class Probe {
 		$t->ok( 'таблица leads с колоните fka/contact_id', Schema::exists( Schema::table( 'leads' ) ) && in_array( 'fka', (array) $wpdb->get_col( 'SHOW COLUMNS FROM ' . Schema::table( 'leads' ) ), true ), 'DB ver ' . get_option( Schema::OPT_DB_VER ) );
 		$t->ok( 'синхронизацията е включена (🧰 Инструменти → 📨 Лийдовете → FunnelKit)', Lead_Sync::enabled( $cfg ), 'лист „' . $l['list'] . '“ · таг „' . $l['tag'] . '“ · consent_only=' . (int) ! empty( $l['consent_only'] ) . ' · untag=' . (int) ! empty( $l['untag_on_order'] ) );
 		if ( ! $t->ok( 'FunnelKit контакти (Funnel Builder)', Lead_Sync::available(), function_exists( 'bwf_get_contact' ) ? 'bwf_get_contact ✓' : 'bwf_get_contact липсва' ) ) { return null; }
+		if ( FKA_Pause::paused() ) { /* 1.24.0: спрени → sync не тагва и не записва; останалото от сюита няма смисъл */
+			$t->eq( 'имейлите от FunnelKit са спрени → sync = paused, без контакт', 'paused|0', Lead_Sync::sync( 0, 'probe-paused@example.com', true ) . '|' . ( Lead_Sync::contact( 'probe-paused@example.com', true ) ? 1 : 0 ) );
+			$t->note( 'статус', Lead_Sync::status( $cfg ) );
+			return array( 'contact' => 0, 'list' => 0, 'tag' => 0, 'paused' => true );
+		}
 		$t->note( 'Automations (BWFCRM_Contact за event-ите List/Tag Added)', class_exists( 'BWFCRM_Contact' ) ? 'има' . ( defined( 'BWFAN_VERSION' ) ? ' · ' . BWFAN_VERSION : '' ) : 'няма — термините отиват направо в контакта (без event)' );
 		$t->ok( 'листът и тагът съществуват (ensure_terms)', Lead_Sync::ensure_terms(), Lead_Sync::status( $cfg ) );
 		$lid = '' !== $l['list'] ? Merge::list_id( $l['list'] ) : 0; $tid = '' !== $l['tag'] ? Merge::tag_id( $l['tag'] ) : 0;

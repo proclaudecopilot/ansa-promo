@@ -5,7 +5,7 @@
  */
 require __DIR__ . '/wpstub.php';
 define( 'ARRAY_A', 'ARRAY_A' );
-use AnsaPromo\Config; use AnsaPromo\Leads; use AnsaPromo\Lead_Sync; use AnsaPromo\Merge;
+use AnsaPromo\Config; use AnsaPromo\Leads; use AnsaPromo\Lead_Sync; use AnsaPromo\Merge; use AnsaPromo\FKA_Pause;
 
 function email_exists( $e ) { return 'user@example.com' === $e ? 7 : false; }
 function wp_strip_all_tags_x() {}
@@ -54,13 +54,16 @@ class BWFCRM_Tag { static function get_tags( $a = array(), $b = false, $c = '', 
 class BWFCRM_Lists { static function get_lists( $a = array(), $b = false, $c = '', $d = '' ) { return array_values( array_filter( $GLOBALS['wpdb']->terms, function ( $t ) { return 2 === (int) $t['type']; } ) ); } }
 /* фалшива поръчка */
 class FakeOrder { public $meta = array(); public $notes = array(); private $email; private $id; function __construct( $id, $email, $m ) { $this->id = $id; $this->email = $email; $this->meta['_ansa_promo'] = $m; }
-	function get_id() { return $this->id; } function get_billing_email() { return $this->email; } function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function update_meta_data( $k, $v ) { $this->meta[ $k ] = $v; } function save() {} function add_order_note( $n ) { $this->notes[] = $n; } }
+	function get_id() { return $this->id; } function get_customer_id() { return 0; } function get_billing_email() { return $this->email; } function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function update_meta_data( $k, $v ) { $this->meta[ $k ] = $v; } function save() {} function add_order_note( $n ) { $this->notes[] = $n; } }
 
 /* ── тестове ── */
 $fails = array(); $n = 0;
 function ok( $name, $cond, $msg = '' ) { global $fails, $n; $n++; if ( ! $cond ) { $fails[] = $name . ( $msg ? ' — ' . $msg : '' ); } }
 
 $cfg = Config::normalize( Config::defaults() );
+/* 1.24.0: имейлите от FunnelKit са СПРЕНИ по подразбиране (липсваща опция) — за тестовете на самата синхронизация ги включваме */
+ok( 'FKA_Pause: по подразбиране спрени', FKA_Pause::paused() && 'warn' === FKA_Pause::status()[1] );
+ok( 'FKA_Pause::save(true) → включени', FKA_Pause::save( true ) && FKA_Pause::enabled() && 'on' === get_option( FKA_Pause::OPT ) && 'ok' === FKA_Pause::status()[1] );
 ok( 'дефолт: включено, лист + таг', Lead_Sync::enabled( $cfg ) && 'sezon-lead' === $cfg['leads']['tag'] && '' !== $cfg['leads']['list'] );
 ok( 'ensure_terms създава листа (type 2) и тага (type 1)', Lead_Sync::ensure_terms() && Merge::list_id( $cfg['leads']['list'] ) > 0 && Merge::tag_id( $cfg['leads']['tag'] ) > 0, Merge::$tag_diag );
 $lid = Merge::list_id( $cfg['leads']['list'] ); $tid = Merge::tag_id( $cfg['leads']['tag'] );
@@ -110,6 +113,23 @@ ok( 'backfill: минава през празни и retry', 1 === $bf['ok'] && 
 $cfg3 = $cfg; $cfg3['leads']['fka'] = false;
 ok( 'изключено → off', 'off' === Lead_Sync::sync( 0, 'x@example.com', true, $cfg3 ) && ! Lead_Sync::enabled( $cfg3 ) );
 ok( 'status текст', false !== strpos( Lead_Sync::status( $cfg ), 'лист „' . $cfg['leads']['list'] . '“ #' . $lid ), Lead_Sync::status( $cfg ) );
+
+/* 1.24.0: спрени имейли от FunnelKit → нищо не се тагва */
+FKA_Pause::save( false );
+ok( 'FKA_Pause::save(false) → спрени', FKA_Pause::paused() && 'off' === get_option( FKA_Pause::OPT ) );
+$id5 = Leads::capture( 'paused@example.com', true, '', '' );
+ok( 'спрени: capture → лийдът остава без fka (чака), без контакт', $id5 > 0 && '' === $wpdb->leads[ $id5 ]['fka'] && ! isset( WooFunnels_Contact::$db['paused@example.com'] ), json_encode( $wpdb->leads[ $id5 ] ) );
+ok( 'спрени: sync → paused, без запис', 'paused' === Lead_Sync::sync( $id5, 'paused@example.com', true ) && '' === $wpdb->leads[ $id5 ]['fka'] && 'paused' === Lead_Sync::$diag );
+$bf2 = Lead_Sync::backfill();
+ok( 'спрени: backfill → всичко е skip', 0 === $bf2['ok'] && 0 === $bf2['retry'] && $bf2['skip'] >= 1, json_encode( $bf2 ) );
+ok( 'спрени: status казва СПРЕНО', false !== strpos( Lead_Sync::status( $cfg ), 'СПРЕНО' ), Lead_Sync::status( $cfg ) );
+$po = new FakeOrder( 501, 'paused@example.com', array( 'promo' => $cfg['id'], 'box' => 'l', 'valid' => true, 'draft' => false ) );
+ok( 'спрени: Merge::tag_order → paused, без meta', 'paused' === Merge::tag_order( $po ) && ! isset( $po->meta['_ansa_promo_fka_tags'] ) && ! isset( $po->meta['_ansa_promo_fka_tag'] ), json_encode( $po->meta ) );
+ok( 'спрени: on_order (тагът пада) продължава да работи', 'ok' === Lead_Sync::on_order( $po, $po->meta['_ansa_promo'] ) );
+FKA_Pause::save( true ); Lead_Sync::contact( 'paused@example.com', true ); /* контактът (bwf_create_update_contact_object не е стъбнат) */
+ok( 'включени → tag_order пак тагва', in_array( Merge::tag_order( $po ), array( 'crm', 'db', 'има' ), true ) && ! empty( $po->meta['_ansa_promo_fka_tags'] ), (string) Merge::tag_order( $po ) . ' ' . json_encode( $po->meta ) );
+define( 'ANSA_PROMO_FKA_EMAILS', false );
+ok( 'константата ANSA_PROMO_FKA_EMAILS бие опцията', FKA_Pause::paused() && FKA_Pause::by_const() && ! FKA_Pause::save( true ) );
 
 if ( $fails ) { echo "FAIL:\n - " . implode( "\n - ", $fails ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

@@ -65,12 +65,14 @@ final class Lead_Sync {
 
 	/**
 	 * Синхронизира един лийд: контакт → лист → таг (тагът не се слага на вече конвертиран лийд). Връща четимия резултат,
-	 * който отива и в leads.fka: „лист #1 · crm; таг #2 · crm“ | „има“ | „off“ | „no-consent“ | „no-email“ | „retry: причина“.
+	 * който отива и в leads.fka: „лист #1 · crm; таг #2 · crm“ | „има“ | „off“ | „no-consent“ | „no-email“ | „retry: причина“;
+	 * „paused“ (1.24.0, не се записва в leads.fka) — имейлите от FunnelKit са спрени (FKA_Pause).
 	 */
 	public static function sync( $lead_id, $email, $consent, $cfg = null ) {
 		$cfg = $cfg ?: Config::get_published(); $l = self::cfg( $cfg );
 		$email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) ) { return self::mark( $lead_id, 0, 'no-email' ); }
 		if ( ! self::enabled( $cfg ) ) { return self::mark( $lead_id, 0, 'off' ); }
+		if ( FKA_Pause::paused() ) { self::$diag = 'paused'; return 'paused'; } /* 1.24.0: имейлите от FunnelKit са спрени → без контакт/лист/таг; лийдът остава „чака“ за „📨 Синхронизирай“ при включване */
 		if ( ! empty( $l['consent_only'] ) && ! $consent ) { return self::mark( $lead_id, 0, 'no-consent' ); }
 		if ( ! self::available() ) { return self::mark( $lead_id, 0, 'retry: FunnelKit контакти липсват' ); }
 		$lead = $lead_id ? Leads::get( $lead_id ) : null; $converted = $lead && ! empty( $lead['converted_order_id'] );
@@ -212,7 +214,7 @@ final class Lead_Sync {
 		$r = array( 'ok' => 0, 'retry' => 0, 'skip' => 0 );
 		foreach ( Leads::unsynced( $limit ) as $row ) {
 			$k = self::sync( (int) $row['id'], $row['email'], ! empty( $row['consent'] ) );
-			if ( 0 === strpos( $k, 'retry' ) ) { $r['retry']++; } elseif ( in_array( $k, array( 'off', 'no-consent', 'no-email' ), true ) ) { $r['skip']++; } else { $r['ok']++; }
+			if ( 0 === strpos( $k, 'retry' ) ) { $r['retry']++; } elseif ( in_array( $k, array( 'off', 'paused', 'no-consent', 'no-email' ), true ) ) { $r['skip']++; } else { $r['ok']++; }
 		}
 		return $r;
 	}
@@ -221,6 +223,7 @@ final class Lead_Sync {
 		$cfg = $cfg ?: Config::get_published(); $l = self::cfg( $cfg ); $s = Leads::stats();
 		$cnt = 'лийдове: ' . $s['total'] . ' (със съгласие ' . $s['consent'] . ', конвертирани ' . $s['converted'] . ') · във FunnelKit: ' . $s['synced'] . ' · чакат: ' . $s['pending'];
 		if ( ! self::enabled( $cfg ) ) { return 'изключено · ' . $cnt; }
+		if ( FKA_Pause::paused() ) { return 'СПРЕНО — имейлите от FunnelKit са спрени (🧰 Инструменти → ✉️), лийдовете не се тагват · ' . $cnt; }
 		if ( ! self::available() ) { return 'FunnelKit контакти липсват · лист „' . $l['list'] . '“ · таг „' . $l['tag'] . '“ · ' . $cnt; }
 		$out = array();
 		if ( '' !== $l['list'] ) { $id = Merge::list_id( $l['list'] ); $out[] = 'лист „' . $l['list'] . '“' . ( $id > 0 ? ' #' . $id : ' НЕ Е СЪЗДАДЕН (' . ( Merge::$tag_diag ?: 'без диагностика' ) . ')' ); }
