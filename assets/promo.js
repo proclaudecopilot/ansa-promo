@@ -858,7 +858,10 @@
      (yban.b / yban.s), „Повече за наградата ›“ отваря инфото за томболата, „Разбрах“ / ✕ / докосване извън нея я свива */
   /* v1.23.1 (човекът): на телефон и на десктоп плаващите плочки Яхта/Козметика са ЕДИН бутон „?“ — отваря попъпа „Как работи играта“ */
   function renderYfab(){
-    var on=S.screen===1;yfab.style.display=on?'':'none';if(!on)return;
+    var on=S.screen===1;yfab.style.display=on?'':'none';
+    /* v1.23.4: на екрана с кутиите „ℹ️ Как работи играта?“ в хедъра е скрит — плаващият „?“ е същото (без дублиране) */
+    var hb=$('apHow');if(hb)hb.style.display=on?'none':'';
+    if(!on)return;
     yfab.innerHTML='<button class="yhow" type="button"'+ck('yfab.how')+'><i>?</i><span>'+T('yfab.how')+'</span></button>';
     yfab.querySelector('.yhow').onclick=function(){howPopup()};
   }
