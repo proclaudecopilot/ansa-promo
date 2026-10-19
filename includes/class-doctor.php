@@ -119,7 +119,14 @@ final class Doctor {
 		}
 		/* 4–5. книга и сет */
 		$needs_book = (bool) array_filter( $cfg['boxes'], function ( $b ) { return in_array( 'book', $b['rw'], true ); } ); $bp = ! empty( $cfg['rewards']['book']['product_id'] ) && function_exists( 'wc_get_product' ) ? wc_get_product( (int) $cfg['rewards']['book']['product_id'] ) : null;
-		if ( $needs_book ) { $c( 'book', $bp && $bp->is_purchasable() ? 'ok' : 'bad', $bp ? 'Книга: #' . $bp->get_id() . ' ' . $bp->get_name() . ( $bp->is_purchasable() ? '' : ' — НЕ е purchasable' ) . ( $bp->is_downloadable() ? ' · downloadable (WC праща файла)' : ( $cfg['rewards']['book']['url'] ? ' · PDF линк по имейл' : ' · без PDF линк (само физически подарък)' ) ) : 'Кутия има „книга“, но rewards.book.product_id не е избран (книгата няма да влезе в количката на €0).' ); }
+		/* 1.23.7 (човекът: „книгата я изпращаме по имейл, не е Woo продукт — ansa.bg/kniga“): от 1.9.0 книгата е PDF през /kniga; Woo продуктът на €0 е
+		   старият път и липсата му НЕ спира публикуването. ⛔ няма — най-много ⚠, ако книгата не идва по никой от двата пътя. */
+		if ( $needs_book ) {
+			if ( Book::ready( $cfg ) ) { $c( 'book', 'ok', 'Книга: PDF през ' . Book::url( $cfg ) . ' (по имейл след поръчката' . ( Book::source( $cfg ) === 'file' ? ', качен файл' : ', външен линк' ) . ')' . ( $bp ? ' · и Woo продукт #' . $bp->get_id() : '' ) ); }
+			elseif ( Book::enabled( $cfg ) ) { $c( 'book', 'warn', 'Страницата ' . Book::url( $cfg ) . ' е включена, но няма PDF (📖 Книга → качи файл или линк) — хората ще видят страницата без книга.' ); }
+			elseif ( $bp && $bp->is_purchasable() ) { $c( 'book', 'ok', 'Книга: Woo продукт #' . $bp->get_id() . ' ' . $bp->get_name() . ' на €0 в количката' . ( $bp->is_downloadable() ? ' · downloadable (WC праща файла)' : '' ) ); }
+			else { $c( 'book', 'warn', 'Кутия има „книга“, но нито /kniga е включена (📖 Книга), нито е избран Woo продукт — книгата няма как да стигне до човека.' ); }
+		}
 		/* 1.9.0: „получена“ = tombola.statuses (само delivered) — всеки статус трябва да съществува в WC, иначе нищо не се отключва и ваучер/книга не тръгват */
 		if ( function_exists( 'wc_get_order_statuses' ) ) { $wcst = array_map( function ( $s ) { return preg_replace( '/^wc-/', '', $s ); }, array_keys( wc_get_order_statuses() ) ); $miss = array_diff( (array) $cfg['tombola']['statuses'], $wcst ); $c( 'delivered', $miss ? 'bad' : ( in_array( 'completed', (array) $cfg['tombola']['statuses'], true ) ? 'warn' : 'ok' ), '„Получена“ поръчка (томбола · ваучер · книга) = ' . implode( ', ', (array) $cfg['tombola']['statuses'] ) . ( $miss ? ' — НЯМА такъв статус в WC: ' . implode( ', ', $miss ) . ' (налични: ' . implode( ', ', $wcst ) . ')' : '' ) . ( in_array( 'completed', (array) $cfg['tombola']['statuses'], true ) ? ' — „Изпълнена“ брои, а решението е само Delivered' : '' ) ); }
 		if ( Book::enabled( $cfg ) && '' === Book::source( $cfg ) ) { $c( 'book_page', 'warn', 'Страницата /' . $cfg['book']['slug'] . ' е включена, но няма качен PDF/линк — клиентът ще види „книгата още не е качена“ (🧰 Инструменти → 📖 Книга).' ); }

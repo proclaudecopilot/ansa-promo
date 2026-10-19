@@ -870,7 +870,7 @@
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
     if(!A.ajax||A.editor||A.draft||!A.refresh)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&utm='+encodeURIComponent(S.utm||''),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&utm='+encodeURIComponent(S.utm||''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce; /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       /* v1.18.2 (човекът: „натиснах изключи на попъпа и пак се появява“): кешираната страница носи стария gate.enabled — свежият решава;
          ако попъпът е изключен и вече е отворен, затваря се веднага и продължава каквото е чакало след него */

@@ -63,7 +63,8 @@ final class Editor {
 	/** Празни асоциативни масиви (copy, fit) стават {} в JSON, не [] — иначе JS ги вижда като Array и губи ключовете. */
 	public static function out( $cfg ) { $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }
 	public static function state() {
-		return array( 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ) );
+		/* 1.23.7: published_copy — публикуваните текстове (ключ → текст), за да вижда редакторът кое е на живо и кое е само чернова */
+		return array( 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
 	}
 
 	private static function auth() {
@@ -84,6 +85,13 @@ final class Editor {
 	public static function ajax_doctor() { self::auth(); wp_send_json_success( array( 'checks' => Doctor::checks( Config::get_draft() ) ) ); }
 	public static function ajax_publish() {
 		self::auth();
+		/* 1.23.7 (човекът: „Публикувай навярно само запазва“): редакторът праща текущата конфигурация с публикуването — черновата се записва и се
+		   публикува в ЕДНА заявка, за да не може автозаписът (или неуспял запис) да публикува старата чернова. */
+		if ( isset( $_POST['cfg'] ) ) {
+			$d = json_decode( (string) wp_unslash( $_POST['cfg'] ), true );
+			if ( ! is_array( $d ) ) { wp_send_json_error( array( 'code' => 'json', 'msg' => 'Невалиден JSON.' ), 400 ); }
+			Config::save_draft( $d );
+		}
 		$checks = Doctor::checks( Config::get_draft() ); $bad = array_values( array_filter( $checks, function ( $c ) { return 'bad' === $c['level']; } ) );
 		if ( $bad && empty( $_POST['force'] ) ) { wp_send_json_error( array( 'code' => 'doctor', 'msg' => 'Doctor спира публикуването.', 'checks' => $checks ) ); }
 		$ok = Config::publish();

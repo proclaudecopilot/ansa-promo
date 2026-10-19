@@ -410,6 +410,18 @@ final class Config {
 		if ( ! $url ) { return; }
 		if ( class_exists( '\\FlyingPress\\Purge' ) ) { try { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_url' ) ) ) { \FlyingPress\Purge::purge_url( $url ); } elseif ( is_callable( array( '\\FlyingPress\\Purge', 'purge_urls' ) ) ) { \FlyingPress\Purge::purge_urls( array( $url ) ); } } catch ( \Throwable $e ) {} }
 		if ( function_exists( 'rocket_clean_post' ) ) { try { rocket_clean_post( (int) $page_id ); } catch ( \Throwable $e ) {} }
+		/* 1.23.7: и другите разпространени кеш плъгини — само URL-а на страницата, всичко е guarded */
+		try {
+			do_action( 'litespeed_purge_url', $url ); do_action( 'litespeed_purge_post', (int) $page_id );
+			if ( function_exists( 'wpsc_delete_post_cache' ) ) { wpsc_delete_post_cache( (int) $page_id ); }
+			if ( function_exists( 'w3tc_flush_post' ) ) { w3tc_flush_post( (int) $page_id ); }
+			if ( function_exists( 'sg_cachepress_purge_cache' ) ) { sg_cachepress_purge_cache( $url ); }
+			if ( function_exists( 'wpfc_clear_post_cache_by_id' ) ) { wpfc_clear_post_cache_by_id( (int) $page_id ); }
+			if ( function_exists( 'breeze_varnish_purge_cache' ) ) { breeze_varnish_purge_cache( $url ); }
+			if ( class_exists( '\\Nginx_Helper' ) ) { do_action( 'rt_nginx_helper_purge_all' ); }
+			do_action( 'cloudflare_purge_by_url', array( $url ), (int) $page_id );
+			if ( function_exists( 'wp_cache_post_change' ) ) { wp_cache_post_change( (int) $page_id ); }
+		} catch ( \Throwable $e ) {}
 		do_action( 'ansa_promo_purge_url', $url, (int) $page_id );
 	}
 
