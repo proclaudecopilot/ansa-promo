@@ -1797,3 +1797,25 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .fqzi input[type=checkbox]::after{content:none}
 .ansa-promo .fqzi input[type=checkbox]:checked::after{content:''!important;display:block!important;position:absolute!important;left:6px!important;top:2px!important;width:6px!important;height:11px!important;border:solid #fff!important;border-width:0 2.5px 2.5px 0!important;border-radius:0!important;background:none!important;transform:rotate(45deg)!important;margin:0!important;opacity:1!important}
 .ansa-promo .fqzi input[type=checkbox]:focus-visible{outline:2px solid var(--o);outline-offset:2px}
+
+/* ═══ v1.23.6 (човекът: „долната част с бутоните и текстовете е хаотично разположена“): футърът на въпросника е един подреден ред —
+   брояч вляво · „Пропусни“ · „Продължи“ вдясно, вертикално центрирани; картата няма долен отстъп, футърът носи своя (без отрицателни
+   margin-и, които при скрол оставяха празно поле под бутона). Телефон: брояч · бутон на цяла ширина · „Пропусни“ по средата ═══ */
+.ansa-promo .fqzc{padding-bottom:0}
+.ansa-promo .fqzg{margin-bottom:16px}
+.ansa-promo .fqza{position:sticky;bottom:0;z-index:2;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:flex-end;gap:18px;margin:0 -28px 0;padding:14px 28px 16px;background:#fff;border-top:1px solid rgba(232,114,42,.18);box-shadow:0 -8px 20px rgba(26,26,46,.05);border-radius:0 0 20px 20px}
+.ansa-promo .fqzn{flex:1 1 auto;order:0;margin:0;font-size:13.5px;font-weight:800;line-height:1.3;color:var(--muted)}
+.ansa-promo .fqzn.ok{color:var(--gd)}
+.ansa-promo .fqza .lnk{order:1;flex:none;white-space:nowrap;padding:6px 0;margin:0}
+.ansa-promo .fqza .cta{order:2;flex:none;width:auto;min-width:200px;min-height:50px;padding:0 28px;margin:0}
+@media(max-width:640px){
+.ansa-promo .fqza{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;padding:12px 28px 16px}
+.ansa-promo .fqzn{text-align:center;flex:none}
+.ansa-promo .fqza .cta{width:100%;min-width:0;order:1}
+.ansa-promo .fqza .lnk{order:2;text-align:center}
+}
+.ansa-promo .dc.fpm .fqzc{padding-bottom:0}
+.ansa-promo .dc.fpm .fqza{flex-direction:column;align-items:stretch;gap:8px;margin:0 -20px 0;padding:12px 20px calc(14px + env(safe-area-inset-bottom));background:#f7f1ec;border-top:1px solid rgba(67,48,42,.08);border-radius:0;box-shadow:0 -6px 18px rgba(26,26,46,.05)}
+.ansa-promo .dc.fpm .fqzn{text-align:center;flex:none}
+.ansa-promo .dc.fpm .fqza .cta{width:100%;min-width:0;min-height:54px;order:1}
+.ansa-promo .dc.fpm .fqza .lnk{order:2;text-align:center;padding:4px 0}
