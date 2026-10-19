@@ -31,9 +31,20 @@ const { chromium } = require('playwright');
     if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' know-quiz: въпросникът не се отвори');
     if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' know-quiz: интро листът „За да отключиш…“ е върху въпросника');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await page.evaluate(() => { AnsaPromo.state().know = null; });
+    // 1.23.8: над 5 опаковки плочките са слайдер със стрелки (телефон); до 5 — без слайдер
+    if (w < 500) {
+      await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura', full: true })); await page.waitForTimeout(300);
+      await page.evaluate(() => { const ok = document.getElementById('okBtn'); if (ok) ok.click(); });
+      if (await page.$('#fSlots.many')) errors.push(tag + ' slots: слайдер при 5 опаковки (не трябва)');
+      await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 2; i++) { const b = d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } }); await page.waitForTimeout(300);
+      const sl = await page.evaluate(() => { const t = document.querySelector('#fSlots.many .fstrack'); return t ? { n: t.querySelectorAll('.fs').length, scroll: t.scrollWidth > t.clientWidth, arrows: document.querySelectorAll('#fSlots .fsarr').length } : null; });
+      if (!sl || sl.n !== 7 || !sl.scroll || sl.arrows !== 2) errors.push(tag + ' slots: слайдерът при 7 опаковки липсва или не скролва: ' + JSON.stringify(sl));
+      await shot('slots-7');
+      await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', box: null, utm: 'sakura' })); await page.waitForTimeout(200);
+    }
     if (w < 500) { await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura' })); await shot('fill'); await check('fill');
-    { const ok = await page.$('#okBtn'); if (ok) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } }
+    { const ok = await page.$('#okBtn'); if (ok && await ok.isVisible()) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } } // 1.23.8: интрото е веднъж на сесия за кутия — може да е скрито
     // add 4 more via steppers on mobile/desktop
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
     // v1.0.39: въпросникът „Не си сигурна какво ти трябва?“ → избор на 2 проблема → подредба с етикет „според теб“

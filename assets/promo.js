@@ -550,7 +550,18 @@
       var fn=$('fNext');if(fn){var nt=need>0||!grows(b)?'':(nx?T('fill.next',tgtVars(nx,t)):T('fill.top',tixVars(b,t)));fn.innerHTML=nt;fn.className='fnext'+(need>0||nx?'':' top');fn.style.display=nt?'':'none'}
       /* v1.12.0: билетите в плочките следват броя (+tix_extra за всяка опаковка над packs) */
       dc.querySelectorAll('[data-tix]').forEach(function(x){x.innerHTML=T(x.dataset.tix,Object.assign({},bv,tixVars(b,t)))});
-      $('fSlots').innerHTML=cnt+Array.from({length:Math.max(goal,t)},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
+      /* 1.23.8 (човекът: „над 5 опаковки да не се сплесква, а слайдер със стрелки“): до 5 плочки — на един ред на цяла ширина; над 5 —
+         хоризонтална лента със скрол/плъзгане и стрелки ‹ › (превъртат по 3 плочки), отваря се на последно добавената */
+      var nSl=Math.max(goal,t),tiles=Array.from({length:nSl},function(_,i){var k=sl[i];return '<span class="fs'+(k?' on':'')+'" title="'+(k?esc(PROD[k].name):'')+'">'+(k?pic(PROD[k],'pimg'):(i+1))+'</span>'}).join('');
+      var fsEl=$('fSlots');fsEl.classList.toggle('many',nSl>5);
+      if(nSl>5){fsEl.innerHTML=cnt+'<button class="fsarr pv" type="button" aria-label="назад">‹</button><div class="fstrack">'+tiles+'</div><button class="fsarr nx" type="button" aria-label="напред">›</button>';
+        var tr=fsEl.querySelector('.fstrack'),pvA=fsEl.querySelector('.fsarr.pv'),nxA=fsEl.querySelector('.fsarr.nx');
+        var upd=function(){var max=tr.scrollWidth-tr.clientWidth;pvA.classList.toggle('off',tr.scrollLeft<=2);nxA.classList.toggle('off',tr.scrollLeft>=max-2)};
+        var step=function(){var f=tr.querySelector('.fs');return f?(f.offsetWidth+8)*3:160};
+        pvA.onclick=function(){tr.scrollBy({left:-step(),behavior:'smooth'})};nxA.onclick=function(){tr.scrollBy({left:step(),behavior:'smooth'})};tr.onscroll=upd;
+        var last=tr.querySelectorAll('.fs.on');if(last.length){var le=last[last.length-1];tr.scrollLeft=Math.max(0,le.offsetLeft-tr.clientWidth+le.offsetWidth+8)}
+        upd();setTimeout(upd,60)}
+      else fsEl.innerHTML=cnt+tiles;
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*(PROD[k].price-disc(PROD[k],b))});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2((pr.price-disc(pr,b))*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
