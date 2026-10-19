@@ -1788,3 +1788,12 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo-portal .yhow i{width:40px;height:40px;font-size:24px}
 .ansa-promo-portal .yhow span{font-size:9px}
 }
+
+/* ═══ v1.23.5 (човекът: „тикчетата изглеждат двойни“): темата на сайта стилизира input[type=checkbox] със своя отметка (::before / background-image)
+   и тя се виждаше под нашата. Нашият чекбокс е единственият: appearance none, без фон-картинка, ::before изключен, отметката е само ::after ═══ */
+.ansa-promo .fqzi input[type=checkbox]{appearance:none!important;-webkit-appearance:none!important;-moz-appearance:none!important;width:22px!important;height:22px!important;min-width:22px;min-height:22px;padding:0!important;margin:1px 0 0!important;border:2px solid #d9c9bc!important;border-radius:7px!important;background:#fff!important;background-image:none!important;box-shadow:none!important;outline:none;position:relative!important;display:inline-block!important;vertical-align:top;font-size:0!important;line-height:0!important;color:transparent!important}
+.ansa-promo .fqzi input[type=checkbox]:checked{background:var(--o)!important;border-color:var(--o)!important}
+.ansa-promo .fqzi input[type=checkbox]::before,.ansa-promo .fqzi input[type=checkbox]:checked::before{content:none!important;display:none!important;background:none!important}
+.ansa-promo .fqzi input[type=checkbox]::after{content:none}
+.ansa-promo .fqzi input[type=checkbox]:checked::after{content:''!important;display:block!important;position:absolute!important;left:6px!important;top:2px!important;width:6px!important;height:11px!important;border:solid #fff!important;border-width:0 2.5px 2.5px 0!important;border-radius:0!important;background:none!important;transform:rotate(45deg)!important;margin:0!important;opacity:1!important}
+.ansa-promo .fqzi input[type=checkbox]:focus-visible{outline:2px solid var(--o);outline-offset:2px}
