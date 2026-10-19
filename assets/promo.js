@@ -521,7 +521,8 @@
       var pvB=$('f3Pv'),nxB=$('f3Nx'),fmB=$('f3More');if(pvB)pvB.onclick=function(){goPg(-1)};if(nxB)nxB.onclick=function(){goPg(1)};if(fmB)fmB.onclick=function(){if(pg>=pages-1){pg=0;showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})}else goPg(1)}}
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
-    if(mob&&!again)unlockPopup(b,P);
+    /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
+    if(mob&&!again&&!S._quizFirst)unlockPopup(b,P);
     /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
     var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){var end=ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24;mm.classList.toggle('off',end);if(!end){var lim=ms.getBoundingClientRect().bottom,n=0;ms.querySelectorAll('.mitem:not(.pg-off)').forEach(function(it){if(it.getBoundingClientRect().top>lim-40)n++});mm.innerHTML='<span'+ck(n?'mfill.more.n':'mfill.more.dn')+'>'+(n?T('mfill.more.n',{n:n}):T('mfill.more.dn'))+'</span>'}};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}} /* v1.18.1: с броя */
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -530,7 +531,7 @@
     /* v1.0.39: въпросникът е панел върху попъпа — един ред на продукт (t + sub от „проблемите“), минимум един избор; „Покажи ми
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
-    if(S._quizFirst){S._quizFirst=false;$('apOv2').classList.add('off');if(fq)fq.onclick()} /* „Не ги знам“ → направо въпросникът (без интро листа на телефона отгоре) */
+    if(S._quizFirst){S._quizFirst=false;$('apOv2').classList.add('off');if(fq)fq.onclick()}
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
     function sync(){var t=total();
       /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
@@ -572,11 +573,13 @@
     var el=document.createElement('div');el.className='fqz';
     el.innerHTML='<div class="fqzc"><h3'+ck('fill.quiz.t')+'>'+T('fill.quiz.t')+'</h3><p'+ck('fill.quiz.s')+'>'+T('fill.quiz.s')+'</p>'
       +'<div class="fqzg">'+items.map(function(p){return '<label class="fqzi"><input type="checkbox" value="'+esc(p.key)+'"'+(cur.indexOf(p.key)>-1?' checked':'')+'><span><b>'+esc(p.t)+'</b>'+(p.sub?'<small>'+esc(p.sub)+'</small>':'')+'</span></label>'}).join('')+'</div>'
-      +'<div class="fqza"><button class="cta" id="fqGo" type="button"'+ck('fill.quiz.go')+'>'+T('fill.quiz.go')+'</button><button class="lnk" id="fqSkip" type="button"'+ck('fill.quiz.skip')+'>'+T('fill.quiz.skip')+'</button></div></div>';
+      +'<div class="fqza"><small class="fqzn" id="fqN"></small><button class="cta" id="fqGo" type="button"'+ck('fill.quiz.go')+'>'+T('fill.quiz.go')+'</button><button class="lnk" id="fqSkip" type="button"'+ck('fill.quiz.skip')+'>'+T('fill.quiz.skip')+'</button></div></div>';
     dc.appendChild(el);el.scrollTop=0;
     var go=el.querySelector('#fqGo'),picked=function(){return Array.from(el.querySelectorAll('input:checked')).map(function(x){return x.value})};
-    var sync=function(){go.disabled=!picked().length};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
-    go.onclick=function(){var k=picked();if(!k.length)return;el.remove();done(k)};
+    /* v1.23.3 (човекът): „Продължи“ в лепкав футър, активен при минимум 2 отбелязани; броячът казва докъде си */
+    var MIN=2,n=el.querySelector('#fqN');
+    var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T('fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
+    go.onclick=function(){var k=picked();if(k.length<MIN)return;el.remove();done(k)};
     el.querySelector('#fqSkip').onclick=function(){el.remove()};
   }
 

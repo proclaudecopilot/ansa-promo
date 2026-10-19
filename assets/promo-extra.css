@@ -1762,3 +1762,14 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .dc.know .knowb.no small{color:var(--muted)}
 .ansa-promo .dc.know .knowb:hover{transform:translateY(-1px)}
 .ansa-promo .wkbar:not(.m) .wktx{justify-content:center;flex:1}
+
+/* ═══ v1.23.3 (човекът): въпросникът „Кое от следното те касае?“ — лепкав футър „Продължи“, активен при поне 2 отбелязани; броячът над бутона ═══ */
+.ansa-promo .fqzc{max-height:100%;overflow:auto;display:flex;flex-direction:column}
+.ansa-promo .fqzg{flex:1 1 auto;align-content:start;margin-bottom:12px}
+.ansa-promo .fqza{position:sticky;bottom:0;z-index:2;flex-wrap:wrap;margin:0 -28px -24px;padding:12px 28px 18px;background:#fff;border-top:1px solid rgba(232,114,42,.18);box-shadow:0 -8px 20px rgba(26,26,46,.05)}
+.ansa-promo .fqzn{flex:1 1 100%;font-size:13px;font-weight:800;color:var(--muted);line-height:1.3}
+.ansa-promo .fqzn.ok{color:var(--gd)}
+.ansa-promo .dc.fpm .fqzc{max-height:none;overflow:visible}
+.ansa-promo .dc.fpm .fqza{flex-wrap:nowrap;bottom:0;margin:0 -20px calc(-20px - env(safe-area-inset-bottom));padding:12px 20px calc(14px + env(safe-area-inset-bottom));background:#f7f1ec;border-top:1px solid rgba(67,48,42,.08);gap:8px}
+.ansa-promo .dc.fpm .fqzn{text-align:center}
+.ansa-promo .dc.fpm .fqza .lnk{padding:2px 0}

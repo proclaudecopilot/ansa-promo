@@ -29,6 +29,7 @@ const { chromium } = require('playwright');
     if (!(await page.$('#knowNo'))) errors.push(tag + ' know: попъпът „Запозната ли си“ липсва');
     await page.click('#knowNo'); await page.waitForTimeout(400); await shot('know-quiz'); await check('know-quiz');
     if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' know-quiz: въпросникът не се отвори');
+    if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' know-quiz: интро листът „За да отключиш…“ е върху въпросника');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await page.evaluate(() => { AnsaPromo.state().know = null; });
     if (w < 500) { await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura' })); await shot('fill'); await check('fill');
@@ -37,7 +38,13 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
     // v1.0.39: въпросникът „Не си сигурна какво ти трябва?“ → избор на 2 проблема → подредба с етикет „според теб“
     await page.click('#fQuiz'); await shot('quiz'); await check('quiz');
-    await page.evaluate(() => { ['thyro', 'berber'].forEach(k => { const i = document.querySelector('.fqz input[value="' + k + '"]'); if (i) { i.click(); } }); });
+    // v1.23.3: „Продължи“ е неактивен с 0 и 1 отбелязани, активен от 2
+    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен без избор');
+    await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
+    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен с 1 избор');
+    await shot('quiz-one');
+    await page.evaluate(() => { const i = document.querySelector('.fqz input[value="berber"]'); if (i) i.click(); });
+    if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz: „Продължи“ е неактивен с 2 избора');
     await shot('quiz-picked');
     await page.click('#fqGo'); await page.waitForTimeout(300); await shot('fill-quiz'); await check('fill-quiz');
     { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apDc [data-nq]')).map(x => x.dataset.nq).join(',')); if (!/^sakura,(thyro,berber|berber,thyro)/.test(o)) errors.push(tag + ' fill-quiz: подредбата е ' + o); }
