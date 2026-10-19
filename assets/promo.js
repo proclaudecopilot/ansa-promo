@@ -841,22 +841,12 @@
   }
   /* v1.0.24: плаващата яхта (телефон, само на екрана с кутиите): картинка + „Томбола“; при докосване се разгъва с текста на лентата
      (yban.b / yban.s), „Повече за наградата ›“ отваря инфото за томболата, „Разбрах“ / ✕ / докосване извън нея я свива */
-  function yfabClose(){yfab.querySelectorAll('.fabu.open').forEach(function(u){u.classList.remove('open');var b=u.querySelector('.yfabb');if(b)b.setAttribute('aria-expanded','false')})}
+  /* v1.23.1 (човекът): на телефон и на десктоп плаващите плочки Яхта/Козметика са ЕДИН бутон „?“ — отваря попъпа „Как работи играта“ */
   function renderYfab(){
-    var on=S.screen===1;yfab.style.display=on?'':'none';if(!on){yfab.querySelectorAll('.fabu.open').forEach(function(u){u.classList.remove('open')});return}
-    /* v1.0.34: две плаващи плочки една над друга — яхтата (томбола) и козметичният сет; всяка се разгъва в картичка */
-    var unit=function(rw,tagK,bK,sK,moreK){return '<div class="fabu" data-fab="'+rw+'"><button class="yfabb" type="button" aria-expanded="false">'+rimg(rw,rw==='tix'?'🛥️':'🌸','yfi')+'<span'+ck(tagK)+'>'+T(tagK)+'</span></button>'
-      +'<div class="yfabc"><button class="yfabx" type="button" data-fx aria-label="затвори">✕</button>'+rimg(rw,rw==='tix'?'🛥️':'🌸','yfi')
-      +'<b'+ck(bK)+'>'+T(bK)+'</b><small'+ck(sK)+'>'+T(sK)+'</small>'
-      +'<div class="yfaba"><button class="lnk" type="button" data-rw="'+rw+'"'+ck(moreK)+'>'+T(moreK)+'</button><button class="cta" type="button" data-fx'+ck('yfab.ok')+'>'+T('yfab.ok')+'</button></div></div></div>'};
-    var open=yfab.querySelector('.fabu.open');var openK=open?open.dataset.fab:null;
-    yfab.innerHTML=unit('tix','yfab.tag','yfab.b','yfab.s','yfab.more')+unit('cosm1','cban.tag','cban.b','cban.s','cban.more');
-    if(openK){var u=yfab.querySelector('.fabu[data-fab="'+openK+'"]');if(u)u.classList.add('open')}
-    yfab.querySelectorAll('.yfabb').forEach(function(bt){bt.onclick=function(){var u=bt.closest('.fabu');yfab.querySelectorAll('.fabu.open').forEach(function(o){if(o!==u)o.classList.remove('open')});u.classList.add('open');bt.setAttribute('aria-expanded','true')}});
-    yfab.querySelectorAll('[data-fx]').forEach(function(x){x.onclick=function(){yfabClose()}});
-    yfab.querySelectorAll('[data-rw]').forEach(function(x){x.onclick=function(){yfabClose();rewardPopup(x.dataset.rw)}});
+    var on=S.screen===1;yfab.style.display=on?'':'none';if(!on)return;
+    yfab.innerHTML='<button class="yhow" type="button"'+ck('yfab.how')+'><i>?</i><span>'+T('yfab.how')+'</span></button>';
+    yfab.querySelector('.yhow').onclick=function(){howPopup()};
   }
-  document.addEventListener('click',function(e){if(yfab.querySelector('.fabu.open')&&!yfab.contains(e.target))yfabClose()},true);
   function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */

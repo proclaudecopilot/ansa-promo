@@ -655,6 +655,8 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .br.off b{font-weight:700;color:var(--tan);text-decoration:line-through}
 .ansa-promo .br.off>i{filter:grayscale(1)}
 .ansa-promo .box>.cta{margin-top:auto}
+/* „★ най-изгодна“ беше в потока (promo.css: .box.l>* е position:relative) и буташе името надолу — тук е върху горния ръб */
+.ansa-promo .boxes .box.l>.bbest-d{position:absolute;top:-17px;left:50%;transform:translateX(-50%);z-index:3}
 }
 /* телефон: резюмето на кутията има „спестяваш до €X“ */
 .ansa-promo .bmsave{display:none}
@@ -1705,3 +1707,43 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-ladt tr.next td{background:#fff7ef}
 .ansa-promo .dc.hw .hw-ladt .you{display:inline-block;background:var(--o);color:#fff;border-radius:999px;font-size:10px;padding:2px 8px;margin-left:6px;letter-spacing:.06em;vertical-align:middle;font-style:normal;text-decoration:none}
 @media(max-width:640px){.ansa-promo .dc.hw .hw-ladt{min-width:0}.ansa-promo .dc.hw .hw-ladt td{padding:6px 7px;font-size:13px}.ansa-promo .dc.hw .hw-ladt td .d{display:block;margin:0;font-size:11px}}
+
+/* ═══ v1.23.1 (три от човека по екрана с кутиите) ═══
+   1 · фонът: тоновете бяха кремаво-златни (гориво: златният радиал долу вдясно + #f6e4d1) и на много екрани се четяха като бледо жълто;
+       сега са бледо оранжево / пепел от рози — без жълто в страницата, хедъра, лепкавите ленти и в Голямата кутия
+   2 · трите кутии са с еднакъв размер: равни колони, еднаква височина (бутоните на един ред долу), без допълнителен отстъп отгоре
+       на Голямата — „★ най-изгодна“ стои върху горния ѝ ръб и не взема място
+   3 · плаващите плочки Яхта/Козметика (телефон и десктоп) са ЕДИН бутон „?“ → попъпът „Как работи играта“ */
+/* 1 · фон */
+.ansa-promo{--cream:#f4ddd3}
+.ansa-promo:not(.ansa-promo-portal){background:var(--cream)}
+.ansa-promo::before{background:radial-gradient(1000px 520px at 50% -140px,rgba(232,114,42,.22),transparent 62%),radial-gradient(760px 520px at 100% 100%,rgba(201,94,110,.18),transparent 62%),radial-gradient(620px 440px at 0% 55%,rgba(194,24,91,.09),transparent 62%)}
+body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
+.ansa-promo .hdr{background:rgba(244,221,211,.94)}
+.ansa-promo .dc.hw .hw-stk{background:rgba(244,221,211,.92)}
+.ansa-promo .dc.fpm .mfl{background:#f4ddd3}
+.ansa-promo .box.l,.ansa-promo .dc.hw .hw-box.l{background:linear-gradient(180deg,#fff0e3 0%,#fff 42%)}
+.ansa-promo .box.l .bsave,.ansa-promo .box.l .bmsave,.ansa-promo .br.hl,.ansa-promo .mfg2,.ansa-promo .fp3 .fnext{background:linear-gradient(135deg,#fff4e8,#ffe4cf)!important}
+.ansa-promo .wkbar.m.last{background:linear-gradient(135deg,#fff7f1,#fff)}
+/* 2 · еднакви кутии (десктоп) */
+@media(min-width:1000px){
+.ansa-promo .boxes{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.ansa-promo .box.s,.ansa-promo .box.m,.ansa-promo .box.l{margin-top:16px;padding-top:24px!important;padding-left:16px;padding-right:16px}
+.ansa-promo .box.l .bpc b{font-size:62px}
+.ansa-promo .box>.cta{margin-top:auto}
+.ansa-promo .box .brw{flex:1 1 auto}
+}
+/* 3 · един плаващ бутон „?“ (телефон и десктоп) */
+.ansa-promo-portal .yfab{display:block;right:14px;bottom:calc(16px + env(safe-area-inset-bottom))}
+.ansa-promo-portal .yfab[style*="display: none"]{display:none!important}
+.ansa-promo-portal .yhow{display:flex;flex-direction:column;align-items:center;gap:3px;width:auto;max-width:96px;background:#fff;border:2px solid var(--o,#e8722a);border-radius:20px;padding:6px 8px 6px;box-shadow:0 8px 24px rgba(232,114,42,.35);cursor:pointer;font:inherit;color:var(--od,#c2410c);animation:yfabPulse 2.4s ease-in-out infinite}
+.ansa-promo-portal .yhow i{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;font-style:normal;font-size:28px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(232,114,42,.35)}
+.ansa-promo-portal .yhow span{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1.15;text-align:center;white-space:normal}
+.ansa-promo-portal .yhow:hover{transform:translateY(-1px)}
+@media(min-width:1000px){
+.ansa-promo-portal .yfab{right:24px;bottom:24px}
+.ansa-promo-portal .yhow{max-width:110px;padding:8px 10px 7px;border-radius:22px}
+.ansa-promo-portal .yhow i{width:54px;height:54px;font-size:32px}
+.ansa-promo-portal .yhow span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.ansa-promo-portal .yhow{animation:none}}

@@ -22,8 +22,8 @@ const { chromium } = require('playwright');
     await shot('gate'); await check('gate');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
     await page.screenshot({ path: S + '/shots/' + tag + '-boxes-full.png', fullPage: true });
-    await page.click('.fabu[data-fab="tix"] .yfabb'); await shot('yfab'); await check('yfab'); await page.click('.fabu[data-fab="tix"] [data-fx].cta');
-    await page.click('.fabu[data-fab="cosm1"] .yfabb'); await shot('cfab'); await check('cfab'); await page.click('.fabu[data-fab="cosm1"] [data-fx].cta');
+    // v1.23.1: един плаващ бутон „?“ → попъпът „Как работи играта“
+    await page.click('.yfab .yhow'); await shot('yfab'); await check('yfab'); await page.click('#apUx'); await page.waitForTimeout(200);
     if (w < 500) { await page.click('[data-more-box="l"]'); await shot('boxes-open'); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura' })); await shot('fill'); await check('fill');
     { const ok = await page.$('#okBtn'); if (ok) { await ok.click(); await page.waitForTimeout(200); await shot('fill-ok'); } }
