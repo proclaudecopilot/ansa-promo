@@ -1747,3 +1747,18 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo-portal .yhow span{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){.ansa-promo-portal .yhow{animation:none}}
+
+/* ═══ v1.23.2 (човекът: без повторения на седмицата; без „Твоят избор“; без „до −€X“; попъп „Запозната ли си с продуктите?“) ═══
+   седмицата се казва веднъж — лентата над кутиите (чипът в хедъра е скрит на екран 1, редът в картите е махнат; JS);
+   попъпът при избор на кутия: заглавие, един ред контекст, две големи опции една под друга */
+.ansa-promo .dc.know{max-width:520px;text-align:center;padding:26px 24px 22px}
+.ansa-promo .dc.know h3{font-size:22px;padding:0 28px;line-height:1.2;margin-bottom:4px}
+.ansa-promo .dc.know .knows{margin:0 0 18px;font-size:14px;font-weight:700;color:var(--muted)}
+.ansa-promo .dc.know .knowb{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;margin:0 0 10px;padding:14px 16px;border-radius:16px;font:inherit;cursor:pointer;text-align:center;transition:transform .15s,box-shadow .15s}
+.ansa-promo .dc.know .knowb b{font-size:16.5px;font-weight:900;line-height:1.25}
+.ansa-promo .dc.know .knowb small{font-size:12.5px;font-weight:700;line-height:1.3;opacity:.9}
+.ansa-promo .dc.know .knowb.yes{background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;border:none;box-shadow:0 8px 22px rgba(232,114,42,.35)}
+.ansa-promo .dc.know .knowb.no{background:#fff;color:var(--od);border:2px solid var(--o);margin-bottom:0}
+.ansa-promo .dc.know .knowb.no small{color:var(--muted)}
+.ansa-promo .dc.know .knowb:hover{transform:translateY(-1px)}
+.ansa-promo .wkbar:not(.m) .wktx{justify-content:center;flex:1}

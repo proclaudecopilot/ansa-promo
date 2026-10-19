@@ -50,7 +50,7 @@
   var SKEY='ansa_promo_s';
   function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
   var S=freshS();
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null}}))}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,know:S.know||null}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
     Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
@@ -200,7 +200,9 @@
      S.timerEnd остава в сесията само за съвместимост със стари сесии, head.timer остава в регистъра, но не се рендира */
   function startTimer(){S.timerEnd=null}
   function weekKey(){var s=SEAS();return s?(s.last?'head.week.last':s.days_left<=1?'head.week.today':'head.week'):'head.deadline'} /* v1.19.0 */
-  function renderTimer(){var el=$('apTimer');if(el){el.innerHTML='<span'+ck(weekKey())+'>'+T(weekKey())+'</span>';el.classList.remove('hot');el.classList.toggle('wk',!!SEAS())}var t2=$('apTimer2');if(t2){t2.innerHTML='';t2.classList.remove('hot')}}
+  function renderTimer(){var el=$('apTimer');if(el){el.innerHTML='<span'+ck(weekKey())+'>'+T(weekKey())+'</span>';el.classList.remove('hot');el.classList.toggle('wk',!!SEAS());
+    /* v1.23.2 (човекът: „два пъти информация коя седмица си“): на екрана с кутиите седмицата я казва само лентата над тях — чипът в хедъра е скрит */
+    el.style.display=(S.screen===1&&SEAS()&&A.mode!=='info')?'none':''}var t2=$('apTimer2');if(t2){t2.innerHTML='';t2.classList.remove('hot')}}
 
   /* ── тост + undo ── */
   var toastT;
@@ -412,11 +414,22 @@
     S.slots=down?kept.slice(0,b.packs):kept;normSlots();
     startTimer();saveS();
     /* попъпът пълни кутията докрай; таблото (екран 2) е само резервен екран за редакция */
-    if(!full()){if(S.screen!==2)render();S._fillPending=(S.screen!==2);fillModePopup();return}
+    if(!full()){if(S.screen!==2)render();if(!keep&&S.screen!==2&&!S.know){knowPopup();return}S._fillPending=(S.screen!==2);fillModePopup();return}
     if(S.screen===2){go(2);return}
     render();S._fillPending=false;setTimeout(celebrate,200);
   }
 
+  /* v1.23.2 (човекът): при избор на кутия първо питаме „Запозната ли си с продуктите на ansa?“ — „Да, знам ги“ отваря пълненето,
+     „Не ги знам, насочете ме“ отваря пълненето с въпросника „Кое от следното те касае?“ отгоре. Отговорът се помни за сесията. */
+  function knowPopup(){
+    S._fillPending=false;
+    info(T('know.t'),'<p class="knows"'+ck('know.s')+'>'+T('know.s',boxVars(BX()))+'</p>'
+      +'<button class="knowb yes" id="knowYes" type="button"><b'+ck('know.yes')+'>'+T('know.yes')+'</b><small'+ck('know.yes.s')+'>'+T('know.yes.s')+'</small></button>'
+      +'<button class="knowb no" id="knowNo" type="button"><b'+ck('know.no')+'>'+T('know.no')+'</b><small'+ck('know.no.s')+'>'+T('know.no.s')+'</small></button>');
+    $('apDc').classList.add('know');
+    var pick=function(v){S.know=v;S._quizFirst=(v==='no');saveS();S._fillPending=true;fillModePopup()};
+    $('knowYes').onclick=function(){pick('yes')};$('knowNo').onclick=function(){pick('no')};
+  }
   /* ── ЕДИН попъп за пълнене: наградите на кутията + категории със степери (десктоп) / пълноекранен лист (мобилно) ── */
   var needQ={},needOrder=[];
   function fillModePopup(){S._fillPg=0;needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
@@ -517,6 +530,7 @@
     /* v1.0.39: въпросникът е панел върху попъпа — един ред на продукт (t + sub от „проблемите“), минимум един избор; „Покажи ми
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
+    if(S._quizFirst){S._quizFirst=false;$('apOv2').classList.add('off');if(fq)fq.onclick()} /* „Не ги знам“ → направо въпросникът (без интро листа на телефона отгоре) */
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
     function sync(){var t=total();
       /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
@@ -568,9 +582,9 @@
 
   /* ── ЕКРАН 1: избор на кутия (v73: лента −%, мобилно резюме, награди, „за да отключиш“) ── */
   /* v1.19.0: редът „От петък 13.11: −31% · изпускаш €6,50“ в картата (десктоп .bweek, телефон .bmweek в мини картата); последна седмица — „до 31.12“ */
-  function weekRow(b,bv,cls){var s=SEAS();if(!s)return '';var k=s.last||nextPct(b)==null?'box.week.last':s.days_left<=1?'box.week.today':'box.week';return '<div class="'+cls+(k==='box.week.last'?' last':'')+'"'+ck(k)+'>'+T(k,bv)+'</div>'}
+  /* v1.23.2: редът „Последни N дни… след X отстъпката пада“ в картите е махнат — повтаряше лентата над кутиите (човекът забрани повторенията) */
   function seasonStrip(){var s=SEAS();if(!s)return '';var k=s.last?'season.strip.last':s.days_left<=1?'season.strip.today':'season.strip';var dots='';for(var i=1;i<=s.total;i++)dots+='<i class="'+(i<s.week?'past':i===s.week?'cur':'')+'"></i>';
-    var lose=!s.last&&loseMax()>0?'<b class="wklose"'+ck('season.strip.lose')+'>'+T('season.strip.lose')+'</b>':'';
+    var lose=''; /* v1.23.2 (човекът): без „до −€5,98“ — лентата казва само, че отстъпките се променят */
     /* 1.19.2 (човекът): на телефон лентата е видима карта под хедъра — точките, „Остават 7 дни на тези цени“ едро, „От петък 30.10 отстъпките падат“ отдолу */
     if(MOB()){var k1=s.last?'season.strip.m1.last':s.days_left<=1?'season.strip.m1.today':'season.strip.m1';
       return '<div class="wkbar m'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wkm1"'+ck(k1)+'>'+T(k1)+'</div>'+(s.last?'':'<div class="wkm2"><span'+ck('season.strip.m2')+'>'+T('season.strip.m2')+'</span>'+lose+'</div>')+'</div>'}
@@ -600,7 +614,6 @@
     var mini='<div class="bmini"><div class="bm1"><div class="bmt"><b>'+esc(b.name)+'</b><small'+ck(b.grow?'bmini.packs.grow':'bmini.packs')+'>'+T(b.grow?'bmini.packs.grow':'bmini.packs',bv)+'</small></div><button class="cta bmcta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('bmini.cta')+'>'+T('bmini.cta')+'</button></div>'
       /* v1.0.29: „спестяваш до €X“ се вижда и на телефон */
       +'<div class="bmsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
-      +weekRow(b,bv,'bmweek')
       +'<div class="bmr"><div class="bmrow y">'+rimg('tix','🛥️')+'<span'+ck('bmini.yacht')+'>'+T('bmini.yacht',bv)+'</span></div>'
       +(hasCosm?'<div class="bmrow c'+(b.id==='l'?' g':'')+'">'+rimg('cosm1','🌸')+'<span'+ck('bmini.cosm')+'>'+T('bmini.cosm',bv)+'</span></div>':'')
       +(b.rw.indexOf('book')>-1?'<div class="bmrow x">'+rimg('book','📖')+'<span'+ck('bmini.book')+'>'+T('bmini.book')+'</span></div>':'')
@@ -617,7 +630,6 @@
       /* v1.0.29: десктоп — голям процент + „отстъпка на поръчката ти“, после „Спестяваш до €X“ като откроен ред, после наградите */
       +'<div class="bpc"><b>−'+b.pct+'%</b><small'+ck('box.pct.sub')+'>'+T('box.pct.sub')+'</small></div>'
       +'<div class="bsave"><span'+ck('box.save')+'>'+T('box.save',bv)+'</span></div>'
-      +weekRow(b,bv,'bweek')
       +(from?'<div class="bfrom"'+ck('box.from')+'>'+T('box.from',bv)+'</div>':'')
       +'<div class="brw"><div class="brl">'+brows+'</div></div>'
       +'<button class="cta'+(b.id==='l'?' gold':b.id==='s'?' soft':'')+'" data-box="'+i+'"'+ck('box.cta')+'>'+T('box.cta',bv)+'</button>'
@@ -632,7 +644,7 @@
        като блок със снимка, до нея блок за козметичния сет (и двата отварят инфото за наградата) */
     var GI=(A.gate&&A.gate.images)||{};
     h+='<div class="steps">'+[1,2,3].map(function(n){return '<span class="st'+(n===1?' on':'')+'"><i>'+n+'</i><span'+ck('steps.'+n)+'>'+T('steps.'+n)+'</span></span>'}).join('')+'</div>'
-      +'<div class="s1hero">'+(c?'<em class="eyebrow"'+ck('boxes.eyebrow')+'>'+T('boxes.eyebrow')+'</em>':'')+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
+      +'<div class="s1hero">'+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
       +'<div class="s1info top"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
       +'<div class="ib2 c" id="s1C"><i class="ibpic">'+(GI.cosm?'<img src="'+esc(GI.cosm)+'" alt="">':'🌸')+'</i><div class="ibtx"><em'+ck('cban.tag')+'>'+T('cban.tag')+'</em><b'+ck('cban.b')+'>'+T('cban.b')+'</b><small'+ck('cban.s')+'>'+T('cban.s')+'</small><button class="lnk" type="button" data-rw="cosm1"'+ck('cban.more')+'>'+T('cban.more')+'</button></div></div></div>'
       +seasonStrip()
