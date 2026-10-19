@@ -1819,3 +1819,12 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .dc.fpm .fqzn{text-align:center;flex:none}
 .ansa-promo .dc.fpm .fqza .cta{width:100%;min-width:0;min-height:54px;order:1}
 .ansa-promo .dc.fpm .fqza .lnk{order:2;text-align:center;padding:4px 0}
+
+/* ═══ v1.23.8 (човекът: „когато напълниш повече от 5, да не се сплесква, а слайдер със стрелки наляво-надясно“): над 5 опаковки плочките
+   във футъра на телефона са хоризонтална лента (скрол с пръст + стрелки ‹ ›), всяка плочка пази размера си ═══ */
+.ansa-promo .dc.fpm .fslots.many{display:flex;align-items:center;gap:6px}
+.ansa-promo .dc.fpm .fslots.many .fstrack{flex:1 1 auto;min-width:0;display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 0}
+.ansa-promo .dc.fpm .fslots.many .fstrack::-webkit-scrollbar{display:none}
+.ansa-promo .dc.fpm .fslots.many .fs{flex:0 0 50px;width:50px;scroll-snap-align:start}
+.ansa-promo .dc.fpm .fsarr{flex:none;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--o);background:#fff;color:var(--od);font:inherit;font-size:20px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 0 2px;box-shadow:0 2px 8px rgba(232,114,42,.15);transition:opacity .15s}
+.ansa-promo .dc.fpm .fsarr.off{opacity:.3;pointer-events:none}
