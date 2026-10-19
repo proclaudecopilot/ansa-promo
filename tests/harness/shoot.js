@@ -68,6 +68,11 @@ const { chromium } = require('playwright');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null })); await shot('boxes-noutm'); await check('boxes-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'm', utm: null })); await check('fill-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'celeb', box: 's', utm: 'sakura', full: true })); await shot('celeb-small'); await check('celeb-small');
+    // 1.23.9: „Честито“ с 11 опаковки от 6 продукта — групирани, най-много 4 реда (десктоп) / 1 (телефон) видими, останалите зад „Виж всички (+N)“
+    await page.evaluate(() => { AnsaPromo.scenario({ screen: 'boxes', box: 'l', utm: 'sakura' }); const s = AnsaPromo.state(); const o = Object.keys(window.AnsaPromoRuntime.products).filter(k => k !== 'sakura'); s.slots = ['sakura', 'sakura', 'sakura', 'sakura'].concat(o.slice(0, 5)).concat([o[0], o[0]]); AnsaPromo.scenario({ screen: 'celeb' }); }); await page.waitForTimeout(400);
+    { const c = await page.evaluate(() => { const b = document.querySelector('#apDc .cbox'); return b ? { all: b.querySelectorAll('.cit').length, vis: Array.from(b.querySelectorAll('.cit')).filter(e => e.offsetParent !== null).length, more: !!b.querySelector('#cMore'), q: (b.querySelector('.cit .cq') || {}).textContent } : null; });
+      if (!c || c.all !== 6 || c.vis > (w < 500 ? 1 : 4) || !c.more || c.q !== '4×') errors.push(tag + ' celeb-11: списъкът не е групиран/лимитиран: ' + JSON.stringify(c)); }
+    await shot('celeb-11');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'builder', box: 'm', utm: 'sakura' })); await shot('builder'); await check('builder');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'sure', box: 'm', utm: 'sakura', full: true })); await shot('sure'); await check('sure');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'switch', box: 'l', utm: 'sakura', full: true })); await check('switch');

@@ -365,13 +365,13 @@
     if(tgt){var tv=tgtVars(tgt);var news=tgt.rw.filter(function(r){return b.rw.indexOf(r)<0});
       up='<div class="nudge"><b'+ck('cb.nudge')+'>'+T('cb.nudge',tv)+'</b><div class="nl"><span'+ck('cb.nudge.pct')+'>'+T('cb.nudge.pct',tv)+'</span>'+news.map(function(r){return '<span>'+RW(r).ic+' '+RW(r).t+'</span>'}).join('')+'</div>'
         +'<button class="cta gold" id="cUp" data-to="'+BI[tgt.id]+'"'+ck('cb.nudge.cta')+'>'+T('cb.nudge.cta',tv)+'</button>'+(big&&tgt.id!=='l'?'<div style="text-align:center;margin-top:6px"><button class="lnk" id="cUpBig"'+ck('push.big')+'>'+T('push.big')+'</button></div>':'')+'<small'+ck('cb.nudge.s')+'>'+T('cb.nudge.s',tv)+'</small></div>'}
-    var items=S.slots.filter(Boolean).map(function(k,i){var pr=PROD[k];return '<div class="cit"><em>'+(['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'][i]||(i+1))+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(disc(pr,b))+'<s>'+m(pr.price)+'</s></span></div>'}).join('');
     var mix=uniq(S.slots.filter(Boolean)).length>1;
-    /* мобилно: еднаквите продукти се групират — „5× Sakura“ */
-    if(MOB()){var grp={},go_=[];S.slots.filter(Boolean).forEach(function(k){if(!grp[k]){grp[k]=0;go_.push(k)}grp[k]++});
-      /* v1.0.28: на телефон се вижда само първият продукт, останалите са зад „Виж всички продукти (+N)“ — да остане място за наградите */
-      items=go_.map(function(k,gi){var pr=PROD[k],q=grp[k];return '<div class="cit'+(gi?' hid':'')+'"><em class="cq"'+ck('cb.q')+'>'+T('cb.q',{q:q})+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(q*disc(pr,b)))+'<s>'+m(q*pr.price)+'</s></span></div>'}).join('')
-      +(go_.length>1?'<button class="cmore" id="cMore" type="button" data-n="'+(go_.length-1)+'"'+ck('cb.more')+'>'+T('cb.more',{n:go_.length-1})+'</button>':'')}
+    /* 1.23.9 (човекът: „списъкът с продукти трябва да е лимитиран“): на всички ширини еднаквите продукти се групират („4× Sakura“, цената е за
+       всичките), виждат се най-много SHOW реда (телефон 1, десктоп 4), останалите са зад „Виж всички продукти (+N)“ */
+    var grp={},go_=[];S.slots.filter(Boolean).forEach(function(k){if(!grp[k]){grp[k]=0;go_.push(k)}grp[k]++});
+    var SHOW=MOB()?1:4,hidN=Math.max(0,go_.length-SHOW);
+    var items=go_.map(function(k,gi){var pr=PROD[k],q=grp[k];return '<div class="cit'+(gi>=SHOW?' hid':'')+'"><em class="cq"'+ck('cb.q')+'>'+T('cb.q',{q:q})+'</em><i>'+pic(pr,'cimg')+'</i><div class="ctx"><b>'+esc(pr.name)+'</b><small>'+esc(pr.ds)+'</small></div><span class="cpr">'+m(r2(q*disc(pr,b)))+'<s>'+m(q*pr.price)+'</s></span></div>'}).join('')
+      +(hidN>0?'<button class="cmore" id="cMore" type="button" data-n="'+hidN+'"'+ck('cb.more')+'>'+T('cb.more',{n:hidN})+'</button>':'');
     var cbox='<div class="cbox"><div class="cbh"><b'+ck(mix?'cb.mix':'cb.same')+'>'+T(mix?'cb.mix':'cb.same')+'</b><small'+ck('cb.meta')+'>'+T('cb.meta',{save_prod:m(prodSave())})+'</small></div>'+items+'</div>';
     var pay_='<div class="vline eq cpay"><div class="vl pay"><em'+ck('cb.pay')+'>'+T('cb.pay')+'</em><b>'+m(pay())+'</b></div><div class="vlarr">→</div><div class="vl get"><em'+ck('cb.get')+'>'+T('cb.get')+'</em><b>'+m0(value())+'</b></div></div>';
     var subk='cb.sub.'+b.id;
