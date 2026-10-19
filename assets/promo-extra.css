@@ -212,7 +212,7 @@ body.ansa-promo-page{background:#faf3ec}
 .ansa-promo .dc.fpm .mft{grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px}
 .ansa-promo .dc.fpm .mftx b{font-size:17px;text-transform:uppercase;letter-spacing:.03em}
 .ansa-promo .dc.fpm .mfsw{padding:7px 10px;font-size:12px}
-.ansa-promo .mfg2{position:relative;margin-top:9px;background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1.5px solid var(--gold);border-radius:14px;padding:9px 10px 8px}
+.ansa-promo .mfg2{position:relative;margin-top:9px;background:linear-gradient(135deg,#fff4e8,#ffe4cf);border:1.5px solid var(--gold);border-radius:14px;padding:9px 10px 8px}
 .ansa-promo .mfpct{position:absolute;top:-11px;right:10px;background:linear-gradient(135deg,#b45309,#f0b429 60%,#b45309);color:#fff;font-size:13px;font-weight:900;border-radius:999px;padding:3px 10px;box-shadow:0 2px 8px rgba(180,83,9,.3);border:1.5px solid #fff}
 .ansa-promo .mfgm{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding-right:70px}
 .ansa-promo .mfgi{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--ink);line-height:1.2}
@@ -633,7 +633,7 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .bsave span{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:800;color:var(--ink2)}
 .ansa-promo .bsave span::before{content:'';width:26px;height:26px;flex:none;background:center/contain no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c2410c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z'/><path d='M2 9v1c0 1.1.9 2 2 2h1'/><circle cx='16' cy='11' r='.6' fill='%23c2410c'/></svg>")}
 .ansa-promo .bsave b{font-size:24px;font-weight:900;color:var(--od);letter-spacing:-.02em}
-.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff8e6,#fff1cc);border-color:var(--gold)}
+.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff4e8,#ffe4cf);border-color:var(--gold)}
 .ansa-promo .box.l .bsave b{font-size:28px}
 .ansa-promo .bfrom{margin:0 0 10px;font-size:12px}
 .ansa-promo .brw{margin:4px 0 14px;flex:1}
@@ -648,20 +648,22 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .br em{display:block;font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--goldd);margin-bottom:2px}
 .ansa-promo .br.tix b{color:var(--ink)}
 .ansa-promo .box.l .br.tix b{font-size:16px}
-.ansa-promo .br.hl{background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1.5px solid var(--gold);border-radius:14px;padding:10px 12px;margin:6px 0 2px}
+.ansa-promo .br.hl{background:linear-gradient(135deg,#fff4e8,#ffe4cf);border:1.5px solid var(--gold);border-radius:14px;padding:10px 12px;margin:6px 0 2px}
 .ansa-promo .br.hl>i{background:#fff}
 .ansa-promo .br .cpx{position:static;display:inline-flex;margin-top:6px}
 .ansa-promo .br.off{opacity:.55}
 .ansa-promo .br.off b{font-weight:700;color:var(--tan);text-decoration:line-through}
 .ansa-promo .br.off>i{filter:grayscale(1)}
 .ansa-promo .box>.cta{margin-top:auto}
+/* „★ най-изгодна“ беше в потока (promo.css: .box.l>* е position:relative) и буташе името надолу — тук е върху горния ръб */
+.ansa-promo .boxes .box.l>.bbest-d{position:absolute;top:-17px;left:50%;transform:translateX(-50%);z-index:3}
 }
 /* телефон: резюмето на кутията има „спестяваш до €X“ */
 .ansa-promo .bmsave{display:none}
 @media(max-width:640px){
 .ansa-promo .bmsave{display:flex;align-items:center;justify-content:center;gap:6px;margin:9px 0 0;padding:7px 10px;border-radius:10px;background:var(--os);border:1px dashed var(--ol);font-size:13px;font-weight:800;color:var(--ink2)}
 .ansa-promo .bmsave b{font-size:16px;font-weight:900;color:var(--od)}
-.ansa-promo .box.l .bmsave{background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1px solid var(--gold)}
+.ansa-promo .box.l .bmsave{background:linear-gradient(135deg,#fff4e8,#ffe4cf);border:1px solid var(--gold)}
 .ansa-promo .steps{margin:6px 0 2px}
 .ansa-promo .st{font-size:11px;gap:5px}
 .ansa-promo .st i{width:22px;height:22px;font-size:11px}
@@ -699,7 +701,7 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .br b b{display:inline;font-size:inherit}
 .ansa-promo .br small{display:block;font-size:12px;font-weight:600;color:var(--tan);line-height:1.3;margin-top:2px}
 .ansa-promo .br em{display:block;font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--goldd);margin-bottom:2px}
-.ansa-promo .br.hl{background:linear-gradient(135deg,#fff8e6,#fff1cc)!important;border:1.5px solid var(--gold)!important;border-radius:14px!important;padding:10px 12px!important;margin:6px 0 2px!important}
+.ansa-promo .br.hl{background:linear-gradient(135deg,#fff4e8,#ffe4cf)!important;border:1.5px solid var(--gold)!important;border-radius:14px!important;padding:10px 12px!important;margin:6px 0 2px!important}
 .ansa-promo .br.hl>i{background:#fff}
 .ansa-promo .br .cpx{position:static;display:inline-flex;margin-top:6px}
 .ansa-promo .br.off{opacity:.55}
@@ -711,7 +713,7 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 .ansa-promo .box.l{padding-top:38px!important}
 .ansa-promo .bhd .bbest{top:-16px}
 .ansa-promo .bsave{background:var(--os)!important;display:block!important;width:auto!important;height:auto!important}
-.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff8e6,#fff1cc)!important}
+.ansa-promo .box.l .bsave{background:linear-gradient(135deg,#fff4e8,#ffe4cf)!important}
 .ansa-promo .brw{display:block!important}
 .ansa-promo .br{grid-template-columns:44px minmax(0,1fr);gap:12px;padding:10px 2px!important}
 .ansa-promo .br>i{width:44px;height:44px;font-size:24px}
@@ -1348,7 +1350,7 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .box{border-width:2px;box-shadow:0 8px 28px rgba(120,60,20,.16),0 1px 3px rgba(67,48,42,.08)}
 .ansa-promo .box.s{border-color:#c6a78e}
 .ansa-promo .box.m{border-color:var(--o);box-shadow:0 8px 28px rgba(232,114,42,.22),0 1px 3px rgba(67,48,42,.08)}
-.ansa-promo .box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff6d6 0%,#fff 42%)}
+.ansa-promo .box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff0e3 0%,#fff 42%)}
 .ansa-promo .bhd .bname,.ansa-promo .box.l .bhd .bname{display:inline-block;flex:0 0 auto;border-radius:999px;padding:4px 14px}
 .ansa-promo .box.s .bhd .bname{background:#f1e4d7;color:var(--tan)}
 .ansa-promo .box.m .bhd .bname{background:#fde4d2;color:var(--od)}
@@ -1455,7 +1457,7 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .ansa-promo .dc.hw .hw-box{display:flex;flex-direction:column;background:#fff;border:2px solid #c6a78e;border-radius:18px;padding:18px 16px 16px;box-shadow:0 8px 28px rgba(120,60,20,.12)}
 .ansa-promo .dc.hw .hw-box.m{border-color:var(--o)}
-.ansa-promo .dc.hw .hw-box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff6d6 0%,#fff 45%)}
+.ansa-promo .dc.hw .hw-box.l{border-color:var(--gold);background:linear-gradient(180deg,#fff0e3 0%,#fff 45%)}
 .ansa-promo .dc.hw .hw-bn{display:inline-block;align-self:flex-start;border-radius:999px;padding:4px 14px;font-size:14px;font-weight:900;background:#f1e4d7;color:var(--tan)}
 .ansa-promo .dc.hw .hw-box.m .hw-bn{background:#fde4d2;color:var(--od)}
 .ansa-promo .dc.hw .hw-box.l .hw-bn{background:#ffe9a8;color:var(--goldd)}
@@ -1498,7 +1500,7 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-win p{font-size:14px;margin:0}
 .ansa-promo .dc.hw .hw-y p.hw-legal{color:rgba(255,255,255,.72)}
 /* 5 · комплектът — златна секция */
-.ansa-promo .dc.hw .hw-k{display:grid;grid-template-columns:.8fr 1.4fr;gap:26px;align-items:start;background:linear-gradient(160deg,#fff6d6,#fde9d2)}
+.ansa-promo .dc.hw .hw-k{display:grid;grid-template-columns:.8fr 1.4fr;gap:26px;align-items:start;background:linear-gradient(160deg,#fff0e3,#fde3cf)}
 .ansa-promo .dc.hw .hw-k .hw-kick{color:var(--goldd)}
 .ansa-promo .dc.hw .hw-kpic{position:relative}
 .ansa-promo .dc.hw .hw-kpic img{width:100%;border-radius:18px;box-shadow:0 14px 36px rgba(180,120,20,.3);display:block}
@@ -1638,7 +1640,7 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 
 /* ══ 45 · v1.10.0 — кутията расте с броя: редът „Още 2 опаковки и отключваш голяма кутия с −40%“ под прогреса (десктоп) /
    под „Спестяваш“ в лепкавия футър (телефон); .top = най-голямата кутия е достигната (зелено) ══ */
-.ansa-promo .fp3 .fnext{font-size:14px;font-weight:800;color:var(--goldd,#b45309);background:linear-gradient(135deg,#fff8e6,#fff1cc);border:1.5px solid rgba(240,180,41,.6);border-radius:10px;padding:7px 12px;margin:-6px 0 12px;line-height:1.35}
+.ansa-promo .fp3 .fnext{font-size:14px;font-weight:800;color:var(--goldd,#b45309);background:linear-gradient(135deg,#fff4e8,#ffe4cf);border:1.5px solid rgba(240,180,41,.6);border-radius:10px;padding:7px 12px;margin:-6px 0 12px;line-height:1.35}
 .ansa-promo .fp3 .fnext b{color:var(--ink,#1a1a2e)}
 .ansa-promo .fp3 .fnext.top{color:var(--gd,#16a34a);background:#f3fbf5;border-color:var(--g,#16a34a)}
 .ansa-promo .dc.fpm .mff .fnext{font-size:12px;font-weight:800;color:var(--goldd,#b45309);margin:0 0 6px;line-height:1.3}
@@ -1680,7 +1682,7 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 /* 1.19.4 (човекът): на телефон хедърът е само „Сезонът на ansa“ — чипът на седмицата повтаря картата под него; на /info (без карта) остава */
 @media(max-width:640px){.ansa-promo:not(.info) .timer.wk{display:none}}
 @media(max-width:640px){.ansa-promo .wkbar.m{display:block;padding:12px 14px 11px;margin:8px 0 2px;border-radius:14px;border:1.5px solid var(--o);background:linear-gradient(135deg,#fff7ef,#fff);box-shadow:0 8px 24px rgba(232,114,42,.16)}
-.ansa-promo .wkbar.m.last{border-color:var(--gold);background:linear-gradient(135deg,#fffdf5,#fff)}
+.ansa-promo .wkbar.m.last{border-color:var(--gold);background:linear-gradient(135deg,#fff7f1,#fff)}
 .ansa-promo .wkbar.m .wkdots{flex:none;width:100%;margin:0 0 9px}
 .ansa-promo .wkm1{font-size:17px;font-weight:800;color:var(--ink);line-height:1.25;text-align:center}
 .ansa-promo .wkm1 b{color:var(--od);font-weight:900}
@@ -1705,3 +1707,84 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 .ansa-promo .dc.hw .hw-ladt tr.next td{background:#fff7ef}
 .ansa-promo .dc.hw .hw-ladt .you{display:inline-block;background:var(--o);color:#fff;border-radius:999px;font-size:10px;padding:2px 8px;margin-left:6px;letter-spacing:.06em;vertical-align:middle;font-style:normal;text-decoration:none}
 @media(max-width:640px){.ansa-promo .dc.hw .hw-ladt{min-width:0}.ansa-promo .dc.hw .hw-ladt td{padding:6px 7px;font-size:13px}.ansa-promo .dc.hw .hw-ladt td .d{display:block;margin:0;font-size:11px}}
+
+/* ═══ v1.23.1 (три от човека по екрана с кутиите) ═══
+   1 · фонът: тоновете бяха кремаво-златни (гориво: златният радиал долу вдясно + #f6e4d1) и на много екрани се четяха като бледо жълто;
+       сега са бледо оранжево / пепел от рози — без жълто в страницата, хедъра, лепкавите ленти и в Голямата кутия
+   2 · трите кутии са с еднакъв размер: равни колони, еднаква височина (бутоните на един ред долу), без допълнителен отстъп отгоре
+       на Голямата — „★ най-изгодна“ стои върху горния ѝ ръб и не взема място
+   3 · плаващите плочки Яхта/Козметика (телефон и десктоп) са ЕДИН бутон „?“ → попъпът „Как работи играта“ */
+/* 1 · фон */
+.ansa-promo{--cream:#f4ddd3}
+.ansa-promo:not(.ansa-promo-portal){background:var(--cream)}
+.ansa-promo::before{background:radial-gradient(1000px 520px at 50% -140px,rgba(232,114,42,.22),transparent 62%),radial-gradient(760px 520px at 100% 100%,rgba(201,94,110,.18),transparent 62%),radial-gradient(620px 440px at 0% 55%,rgba(194,24,91,.09),transparent 62%)}
+body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
+.ansa-promo .hdr{background:rgba(244,221,211,.94)}
+.ansa-promo .dc.hw .hw-stk{background:rgba(244,221,211,.92)}
+.ansa-promo .dc.fpm .mfl{background:#f4ddd3}
+.ansa-promo .box.l,.ansa-promo .dc.hw .hw-box.l{background:linear-gradient(180deg,#fff0e3 0%,#fff 42%)}
+.ansa-promo .box.l .bsave,.ansa-promo .box.l .bmsave,.ansa-promo .br.hl,.ansa-promo .mfg2,.ansa-promo .fp3 .fnext{background:linear-gradient(135deg,#fff4e8,#ffe4cf)!important}
+.ansa-promo .wkbar.m.last{background:linear-gradient(135deg,#fff7f1,#fff)}
+/* 2 · еднакви кутии (десктоп) */
+@media(min-width:1000px){
+.ansa-promo .boxes{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.ansa-promo .box.s,.ansa-promo .box.m,.ansa-promo .box.l{margin-top:16px;padding-top:24px!important;padding-left:16px;padding-right:16px}
+.ansa-promo .box.l .bpc b{font-size:62px}
+.ansa-promo .box>.cta{margin-top:auto}
+.ansa-promo .box .brw{flex:1 1 auto}
+}
+/* 3 · един плаващ бутон „?“ (телефон и десктоп) */
+.ansa-promo-portal .yfab{display:block;right:14px;bottom:calc(16px + env(safe-area-inset-bottom))}
+.ansa-promo-portal .yfab[style*="display: none"]{display:none!important}
+.ansa-promo-portal .yhow{display:flex;flex-direction:column;align-items:center;gap:3px;width:auto;max-width:96px;background:#fff;border:2px solid var(--o,#e8722a);border-radius:20px;padding:6px 8px 6px;box-shadow:0 8px 24px rgba(232,114,42,.35);cursor:pointer;font:inherit;color:var(--od,#c2410c);animation:yfabPulse 2.4s ease-in-out infinite}
+.ansa-promo-portal .yhow i{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;font-style:normal;font-size:28px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(232,114,42,.35)}
+.ansa-promo-portal .yhow span{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1.15;text-align:center;white-space:normal}
+.ansa-promo-portal .yhow:hover{transform:translateY(-1px)}
+@media(min-width:1000px){
+.ansa-promo-portal .yfab{right:24px;bottom:24px}
+.ansa-promo-portal .yhow{max-width:110px;padding:8px 10px 7px;border-radius:22px}
+.ansa-promo-portal .yhow i{width:54px;height:54px;font-size:32px}
+.ansa-promo-portal .yhow span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.ansa-promo-portal .yhow{animation:none}}
+
+/* ═══ v1.23.2 (човекът: без повторения на седмицата; без „Твоят избор“; без „до −€X“; попъп „Запозната ли си с продуктите?“) ═══
+   седмицата се казва веднъж — лентата над кутиите (чипът в хедъра е скрит на екран 1, редът в картите е махнат; JS);
+   попъпът при избор на кутия: заглавие, един ред контекст, две големи опции една под друга */
+.ansa-promo .dc.know{max-width:520px;text-align:center;padding:26px 24px 22px}
+.ansa-promo .dc.know h3{font-size:22px;padding:0 28px;line-height:1.2;margin-bottom:4px}
+.ansa-promo .dc.know .knows{margin:0 0 18px;font-size:14px;font-weight:700;color:var(--muted)}
+.ansa-promo .dc.know .knowb{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;margin:0 0 10px;padding:14px 16px;border-radius:16px;font:inherit;cursor:pointer;text-align:center;transition:transform .15s,box-shadow .15s}
+.ansa-promo .dc.know .knowb b{font-size:16.5px;font-weight:900;line-height:1.25}
+.ansa-promo .dc.know .knowb small{font-size:12.5px;font-weight:700;line-height:1.3;opacity:.9}
+.ansa-promo .dc.know .knowb.yes{background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;border:none;box-shadow:0 8px 22px rgba(232,114,42,.35)}
+.ansa-promo .dc.know .knowb.no{background:#fff;color:var(--od);border:2px solid var(--o);margin-bottom:0}
+.ansa-promo .dc.know .knowb.no small{color:var(--muted)}
+.ansa-promo .dc.know .knowb:hover{transform:translateY(-1px)}
+.ansa-promo .wkbar:not(.m) .wktx{justify-content:center;flex:1}
+
+/* ═══ v1.23.3 (човекът): въпросникът „Кое от следното те касае?“ — лепкав футър „Продължи“, активен при поне 2 отбелязани; броячът над бутона ═══ */
+.ansa-promo .fqzc{max-height:100%;overflow:auto;display:flex;flex-direction:column}
+.ansa-promo .fqzg{flex:1 1 auto;align-content:start;margin-bottom:12px}
+.ansa-promo .fqza{position:sticky;bottom:0;z-index:2;flex-wrap:wrap;margin:0 -28px -24px;padding:12px 28px 18px;background:#fff;border-top:1px solid rgba(232,114,42,.18);box-shadow:0 -8px 20px rgba(26,26,46,.05)}
+.ansa-promo .fqzn{flex:1 1 100%;font-size:13px;font-weight:800;color:var(--muted);line-height:1.3}
+.ansa-promo .fqzn.ok{color:var(--gd)}
+.ansa-promo .dc.fpm .fqzc{max-height:none;overflow:visible}
+.ansa-promo .dc.fpm .fqza{flex-wrap:nowrap;bottom:0;margin:0 -20px calc(-20px - env(safe-area-inset-bottom));padding:12px 20px calc(14px + env(safe-area-inset-bottom));background:#f7f1ec;border-top:1px solid rgba(67,48,42,.08);gap:8px}
+.ansa-promo .dc.fpm .fqzn{text-align:center}
+.ansa-promo .dc.fpm .fqza .lnk{padding:2px 0}
+
+/* ═══ v1.23.4 (дизайнерски преглед преди релийз) ═══
+   1 · последните лимонено-жълти фонове (promo.css — порт на мокъпа, не се пипа) са в прасковено-златния тон на 1.23.1:
+       „Честито“, бутон „Плащане“, наградите в пълненето, „Как работи“ */
+.ansa-promo .push,.ansa-promo .cosmhl.gold,.ansa-promo .hero.gold,.ansa-promo .nudge,.ansa-promo .fhero,.ansa-promo .f2h{background:linear-gradient(135deg,#fff4e8,#ffe4cf)}
+.ansa-promo .fg.cosm1.big{background:linear-gradient(135deg,#fff4e8,#ffe4cf)}
+.ansa-promo .bx.l,.ansa-promo .gp.gold,.ansa-promo .frc.cosm1,.ansa-promo .fg.cosm1,.ansa-promo .g2r.gold{background:#fff4e8}
+.ansa-promo .g2b.best{background:linear-gradient(180deg,#fff4e8,#fff)}
+/* 2 · телефон/таблет: плаващият „?“ покриваше „Избирам →“ (дясно в картите) — сега е долу вляво и по-компактен; десктопът остава вдясно */
+@media(max-width:999px){
+.ansa-promo-portal .yfab{right:auto;left:12px;bottom:calc(12px + env(safe-area-inset-bottom))}
+.ansa-promo-portal .yhow{max-width:78px;padding:4px 6px 5px;border-radius:16px;gap:2px}
+.ansa-promo-portal .yhow i{width:40px;height:40px;font-size:24px}
+.ansa-promo-portal .yhow span{font-size:9px}
+}
