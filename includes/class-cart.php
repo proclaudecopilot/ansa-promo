@@ -129,8 +129,9 @@ final class Cart {
 
 	/**
 	 * Цялата логика на add, без HTTP — ползва се от ajax_add и от проверката promo-cart.
-	 * $a: box, items[parent ids], secret[parent ids], pay, email, cosm, utm, lead, draft; trusted=true (само от PHP) = права за чернова.
-	 * Връща [ok, code, msg] или [ok, group, box, total, checkoutUrl, idempotent].
+	 * $a: box, items[parent ids], secret[parent ids], pay, email, cosm, utm, lead, draft; trusted=true (само от PHP) = права за чернова;
+	 * merge=true (v1.24.0, Shrine) = добавя към количката вместо да я замени (виж по-долу).
+	 * Връща [ok, code, msg] или [ok, group, box, total, checkoutUrl, idempotent] (+ merged, count, tickets, fragments, cart_hash при merge).
 	 */
 	public static function perform_add( $a ) {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) { return array( 'ok' => false, 'code' => 'add', 'msg' => 'WooCommerce' ); }
@@ -166,9 +167,27 @@ final class Cart {
 		$cosm  = ! isset( $a['cosm'] ) || (bool) $a['cosm'];
 		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
 
-		/* идемпотентно: същата кутия и същият състав вече са в количката (двойно докосване на телефона) → само контекстът се опреснява */
+		/* v1.24.0 (Shrine 6.26.5, човекът: „да им се добавя в количката и да могат да добавят и други продукти, а може и промо, и чак
+		   след това чекаут; сетът веднъж, не два пъти, 5 билета, не 10, 1 книга“): merge = кутията се ДОБАВЯ към количката, нищо не
+		   се изчиства, чуждите (платени) редове остават с регулярни цени; има ли вече промо кутия от същото промо, опаковките влизат
+		   в НЕЯ — една група → книгата веднъж, сетът веднъж, билетите по правилото на една кутия (Config::tickets_for). Растящата
+		   кутия (grow) расте, малка/средна се вдигат по броя (box_for_count), таванът е max_packs. Двойно докосване (същият
+		   състав до 10 с) не добавя пак. */
+		$merge = ! empty( $a['merge'] );
 		$g = self::group();
-		if ( self::group_valid( $g ) && $g['box'] === $box_id && $g['promo'] === $cfg['id'] && ! $g['foreign'] ) {
+		if ( $merge ) {
+			$sig = md5( wp_json_encode( array( $box_id, $counts ) ) ); $prev = self::ctx();
+			if ( self::group_valid( $g ) && ! empty( $prev['merge_sig'] ) && $prev['merge_sig'] === $sig && time() - (int) ( $prev['merge_t'] ?? 0 ) < 10 ) {
+				WC()->cart->calculate_totals();
+				return array_merge( array( 'ok' => true, 'idempotent' => true, 'merged' => true, 'group' => $g['group'], 'box' => $g['box'], 'count' => (int) $g['sum'], 'tickets' => Config::tickets_for( Config::box( $cfg, $g['box'] ) ?: $box, (int) $g['sum'] ), 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url() ), self::fragments() );
+			}
+			if ( self::group_valid( $g ) && $g['promo'] === $cfg['id'] && (bool) $g['draft'] === $draft ) {
+				return self::merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err );
+			}
+		}
+
+		/* идемпотентно: същата кутия и същият състав вече са в количката (двойно докосване на телефона) → само контекстът се опреснява */
+		if ( ! $merge && self::group_valid( $g ) && $g['box'] === $box_id && $g['promo'] === $cfg['id'] && ! $g['foreign'] ) {
 			$have = array(); foreach ( $g['base'] as $it ) { $have[ (int) $it['product_id'] ] = ( $have[ (int) $it['product_id'] ] ?? 0 ) + (int) $it['quantity']; }
 			$hs = array(); foreach ( $g['secret'] as $it ) { $hs[] = (int) $it['product_id']; } sort( $hs ); $ws = $secret_ok; sort( $ws );
 			$want = $counts; ksort( $have ); ksort( $want );
@@ -179,10 +198,11 @@ final class Cart {
 			}
 		}
 
-		/* промото е самостоятелна поръчка */
+		/* промото е самостоятелна поръчка (merge: количката остава — само стара/счупена промо група пада) */
 		self::$mutating = true;
 		$_POST['ansa_no_gift'] = 1; /* Shrine Cart_Gift: без подаръци по вариация в промо количката */
-		WC()->cart->empty_cart();
+		if ( $merge ) { foreach ( WC()->cart->get_cart() as $k => $it ) { if ( ! empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } } }
+		else { WC()->cart->empty_cart(); }
 		$group = 'ap_' . substr( md5( uniqid( '', true ) ), 0, 10 );
 		$meta  = array( 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $box['pct'], 'packs' => (int) $box['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $box['rw'], true ), 'draft' => $draft, 'cv' => (int) Config::version(), 't' => time(), 'week' => (int) ( $cfg['season']['cur']['i'] ?? 0 ) ); /* v1.19.0: t/week — кога и в коя седмица е добавено (гратисът при смяна на седмицата) */
 		$added = 0;
@@ -202,13 +222,78 @@ final class Cart {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
 			WC()->cart->add_to_cart( (int) $pid, 1, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'secret', 'key' => $p['key'] ) ) ) );
 		}
-		/* нищо чуждо в промо количката (напр. подарък, инжектиран от друг плъгин) */
-		foreach ( WC()->cart->get_cart() as $k => $it ) { if ( empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } }
+		/* нищо чуждо в промо количката (напр. подарък, инжектиран от друг плъгин); merge: само автоматичните подаръци (strip_foreign), платените чужди редове остават */
+		if ( ! $merge ) { foreach ( WC()->cart->get_cart() as $k => $it ) { if ( empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } } }
 		self::$mutating = false;
+		if ( $merge ) { self::strip_foreign(); $ctx['merge_sig'] = $sig; $ctx['merge_t'] = time(); foreach ( array( 'email', 'lead' ) as $kf ) { if ( empty( $ctx[ $kf ] ) && ! empty( $prev[ $kf ] ) ) { $ctx[ $kf ] = $prev[ $kf ]; } } }
 		$ctx['group'] = $group; self::set_ctx( $ctx ); self::choose_gateway( $cfg, $pay );
 		WC()->cart->calculate_totals(); WC()->cart->set_session();
 		do_action( 'ansa_promo_added', $group, $box, $ctx, $cfg );
-		return array( 'ok' => true, 'idempotent' => false, 'group' => $group, 'box' => $box_id, 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url() );
+		$out = array( 'ok' => true, 'idempotent' => false, 'group' => $group, 'box' => $box_id, 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url() );
+		if ( $merge ) { $out = array_merge( $out, array( 'merged' => true, 'count' => count( $items ), 'tickets' => Config::tickets_for( $box, count( $items ) ) ), self::fragments() ); }
+		return $out;
+	}
+
+	/** v1.24.0: WC фрагментите на количката (мини количката на FunnelKit/темата се опреснява от клиента с added_to_cart). */
+	private static function fragments() {
+		$f = array();
+		try { $f = (array) apply_filters( 'woocommerce_add_to_cart_fragments', array() ); } catch ( \Throwable $e ) { $f = array(); }
+		return array( 'fragments' => $f, 'cart_hash' => WC()->cart->get_cart_hash() );
+	}
+
+	/**
+	 * v1.24.0: опаковките влизат в СЪЩЕСТВУВАЩАТА промо група. Кутията става най-голямата с packs ≤ общия брой (но не по-малка от
+	 * досегашната и от поисканата); промяна на кутията пренаписва box/pct/packs/ship (и ppct по продукт) в старите редове. Ред за
+	 * същия продукт → количеството му расте (не втори ред). Книгата се добавя само ако я няма. Секретните редове не се пипат.
+	 */
+	private static function merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err ) {
+		$total = (int) $g['sum'] + (int) array_sum( $counts );
+		$cur   = Config::box( $cfg, $g['box'] ) ?: $box;
+		$min   = (int) $cur['packs'] >= (int) $box['packs'] ? $cur : $box;
+		$eff   = Config::box_for_count( $cfg, $total, $min ) ?: $min;
+		$bv    = array( 'packs' => (int) $eff['packs'], 'opk' => 1 === (int) $eff['packs'] ? 'опаковка' : 'опаковки', 'box' => $eff['name'], 'box_l' => mb_strtolower( $eff['name'] ) );
+		$maxp  = Config::max_for( $cfg, $eff );
+		if ( $total > $maxp ) { return $err( ! empty( $eff['grow'] ) ? 'max' : 'count', array_merge( $bv, array( 'max' => $maxp ) ) ); }
+		if ( empty( $eff['grow'] ) && $total !== (int) $eff['packs'] ) { return $err( 'count', $bv ); }
+		$box_id = (string) $eff['id']; $group = (string) $g['group'];
+		self::$mutating = true;
+		$_POST['ansa_no_gift'] = 1;
+		$cart = WC()->cart;
+		/* кутията се смени (напр. малка + 5 → голяма): старите редове на групата минават на новата кутия */
+		if ( $box_id !== (string) $g['box'] ) {
+			foreach ( $cart->cart_contents as $key => $item ) {
+				if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) || (string) $item[ self::META ]['group'] !== $group ) { continue; }
+				$m = $item[ self::META ];
+				$m['box'] = $box_id; $m['pct'] = (float) $eff['pct']; $m['packs'] = (int) $eff['packs']; $m['ship'] = in_array( 'ship', $eff['rw'], true );
+				if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $m['ppct'] = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct']; }
+				$cart->cart_contents[ $key ][ self::META ] = $m;
+			}
+		}
+		$meta = array( 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $eff['pct'], 'packs' => (int) $eff['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $eff['rw'], true ), 'draft' => ! empty( $g['draft'] ), 'cv' => (int) Config::version(), 't' => (int) ( $g['t'] ?? time() ), 'week' => (int) ( $g['week'] ?? ( $cfg['season']['cur']['i'] ?? 0 ) ) );
+		$added = 0;
+		foreach ( $counts as $pid => $q ) {
+			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
+			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct'];
+			$have = null;
+			foreach ( $cart->get_cart() as $key => $item ) { if ( ! empty( $item[ self::META ] ) && 'base' === $item[ self::META ]['role'] && (string) $item[ self::META ]['group'] === $group && (int) $item['product_id'] === (int) $pid ) { $have = $key; break; } }
+			if ( $have ) { $cart->set_quantity( $have, (int) $cart->get_cart_item( $have )['quantity'] + (int) $q, false ); $added++; continue; }
+			$key = $cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'], 'ppct' => $ppct ) ) ) );
+			if ( $key ) { $added++; }
+		}
+		if ( ! $added ) { self::$mutating = false; return $err( 'add' ); }
+		if ( ! $g['book'] && in_array( 'book', $eff['rw'], true ) && ! empty( $cfg['rewards']['book']['product_id'] ) ) {
+			$bp = wc_get_product( (int) $cfg['rewards']['book']['product_id'] );
+			if ( $bp && $bp->is_purchasable() ) { $cart->add_to_cart( $bp->get_id(), 1, 0, array(), array( self::META => array_merge( $meta, array( 'role' => 'book', 'key' => 'book' ) ) ) ); }
+		}
+		self::$mutating = false;
+		self::strip_foreign();
+		$prev = self::ctx();
+		foreach ( array( 'email', 'lead', 'sid', 'utm' ) as $kf ) { if ( empty( $ctx[ $kf ] ) && ! empty( $prev[ $kf ] ) ) { $ctx[ $kf ] = $prev[ $kf ]; } }
+		$ctx['group'] = $group; $ctx['box'] = $box_id; $ctx['merge_sig'] = $sig; $ctx['merge_t'] = time();
+		self::set_ctx( $ctx ); self::choose_gateway( $cfg, $pay );
+		$cart->calculate_totals(); $cart->set_session();
+		do_action( 'ansa_promo_added', $group, $eff, $ctx, $cfg );
+		return array_merge( array( 'ok' => true, 'idempotent' => false, 'merged' => true, 'group' => $group, 'box' => $box_id, 'count' => $total, 'tickets' => Config::tickets_for( $eff, $total ), 'total' => $cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url() ), self::fragments() );
 	}
 	private static function choose_gateway( $cfg, $pay ) {
 		$gw = 'cod' === $pay ? ( $cfg['checkout']['cod_gateway'] ?: 'cod' ) : $cfg['checkout']['card_gateway'];
