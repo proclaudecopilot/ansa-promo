@@ -263,9 +263,11 @@ final class Frontend {
 		$prods = ( ! $draft ) ? get_transient( $key ) : false;
 		if ( ! is_array( $prods ) ) { $prods = self::products( $cfg ); if ( ! $draft ) { set_transient( $key, $prods, Catalog::RUNTIME_TTL ); } }
 		$deadline = $cfg['deadline'] ? date_i18n( 'd.m.Y', Config::deadline_ts( $cfg ) ?: time() ) : '';
-		$utm = '';
-		if ( ! empty( $_GET[ $cfg['utm_param'] ] ) ) { $utm = strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) wp_unslash( $_GET[ $cfg['utm_param'] ] ) ) ); }
-		if ( ! isset( $prods[ $utm ] ) ) { $utm = ''; }
+		/* v1.24.0: ?{utm_param}= се резолва по ЕДНИЯ ред (Config::resolve_landing): кацане → продукт → нищо. Кешираната страница носи
+		   празен utm — promo.js прави същата резолюция от адреса с landings от runtime-а. В черновата/редактора пътуват и изключените кацания. */
+		$res = Config::resolve_landing( $cfg, ! empty( $_GET[ $cfg['utm_param'] ] ) ? (string) wp_unslash( $_GET[ $cfg['utm_param'] ] ) : '', $prods, $draft );
+		$utm = $res['utm'];
+		$landings = array(); foreach ( (array) ( $cfg['landings'] ?? array() ) as $l ) { if ( $draft || ! empty( $l['enabled'] ) ) { $landings[] = array( 'slug' => $l['slug'], 'name' => $l['name'], 'enabled' => ! empty( $l['enabled'] ), 'core' => isset( $prods[ $l['core'] ] ) ? $l['core'] : '', 'box' => $l['box'], 'know' => $l['know'], 'gate' => $l['gate'], 'copy' => (object) $l['copy'] ); } }
 		$fit = array(); foreach ( (array) $cfg['fit'] as $k => $ks ) { if ( isset( $prods[ $k ] ) ) { $fit[ $k ] = array_values( array_filter( (array) $ks, function ( $x ) use ( $prods ) { return isset( $prods[ $x ] ); } ) ); } }
 		$problems = array(); foreach ( (array) $cfg['problems'] as $x ) { if ( isset( $prods[ $x['key'] ] ) ) { $problems[] = $x; } }
 		return array(
@@ -300,6 +302,8 @@ final class Frontend {
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
+			'landing'   => $res['landing'] ? $res['landing']['slug'] : '', /* v1.24.0 */
+			'landings'  => $landings,
 			'deadline'  => $deadline,
 			'season'    => self::season_runtime( $cfg ), /* v1.19.0: седмицата на сезона, следващите проценти, стълбата */
 			'copy'      => $wk ? Copy::weekly( Copy::effective( $cfg['copy'] ), $cfg['copy'] ) : Copy::effective( $cfg['copy'] ),

@@ -43,17 +43,31 @@
     SECRET_PCT=Number(A.secret&&A.secret.pct)||0;SECRET_N=Number(A.secret&&A.secret.count)||0;
   }
   bind();
-  /* v1.4.3: UTM-ът и от адреса — кешът (FlyingPress) връща една и съща страница за ?utm_content=…, със сървърен utm '' */
-  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){qsU=String(qsU).toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(qsU&&PROD[qsU])A.utm=qsU}}catch(e){}
+  /* v1.4.3: UTM-ът и от адреса — кешът (FlyingPress) връща една и съща страница за ?utm_content=…, със сървърен utm ''.
+     v1.24.0: ?{utm_param}= се резолва по ЕДНИЯ ред (същият като Config::resolve_landing): кацане → продукт (имплицитно кацане от продукт)
+     → основа. LAND = кацането (slug, core, box, know, gate, copy overlay); A.utm = стойността за атрибуция; A.core = основният продукт;
+     UNK = непозната стойност (пада на основата, праща се с „view“, за да се види грешен линк в реклама). */
+  var LAND=null,UNK='';
+  function cleanKey(v){return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9_\-]/g,'').slice(0,64)}
+  function landingFor(v){v=cleanKey(v);if(!v)return null;var ls=A.landings||[];for(var i=0;i<ls.length;i++){if(ls[i]&&ls[i].slug===v&&(ls[i].enabled!==false||A.draft||A.editor))return ls[i]}return null}
+  function applyLanding(v){v=cleanKey(v);LAND=landingFor(v);UNK='';
+    if(LAND){A.utm=LAND.slug;A.landing=LAND.slug;A.core=(LAND.core&&PROD[LAND.core])?LAND.core:''}
+    else if(v&&PROD[v]){A.utm=v;A.landing='';A.core=v}
+    else{A.utm='';A.landing='';A.core='';UNK=v}}
+  var qsHad=false;try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');qsHad=qsU!=null&&qsU!=='';applyLanding(qsHad?qsU:'')}catch(e){applyLanding('')} /* само адресът: сървърният utm идва от същия адрес, кешираната страница носи '' */
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';
-  function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
+  function freshS(){return {box:null,chosen:null,slots:[],core:A.core||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
   var S=freshS();
   function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,know:S.know||null}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
-    Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
+    Object.keys(s).forEach(function(k){S[k]=s[k]});
+    /* v1.24.0: кацане в адреса печели за атрибуцията и (без избрана кутия) за основния продукт; с избрана кутия напредъкът се пази.
+       Без параметър в адреса (връщане от чекаута) запомненото кацане се възстановява, за да останат текстовете му. */
+    if(A.utm){S.utm=A.utm;if(S.box===null)S.core=A.core||null;else if(!S.core&&A.core)S.core=A.core}
+    else if(S.utm&&!LAND){LAND=landingFor(S.utm);if(LAND)A.landing=LAND.slug}
     if(!(A.gate&&A.gate.enabled))S.emailDone=true; /* v1.18.2: изключеният попъп печели над запомнено emailDone:false */
     if(S.chosen==null||!BOXES[S.chosen])S.chosen=S.box;if(S.box!==null)syncBox(); /* v1.10.0 */
     return S.box!==null&&S.slots.filter(Boolean).length>0}catch(e){return false}}
@@ -115,11 +129,12 @@
       /* v1.7.0 („Как работи“): бройките на кутиите, лимитът на комплектите, линкът към билетите, датата на тегленето */
       packs_s:bs?bs.packs:1,packs_m:bm?bm.packs:3,packs_l:bl?bl.packs:5,cosm_limit:ths(Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||10000),tombola_url:esc(A.tombola_url||''),draw:A.draw||''};
     Object.assign(v,seasVars());
-    if(S.core&&PROD[S.core]){var c=PROD[S.core];v.core=esc(c.name);v.core_full=esc(c.gname||c.name);v.core_ds=c.ds?esc(c.ds.charAt(0).toUpperCase()+c.ds.slice(1)):'';v.s_core=sPrep(c.name)}
+    if(S.core&&PROD[S.core]){var c=PROD[S.core];v.core=esc(c.name);v.core_full=esc(c.gname||c.name);v.core_ds=c.ds?esc(c.ds.charAt(0).toUpperCase()+c.ds.slice(1)):'';v.core_gsub=esc(c.gsub||c.ds||'');v.s_core=sPrep(c.name)}
     if(S.box!==null&&BX()){var b=BX();v.box=esc(b.name);v.box_l=esc(b.name.toLowerCase());v.box_ic=b.ic;v.packs=b.packs;v.opk=opk(b.packs);v.pct=b.pct;v.tickets=tixOf(b,boxes());v.shans=shans(v.tickets);v.bileta=v.tickets===1?'билет':'билета';v.tix_extra=Number(b.tix_extra)||0;v.cosm_pay=b.cosm_pay!=null?money(b.cosm_pay):'';v.s_box=sPrep(b.name);v.need=Math.max(0,b.packs-boxes());v.n=boxes();v.save=m0(save());v.pay=m(pay());v.value=m0(value());v.rest=b.packs-1;v.opk_rest=opk(b.packs-1);v.produkt=b.packs===1?'продукт':'продукти'}
     return v;
   }
-  function T(k,v){var s=A.copy&&A.copy[k];if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
+  /* копито: дефолт < основа < седмица (сървърът) < кацане (LAND.copy, v1.24.0) */
+  function T(k,v){var s=(LAND&&LAND.copy&&LAND.copy[k]!=null&&LAND.copy[k]!=='')?LAND.copy[k]:(A.copy&&A.copy[k]);if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
   function ck(k){return A.editor?' data-ck="'+k+'"':''}
   function RW(r){return {ic:IC[r]||'🎁',sh:T('rw.'+r+'.sh'),t:T('rw.'+r+'.t'),s:T('rw.'+r+'.s')}}
   /* v1.0.13: снимка на награда (gate.images от настройките: yacht/cosm/book/ship; празно = примерна) — без URL пада на емоджито */
@@ -148,7 +163,7 @@
     function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+gcl('box_'+b.id)+'">'+gi('box_'+b.id,b.ic)+'<b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
     dc.innerHTML='<div class="gate g2" style="--g1:'+t[0]+';--g2:'+t[1]+';--g3:'+t[2]+'">'
       +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
-      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
+      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p'+ck('gate.sub')+'>'+T('gate.sub')+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
       +'<div class="g2s"><span class="g2n">1</span><span'+ck('gate.s1')+'>'+T('gate.s1')+'</span></div>'
       +'<div class="g2rw">'
         +'<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>'
@@ -183,7 +198,7 @@
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);
     if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(S.slots.filter(Boolean)));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop')}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');if(UNK)fd.append('unk',UNK)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -894,7 +909,7 @@
          runtime-а, а дотук се опресняваха само продукти/кутии/седмица/попъп. Щом публикуваната версия е друга или текстовете се различават, свежите
          текстове (и наградите, тайният продукт, таймерът, редът на кутиите, FIT/проблемите, линкът на томболата) печелят и екранът се рисува наново. */
       var fresh=(d.version!==undefined&&String(d.version)!==String(A.version))||(d.copy&&JSON.stringify(d.copy)!==JSON.stringify(A.copy||null));
-      if(fresh){if(d.copy)A.copy=d.copy;['rewards','secret','timer','bgn','ship','max_packs','box_order','fit','problems','tombola_url','draw','checkout'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});if(d.version!==undefined)A.version=d.version;changed=true}
+      if(fresh){if(d.copy)A.copy=d.copy;['rewards','secret','timer','bgn','ship','max_packs','box_order','fit','problems','tombola_url','draw','checkout','landings'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});if(d.version!==undefined)A.version=d.version;if(LAND)LAND=landingFor(LAND.slug)||LAND;changed=true} /* v1.24.0: и кацанията идват свежи от кеширана страница */
       Object.keys(d.products).forEach(function(k){if(!PROD[k]||PROD[k].price!==d.products[k].price||PROD[k].stock!==d.products[k].stock||JSON.stringify(PROD[k].pct||null)!==JSON.stringify(d.products[k].pct||null))changed=true});
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render();if(fresh&&!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.22.1: отвореният попъп („Как работи“) също се прерисува с новото копи */
@@ -906,7 +921,11 @@
   /* ── редактор: хотспотове + живо копи + сценарии ── */
   function scenario(o){
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
-    if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
+    /* v1.24.0: сценарий „кацане“ — настройките на кацането печелят над utm/box; know се прилага като на живо */
+    if(o.landing!==undefined){LAND=o.landing?landingFor(o.landing):null;S.know=null;S._quizFirst=false;
+      if(LAND){S.utm=LAND.slug;S.core=(LAND.core&&PROD[LAND.core])?LAND.core:null;if(o.box===undefined&&LAND.box&&BI[LAND.box]!=null)o.box=LAND.box;if(LAND.know==='yes'||LAND.know==='no'){S.know=LAND.know;S._quizFirst=(LAND.know==='no')}}
+      else if(o.utm===undefined){S.utm=null;S.core=null}}
+    if(o.utm!==undefined&&!LAND){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
     if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
     S.emailDone=true;A.editorNoGate=true;
@@ -924,13 +943,17 @@
     else if(sc==='order'){go(5)}
     else if(sc==='product'){go(1);productPopup(S.core||ORDER[0],function(){})}
     else if(sc==='how'){go(1);howPopup()}
+    else if(sc==='know'){go(1);knowPopup()} /* v1.24.0 */
+    else if(sc==='quiz'){go(1);S.know='no';S._quizFirst=true;S._fillPending=false;fillModePopup()} /* v1.24.0 */
   }
-  window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
+  window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T,landing:function(){return LAND},landingFor:landingFor};
   if(A.editor){
     [root,portal].forEach(function(r){r.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true)});
     window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;
       if(d.ansaPromo==='copy'){if(d.key){A.copy[d.key]=d.value}else{A.copy=Object.assign({},A.copy,d.copy||{})}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
-      else if(d.ansaPromo==='cfg'&&d.runtime){if(d.runtime.gate)d.runtime.gate=Object.assign({},A.gate,d.runtime.gate);Object.assign(A,d.runtime);bind();render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
+      /* v1.24.0: живо копи на кацане — {slug, key, value} или {slug, copy}; празна стойност = наследи от основата */
+      else if(d.ansaPromo==='lcopy'){var L=landingFor(d.slug);if(L){if(!L.copy||typeof L.copy!=='object')L.copy={};if(d.key){if(d.value==null||d.value==='')delete L.copy[d.key];else L.copy[d.key]=d.value}else L.copy=Object.assign({},d.copy||{})}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
+      else if(d.ansaPromo==='cfg'&&d.runtime){if(d.runtime.gate)d.runtime.gate=Object.assign({},A.gate,d.runtime.gate);Object.assign(A,d.runtime);bind();if(LAND)LAND=landingFor(LAND.slug)||LAND;render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
       else if(d.ansaPromo==='mark'){document.querySelectorAll('[data-ck].ck-on').forEach(function(x){x.classList.remove('ck-on')});document.querySelectorAll('[data-ck="'+d.key+'"]').forEach(function(x){x.classList.add('ck-on');if(d.scroll)try{x.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}})}
       else if(d.ansaPromo==='changed'){var ch=d.keys||{};document.querySelectorAll('[data-ck]').forEach(function(x){x.classList.toggle('ck-ch',!!ch[x.dataset.ck])})}
       else if(d.ansaPromo==='scenario'){scenario(d)}
@@ -942,12 +965,18 @@
   /* ── старт ── */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
+  /* v1.24.0: ?fresh=1 — чиста сесия („Пробвай като клиент“ от редактора): без запомнено състояние и без „попъпът е видян“ */
+  try{if(new URLSearchParams(location.search).get('fresh')==='1'){sessionStorage.removeItem(SKEY);sessionStorage.removeItem('ansa_promo_gate')}}catch(e){}
   var restored=restoreS();
+  if(LAND&&LAND.gate==='off'){S.emailDone=true;gateMark()} /* v1.24.0: кацане без имейл-попъп */
   /* v1.18.2: кацане от имейл (utm_medium=email / utm_source с mail, sendgrid, newsletter, fka) или ?gate=0 → без имейл-попъп (имейлът вече е известен) */
   try{var qg=new URLSearchParams(location.search),gm=(qg.get('utm_medium')||'').toLowerCase(),gs=(qg.get('utm_source')||'').toLowerCase();if(qg.get('gate')==='0'||gm==='email'||gm==='e-mail'||/mail|sendgrid|newsletter|fka/.test(gs)){S.emailDone=true;gateMark()}}catch(e){}
   if(A.editor){S.emailDone=true;A.editorNoGate=true;go(1)}
   else{go(S.screen===2&&restored?2:1);if(restored&&full()){toast(T('ms.restored'),false)}else if(restored&&!full()){S._fillPending=false;fillModePopup()}}
   refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
+  /* v1.24.0: кацане с кутия/отговор — след имейл-попъпа кутията се избира сама; know=yes → направо пълненето, no → направо въпросникът.
+     Само при нова сесия (без избрана кутия): човек, който вече пълни кутия, пази напредъка си, кацането сменя само текстовете. */
+  if(LAND&&!A.editor&&S.box===null&&(LAND.box||LAND.know==='yes'||LAND.know==='no')){var runL=function(){if(S.box!==null)return;if(LAND.know==='yes'||LAND.know==='no'){S.know=LAND.know;S._quizFirst=(LAND.know==='no');saveS()}if(LAND.box&&BI[LAND.box]!=null)chooseBox(BI[LAND.box])};if(S.emailDone||gateSeen())setTimeout(runL,300);else S._afterGate=runL}
   /* v1.8.0: кацане с ?box=s|m|l (от страницата /info) → кутията се избира сама; с имейл-попъп — след него */
-  try{var qB=new URLSearchParams(location.search).get('box');if(qB&&BI[qB]!=null&&!A.editor&&S.box===null){var runB=function(){if(S.box===null)chooseBox(BI[qB])};if(S.emailDone||gateSeen())setTimeout(runB,300);else S._afterGate=runB}}catch(e){}
+  try{var qB=new URLSearchParams(location.search).get('box');if(qB&&BI[qB]!=null&&!A.editor&&S.box===null&&!(LAND&&LAND.box)){var runB=function(){if(S.box===null)chooseBox(BI[qB])};if(S.emailDone||gateSeen())setTimeout(runB,300);else S._afterGate=runB}}catch(e){}
 })();

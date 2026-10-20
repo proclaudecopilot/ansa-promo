@@ -58,6 +58,7 @@ final class Copy {
 			'gate' => array(
 				'gate.band'          => '🎁 Гарантиран подарък при всяка поръчка',
 				'gate.title'         => 'Ти избра <span>{{core_full}}</span>',
+				'gate.sub'           => '{{core_gsub}}', /* v1.24.0: подзаглавието при основен продукт — беше полето на продукта, сега ключ (override-ва се по кацане) */
 				'gate.title.noutm'   => 'До <span>−{{max_pct}}%</span> и подаръци с всяка поръчка',
 				'gate.sub.noutm'     => 'само до {{deadline}}',
 				'gate.s1'            => 'Можеш да получиш:',
@@ -757,7 +758,7 @@ final class Copy {
 	/** Плейсхолдърите, които promo.js/рендерът познават. Всичко извън списъка е грешка в Doctor. */
 	public static function vars() {
 		return array(
-			'core', 'core_full', 'core_ds', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi', 'box_u', 'gift',
+			'core', 'core_full', 'core_ds', 'core_gsub', 's_core', 'box', 'box_l', 'box_ic', 's_box', 'packs', 'opk', 'pct', 'tickets', 'shans', 'cosm_pay', 'box_adj_u', 'nrw', 'nagradi', 'box_u', 'gift',
 			'yacht', 'ship', 'book_value', 'cosm_value', 'cosm_save', 'cosm_pay_m', 'cosm_pay_l', 'cosm_min', 'deadline', 'max_pct', 'pct_s', 'pct_m', 'pct_l',
 			'tickets_s', 'tickets_m', 'tickets_l', 'name', 'n', 'need', 'rest', 'opk_rest', 'save', 'pay', 'value', 'from', 'a', 'b', 'diff', 'prod_diff',
 			'opk_diff', 'delyat', 'box_t', 'box_t_l', 'box_t_ic', 'pct_t', 'save_t', 's_box_t', 'save_l', 'save_prod', 'on', 'total', 'pos', 'mmss',
@@ -782,6 +783,17 @@ final class Copy {
 	public static function group_of( $key ) {
 		foreach ( self::registry() as $g => $keys ) { if ( isset( $keys[ $key ] ) ) return $g; }
 		return '';
+	}
+
+	/** v1.24.0: групите, които едно кацане (реклама) може да override-ва — само екраните на играта до „Честито“ и съобщенията по пътя.
+	 *  Имейли, чекаут, томбола, книга и „Как работи“ са общи за всички клиенти и override там е почти винаги грешка. */
+	public static function landing_groups() {
+		return array( 'gate', 'head', 'boxes', 'fill', 'celeb', 'builder', 'picker', 'sure', 'rewards', 'secret', 'order', 'msgs' );
+	}
+	/** v1.24.0: копито за дадено кацане — overlay върху ефективното (дефолт < основа < седмица < кацане). */
+	public static function with_landing( $copy, $landing ) {
+		if ( is_array( $landing ) && ! empty( $landing['copy'] ) ) { foreach ( (array) $landing['copy'] as $k => $v ) { if ( is_string( $v ) && '' !== $v ) { $copy[ $k ] = $v; } } }
+		return $copy;
 	}
 
 	/** v1.19.0: при включени седмици дефолтните текстове, които говорят за една фиксирана отстъпка, се заместват с week-aware вариантите

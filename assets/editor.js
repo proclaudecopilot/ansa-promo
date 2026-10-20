@@ -1,114 +1,265 @@
 /* ansa™ Промо — редакторът (Фаза 2, план §5). Данни: window.AnsaPromoEditor (cfg = чернова, registry, state, gateways, products).
  * Канвасът е iframe със самата страница (?ansa_promo=draft&ansa_editor=1); promo.js в режим редактор праща {ansaPromo:'ck',key} при
- * клик на хотспот и приема {copy|cfg|scenario|mark|changed}. Записът е цялата чернова (сървърът нормализира и връща записаното). */
+ * клик на хотспот и приема {copy|lcopy|cfg|scenario|mark|changed}. Записът е цялата чернова (сървърът нормализира и връща записаното).
+ * v1.24.0 — кацанията (реклама → трафик): редакторът е винаги в ТОЧНО ЕДИН контекст — „Основа“ (ctx='') или едно кацане (ctx=slug).
+ *   Контекстът се избира в горната лента, оцветява рамката и е единственото място, където се пише: в контекст „кацане“ всеки текст отива
+ *   в overlay-а на кацането (cfg.landings[].copy), в „Основа“ — в cfg.copy. Няма превключвател по ключ. Лентата на потока над канваса
+ *   показва пътя, който кацането реално произвежда (flowOf), с броя override-и по стъпка; инспекторът показва стълбата Дефолт → Основа → Кацане.
+ *   Линкът за рекламата се генерира (linkFor), не се пише; „Провери линк“ резолва адрес по същия ред като promo.js (resolveValue). */
 (function(){
   'use strict';
   var D=window.AnsaPromoEditor;if(!D||!document.getElementById('apEd'))return;
   var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function h(html){var t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild}
-  var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
+  function has(o,k){return !!o&&Object.prototype.hasOwnProperty.call(o,k)}
+  var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens,LG=D.landing_groups||[],KNOWS=D.landing_knows||{},GATES=D.landing_gates||{};
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
   var scen={utm:'',box:'l',screen:'boxes',full:true};
-  var SCREEN_LABELS={gate:'Имейл-попъп',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
+  var SCREEN_LABELS={gate:'Имейл-попъп',boxes:'Кутиите',know:'„Запозната ли си?“',quiz:'Въпросникът',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
+  /* v1.24.0: контекстът — '' = Основа, иначе slug на кацане; помни се за таба */
+  var ctx='';try{ctx=sessionStorage.getItem('ansa_promo_ed_ctx')||''}catch(e){}
+  var landSel=null; /* избраното кацане в екрана 🎯 Кацания */
 
   /* ── помощници за конфига ── */
   function get(path){return path.split('.').reduce(function(o,k){return o==null?undefined:o[k]},cfg)}
   function set(path,v){var ks=path.split('.'),o=cfg;for(var i=0;i<ks.length-1;i++){if(o[ks[i]]==null||typeof o[ks[i]]!=='object')o[ks[i]]={};o=o[ks[i]]}o[ks[ks.length-1]]=v;markDirty()}
-  function copyVal(k){return cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)?cfg.copy[k]:KEYS[k].d}
-  function changed(k){return !!(cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)&&cfg.copy[k]!==KEYS[k].d)}
-  /* 1.23.7: кое е на живо — сравнение с публикуваните текстове (state.published_copy) */
-  function isLive(k){var pc=state.published_copy||{};return (cfg.copy||{})[k]===pc[k]}
-  function unpublished(k){var pc=state.published_copy||{},c=cfg.copy||{};return (c[k]||'')!==(pc[k]||'')}
-  function unpublishedCount(){var pc=state.published_copy||{},c=cfg.copy||{},n=0,seen={};Object.keys(c).concat(Object.keys(pc)).forEach(function(k){if(seen[k])return;seen[k]=1;if((c[k]||'')!==(pc[k]||''))n++});return n}
+  function landings(){if(!Array.isArray(cfg.landings))cfg.landings=[];return cfg.landings}
+  function landing(slug){var ls=landings();for(var i=0;i<ls.length;i++)if(ls[i].slug===slug)return ls[i];return null}
+  function curL(){if(!ctx)return null;var L=landing(ctx);if(!L){ctx='';try{sessionStorage.removeItem('ansa_promo_ed_ctx')}catch(e){}}return L}
+  function lcopy(L){if(!L.copy||typeof L.copy!=='object'||Array.isArray(L.copy))L.copy={};return L.copy}
+  function utmParam(){return cfg.utm_param||'utm_content'}
+  function cleanSlug(v){return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9_\-]/g,'').slice(0,64)}
+  function prodByKey(k){for(var i=0;i<D.products.length;i++)if(D.products[i].key===k)return D.products[i];return null}
+  function boxOf(id){for(var i=0;i<cfg.boxes.length;i++)if(cfg.boxes[i].id===id)return cfg.boxes[i];return null}
+  function groupAllowed(g){return !ctx||LG.indexOf(g)>-1}
+  /* стойностите на ключ по стълбата: дефолт → основа → кацане; copyVal = ефективната в текущия контекст */
+  function baseVal(k){return cfg.copy&&has(cfg.copy,k)?cfg.copy[k]:KEYS[k].d}
+  function landVal(k){var L=curL();return L&&has(lcopy(L),k)?L.copy[k]:null}
+  function copyVal(k){var lv=landVal(k);return lv!=null?lv:baseVal(k)}
+  function changed(k){if(ctx){var L=curL();return !!(L&&has(lcopy(L),k))}return !!(cfg.copy&&has(cfg.copy,k)&&cfg.copy[k]!==KEYS[k].d)}
+  function baseChanged(k){return !!(cfg.copy&&has(cfg.copy,k)&&cfg.copy[k]!==KEYS[k].d)}
+  /* 1.23.7: кое е на живо — сравнение с публикуваните текстове (state.published_copy); в кацане — с публикуваното кацане (v1.24.0) */
+  function pubCopy(){if(ctx){var pl=(state.published_landings||{})[ctx];return (pl&&pl.copy)||{}}return state.published_copy||{}}
+  function curCopy(){if(ctx){var L=curL();return L?lcopy(L):{}}return cfg.copy||{}}
+  function isLive(k){return (curCopy()[k]||'')===(pubCopy()[k]||'')&&has(curCopy(),k)}
+  function unpublished(k){return (curCopy()[k]||'')!==(pubCopy()[k]||'')}
+  function diffCount(a,b){var n=0,seen={};Object.keys(a||{}).concat(Object.keys(b||{})).forEach(function(k){if(seen[k])return;seen[k]=1;if((a[k]||'')!==(b[k]||''))n++});return n}
+  function landSettings(L){return JSON.stringify({e:L.enabled!==false,c:L.core||'',b:L.box||'',k:L.know||'ask',g:L.gate||'default'})}
+  function landUnpublished(L){var pl=(state.published_landings||{})[L.slug];if(!pl)return diffCount(lcopy(L),{})+1;return diffCount(lcopy(L),pl.copy||{})+(landSettings(L)!==landSettings({enabled:pl.enabled,core:pl.core,box:pl.box,know:pl.know,gate:pl.gate})?1:0)}
+  function unpublishedCount(){var n=diffCount(cfg.copy||{},state.published_copy||{});landings().forEach(function(L){n+=landUnpublished(L)});Object.keys(state.published_landings||{}).forEach(function(s){if(!landing(s))n++});return n}
   function changedMap(){var m={};Object.keys(KEYS).forEach(function(k){if(changed(k))m[k]=1});return m}
-  function setCopy(k,v){if(!cfg.copy)cfg.copy={};if(v===KEYS[k].d||v==='')delete cfg.copy[k];else cfg.copy[k]=v;markDirty();validate(k);postLive(k,v||KEYS[k].d)}
-  function validate(k){var v=copyVal(k),e=[];if((v.match(/\{\{/g)||[]).length!==(v.match(/\}\}/g)||[]).length)e.push('небалансирани {{ }}');(v.match(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi)||[]).forEach(function(x){var n=x.replace(/[{}\s]/g,'');if(REG.vars.indexOf(n)<0)e.push('непознат плейсхолдър {{'+n+'}}')});if(e.length)invalid[k]=e.join('; ');else delete invalid[k];return !e.length}
+  function setCopy(k,v){
+    if(ctx){var L=curL();if(!L||!groupAllowed(KEYS[k].g))return;var c=lcopy(L);if(v===''||v===baseVal(k))delete c[k];else c[k]=v;markDirty();validate(k);postLiveL(k,has(c,k)?c[k]:'');return}
+    if(!cfg.copy)cfg.copy={};if(v===KEYS[k].d||v==='')delete cfg.copy[k];else cfg.copy[k]=v;markDirty();validate(k);postLive(k,v||KEYS[k].d)}
+  function validate(k){var v=copyVal(k),e=[];if((v.match(/\{\{/g)||[]).length!==(v.match(/\}\}/g)||[]).length)e.push('небалансирани {{ }}');(v.match(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi)||[]).forEach(function(x){var n=x.replace(/[{}\s]/g,'');if(REG.vars.indexOf(n)<0)e.push('непознат плейсхолдър {{'+n+'}}')});
+    if(ctx&&changed(k)&&/(€\s*\d|\d\s*(€|%|евро|лв))/.test(v))e.push('число до €/% — седмиците ще го направят невярно, ползвай плейсхолдър');
+    var id=(ctx?ctx+':':'')+k;if(e.length)invalid[id]=e.join('; ');else delete invalid[id];return !e.length}
+  function invalidOf(k){return invalid[(ctx?ctx+':':'')+k]}
   function markDirty(){dirty=JSON.stringify(cfg)!==lastSaveJSON;renderTop();clearTimeout(autosaveT);if(dirty)autosaveT=setTimeout(function(){save(true)},20000)}
   function groupKeys(g){return Object.keys(KEYS).filter(function(k){return KEYS[k].g===g})}
   function matches(k){if(!search)return true;var s=search.toLowerCase();return k.toLowerCase().indexOf(s)>-1||copyVal(k).toLowerCase().indexOf(s)>-1||KEYS[k].d.toLowerCase().indexOf(s)>-1}
   function toast(msg,err){var t=$('#apEdToast');t.textContent=msg;t.className='ap-ed-toast'+(err?' err':'');t.hidden=false;clearTimeout(t._t);t._t=setTimeout(function(){t.hidden=true},err?5000:2200)}
   function fmtTime(d){return d?('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2):'—'}
 
+  /* ── v1.24.0: контекст · поток · линк · резолюция ── */
+  function setCtx(slug){var L=slug?landing(slug):null;ctx=L?slug:'';try{if(ctx)sessionStorage.setItem('ansa_promo_ed_ctx',ctx);else sessionStorage.removeItem('ansa_promo_ed_ctx')}catch(e){}
+    invalid={};Object.keys(curCopy()).forEach(validate);if(sel&&!groupAllowed(KEYS[sel].g))sel=null;
+    if(L){if(L.box)scen.box=L.box;var fl=flowOf(L).filter(function(s){return !s.skip});if(fl.length&&fl.map(function(s){return s.id}).indexOf(scen.screen)<0)scen.screen=fl[0].id}
+    $('#apEd').classList.toggle('ctx',!!ctx);renderAll();postCfg();postAllCopy();postScenario();postChanged();if(sel)post({ansaPromo:'mark',key:sel})}
+  function ctxLabel(){var L=curL();return L?'🎯 '+L.name+' · '+utmParam()+'='+L.slug:'✏️ Основа'}
+  function boxLabel(id){var b=boxOf(id);return b?b.ic+' '+b.name:id}
+  /* пътят, който кацането произвежда — същата логика като promo.js при кацане (gate → box сама → know → quiz → fill → celeb) */
+  function flowOf(L){var st=[],gateOn=!!(cfg.gate&&cfg.gate.enabled)&&L.gate!=='off',b=L.box?boxOf(L.box):null,core=L.core&&prodByKey(L.core);
+    st.push({id:'gate',label:'Имейл-попъп',skip:!gateOn,why:!(cfg.gate&&cfg.gate.enabled)?'изключен в основата':'изключен за това кацане'});
+    st.push({id:'boxes',label:'Кутиите',skip:!!b,why:b?(boxLabel(b.id)+' се избира сама'):''});
+    st.push({id:'know',label:'„Запозната ли си?“',skip:L.know==='yes'||L.know==='no',why:L.know==='yes'?'отговорът е „да“':L.know==='no'?'отговорът е „не“':''});
+    if(L.know==='no')st.push({id:'quiz',label:'Въпросникът'});
+    var fullNow=!!(core&&b&&b.packs<=1);
+    st.push({id:'fill',label:'Напълни кутията',skip:fullNow,why:'кутията е пълна веднага',bad:fullNow});
+    st.push({id:'celeb',label:'Честито'});
+    return st}
+  function flowWarnings(L){var w=[],b=L.box?boxOf(L.box):null,core=L.core?prodByKey(L.core):null;
+    if(L.core&&!core)w.push('основният продукт „'+L.core+'“ не съществува');else if(core&&!core.enabled)w.push('основният продукт '+core.name+' е изключен — ще се кацне без основен продукт');
+    if(core&&b&&b.packs<=1)w.push('основен продукт + '+boxLabel(b.id)+' (1 опаковка): кутията е пълна веднага, човекът отива на „Честито“ без да избира');
+    if(L.know==='no'&&!(cfg.problems||[]).length)w.push('„направо въпросникът“, но няма въпроси (⚙️ FIT · проблеми)');
+    var pk=prodByKey(L.slug);if(pk&&L.core!==L.slug)w.push('slug-ът е ключ на продукта '+pk.name+', а основният продукт е друг — линкът на продукта ще смени смисъла си (⛔ Doctor)');
+    if(L.enabled===false)w.push('изключено: трафикът към този линк пада на основата');
+    return w}
+  function flowText(L){var core=L.core?prodByKey(L.core):null;return flowOf(L).filter(function(s){return !s.skip}).map(function(s){return s.id==='boxes'?'Кутиите (човекът избира)':s.id==='fill'&&core?'Напълни кутията ('+core.name+' е вече в слот 1)':s.label}).join(' → ')}
+  /* броят override-и на кацането по стъпка: know.* → „Запозната ли си“, fill.quiz.* → въпросникът, останалите по екраните на групата */
+  function overridesByStep(L){var m={},c=lcopy(L);Object.keys(c).forEach(function(k){if(!KEYS[k])return;var ids;if(/^know\./.test(k))ids=['know'];else if(/^fill\.quiz/.test(k))ids=['quiz'];else ids=SCREENS[KEYS[k].g]||[];ids.forEach(function(id){m[id]=(m[id]||0)+1})});return m}
+  function linkFor(L,extra){var u=D.page_url||'';if(!u)return '';var q=[utmParam()+'='+encodeURIComponent(L.slug)];['utm_source','utm_medium','utm_campaign'].forEach(function(p){if(extra&&extra[p])q.push(p+'='+encodeURIComponent(extra[p]))});return u+(u.indexOf('?')>-1?'&':'?')+q.join('&')}
+  function tryLink(L){var u=D.page_url||'';return u?u+(u.indexOf('?')>-1?'&':'?')+'ansa_promo=draft&'+utmParam()+'='+encodeURIComponent(L.slug)+'&fresh=1':''}
+  /* ЕДНАТА резолюция (= promo.js landingFor/applyLanding = Config::resolve_landing): кацане → продукт → непознато */
+  function resolveValue(v){v=cleanSlug(v);if(!v)return {kind:'none'};var L=landing(v);if(L)return {kind:'landing',L:L};var p=prodByKey(v);if(p)return {kind:'product',p:p};return {kind:'unknown',v:v,near:nearest(v)}}
+  function lev(a,b){var m=[],i,j;for(i=0;i<=a.length;i++){m[i]=[i]}for(j=0;j<=b.length;j++){m[0][j]=j}for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)m[i][j]=Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return m[a.length][b.length]}
+  function nearest(v){var best=null,bd=99;landings().map(function(L){return L.slug}).concat(D.products.map(function(p){return p.key})).forEach(function(k){var d=lev(v,k);if(d<bd){bd=d;best=k}});return bd<=3?best:null}
+  function checkLink(url){var out={ok:false,lines:[]};url=String(url||'').trim();if(!url){out.lines.push('Постави линк от рекламата.');return out}
+    var u;try{u=new URL(url,D.page_url||location.href)}catch(e){out.lines.push('⛔ Това не е валиден адрес.');return out}
+    var pu=null;try{pu=new URL(D.page_url)}catch(e){}
+    if(pu&&(u.host!==pu.host||u.pathname.replace(/\/+$/,'')!==pu.pathname.replace(/\/+$/,'')))out.lines.push('⚠ Адресът не е промо страницата ('+pu.host+pu.pathname+') — кацането работи само на нея.');
+    var v=u.searchParams.get(utmParam());
+    if(v==null){out.lines.push('→ Основа: няма '+utmParam()+'= в адреса.');var other=['utm_content','utm_term','ansa'].filter(function(p){return p!==utmParam()&&u.searchParams.get(p)});if(other.length)out.lines.push('ℹ Има '+other.join(', ')+', но параметърът на играта е '+utmParam()+' (⚙️ Играта).');return out}
+    var r=resolveValue(v);
+    if(r.kind==='landing'){out.ok=r.L.enabled!==false;out.lines.push((out.ok?'✓':'⚠')+' → 🎯 '+r.L.name+(out.ok?'':' (ИЗКЛЮЧЕНО — пада на основата)'));out.lines.push('Пътят: '+flowText(r.L));if(!(state.published_landings||{})[r.L.slug])out.lines.push('⚠ Кацането още не е публикувано — на живо линкът пада на основата, докато не натиснеш 🚀 Публикувай.')}
+    else if(r.kind==='product'){out.ok=r.p.enabled;out.lines.push('→ продукт '+r.p.name+' (автоматично кацане: „Ти избра …“, продуктът е в слот 1)'+(r.p.enabled?'':' — ИЗКЛЮЧЕН, пада на основата'))}
+    else if(r.kind==='unknown'){out.lines.push('⛔ → Основа: непознато '+utmParam()+'='+r.v+(r.near?'. Имаш предвид „'+r.near+'“?':'.'))}
+    else out.lines.push('→ Основа: празна стойност.');
+    if(cleanSlug(v)!==String(v))out.lines.push('ℹ Стойността „'+v+'“ се чисти до „'+cleanSlug(v)+'“ (малки букви, цифри, - и _).');
+    return out}
+
   /* ── ajax ── */
   function ajax(action,data){var fd=new FormData();fd.append('action','ansa_promo_editor_'+action);fd.append('nonce',D.nonce);Object.keys(data||{}).forEach(function(k){fd.append(k,data[k])});
     return fetch(D.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success){var e=new Error((r&&r.data&&r.data.msg)||'Грешка');e.data=r&&r.data;throw e}return r.data})}
-  function fixCfg(c){['copy','fit'].forEach(function(k){if(!c[k]||Array.isArray(c[k]))c[k]={}});if(!c.problems)c.problems=[];return c}
-  function applyState(d){if(d.cfg){cfg=fixCfg(d.cfg);lastSaveJSON=JSON.stringify(cfg);dirty=false;savedAt=new Date()}if(d.state)state=d.state;invalid={};Object.keys(cfg.copy||{}).forEach(validate);renderAll()}
+  function fixCfg(c){['copy','fit'].forEach(function(k){if(!c[k]||Array.isArray(c[k]))c[k]={}});if(!c.problems)c.problems=[];if(!Array.isArray(c.landings))c.landings=[];c.landings.forEach(function(L){if(!L.copy||Array.isArray(L.copy))L.copy={}});return c}
+  function applyState(d){if(d.cfg){cfg=fixCfg(d.cfg);lastSaveJSON=JSON.stringify(cfg);dirty=false;savedAt=new Date()}if(d.state)state=d.state;invalid={};Object.keys(curCopy()).forEach(validate);curL();renderAll()}
   var saving=false;
   var savePromise=null; /* 1.23.7: публикуването изчаква текущия запис, вместо да го надбягва */
   function save(auto){if(saving)return savePromise||Promise.resolve();if(!dirty&&auto)return Promise.resolve();saving=true;renderTop();
     return savePromise=ajax('save',{cfg:JSON.stringify(cfg)}).then(function(d){saving=false;applyState(d);if(d.invalid&&Object.keys(d.invalid).length){Object.keys(d.invalid).forEach(function(k){invalid[k]=d.invalid[k]});toast('Записано, но има текстове с грешки — виж ●',true)}else toast(auto?'Автозапис ✓':'Черновата е записана ✓');postChanged()}).catch(function(e){saving=false;renderTop();toast('Записът не мина: '+e.message,true)})}
   /* 1.23.7 (човекът: „Публикувай навярно само запазва“): изчаква записа, праща текущата конфигурация С публикуването (една заявка) и после проверява,
      че публикуваните текстове са същите като в редактора — ако не са, казва го вместо „Публикувано“ */
-  function publish(force){save().then(function(){var d={cfg:JSON.stringify(cfg)};if(force)d.force='1';return ajax('publish',d)}).then(function(d){applyState(d);var pc=state.published_copy||{},miss=Object.keys(cfg.copy||{}).filter(function(k){return pc[k]!==cfg.copy[k]}).concat(Object.keys(pc).filter(function(k){return !(cfg.copy||{})[k]}));if(miss.length)toast('Публикувано v'+state.version+', но на живо '+miss.length+' текста се различават ('+miss.slice(0,3).join(', ')+') — презареди редактора',true);else toast('🚀 Публикувано — версия '+state.version+' · текстовете са на живо');if(frame)frame.src=D.page}).catch(function(e){if(e.data&&e.data.code==='doctor'){state.checks=e.data.checks;doctorModal(true)}else toast('Публикуването не мина: '+e.message,true)})}
+  function publish(force){save().then(function(){var d={cfg:JSON.stringify(cfg)};if(force)d.force='1';return ajax('publish',d)}).then(function(d){applyState(d);var pc=state.published_copy||{},miss=Object.keys(cfg.copy||{}).filter(function(k){return pc[k]!==cfg.copy[k]}).concat(Object.keys(pc).filter(function(k){return !(cfg.copy||{})[k]}));var lm=landings().filter(function(L){return landUnpublished(L)>0}).map(function(L){return '🎯 '+L.slug});if(miss.length||lm.length)toast('Публикувано v'+state.version+', но на живо '+(miss.length+lm.length)+' неща се различават ('+miss.concat(lm).slice(0,3).join(', ')+') — презареди редактора',true);else toast('🚀 Публикувано — версия '+state.version+' · текстовете и кацанията са на живо');if(frame)frame.src=D.page}).catch(function(e){if(e.data&&e.data.checks){state.checks=e.data.checks;doctorModal(true)}else toast('Не се публикува: '+e.message,true)})}
   function discard(){if(!confirm('Да отхвърля ли черновата? Всички незаписани и записани промени след последното публикуване се губят.'))return;ajax('discard').then(function(d){applyState(d);toast('Черновата е отказана');if(frame)frame.src=D.page}).catch(function(e){toast(e.message,true)})}
   function restore(v){if(!confirm('Версия '+v+' да стане текущата чернова?'))return;ajax('restore',{version:v}).then(function(d){applyState(d);toast('Версия '+v+' е върната като чернова');if(frame)frame.src=D.page}).catch(function(e){toast(e.message,true)})}
 
   /* ── канвас ── */
   function post(m){if(frame&&frame.contentWindow)try{frame.contentWindow.postMessage(m,'*')}catch(e){}}
   function postLive(k,v){clearTimeout(liveT);liveT=setTimeout(function(){post({ansaPromo:'copy',key:k,value:v})},150)}
-  function postAllCopy(){post({ansaPromo:'copy',copy:cfg.copy||{}})}
+  function postLiveL(k,v){clearTimeout(liveT);liveT=setTimeout(function(){post({ansaPromo:'lcopy',slug:ctx,key:k,value:v})},150)}
+  function postAllCopy(){post({ansaPromo:'copy',copy:cfg.copy||{}});var L=curL();if(L)post({ansaPromo:'lcopy',slug:L.slug,copy:lcopy(L)})}
   function postChanged(){post({ansaPromo:'changed',keys:changedMap()})}
-  function postScenario(){post({ansaPromo:'scenario',screen:scen.screen,utm:scen.utm||null,box:scen.box||null,full:!!scen.full})}
+  function postScenario(){var L=curL();if(L)post({ansaPromo:'scenario',landing:L.slug,screen:scen.screen,box:L.box||scen.box||null,full:!!scen.full});else post({ansaPromo:'scenario',landing:null,screen:scen.screen,utm:scen.utm||null,box:scen.box||null,full:!!scen.full})}
   function runtimePartial(){var dl='';if(cfg.deadline){var m=String(cfg.deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)dl=m[3]+'.'+m[2]+'.'+m[1]}
-    return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)}}}
+    return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)},
+      landings:landings().map(function(L){return {slug:L.slug,name:L.name,enabled:L.enabled!==false,core:L.core||'',box:L.box||'',know:L.know||'ask',gate:L.gate||'default',copy:lcopy(L)}})}}
   function postCfg(){post({ansaPromo:'cfg',runtime:runtimePartial()})}
   function renderCanvas(){var c=$('#apEdCanvas');if(!D.page){c.innerHTML='<div class="ap-ed-scen">Няма страница — избери я в 🧰 Инструменти.</div>';return}
-    if(!frame){c.innerHTML='';var bar=h('<div class="ap-ed-scen"><label>UTM <select id="apScUtm"><option value="">— без —</option>'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'">'+esc(p.name)+'</option>'}).join('')+'</select></label>'
-      +'<label>Кутия <select id="apScBox"><option value="">— няма —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'">'+esc(b.ic+' '+b.name)+'</option>'}).join('')+'</select></label>'
-      +'<label>Екран <select id="apScScreen">'+Object.keys(SCREEN_LABELS).map(function(s){return '<option value="'+s+'">'+esc(SCREEN_LABELS[s])+'</option>'}).join('')+'</select></label>'
-      +'<label><input type="checkbox" id="apScFull"> пълна кутия</label><span class="sp" style="flex:1"></span>'
-      +'<span class="dev"><button class="sm" data-dev="desk">💻 1280</button><button class="sm" data-dev="mob">📱 390</button></span><button class="sm" id="apScReload" title="презареди канваса">⟳</button><a class="btn sm" target="_blank" href="'+esc(D.page)+'">↗ отвори</a></div>');
-      c.appendChild(bar);var fr=h('<div class="ap-ed-frame" id="apEdFrame"><iframe id="apEdIframe" src="'+esc(D.page)+'"></iframe></div>');c.appendChild(fr);frame=$('#apEdIframe');
+    c.classList.toggle('ctx',!!ctx);
+    if(!frame){c.innerHTML='';c.appendChild(h('<div id="apScenBar"></div>'));var fr=h('<div class="ap-ed-frame" id="apEdFrame"><iframe id="apEdIframe" src="'+esc(D.page)+'"></iframe></div>');c.appendChild(fr);frame=$('#apEdIframe');
       frame.addEventListener('load',function(){frameReady=true;setTimeout(function(){postAllCopy();postCfg();postScenario();postChanged();if(sel)post({ansaPromo:'mark',key:sel})},150)});
-      $('#apScUtm').onchange=function(){scen.utm=this.value;postScenario()};$('#apScBox').onchange=function(){scen.box=this.value;postScenario()};$('#apScScreen').onchange=function(){scen.screen=this.value;postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;postScenario()};
-      $$('[data-dev]').forEach(function(b){b.onclick=function(){device=b.dataset.dev;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x===b)});$('#apEdFrame').classList.toggle('mob',device==='mob');fitFrame()}});
-      $('#apScReload').onclick=function(){frame.src=D.page};
       window.addEventListener('resize',fitFrame)}
-    $('#apScUtm').value=scen.utm;$('#apScBox').value=scen.box;$('#apScScreen').value=scen.screen;$('#apScFull').checked=scen.full;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x.dataset.dev===device)});fitFrame()}
+    renderScenBar();fitFrame()}
+  function devButtons(){return '<span class="sp" style="flex:1"></span><span class="dev"><button class="sm" data-dev="desk">💻 1280</button><button class="sm" data-dev="mob">📱 390</button></span><button class="sm" id="apScReload" title="презареди канваса">⟳</button><a class="btn sm" target="_blank" href="'+esc(D.page)+'">↗ отвори</a>'}
+  function renderScenBar(){var bar=$('#apScenBar');if(!bar)return;var L=curL();
+    if(L){/* лентата на потока: стъпките, които ТОВА кацане произвежда; прескочените са сиви и зачертани; числото = override-и за стъпката */
+      var ob=overridesByStep(L),st=flowOf(L);
+      bar.innerHTML='<div class="ap-ed-flow"><span class="fl-ctx">🎯 '+esc(L.name)+'</span>'+st.map(function(s,i){return (i?'<i class="fl-arr">→</i>':'')+'<button class="fl-step'+(s.skip?' skip':'')+(s.bad?' bad':'')+(scen.screen===s.id?' on':'')+'" data-fs="'+s.id+'" title="'+esc(s.skip?('прескача се: '+s.why):s.label)+'">'+esc(s.label)+(ob[s.id]?'<b>◆'+ob[s.id]+'</b>':'')+(s.skip?'<small>'+esc(s.why)+'</small>':'')+'</button>'}).join('')
+        +'<span class="fl-more"><label>още екрани <select id="apScScreen">'+['builder','picker','product','sure','switch','secret','how'].map(function(s){return '<option value="'+s+'"'+(scen.screen===s?' selected':'')+'>'+esc(SCREEN_LABELS[s])+'</option>'}).join('')+'</select></label><label><input type="checkbox" id="apScFull"'+(scen.full?' checked':'')+'> пълна кутия</label></span>'+devButtons()+'</div>';
+      $$('[data-fs]',bar).forEach(function(b){b.onclick=function(){scen.screen=b.dataset.fs;renderScenBar();postScenario()}});
+      $('#apScScreen').onchange=function(){scen.screen=this.value;renderScenBar();postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;postScenario()}}
+    else{bar.innerHTML='<div class="ap-ed-scen"><span class="sim" title="Симулация: тези настройки не се пазят никъде. Запазен път с адрес = 🎯 Кацане.">симулация</span><label>UTM <select id="apScUtm"><option value="">— без —</option>'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'"'+(scen.utm===p.key?' selected':'')+'>'+esc(p.name)+'</option>'}).join('')+'</select></label>'
+      +'<label>Кутия <select id="apScBox"><option value="">— няма —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'"'+(scen.box===b.id?' selected':'')+'>'+esc(b.ic+' '+b.name)+'</option>'}).join('')+'</select></label>'
+      +'<label>Екран <select id="apScScreen">'+Object.keys(SCREEN_LABELS).map(function(s){return '<option value="'+s+'"'+(scen.screen===s?' selected':'')+'>'+esc(SCREEN_LABELS[s])+'</option>'}).join('')+'</select></label>'
+      +'<label><input type="checkbox" id="apScFull"'+(scen.full?' checked':'')+'> пълна кутия</label>'+devButtons()+'</div>';
+      $('#apScUtm').onchange=function(){scen.utm=this.value;postScenario()};$('#apScBox').onchange=function(){scen.box=this.value;postScenario()};$('#apScScreen').onchange=function(){scen.screen=this.value;postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;postScenario()}}
+    $$('[data-dev]',bar).forEach(function(b){b.classList.toggle('on',b.dataset.dev===device);b.onclick=function(){device=b.dataset.dev;$$('[data-dev]',bar).forEach(function(x){x.classList.toggle('on',x===b)});$('#apEdFrame').classList.toggle('mob',device==='mob');fitFrame()}});
+    $('#apScReload').onclick=function(){frame.src=D.page}}
   function fitFrame(){if(!frame)return;var wrap=$('#apEdFrame'),w=wrap.clientWidth-24,need=device==='mob'?390:1280,z=Math.min(1,w/need);frame.style.transform='scale('+z+')';frame.style.height=device==='mob'?'780px':((wrap.clientHeight-24)/z)+'px'}
   window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false)}});
 
   /* ── рейл ── */
-  function renderRail(){var r=$('#apEdRail'),out='';
-    out+='<div class="srch"><input type="text" id="apSearch" placeholder="🔍 търси в текстовете…" value="'+esc(search)+'"></div><label class="cb" style="margin:0 6px 6px;font-size:12px;display:block"><input type="checkbox" id="apOnlyCh"'+(onlyChanged?' checked':'')+'> само променените</label>';
-    out+='<h4>Текстове</h4>';var chm=changedMap();
-    Object.keys(GROUPS).forEach(function(g){var ks=groupKeys(g),ch=ks.filter(function(k){return chm[k]}).length,vis=ks.filter(function(k){return matches(k)&&(!onlyChanged||chm[k])});if((search||onlyChanged)&&!vis.length)return;
-      out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+'" data-g="'+g+'">'+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch?' · <b>'+ch+'</b>':'')+'</span></button>';
-      if(mode==='copy'&&region===g||search||onlyChanged){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?' ch':'')+(invalid[k]?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+esc(k)+'</button>'}).join('')+'</div>'}});
+  function renderRail(){var r=$('#apEdRail'),out='',L=curL();
+    out+='<div class="srch"><input type="text" id="apSearch" placeholder="🔍 търси в текстовете…" value="'+esc(search)+'"></div><label class="cb" style="margin:0 6px 6px;font-size:12px;display:block"><input type="checkbox" id="apOnlyCh"'+(onlyChanged?' checked':'')+'> '+(L?'само за това кацане ◆':'само променените')+'</label>';
+    out+='<h4>Текстове'+(L?' · <span style="color:var(--o2)">🎯 '+esc(L.name)+'</span>':'')+'</h4>';var chm=changedMap();
+    Object.keys(GROUPS).forEach(function(g){var ks=groupKeys(g),ch=ks.filter(function(k){return chm[k]}).length,lock=!groupAllowed(g),vis=lock?[]:ks.filter(function(k){return matches(k)&&(!onlyChanged||chm[k])});if((search||onlyChanged)&&!vis.length&&!lock)return;if(lock&&(search||onlyChanged))return;
+      out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+(lock?' lock':'')+'" data-g="'+g+'" title="'+(lock?'Общо за всички клиенти — редактира се в Основа':'')+'">'+(lock?'🔒 ':'')+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch?' · <b>'+(L?'◆':'')+ch+'</b>':'')+'</span></button>';
+      if(!lock&&(mode==='copy'&&region===g||search||onlyChanged)){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?(L?' lch':' ch'):'')+(!L&&baseChanged(k)?'':'')+(invalidOf(k)?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+esc(k)+'</button>'}).join('')+'</div>'}});
+    out+='<h4>🎯 Кацания</h4><button class="rg'+(mode==='landings'?' on':'')+'" data-mode="landings">🎯 Кацания (реклами)<span class="n">'+landings().length+((state.unknown||[]).length?' · <b>⚠'+state.unknown.length+'</b>':'')+'</span></button>';
     out+='<h4>⚙️ Двигател</h4>';[['game','🎮 Играта'],['boxes','📦 Кутиите'],['rewards','🎁 Наградите'],['checkout','💳 Плащане'],['tickets','🎟️ Билети'],['fit','🔗 FIT · проблеми']].forEach(function(x){out+='<button class="rg'+(mode===x[0]?' on':'')+'" data-mode="'+x[0]+'">'+esc(x[1])+'</button>'});
     out+='<a class="rg" href="'+esc(D.products_tab)+'" target="_blank">📦 Продукти ↗</a>';
     out+='<h4>🧰 Инструменти</h4><button class="rg" data-mode="doctor">🩺 Doctor'+(state.checks.some(function(c){return c.level==='bad'})?' <span class="n"><b>⛔</b></span>':'')+'</button><button class="rg" data-mode="history">🕘 История <span class="n">'+state.history.length+'</span></button><button class="rg" data-mode="json">{ } JSON</button><a class="rg" href="'+esc(D.admin)+'">← Инструменти (стария екран)</a>';
     r.innerHTML=out;
     $('#apSearch').oninput=function(){search=this.value;renderRail()};$('#apOnlyCh').onchange=function(){onlyChanged=this.checked;renderRail()};
-    $$('[data-g]',r).forEach(function(b){b.onclick=function(){mode='copy';region=b.dataset.g;var ks=groupKeys(region);if(!sel||KEYS[sel].g!==region)sel=ks[0];renderRail();renderInsp();goToKeyScreen(sel)}});
+    $$('[data-g]',r).forEach(function(b){b.onclick=function(){mode='copy';region=b.dataset.g;if(!groupAllowed(region)){sel=null;renderRail();renderInsp();return}var ks=groupKeys(region);if(!sel||KEYS[sel].g!==region)sel=ks[0];renderRail();renderInsp();goToKeyScreen(sel)}});
     $$('[data-k]',r).forEach(function(b){b.onclick=function(){mode='copy';region=KEYS[b.dataset.k].g;select(b.dataset.k,true)}});
     $$('[data-mode]',r).forEach(function(b){b.onclick=function(){mode=b.dataset.mode;sel=null;renderRail();renderInsp()}})}
-  function goToKeyScreen(k){if(!k)return;var sc=SCREENS[KEYS[k].g]||[];if(sc.length&&sc.indexOf(scen.screen)<0){scen.screen=sc[0];if(sc[0]!=='boxes'&&!scen.box)scen.box='l';renderCanvas();postScenario()}}
+  function goToKeyScreen(k){if(!k)return;var sc=SCREENS[KEYS[k].g]||[];if(/^know\./.test(k))sc=['know'];else if(/^fill\.quiz/.test(k))sc=['quiz'];if(sc.length&&sc.indexOf(scen.screen)<0){scen.screen=sc[0];if(sc[0]!=='boxes'&&!scen.box)scen.box='l';renderScenBar();postScenario()}}
   function select(k,scroll){mode='copy';region=KEYS[k]?KEYS[k].g:region;sel=k;renderRail();renderInsp();goToKeyScreen(k);post({ansaPromo:'mark',key:k,scroll:!!scroll});var ta=$('#apTa');if(ta&&scroll){ta.focus()}}
 
   /* ── инспектор ── */
   function renderInsp(){var p=$('#apEdInsp');
-    if(mode==='copy'){if(!sel){p.innerHTML='<div class="empty">Цъкни текст в канваса или избери ключ вляво.</div>';return}
-      var k=sel,m=KEYS[k],v=copyVal(k),ks=groupKeys(m.g),i=ks.indexOf(k),sc=SCREENS[m.g]||[];var vars=m.v.slice();REG.vars.forEach(function(x){if(vars.indexOf(x)<0)vars.push(x)});
-      p.innerHTML='<h3>'+esc(GROUPS[m.g])+'</h3><div class="key">'+esc(k)+(changed(k)?(isLive(k)?' <span style="color:#15803d">● публикуван</span>':' <span style="color:#e8722a">● променен · НЕ е публикуван — натисни 🚀 Публикувай</span>'):(unpublished(k)?' <span style="color:#e8722a">● върнат към дефолта · НЕ е публикуван</span>':''))+'</div><div class="grp">'+(sc.length?'Вижда се на: '+sc.map(function(s){return SCREEN_LABELS[s]||s}).join(', '):'Не е на канваса — '+(m.g==='checkout'?'чекаут / благодаря':(m.g==='emails'?'имейл / стикер':'съобщение')))+'</div>'
-        +'<textarea id="apTa" rows="4">'+esc(v)+'</textarea><div class="err" id="apErr">'+esc(invalid[k]||'')+'</div>'
+    if(mode==='copy'){if(!sel){p.innerHTML='<div class="empty">'+(ctx&&region&&!groupAllowed(region)?'🔒 „'+esc(GROUPS[region])+'“ е общо за всички клиенти (имейли, чекаут, томбола, книга, „Как работи“) и се редактира само в Основа.<p><button class="sm" id="apToBase">✏️ Към Основа</button></p>':'Цъкни текст в канваса или избери ключ вляво.')+'</div>';var tb=$('#apToBase');if(tb)tb.onclick=function(){setCtx('')};return}
+      var k=sel,m=KEYS[k],v=copyVal(k),ks=groupKeys(m.g),i=ks.indexOf(k),sc=SCREENS[m.g]||[];var vars=m.v.slice();REG.vars.forEach(function(x){if(vars.indexOf(x)<0)vars.push(x)});var L=curL();
+      if(L&&!groupAllowed(m.g)){p.innerHTML='<h3>'+esc(GROUPS[m.g])+'</h3><div class="key">'+esc(k)+'</div><div class="empty">🔒 Тази група е обща за всички клиенти и не се променя по реклама. Редактирай я в Основа.<p><button class="sm" id="apToBase">✏️ Към Основа</button></p></div>';$('#apToBase').onclick=function(){setCtx('')};return}
+      var status=changed(k)?(isLive(k)?' <span style="color:#15803d">● публикуван</span>':' <span style="color:#e8722a">● '+(L?'override за кацането':'променен')+' · НЕ е публикуван — натисни 🚀 Публикувай</span>'):(unpublished(k)?' <span style="color:#e8722a">● '+(L?'наследява основата':'върнат към дефолта')+' · НЕ е публикуван</span>':'');
+      /* v1.24.0: стълбата — винаги в този ред, със стрелка кой печели в текущия контекст */
+      var stack='<div class="ap-ed-stack">'
+        +'<div class="sr'+(!baseChanged(k)&&!changed(k)||(!L&&!baseChanged(k))?' win':'')+'"><b>Дефолт</b><span>'+esc(m.d)+'</span></div>'
+        +'<div class="sr'+((!L&&baseChanged(k))||(L&&!changed(k)&&baseChanged(k))?' win':'')+'"><b>Основа</b><span>'+(baseChanged(k)?esc(baseVal(k)):'<i>(както дефолта)</i>')+'</span></div>'
+        +(L?'<div class="sr land'+(changed(k)?' win':'')+'"><b>🎯 '+esc(L.name)+'</b><span>'+(changed(k)?esc(v):'<i>(наследява основата)</i>')+'</span></div>':'')
+        +'</div>';
+      p.innerHTML='<h3>'+(L?'<span class="ctxpill">🎯 '+esc(L.name)+'</span> ':'')+esc(GROUPS[m.g])+'</h3><div class="key">'+esc(k)+status+'</div><div class="grp">'+(sc.length?'Вижда се на: '+sc.map(function(s){return SCREEN_LABELS[s]||s}).join(', '):'Не е на канваса — '+(m.g==='checkout'?'чекаут / благодаря':(m.g==='emails'?'имейл / стикер':'съобщение')))+'</div>'
+        +stack
+        +'<div class="hint" style="margin:6px 0 2px">'+(L?'Пишеш <b>само за това кацане</b> (override). Празно = наследява основата.':'Пишеш в <b>Основата</b> — важи за всички кацания, които не го override-ват.')+'</div>'
+        +'<textarea id="apTa" rows="4">'+esc(v)+'</textarea><div class="err" id="apErr">'+esc(invalidOf(k)||'')+'</div>'
         +'<div class="hint">Плейсхолдъри (цък → вмъква): '+(m.v.length?'за този текст: ':'')+'</div><div class="chips">'+m.v.map(function(x){return '<span class="chip" data-ph="'+x+'">{{'+x+'}}</span>'}).join('')+'<details style="width:100%"><summary class="hint" style="cursor:pointer">всички '+REG.vars.length+'</summary><div class="chips">'+REG.vars.map(function(x){return '<span class="chip" data-ph="'+x+'">{{'+x+'}}</span>'}).join('')+'</div></details></div>'
         +(sc.length?'':'<div class="prev" id="apPrev"></div>')
-        +'<div class="def"><b>Дефолт:</b>\n'+esc(m.d)+'</div>'
-        +'<div class="row"><button class="sm" id="apReset"'+(changed(k)?'':' disabled')+'>⟲ Върни дефолта</button><span class="sp" style="flex:1"></span><button class="sm" id="apPrev2"'+(i<=0?' disabled':'')+'>← предишен</button><button class="sm" id="apNext"'+(i>=ks.length-1?' disabled':'')+'>следващ →</button></div><div class="hint">Ctrl+Enter = приложи · Ctrl+S = запази черновата</div>';
+        +'<div class="row">'+(L?'<button class="sm" id="apReset"'+(changed(k)?'':' disabled')+'>⟲ Наследи от основата</button><button class="sm" id="apEditBase" title="Сменя контекста на Основа и остава на този ключ">✏️ Редактирай основата</button>':'<button class="sm" id="apReset"'+(changed(k)?'':' disabled')+'>⟲ Върни дефолта</button>')+'<span class="sp" style="flex:1"></span><button class="sm" id="apPrev2"'+(i<=0?' disabled':'')+'>← предишен</button><button class="sm" id="apNext"'+(i>=ks.length-1?' disabled':'')+'>следващ →</button></div><div class="hint">Ctrl+Enter = приложи · Ctrl+S = запази черновата</div>';
       var ta=$('#apTa');function grow(){ta.style.height='auto';ta.style.height=Math.min(420,ta.scrollHeight+4)+'px'}grow();
-      ta.oninput=function(){setCopy(k,ta.value);$('#apErr').textContent=invalid[k]||'';$('#apReset').disabled=!changed(k);grow();preview()};
-      ta.onkeydown=function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();setCopy(k,ta.value);post({ansaPromo:'copy',key:k,value:copyVal(k)});renderRail()}};
+      ta.oninput=function(){setCopy(k,ta.value);$('#apErr').textContent=invalidOf(k)||'';$('#apReset').disabled=!changed(k);grow();preview()};
+      ta.onkeydown=function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();setCopy(k,ta.value);renderRail();renderInsp();renderScenBar()}};
       $$('.chip',p).forEach(function(c){c.onclick=function(){var s=ta.selectionStart||0,e=ta.selectionEnd||0,ins='{{'+c.dataset.ph+'}}';ta.value=ta.value.slice(0,s)+ins+ta.value.slice(e);ta.selectionStart=ta.selectionEnd=s+ins.length;ta.focus();ta.oninput()}});
-      $('#apReset').onclick=function(){ta.value=m.d;ta.oninput();renderRail()};$('#apPrev2').onclick=function(){select(ks[i-1],true)};$('#apNext').onclick=function(){select(ks[i+1],true)};
+      $('#apReset').onclick=function(){if(L){setCopy(k,'');renderRail();renderInsp();renderScenBar();postChanged()}else{ta.value=m.d;ta.oninput();renderRail()}};
+      var eb=$('#apEditBase');if(eb)eb.onclick=function(){var kk=k;setCtx('');select(kk,false)};
+      $('#apPrev2').onclick=function(){select(ks[i-1],true)};$('#apNext').onclick=function(){select(ks[i+1],true)};
       function preview(){var pv=$('#apPrev');if(!pv)return;var sample={box:'Голяма кутия',box_l:'голяма кутия',box_ic:'👑',packs:5,opk:'опаковки',pct:40,tickets:5,bileta:'билета',shans:'шанса',cosm_pay:'1',cosm_value:'129',book_value:'19',yacht:'8 800',ship:'€ 2,55',url:'#',name:cfg.name,customer:'Мария',order:'12345',code:'ABCD-EFGH-JKLM',voucher:'VABC1234',portal_url:cfg.tickets.portal_url||D.page_url,book_url:cfg.rewards.book.url||'#',secret_pct:cfg.secret.pct,bonus:1,bonus_bileta:'билет',deadline:cfg.deadline};pv.innerHTML=copyVal(k).replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi,function(x,n){return sample[n]!==undefined?'<b style="color:#c2410c">'+esc(sample[n])+'</b>':x})}preview();return}
+    if(mode==='landings'){renderLandings(p);return}
     if(mode==='doctor'){p.innerHTML='<h3>🩺 Doctor</h3><div class="hint">Publish gate: ⛔ спира публикуването, ⚠ само предупреждава.</div><ul class="ap-ed-doc">'+state.checks.map(function(c){return '<li class="'+c.level+'">'+({bad:'⛔',warn:'⚠',ok:'✓',info:'ℹ'}[c.level]||'')+' '+esc(c.msg)+'</li>'}).join('')+'</ul><p><button class="sm" id="apDocRun">↻ провери пак (записва черновата)</button></p>';$('#apDocRun').onclick=function(){save().then(function(){renderInsp()})};return}
-    if(mode==='history'){p.innerHTML='<h3>🕘 История</h3><div class="hint">Публикувано: версия '+state.version+(state.published_at?' · '+new Date(state.published_at*1000).toLocaleString('bg-BG'):'')+'</div><ul class="ap-ed-hist">'+(state.history.length?state.history.map(function(x){return '<li>версия '+x.version+' · '+new Date(x.at*1000).toLocaleString('bg-BG')+'<span style="flex:1"></span><button class="sm" data-rv="'+x.version+'">върни като чернова</button></li>'}).join(''):'<li>още няма публикувани версии</li>')+'</ul>';$$('[data-rv]',p).forEach(function(b){b.onclick=function(){restore(b.dataset.rv)}});return}
-    if(mode==='json'){p.innerHTML='<h3>{ } JSON на черновата</h3><div class="hint">Редактирай и „Внеси“ — минава през normalize на сървъра при запис.</div><textarea id="apJson" style="height:60vh;font:11px/1.4 Menlo,Consolas,monospace">'+esc(JSON.stringify(cfg,null,2))+'</textarea><p><button class="sm" id="apJsonGo">⬆ Внеси в черновата</button></p>';$('#apJsonGo').onclick=function(){try{var d=JSON.parse($('#apJson').value);cfg=d;markDirty();dirty=true;save().then(function(){if(frame)frame.src=D.page})}catch(e){toast('Невалиден JSON: '+e.message,true)}};return}
+    if(mode==='history'){p.innerHTML='<h3>🕘 История</h3><div class="hint">Публикувано: версия '+state.version+(state.published_at?' · '+new Date(state.published_at*1000).toLocaleString('bg-BG'):'')+' · една публикация носи основата И всички кацания</div><ul class="ap-ed-hist">'+(state.history.length?state.history.map(function(x){return '<li>версия '+x.version+' · '+new Date(x.at*1000).toLocaleString('bg-BG')+'<span style="flex:1"></span><button class="sm" data-rv="'+x.version+'">върни като чернова</button></li>'}).join(''):'<li>още няма публикувани версии</li>')+'</ul>';$$('[data-rv]',p).forEach(function(b){b.onclick=function(){restore(b.dataset.rv)}});return}
+    if(mode==='json'){p.innerHTML='<h3>{ } JSON на черновата</h3><div class="hint">Редактирай и „Внеси“ — минава през normalize на сървъра при запис.</div><textarea id="apJson" style="height:60vh;font:11px/1.4 Menlo,Consolas,monospace">'+esc(JSON.stringify(cfg,null,2))+'</textarea><p><button class="sm" id="apJsonGo">⬆ Внеси в черновата</button></p>';$('#apJsonGo').onclick=function(){try{var d=JSON.parse($('#apJson').value);cfg=fixCfg(d);markDirty();dirty=true;save().then(function(){if(frame)frame.src=D.page})}catch(e){toast('Невалиден JSON: '+e.message,true)}};return}
     renderEngine(p)}
+
+  /* ── v1.24.0: 🎯 Кацания — списък, карта, линк, проверка ── */
+  function newSlugFrom(name){var map={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sht',ъ:'a',ь:'',ю:'yu',я:'ya'};return cleanSlug(String(name||'').toLowerCase().split('').map(function(c){return map[c]!==undefined?map[c]:c}).join('').replace(/\s+/g,'-'))}
+  function addLanding(init){var L=Object.assign({slug:'',name:'',desc:'',enabled:true,core:'',box:'',know:'ask',gate:'default',copy:{}},init||{});if(!L.slug)L.slug=newSlugFrom(L.name)||('kacane-'+(landings().length+1));var base=L.slug,n=2;while(landing(L.slug)){L.slug=base+'-'+(n++)}if(!L.name)L.name=L.slug;landings().push(L);markDirty();postCfg();landSel=L.slug;renderAll();return L}
+  function renderLandings(p){var ls=landings(),pl=state.published_landings||{},us=state.utm_stats||{},unk=state.unknown||[];
+    var out='<h3>🎯 Кацания (реклама → трафик)</h3><div class="hint">Едно кацане = какво вижда човекът от дадена реклама: адресът е <code>'+esc(D.page_url||'')+'?<b>'+esc(utmParam())+'=slug</b></code>. Кацането е overlay върху Основата (само разликите), публикува се заедно с нея с 🚀 Публикувай.<br>Ред на резолюция: <b>кацане → продукт → основа</b>. Текстове: <b>дефолт &lt; основа &lt; седмица &lt; кацане</b>.</div>';
+    if(unk.length)out+='<div class="ap-ed-unk">⚠ <b>Непознати стойности на '+esc(utmParam())+'</b> за 24 ч (паднаха на Основата — провери линковете на рекламите): '+unk.map(function(u){return '<code>'+esc(u.k)+'</code> ×'+u.n+(nearest(u.k)?' <small>(≈ '+esc(nearest(u.k))+')</small>':'')}).join(' · ')+'</div>';
+    out+='<div class="row"><button class="sm pri" id="apLandAdd">➕ Ново кацане</button><button class="sm" id="apLandCheckBtn">🔗 Провери линк от реклама</button></div><div id="apLandCheck" hidden><input type="text" id="apLandUrl" placeholder="https://ansa.bg/…?utm_content=…"><div class="ap-ed-chk" id="apLandChkOut"></div></div>';
+    if(!ls.length)out+='<div class="empty">Още няма кацания. Пример: „Козметика“ → голяма кутия се избира сама, направо въпросникът, попъпът казва за сета.</div>';
+    ls.forEach(function(L){var open=landSel===L.slug,up=landUnpublished(L),st=us[L.slug],w=flowWarnings(L),lock=!!pl[L.slug],nov=Object.keys(lcopy(L)).length;
+      out+='<div class="ap-ed-land'+(open?' open':'')+(L.enabled===false?' off':'')+'" data-ls="'+esc(L.slug)+'"><div class="lh" data-lopen="'+esc(L.slug)+'"><b>🎯 '+esc(L.name)+'</b><code>'+esc(utmParam())+'='+esc(L.slug)+'</code><span class="lst">'+(L.enabled===false?'изключено · ':'')+(up?'<i style="color:#e8722a">● '+up+' непубл.</i>':(lock?'<i style="color:#15803d">● на живо</i>':'<i style="color:#e8722a">● непубликувано</i>'))+' · ◆'+nov+(st?' · 7д: '+st.n+' пос. / '+st.orders+' пор.':' · 7д: 0')+'</span>'+(w.length?'<em class="lw">⚠ '+w.length+'</em>':'')+'</div>';
+      if(open){var P='L.';
+        out+='<div class="lb"><div class="ap-ed-eng">'
+          +'<div class="f"><label>име (за хората)</label><input type="text" data-lf="name" value="'+esc(L.name)+'"></div>'
+          +'<div class="f"><label>slug (в адреса)'+(lock?' · 🔒 заключен — публикуван е, рекламите вече го ползват; нов адрес = ново кацане':'')+'</label><input type="text" data-lf="slug" value="'+esc(L.slug)+'"'+(lock?' disabled':'')+'></div>'
+          +'<div class="f"><label>за коя реклама е (бележка)</label><input type="text" data-lf="desc" value="'+esc(L.desc||'')+'" placeholder="напр. FB реклама „Козметика за 1 евро“, октомври"></div>'
+          +'<label class="cb"><input type="checkbox" data-lf="enabled"'+(L.enabled!==false?' checked':'')+'> включено (изключено = линкът пада на Основата)</label>'
+          +'<div class="grid"><div class="f"><label>основен продукт</label><select data-lf="core"><option value="">— няма —</option>'+D.products.map(function(pr){return '<option value="'+esc(pr.key)+'"'+(L.core===pr.key?' selected':'')+'>'+esc(pr.name)+(pr.enabled?'':' (изкл.)')+'</option>'}).join('')+'</select></div>'
+          +'<div class="f"><label>кутия при кацане</label><select data-lf="box"><option value="">— човекът избира —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'"'+(L.box===b.id?' selected':'')+'>'+esc(b.ic+' '+b.name+' · '+b.packs+' опак.')+'</option>'}).join('')+'</select></div></div>'
+          +'<div class="grid"><div class="f"><label>„Запозната ли си с продуктите?“</label><select data-lf="know">'+Object.keys(KNOWS).map(function(k){return '<option value="'+k+'"'+((L.know||'ask')===k?' selected':'')+'>'+esc(KNOWS[k])+'</option>'}).join('')+'</select></div>'
+          +'<div class="f"><label>имейл-попъп</label><select data-lf="gate">'+Object.keys(GATES).map(function(k){return '<option value="'+k+'"'+((L.gate||'default')===k?' selected':'')+'>'+esc(GATES[k])+'</option>'}).join('')+'</select></div></div>'
+          +'</div>'
+          +'<div class="lflow"><b>Какво преживява човекът:</b> '+esc(flowText(L))+(w.length?'<div class="lwarn">'+w.map(function(x){return '⚠ '+esc(x)}).join('<br>')+'</div>':'')+'</div>'
+          +'<div class="llink"><b>Линк за рекламата</b> <small>(генерира се, не се пише на ръка)</small><div class="lurl"><input type="text" id="apLUrl" readonly value="'+esc(linkFor(L,L._x))+'"><button class="sm" id="apLCopy">⎘ копирай</button></div>'
+          +'<div class="grid3">'+['utm_source','utm_medium','utm_campaign'].map(function(q){return '<div class="f"><label>'+q+'</label><input type="text" data-lx="'+q+'" value="'+esc((L._x||{})[q]||'')+'" placeholder="'+({utm_source:'facebook',utm_medium:'cpc',utm_campaign:'kozmetika-okt'}[q])+'"></div>'}).join('')+'</div>'
+          +'<div class="row"><a class="btn sm" target="_blank" href="'+esc(tryLink(L))+'">👤 Пробвай като клиент (чиста сесия, чернова)</a>'+(lock?'':'<span class="hint">на живо линкът работи след 🚀 Публикувай</span>')+'</div></div>'
+          +'<div class="row"><button class="sm pri" id="apLEdit">✏️ Редактирай текстовете на кацането (◆'+nov+')</button><button class="sm" id="apLDup">⧉ Дублирай</button><button class="sm" id="apLDel">🗑 Изтрий</button></div>'
+          +'</div>'}
+      out+='</div>'});
+    /* автоматичните кацания от продукт: всеки включен продукт без кацане със същия slug */
+    var auto=D.products.filter(function(pr){return pr.enabled&&!landing(pr.key)});
+    if(auto.length)out+='<h4 style="margin:14px 0 4px;font-size:12px;color:var(--mut)">Автоматични кацания от продукт</h4><div class="hint">?'+esc(utmParam())+'=&lt;продукт&gt; работи и без кацане: „Ти избра …“, продуктът е в слот 1, човекът избира кутия. За свои текстове → „Направи го кацане“ (същият адрес, същото поведение + override-и).</div>'+auto.map(function(pr){var st=us[pr.key];return '<div class="ap-ed-land auto"><div class="lh"><b>'+esc(pr.name)+'</b><code>'+esc(utmParam())+'='+esc(pr.key)+'</code><span class="lst">'+(st?'7д: '+st.n+' пос. / '+st.orders+' пор.':'7д: 0')+'</span><button class="sm" data-mk="'+esc(pr.key)+'">Направи го кацане</button></div></div>'}).join('');
+    p.innerHTML=out;
+    $('#apLandAdd').onclick=function(){addLanding({name:'Ново кацане'})};
+    $('#apLandCheckBtn').onclick=function(){var c=$('#apLandCheck');c.hidden=!c.hidden;if(!c.hidden)$('#apLandUrl').focus()};
+    var lu=$('#apLandUrl');if(lu)lu.oninput=function(){var r=checkLink(lu.value);$('#apLandChkOut').innerHTML=r.lines.map(function(l){return '<div>'+esc(l)+'</div>'}).join('');$('#apLandChkOut').className='ap-ed-chk'+(r.ok?' ok':'')};
+    $$('[data-lopen]',p).forEach(function(x){x.onclick=function(e){if(e.target.closest('button,input,select'))return;landSel=landSel===x.dataset.lopen?null:x.dataset.lopen;renderInsp()}});
+    $$('[data-mk]',p).forEach(function(b){b.onclick=function(){var pr=prodByKey(b.dataset.mk);addLanding({slug:pr.key,name:pr.name,core:pr.key,desc:'от продукта '+pr.name})}});
+    var L=landSel?landing(landSel):null;if(!L)return;
+    $$('[data-lf]',p).forEach(function(el){el.onchange=function(){var f=el.dataset.lf,v=el.type==='checkbox'?el.checked:el.value;
+      if(f==='slug'){v=cleanSlug(v);if(!v){toast('Slug-ът не може да е празен',true);el.value=L.slug;return}if(v!==L.slug&&landing(v)){toast('Има друго кацане с slug „'+v+'“',true);el.value=L.slug;return}if(ctx===L.slug){ctx=v;try{sessionStorage.setItem('ansa_promo_ed_ctx',v)}catch(e){}}L.slug=v;landSel=v}
+      else if(f==='name'){L.name=String(v).trim()||L.slug}
+      else L[f]=v;
+      markDirty();postCfg();if(ctx===L.slug)postScenario();renderAll()}});
+    $$('[data-lx]',p).forEach(function(el){el.oninput=function(){L._x=L._x||{};L._x[el.dataset.lx]=el.value.trim();$('#apLUrl').value=linkFor(L,L._x)}}); /* _x е само за линка; сървърът го игнорира */
+    $('#apLCopy').onclick=function(){var u=$('#apLUrl').value;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('Линкът е копиран ✓')},function(){$('#apLUrl').select();document.execCommand('copy');toast('Линкът е копиран ✓')})};
+    $('#apLEdit').onclick=function(){setCtx(L.slug);mode='copy';region='gate';sel=null;renderAll()};
+    $('#apLDup').onclick=function(){var c=JSON.parse(JSON.stringify(L));delete c._x;c.name=L.name+' (копие)';c.slug=L.slug+'-2';addLanding(c)};
+    $('#apLDel').onclick=function(){var st=us[L.slug];if(!confirm('Да изтрия ли кацането „'+L.name+'“?'+(st&&st.n?' Има '+st.n+' посещения за 7 дни — рекламите с този линк ще падат на Основата.':'')+(pl[L.slug]?' То е публикувано — изтриването важи след 🚀 Публикувай.':'')))return;cfg.landings=landings().filter(function(x){return x!==L});if(ctx===L.slug)setCtx('');landSel=null;markDirty();postCfg();renderAll()}}
 
   /* ── ⚙️ двигател ── */
   function field(path,label,type,opts){var v=get(path);opts=opts||{};if(type==='check')return '<label class="cb"><input type="checkbox" data-p="'+path+'" data-t="check"'+(v?' checked':'')+'> '+esc(label)+'</label>';
@@ -116,7 +267,8 @@
     return '<div class="f"><label>'+esc(label)+'</label><input type="'+(type==='number'?'number':'text')+'" data-p="'+path+'" data-t="'+type+'" value="'+esc(v==null?'':v)+'"'+(opts.step?' step="'+opts.step+'"':'')+(opts.ph?' placeholder="'+esc(opts.ph)+'"':'')+'></div>'}
   function bindFields(p,after){$$('[data-p]',p).forEach(function(el){el.onchange=function(){var t=el.dataset.t,v=t==='check'?el.checked:(t==='number'?(el.value===''?null:Number(el.value)):el.value);if(t==='nullnum')v=el.value===''?null:Number(el.value);set(el.dataset.p,v);if(after)after(el.dataset.p);postCfg()}})}
   function renderEngine(p){var out='<div class="ap-ed-eng">';
-    if(mode==='game'){out+='<h3>🎮 Играта</h3>'+field('name','Име на промото','text')+field('deadline','Край (YYYY-MM-DD HH:MM)','text',{ph:'2026-12-31 23:59'})+field('enabled','Играта е включена (публичната страница показва играта)','check')+'<div class="grid">'+field('timer.minutes','Таймер (мин)','number')+field('timer.warn_under','Предупреждение под (мин)','number')+'</div>'+field('utm_param','UTM параметър','text')+field('max_packs','Най-много опаковки в една кутия (опаковките на кутията са минимум — броят сам я вдига)','number')+'<div class="grid">'+field('ship.paid','Платена доставка (€, Малка кутия)','number',{step:'0.01'})+field('bgn.rate','Курс лв./€','number',{step:'0.00001'})+'</div>'+field('bgn.show','Показвай лева до крайната сума','check')+'<h3>Имейл-попъп</h3>'+field('gate.enabled','включен','check')+field('gate.required','задължителен','check')+field('gate.consent_default','съгласието е отметнато по подразбиране','check')+'<h3>Любимци (екран 4)</h3>'+field('secret.enabled','включено','check')+'<div class="grid">'+field('secret.pct','отстъпка %','number')+field('secret.count','брой','number')+'</div>'+'<h3>Преглед с парола</h3>'+field('preview.enabled','включен','check')+field('preview.password','парола','text')+'<h3>Ред на кутиите</h3><div class="hint">id-та със запетая (s, m, l)</div>'+field('_order_desktop','десктоп','text')+field('_order_mobile','телефон','text')}
+    if(ctx)out+='<div class="hint" style="background:#fff5ee;padding:6px 8px;border-radius:8px">⚙️ Двигателят е общ за всички кацания — променя се в Основа, но важи навсякъде.</div>';
+    if(mode==='game'){out+='<h3>🎮 Играта</h3>'+field('name','Име на промото','text')+field('deadline','Край (YYYY-MM-DD HH:MM)','text',{ph:'2026-12-31 23:59'})+field('enabled','Играта е включена (публичната страница показва играта)','check')+'<div class="grid">'+field('timer.minutes','Таймер (мин)','number')+field('timer.warn_under','Предупреждение под (мин)','number')+'</div>'+field('utm_param','UTM параметър (стойността = кацане или продукт)','text')+field('max_packs','Най-много опаковки в една кутия (опаковките на кутията са минимум — броят сам я вдига)','number')+'<div class="grid">'+field('ship.paid','Платена доставка (€, Малка кутия)','number',{step:'0.01'})+field('bgn.rate','Курс лв./€','number',{step:'0.00001'})+'</div>'+field('bgn.show','Показвай лева до крайната сума','check')+'<h3>Имейл-попъп</h3>'+field('gate.enabled','включен','check')+field('gate.required','задължителен','check')+field('gate.consent_default','съгласието е отметнато по подразбиране','check')+'<h3>Любимци (екран 4)</h3>'+field('secret.enabled','включено','check')+'<div class="grid">'+field('secret.pct','отстъпка %','number')+field('secret.count','брой','number')+'</div>'+'<h3>Преглед с парола</h3>'+field('preview.enabled','включен','check')+field('preview.password','парола','text')+'<h3>Ред на кутиите</h3><div class="hint">id-та със запетая (s, m, l)</div>'+field('_order_desktop','десктоп','text')+field('_order_mobile','телефон','text')}
     if(mode==='boxes'){out+='<h3>📦 Кутиите</h3>';cfg.boxes.forEach(function(b,i){var P='boxes.'+i+'.';out+='<div class="box"><h4>'+esc(b.ic+' '+b.name)+' <small style="color:#6b5f58">('+b.id+')</small></h4><div class="grid">'+field(P+'ic','емоджи','text')+field(P+'name','име','text')+'</div><div class="grid3">'+field(P+'packs','опаковки','number')+field(P+'pct','отстъпка %','number',{step:'0.5'})+field(P+'tickets','билети','number')+'</div><div class="grid">'+field(P+'grow','расте над броя (приема и повече опаковки на същата отстъпка, до тавана)','check')+field(P+'tix_extra','+билети за всяка опаковка над броя','number')+'</div>'+field(P+'tag','етикет (напр. Най-популярна)','text')+'<div class="f"><label>награди</label>'+Object.keys(D.rewards).map(function(r){return '<label class="cb"><input type="checkbox" data-rw="'+i+'" value="'+r+'"'+(b.rw.indexOf(r)>-1?' checked':'')+'> '+esc(D.rewards[r])+'</label>'}).join('')+'</div><div class="f"><label>„няма“ (зачертани в картата)</label>'+Object.keys(D.rewards).map(function(r){return '<label class="cb"><input type="checkbox" data-no="'+i+'" value="'+r+'"'+((b.no||[]).indexOf(r)>-1?' checked':'')+'> '+esc(D.rewards[r])+'</label>'}).join('')+'</div><div class="f"><label>сетът за € (празно = без сет)</label><input type="number" step="0.01" data-p="'+P+'cosm_pay" data-t="nullnum" value="'+(b.cosm_pay==null?'':b.cosm_pay)+'"></div></div>'})}
     if(mode==='rewards'){out+='<h3>🎁 Наградите</h3>'+field('rewards.yacht.value','Яхта — стойност €','number')+'<div class="grid">'+field('rewards.book.product_id','Книга — WC продукт ID','number')+field('rewards.book.value','стойност €','number')+'</div>'+field('rewards.book.url','Книга — PDF линк (имейл при „Изпълнена“)','text')+'<div class="grid">'+field('rewards.cosm.product_id','Сет — WC продукт ID','number')+field('rewards.cosm.value','стойност €','number')+'</div><div class="grid">'+field('rewards.cosm.limit','Сет — брой комплекти за €1','number')+field('rewards.cosm.bar_from','брояч „Първите N са резервирани“ — от дата (YYYY-MM-DD; празно = винаги)','text',{ph:'2026-10-23'})+'</div><h3>Икони</h3><div class="grid3">'+Object.keys(cfg.rewards.icons).map(function(k){return field('rewards.icons.'+k,k,'text')}).join('')+'</div><h3>Снимки на наградите</h3><div class="hint">Attachment ID или URL — в 🧰 Инструменти има избор от медийната библиотека.</div><div class="grid">'+Object.keys(cfg.gate.images).map(function(k){return field('gate.images.'+k,k,'text')}).join('')+'</div>'}
     if(mode==='checkout'){out+='<h3>💳 Плащане</h3>'+field('checkout.card_gateway','Gateway за „С карта“','select',{options:D.gateways})+field('checkout.cod_gateway','Gateway за „Наложен платеж“ (празно = без)','select',{options:Object.assign({'':'— без наложен платеж —'},D.gateways)})+field('checkout.block_coupons','Блокирай купоните в промо количката (партньорските минават)','check')+field('checkout.consent_default','☑ сетът е отметнат по подразбиране в чекаута','check')+'<h3>Скриване на темата</h3>'+field('theme.hide','скрий елементите по селектори','check')+'<div class="f"><label>селектори (един на ред)</label><textarea data-p="theme.selectors" data-t="text" rows="6">'+esc(cfg.theme.selectors)+'</textarea></div>'}
@@ -134,16 +286,24 @@
     var add=$('#apProbAdd');if(add)add.onclick=function(){cfg.problems=cfg.problems||[];cfg.problems.push({t:'',sub:'',why:'',key:D.products[0]?D.products[0].key:''});markDirty();renderInsp()}}
 
   /* ── горна лента ── */
-  function renderTop(){var t=$('#apEdTop'),nch=Object.keys(changedMap()).length,bad=state.checks.some(function(c){return c.level==='bad'});
-    t.innerHTML='<span class="t">✏️ ansa™ Промо</span><span class="st'+(dirty?' dirty':'')+'">'+(dirty?'● незаписани промени':'чернова')+' · '+nch+' променени текста'+(function(){var u=unpublishedCount();return u?' · <b style="color:#e8722a">'+u+' непубликувани</b>':' · всичко е на живо'})()+' · '+(saving?'записва…':'запазена '+fmtTime(savedAt))+' · публикувано v'+state.version+(state.live?' · на живо':' · играта е изключена')+'</span><span class="sp"></span>'
-      +'<button id="apSave"'+(dirty&&!saving?'':' disabled')+'>💾 Запази</button><button class="pri" id="apPub" title="'+(bad?'Doctor спира публикуването — виж 🩺':'')+'">🚀 Публикувай</button><button id="apDoc">🩺'+(bad?' ⛔':'')+'</button><button id="apDiscard">↶ Откажи черновата</button>';
+  function renderTop(){var t=$('#apEdTop'),nch=Object.keys(changedMap()).length,bad=state.checks.some(function(c){return c.level==='bad'}),L=curL(),unk=(state.unknown||[]).length;
+    t.classList.toggle('ctx',!!ctx);
+    t.innerHTML='<span class="t">✏️ ansa™ Промо</span>'
+      +'<label class="ctxsel" title="Контекстът: къде отива всяка промяна на текст. Основа = за всички; кацане = само за хората от този линк."><span>пишеш в</span><select id="apCtx"><option value=""'+(ctx?'':' selected')+'>✏️ Основа (за всички)</option>'+landings().map(function(x){return '<option value="'+esc(x.slug)+'"'+(ctx===x.slug?' selected':'')+'>🎯 '+esc(x.name)+' · '+esc(utmParam())+'='+esc(x.slug)+(x.enabled===false?' (изкл.)':'')+'</option>'}).join('')+'</select></label>'
+      +'<span class="st'+(dirty?' dirty':'')+'">'+(dirty?'● незаписани промени':'чернова')+' · '+nch+(L?' override-а за кацането':' променени текста')+(function(){var u=unpublishedCount();return u?' · <b style="color:#e8722a">'+u+' непубликувани</b>':' · всичко е на живо'})()+' · '+(saving?'записва…':'запазена '+fmtTime(savedAt))+' · публикувано v'+state.version+(state.live?' · на живо':' · играта е изключена')+'</span>'
+      +(unk?'<button class="sm ap-ed-pill warn" id="apUnk" title="Посещения с '+esc(utmParam())+', който не е нито кацане, нито продукт — паднаха на Основата">⚠ '+unk+' непознати '+esc(utmParam())+' / 24ч</button>':'')
+      +'<span class="sp"></span>'
+      +'<button id="apSave"'+(dirty&&!saving?'':' disabled')+'>💾 Запази</button><button class="pri" id="apPub" title="'+(bad?'Doctor спира публикуването — виж 🩺':'Публикува основата и всички кацания наведнъж')+'">🚀 Публикувай</button><button id="apDoc">🩺'+(bad?' ⛔':'')+'</button><button id="apDiscard">↶ Откажи черновата</button>';
+    $('#apCtx').onchange=function(){setCtx(this.value)};
+    var ub=$('#apUnk');if(ub)ub.onclick=function(){mode='landings';sel=null;renderRail();renderInsp()};
     $('#apSave').onclick=function(){save()};$('#apPub').onclick=function(){publish(false)};$('#apDoc').onclick=function(){mode='doctor';sel=null;renderRail();renderInsp()};$('#apDiscard').onclick=discard}
   function doctorModal(blocking){var bad=state.checks.filter(function(c){return c.level==='bad'});var m=h('<div class="ap-ed-modal"><div class="m"><h2>🩺 Doctor спира публикуването</h2><ul class="ap-ed-doc">'+state.checks.map(function(c){return '<li class="'+c.level+'">'+({bad:'⛔',warn:'⚠',ok:'✓',info:'ℹ'}[c.level]||'')+' '+esc(c.msg)+'</li>'}).join('')+'</ul><p><button id="apMClose">Затвори</button> <button class="lnk" id="apMForce">Публикувай въпреки '+bad.length+' ⛔ (на твоя отговорност)</button></p></div></div>');document.body.appendChild(m);$('#apMClose').onclick=function(){m.remove()};$('#apMForce').onclick=function(){m.remove();if(confirm('Сигурна ли си? Страницата може да се счупи за клиентите.'))publish(true)}}
-  function renderAll(){renderTop();renderRail();renderCanvas();renderInsp()}
+  function renderAll(){$('#apEd').classList.toggle('ctx',!!ctx);renderTop();renderRail();renderCanvas();renderInsp()}
 
   document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){e.preventDefault();save()}});
   window.addEventListener('beforeunload',function(e){if(dirty){e.preventDefault();e.returnValue=''}});
-  cfg=fixCfg(cfg);lastSaveJSON=JSON.stringify(cfg);Object.keys(cfg.copy||{}).forEach(validate);
+  cfg=fixCfg(cfg);lastSaveJSON=JSON.stringify(cfg);curL();Object.keys(curCopy()).forEach(validate);
+  if(ctx){var L0=landing(ctx);if(L0&&L0.box)scen.box=L0.box}
   renderAll();
-  window.AnsaPromoEditorApp={get cfg(){return cfg},save:save,select:select,state:function(){return state},scenario:function(o){Object.assign(scen,o||{});renderCanvas();postScenario()}};
+  window.AnsaPromoEditorApp={get cfg(){return cfg},save:save,select:select,state:function(){return state},scenario:function(o){Object.assign(scen,o||{});renderScenBar();postScenario()},ctx:function(s){if(s!==undefined)setCtx(s);return ctx},resolve:resolveValue,checkLink:checkLink,flowOf:flowOf,linkFor:linkFor};
 })();

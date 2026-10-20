@@ -53,6 +53,7 @@ final class Editor {
 			'page_url' => ! empty( $draft['page_id'] ) ? get_permalink( (int) $draft['page_id'] ) : '', 'admin' => Admin::url(), 'products_tab' => Admin::url( array( 'tab' => 'products' ) ),
 			'registry' => array( 'groups' => Copy::groups(), 'keys' => $keys, 'vars' => Copy::vars(), 'screens' => self::group_screens() ),
 			'cfg' => self::out( $draft ), 'state' => self::state(), 'gateways' => $gw, 'products' => $prods,
+			'landing_groups' => Copy::landing_groups(), 'landing_knows' => Config::landing_knows(), 'landing_gates' => Config::landing_gates(), /* v1.24.0 */
 			'rewards' => array( 'tix' => 'Билет', 'tix3' => '3 билета', 'tix5' => '5 билета', 'ship' => 'Безплатна доставка', 'book' => 'Книга', 'cosm50' => 'Сет −50%', 'cosm1' => 'Сетът за €1' ),
 		);
 	}
@@ -61,10 +62,15 @@ final class Editor {
 		return array( 'gate' => array( 'gate' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
 	}
 	/** Празни асоциативни масиви (copy, fit) стават {} в JSON, не [] — иначе JS ги вижда като Array и губи ключовете. */
-	public static function out( $cfg ) { $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }
+	public static function out( $cfg ) { $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); $cfg['landings'] = array_map( function ( $l ) { $l['copy'] = (object) ( $l['copy'] ?? array() ); return $l; }, (array) ( $cfg['landings'] ?? array() ) ); return $cfg; }
 	public static function state() {
 		/* 1.23.7: published_copy — публикуваните текстове (ключ → текст), за да вижда редакторът кое е на живо и кое е само чернова */
-		return array( 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
+		$pub = Config::get_published();
+		/* v1.24.0: published_landings — публикуваните кацания по slug (slug-ът се заключва след първото публикуване; „на живо“ на override-ите
+		   в кацане се смята спрямо тях); utm_stats/unknown — трафикът по кацане за 7 дни и непознатите стойности за 24 ч (картата + жълтият пил) */
+		$pl = array(); foreach ( (array) ( $pub['landings'] ?? array() ) as $l ) { $pl[ $l['slug'] ] = array( 'enabled' => ! empty( $l['enabled'] ), 'core' => $l['core'], 'box' => $l['box'], 'know' => $l['know'], 'gate' => $l['gate'], 'copy' => (object) $l['copy'] ); }
+		return array( 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( $pub ), 'published_copy' => (object) ( $pub['copy'] ?? array() ),
+			'published_landings' => (object) $pl, 'utm_stats' => (object) Insights::utm_stats( 7 ), 'unknown' => Insights::unknown_recent( 24 ) );
 	}
 
 	private static function auth() {

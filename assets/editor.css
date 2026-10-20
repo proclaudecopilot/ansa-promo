@@ -52,3 +52,34 @@
 .ap-ed-modal{position:fixed;inset:0;background:rgba(26,26,46,.45);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px}
 .ap-ed-modal .m{background:#fff;border-radius:16px;padding:18px 20px;max-width:720px;width:100%;max-height:85vh;overflow:auto}
 .ap-ed-modal .m h2{margin:0 0 10px;font-size:18px}
+/* v1.24.0: кацанията — контекстът оцветява горната лента и рамката на канваса; лентата на потока; ◆ override в кацане; стълбата; картите */
+.ap-ed-top.ctx{background:#fff5ee;border-bottom:2px solid var(--o)}
+.ap-ed-top .ctxsel{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}.ap-ed-top .ctxsel select{width:auto;max-width:340px;font-weight:700}
+.ap-ed-top.ctx .ctxsel select{border-color:var(--o);background:#fff;color:var(--o2)}
+.ap-ed-pill.warn{background:#fff7e0;border-color:#e3b341;color:#7a5200}
+.ap-ed-canvas.ctx .ap-ed-frame iframe{outline:3px solid var(--o);outline-offset:-1px}
+.ap-ed-scen .sim{font-size:11px;font-weight:700;color:var(--mut);background:var(--bg);border:1px dashed #c9bfb3;border-radius:6px;padding:2px 6px;cursor:help}
+.ap-ed-flow{display:flex;align-items:center;gap:4px;padding:6px 10px;background:#fff5ee;border-bottom:2px solid var(--o);flex-wrap:wrap;font-size:12px}
+.ap-ed-flow .fl-ctx{font-weight:800;color:var(--o2);margin-right:6px}.ap-ed-flow .fl-arr{color:#c9bfb3;font-style:normal}
+.ap-ed-flow .fl-step{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 9px;border-radius:9px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:12px;line-height:1.2}
+.ap-ed-flow .fl-step b{color:var(--o2);font-size:11px;margin-left:4px;display:inline}.ap-ed-flow .fl-step small{font-weight:500;color:var(--mut);font-size:10px}
+.ap-ed-flow .fl-step.on{border-color:var(--o);background:#fff;box-shadow:0 0 0 2px rgba(232,114,42,.25)}
+.ap-ed-flow .fl-step.skip{opacity:.55;text-decoration:line-through;background:var(--bg)}.ap-ed-flow .fl-step.skip small{text-decoration:none}
+.ap-ed-flow .fl-step.bad{border-color:#b91c1c;opacity:1;text-decoration:line-through;color:#b91c1c}
+.ap-ed-flow .fl-more{display:flex;gap:8px;align-items:center;margin-left:8px;font-weight:600}.ap-ed-flow .fl-more select{width:auto}
+.ap-ed-rail .k.lch::before{content:"◆";color:var(--o2);margin-right:4px;font-size:9px}
+.ap-ed-rail .rg.lock{opacity:.5;cursor:not-allowed}
+.ap-ed-insp .ctxpill{display:inline-block;background:var(--o);color:#fff;border-radius:6px;padding:1px 6px;font-size:11px;vertical-align:middle}
+.ap-ed-stack{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:8px 0;font-size:12px}
+.ap-ed-stack .sr{display:grid;grid-template-columns:84px 1fr;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line);color:var(--mut)}
+.ap-ed-stack .sr:last-child{border-bottom:none}.ap-ed-stack .sr b{font-size:11px}.ap-ed-stack .sr span{white-space:pre-wrap;word-break:break-word}
+.ap-ed-stack .sr.win{background:#fff5ee;color:var(--ink)}.ap-ed-stack .sr.win b::after{content:" ←";color:var(--o2)}.ap-ed-stack .sr.land b{color:var(--o2)}
+.ap-ed-unk{background:#fff7e0;border:1px solid #e3b341;border-radius:10px;padding:8px;font-size:12px;margin:8px 0}
+.ap-ed-chk{font-size:12px;background:var(--bg);border-radius:8px;padding:8px;margin:6px 0;min-height:20px;white-space:pre-wrap}.ap-ed-chk.ok{background:#eaf7ee}
+.ap-ed-land{border:1px solid var(--line);border-radius:12px;margin:8px 0;background:#fff;overflow:hidden}
+.ap-ed-land.open{border-color:var(--o)}.ap-ed-land.off{opacity:.7}.ap-ed-land.auto{background:var(--bg);border-style:dashed}
+.ap-ed-land .lh{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;flex-wrap:wrap;font-size:12px}.ap-ed-land .lh b{font-size:13px}
+.ap-ed-land .lh code{font-size:11px;background:var(--bg);border-radius:6px;padding:2px 6px}.ap-ed-land .lh .lst{color:var(--mut);margin-left:auto}.ap-ed-land .lh .lw{color:#9a6700;font-style:normal;font-weight:700}
+.ap-ed-land .lb{padding:4px 10px 10px;border-top:1px solid var(--line)}
+.ap-ed-land .lflow{font-size:12px;background:#fff5ee;border-radius:8px;padding:8px;margin:8px 0}.ap-ed-land .lwarn{color:#9a6700;margin-top:6px;font-weight:600}
+.ap-ed-land .llink{font-size:12px;border:1px dashed rgba(232,114,42,.5);border-radius:8px;padding:8px;margin:8px 0}.ap-ed-land .lurl{display:flex;gap:6px;margin:6px 0}.ap-ed-land .lurl input{font:11px/1.4 Menlo,Consolas,monospace}

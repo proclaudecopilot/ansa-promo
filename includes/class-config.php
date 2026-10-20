@@ -86,8 +86,21 @@ final class Config {
 			/* v1.0.3: страницата на цял екран — темплейтът „ansa™ Промо — цял екран“ + скриване на елементи на темата по селектори */
 			'theme'     => array( 'hide' => true, 'selectors' => self::default_hide_selectors() ),
 			'copy'      => array(),
+			/* v1.24.0: кацанията — една преживяемост на играта за дадена реклама: ?{utm_param}=slug. Overlay върху основата (не копие):
+			   няколко настройки на поведението + копи override-и само за екраните на играта (Copy::landing_groups). Резолюцията е една:
+			   кацане → продукт (имплицитно кацане от продукт) → основа. Копито: дефолт < основа < седмица < кацане. */
+			'landings'  => array(),
 		);
 	}
+
+	/** v1.24.0: едно кацане. core = основен продукт ('' = няма); box = кутията, която се избира сама след попъпа ('' = човекът избира);
+	 *  know = „Запозната ли си с продуктите?“: ask (пита) · yes (направо пълненето) · no (направо въпросникът); gate: default · off. */
+	public static function landing_defaults() {
+		return array( 'slug' => '', 'name' => '', 'desc' => '', 'enabled' => true, 'core' => '', 'box' => '', 'know' => 'ask', 'gate' => 'default', 'copy' => array() );
+	}
+	public static function landing_knows() { return array( 'ask' => 'пита „Запозната ли си с продуктите?“', 'yes' => 'знае ги — направо пълненето', 'no' => 'не ги знае — направо въпросникът' ); }
+	public static function landing_gates() { return array( 'default' => 'както основата', 'off' => 'без имейл-попъп' ); }
+	public static function slug_clean( $s ) { return substr( strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $s ) ), 0, 64 ); }
 
 	/** v1.0.13: новата структура на наградите. Еднократно пренаписва кутиите s/m в черновата и публикуваното, ако още са със
 	 *  старите дефолти (Малка −20% · [tix]; Средна −30% · [tix3, cosm50, book, ship]); ръчно променени кутии не се пипат. */
@@ -342,6 +355,27 @@ final class Config {
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
+		/* v1.24.0: кацанията — валиден slug, уникален (първото печели), продукт/кутия само съществуващи, копи само познати ключове от
+		   разрешените групи. Slug, който съвпада с ключ на продукт, се пази (Doctor го спира) — иначе редакторът би го „загубил“ мълчаливо. */
+		$ls = array(); $lseen = array(); $reg = Copy::registry(); $lg = Copy::landing_groups();
+		foreach ( (array) ( $out['landings'] ?? array() ) as $l ) {
+			if ( ! is_array( $l ) ) { continue; }
+			$l = self::merge( self::landing_defaults(), $l );
+			$l['slug'] = self::slug_clean( $l['slug'] );
+			if ( '' === $l['slug'] || isset( $lseen[ $l['slug'] ] ) ) { continue; }
+			$lseen[ $l['slug'] ] = 1;
+			$l['name'] = mb_substr( sanitize_text_field( (string) $l['name'] ), 0, 80 ) ?: $l['slug']; $l['desc'] = mb_substr( sanitize_text_field( (string) $l['desc'] ), 0, 300 );
+			$l['enabled'] = ! empty( $l['enabled'] );
+			$l['core'] = isset( $seen[ (string) $l['core'] ] ) ? (string) $l['core'] : '';
+			$l['box'] = in_array( (string) $l['box'], array( 's', 'm', 'l' ), true ) ? (string) $l['box'] : '';
+			$l['know'] = isset( self::landing_knows()[ (string) $l['know'] ] ) ? (string) $l['know'] : 'ask';
+			$l['gate'] = isset( self::landing_gates()[ (string) $l['gate'] ] ) ? (string) $l['gate'] : 'default';
+			$lc = array();
+			foreach ( (array) ( is_array( $l['copy'] ) ? $l['copy'] : array() ) as $k => $v ) { $g = Copy::group_of( $k ); if ( $g && in_array( $g, $lg, true ) && isset( $reg[ $g ][ $k ] ) && is_string( $v ) && '' !== trim( $v ) ) { $lc[ $k ] = $v; } }
+			$l['copy'] = $lc;
+			$ls[] = $l;
+		}
+		$out['landings'] = array_slice( $ls, 0, 100 );
 		return $out;
 	}
 
@@ -427,6 +461,19 @@ final class Config {
 
 	/* ── помощници ── */
 	public static function product( $cfg, $key ) { foreach ( $cfg['products'] as $p ) { if ( $p['key'] === $key ) { return $p; } } return null; }
+	/** v1.24.0: кацане по slug (само включените, освен ако $all). */
+	public static function landing( $cfg, $slug, $all = false ) { foreach ( (array) ( $cfg['landings'] ?? array() ) as $l ) { if ( $l['slug'] === $slug && ( $all || ! empty( $l['enabled'] ) ) ) { return $l; } } return null; }
+	/** v1.24.0: ЕДНАТА резолюция на ?{utm_param}=стойност — същата като landingFor() в promo.js: кацане → продукт (имплицитно кацане) → нищо.
+	 *  $prods = продуктите в runtime (ключ → ред); връща [utm => стойността за атрибуция ('' = непозната/няма), landing => кацането или null,
+	 *  core => основният продукт или '', unknown => стойността, ако не е нито кацане, нито продукт]. */
+	public static function resolve_landing( $cfg, $value, $prods, $all = false ) {
+		$v = self::slug_clean( $value ); $out = array( 'utm' => '', 'landing' => null, 'core' => '', 'unknown' => '' );
+		if ( '' === $v ) { return $out; }
+		$l = self::landing( $cfg, $v, $all );
+		if ( $l ) { $out['utm'] = $v; $out['landing'] = $l; $out['core'] = ( '' !== $l['core'] && isset( $prods[ $l['core'] ] ) ) ? $l['core'] : ''; return $out; }
+		if ( isset( $prods[ $v ] ) ) { $out['utm'] = $v; $out['core'] = $v; return $out; }
+		$out['unknown'] = $v; return $out;
+	}
 	/** v1.14.0: ефективната отстъпка на продукт в кутия — override от 📦 Продукти (pct[box id]) или процентът на кутията. */
 	public static function product_pct( $p, $box ) {
 		$bid = is_array( $box ) ? (string) ( $box['id'] ?? '' ) : (string) $box;

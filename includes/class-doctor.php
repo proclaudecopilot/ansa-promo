@@ -86,10 +86,43 @@ final class Doctor {
 		return $rows;
 	}
 
+	/** v1.24.0: проверките на кацанията (рекламите) — самостоятелни, за да ги вика и редакторът без WC. ⛔: slug на продукт с друг основен продукт
+	 *  (резолюцията би взела кацането и продуктовият линк би сменил смисъла си; slug = продукт + core = същият продукт е ОК — „материализирано“ имплицитно кацане); основен продукт/кутия, които не съществуват, нормализацията
+	 *  вече е махнала. ⚠: число до € или % в override, за който има плейсхолдър (седмиците ще го направят невярно); кацане без override
+	 *  (безсмислено); основен продукт + кутия с 1 опаковка („Честито“ без избор); изключено кацане, което още получава трафик. */
+	public static function landing_checks( $cfg, $utm_stats = null ) {
+		$out = array(); $ls = (array) ( $cfg['landings'] ?? array() ); if ( ! $ls ) { return $out; }
+		$pk = array(); foreach ( (array) $cfg['products'] as $p ) { $pk[ $p['key'] ] = ! empty( $p['enabled'] ); }
+		$bx = array(); foreach ( (array) $cfg['boxes'] as $b ) { $bx[ $b['id'] ] = $b; }
+		$ok = 0;
+		foreach ( $ls as $l ) {
+			$id = 'landing_' . $l['slug']; $name = '🎯 ' . $l['name'] . ' (' . $cfg['utm_param'] . '=' . $l['slug'] . ')'; $bad = array(); $wn = array();
+			if ( isset( $pk[ $l['slug'] ] ) && $l['core'] !== $l['slug'] ) { $bad[] = 'slug-ът е ключ на продукт, а основният продукт е друг — линкът ?' . $cfg['utm_param'] . '=' . $l['slug'] . ' ще спре да отваря продукта (сложи го за основен или смени slug-а)'; }
+			if ( '' !== $l['core'] && empty( $pk[ $l['core'] ] ) ) { $wn[] = 'основният продукт ' . $l['core'] . ' е изключен — ще се кацне без основен продукт'; }
+			if ( '' !== $l['core'] && '' !== $l['box'] && isset( $bx[ $l['box'] ] ) && (int) $bx[ $l['box'] ]['packs'] <= 1 ) { $wn[] = 'основен продукт + ' . $bx[ $l['box'] ]['name'] . ' (1 опаковка): кутията е пълна веднага, човекът отива на „Честито“ без да избира'; }
+			if ( 'no' === $l['know'] && empty( $cfg['problems'] ) ) { $wn[] = '„направо въпросникът“, но няма въпроси (⚙️ FIT · проблеми)'; }
+			$nums = array();
+			foreach ( (array) $l['copy'] as $k => $v ) {
+				foreach ( Copy::validate( $v ) as $e ) { $bad[] = $k . ': ' . $e; }
+				if ( preg_match( '/(€\s*\d|\d\s*(€|%|евро|лв))/u', (string) $v ) ) { $nums[] = $k; }
+			}
+			if ( $nums ) { $wn[] = 'число до €/% в ' . implode( ', ', $nums ) . ' — ползвай плейсхолдър ({{cosm_value}}, {{cosm_pay_l}}, {{pct}}…), иначе седмиците го правят невярно'; }
+			if ( empty( $l['copy'] ) && '' === $l['core'] && '' === $l['box'] && 'ask' === $l['know'] && 'default' === $l['gate'] ) { $wn[] = 'нищо не променя спрямо основата — безсмислено е'; }
+			if ( ! $l['enabled'] && is_array( $utm_stats ) && ! empty( $utm_stats[ $l['slug'] ]['n'] ) ) { $wn[] = 'изключено, но има ' . (int) $utm_stats[ $l['slug'] ]['n'] . ' посещения за 7 дни — трафикът пада на основата'; }
+			if ( $bad ) { $out[] = array( 'id' => $id, 'level' => 'bad', 'msg' => $name . ': ' . implode( '; ', $bad ) . ( $wn ? ' · ⚠ ' . implode( '; ', $wn ) : '' ) ); }
+			elseif ( $wn ) { $out[] = array( 'id' => $id, 'level' => 'warn', 'msg' => $name . ': ' . implode( '; ', $wn ) ); }
+			else { $ok++; }
+		}
+		if ( $ok ) { $out[] = array( 'id' => 'landings', 'level' => 'ok', 'msg' => $ok . ' кацания без забележки (🎯 Кацания в редактора; трафикът им е в 📈 Insights → По кацане)' ); }
+		return $out;
+	}
+
 	/* ── Publish gate (план §7): [{id, level ok|warn|bad|info, msg}] — bad спира публикуването ── */
 	public static function checks( $cfg = null ) {
 		$cfg = $cfg ?: Config::get_draft(); $out = array();
 		$c = function ( $id, $level, $msg ) use ( &$out ) { $out[] = array( 'id' => $id, 'level' => $level, 'msg' => $msg ); };
+		$us = null; try { $us = Insights::utm_stats( 7 ); } catch ( \Throwable $e ) { $us = null; }
+		foreach ( self::landing_checks( $cfg, $us ) as $x ) { $c( $x['id'], $x['level'], $x['msg'] ); }
 		/* 1. страница */
 		$pid = (int) $cfg['page_id']; $post = $pid ? get_post( $pid ) : null;
 		if ( ! $post ) { $c( 'page', 'bad', 'Няма избрана страница с [ansa_promo] (🧰 Инструменти).' ); }

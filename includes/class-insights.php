@@ -128,11 +128,36 @@ final class Insights {
 		$box = (string) ( $_POST['box'] ?? '' ); $utm = (string) ( $_POST['utm'] ?? '' );
 		if ( 'item' !== $ev ) { self::hit( $ev, $box, $utm ); }
 		$items = json_decode( (string) wp_unslash( $_POST['items'] ?? '' ), true );
+		$sid = self::request_sid( (string) ( $_POST['sid'] ?? '' ) );
 		self::track( array(
-			'sid' => self::request_sid( (string) ( $_POST['sid'] ?? '' ) ), 'ev' => $ev, 'box' => $box, 'utm' => $utm, 'k' => (string) ( $_POST['k'] ?? '' ), 'n' => (int) ( $_POST['n'] ?? 0 ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
+			'sid' => $sid, 'ev' => $ev, 'box' => $box, 'utm' => $utm, 'k' => (string) ( $_POST['k'] ?? '' ), 'n' => (int) ( $_POST['n'] ?? 0 ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'items' => is_array( $items ) ? $items : null, 'src' => (string) ( $_POST['src'] ?? '' ), 'med' => (string) ( $_POST['med'] ?? '' ), 'camp' => (string) ( $_POST['camp'] ?? '' ), 'ref' => (string) wp_unslash( $_POST['ref'] ?? '' ), 'dev' => (string) ( $_POST['dev'] ?? '' ),
 		) );
+		/* v1.24.0: непозната стойност на ?{utm_param}= (нито кацане, нито продукт) — падна на основата, но се записва, за да се види правописна
+		   грешка в рекламата още същия ден (редакторът: жълт пил „непознати стойности“) */
+		if ( 'view' === $ev && '' !== (string) ( $_POST['unk'] ?? '' ) ) { self::unknown( $sid, (string) $_POST['unk'] ); }
 		wp_send_json_success( array( 'ok' => true ) );
+	}
+
+	/** v1.24.0: записва непозната стойност на utm параметъра като събитие ev=unk, k=стойността (без ред в сесиите — сесията си е „основа“). */
+	public static function unknown( $sid, $value ) {
+		global $wpdb; $v = self::tok( $value, 64 ); $sid = self::sid( $sid ); if ( '' === $v || '' === $sid ) { return false; }
+		$te = Schema::table( 'events' );
+		return (bool) $wpdb->insert( $te, array( 'sid' => $sid, 'at' => current_time( 'mysql' ), 'ev' => 'unk', 'box' => '', 'k' => $v, 'n' => 0, 'utm' => '' ), array( '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) );
+	}
+	/** v1.24.0: непознатите стойности за последните $hours часа — [{k, n, last}] по брой. */
+	public static function unknown_recent( $hours = 24 ) {
+		global $wpdb; $te = Schema::table( 'events' ); if ( ! Schema::exists( $te ) ) { return array(); }
+		$since = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - (int) $hours * HOUR_IN_SECONDS );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT k, COUNT(*) n, MAX(at) last FROM $te WHERE ev = 'unk' AND at >= %s GROUP BY k ORDER BY n DESC LIMIT 20", $since ), ARRAY_A );
+		return array_map( function ( $r ) { return array( 'k' => (string) $r['k'], 'n' => (int) $r['n'], 'last' => (string) $r['last'] ); }, (array) $rows );
+	}
+	/** v1.24.0: трафик по стойност на utm за последните $days дни — [utm => {n сесии, orders}] (за картата на кацането в редактора). */
+	public static function utm_stats( $days = 7 ) {
+		global $wpdb; $ts = Schema::table( 'sessions' ); if ( ! Schema::exists( $ts ) ) { return array(); }
+		$since = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - (int) $days * DAY_IN_SECONDS );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT utm, COUNT(*) n, SUM(order_id IS NOT NULL) o FROM $ts WHERE started_at >= %s AND utm <> '' GROUP BY utm", $since ), ARRAY_A );
+		$out = array(); foreach ( (array) $rows as $r ) { $out[ (string) $r['utm'] ] = array( 'n' => (int) $r['n'], 'orders' => (int) $r['o'] ); } return $out;
 	}
 
 	/** 1.17.1: runtime ajax-ът (promo.js при всяко отваряне, и от кеширана страница) брои „view“ със sid от заявката или от бисквитката. */
@@ -353,7 +378,8 @@ final class Insights {
 		}
 		return $out;
 	}
-	private static function product_names() { static $n = null; if ( null === $n ) { $n = array(); foreach ( (array) Config::get_published()['products'] as $p ) { $n[ $p['key'] ] = $p['name'] ?: $p['key']; } } return $n; }
+	/** Имената по стойност на utm: кацанията (v1.24.0, „🎯 Козметика“) печелят над продуктите (същият ред като резолюцията). */
+	private static function product_names() { static $n = null; if ( null === $n ) { $n = array(); $pub = Config::get_published(); foreach ( (array) $pub['products'] as $p ) { $n[ $p['key'] ] = $p['name'] ?: $p['key']; } foreach ( (array) ( $pub['landings'] ?? array() ) as $l ) { $n[ $l['slug'] ] = '🎯 ' . $l['name']; } } return $n; }
 	private static function box_names() { static $n = null; if ( null === $n ) { $n = array(); foreach ( (array) Config::get_published()['boxes'] as $b ) { $n[ $b['id'] ] = $b['ic'] . ' ' . $b['name']; } } return $n; }
 
 	public static function ajax_feed() {
@@ -536,7 +562,9 @@ final class Insights {
 		if ( ! $r['items'] ) { echo '<tr><td colspan="6"><small>още няма данни за периода</small></td></tr>'; }
 		echo '</tbody></table></div></div>';
 		/* разбивки */
-		echo self::table_html( '🏷️ По UTM (кацане с продукт)', $r['by_utm'], 'UTM', function ( $k ) use ( $names ) { return ( $names[ $k ] ?? $k ) . ( isset( $names[ $k ] ) ? ' (' . $k . ')' : '' ); } );
+		echo self::table_html( '🏷️ По кацане (' . esc_html( Config::get_published()['utm_param'] ) . '= кацане или продукт)', $r['by_utm'], 'UTM', function ( $k ) use ( $names ) { return ( $names[ $k ] ?? $k ) . ( isset( $names[ $k ] ) ? ' (' . $k . ')' : '' ); } );
+		$unk = self::unknown_recent( 24 * $days );
+		if ( $unk ) { echo '<div class="ap-sec"><div class="ap-sec__b"><p><b>⚠ Непознати стойности на utm параметъра</b> (паднаха на основата — провери линковете на рекламите): ' . implode( ' · ', array_map( function ( $u ) { return '<code>' . esc_html( $u['k'] ) . '</code> ×' . (int) $u['n']; }, $unk ) ) . '</p></div></div>'; }
 		echo self::table_html( '📣 По източник (utm_source / директно)', $r['by_src'], 'източник' );
 		echo self::table_html( '📦 По кутия', $r['by_box'], 'кутия', function ( $k ) use ( $boxes ) { return $boxes[ $k ] ?? $k; } );
 		echo self::table_html( '📱 По устройство', $r['by_dev'], 'устройство' );
