@@ -117,12 +117,11 @@ const { chromium } = require('playwright');
     if (await nextTxt()) errors.push(tag + ' grow-l1: редът „Още …“ се показва преди минимума');
     await incN(4); await page.waitForTimeout(250); await shot('grow-l'); await check('grow-l');
     if (await boxId() !== 'l') errors.push(tag + ' grow-l: кутията не е l');
-    { const t = await nextTxt(); if (!/\+1 билет/.test(t) || !/5\s+билета/.test(t)) errors.push(tag + ' grow-l: редът „+1 билет … сега 5 билета“ липсва: ' + JSON.stringify(t)); }
+    // 1.20.3: билетите вече не са в реда над футъра (fill.top = „−X% на всяка опаковка“); 1.24.6: на телефон редът го няма — проверките за „+1 билет / 5 билета“ са махнати
     if (!await canInc()) errors.push(tag + ' grow-l: степерите са заключени на 5');
     await incN(2); await page.waitForTimeout(250); await shot('grow-l7'); await check('grow-l7');
     if (await boxId() !== 'l') errors.push(tag + ' grow-l7: кутията не е l');
-    { const t = await nextTxt(); if (!/7\s+билета/.test(t)) errors.push(tag + ' grow-l7: „сега 7 билета“ липсва: ' + JSON.stringify(t)); }
-    { const t = await tixTxt(); if (!/7/.test(t)) errors.push(tag + ' grow-l7: плочката с билетите не показва 7: ' + JSON.stringify(t)); }
+    if (w >= 500) { const t = await tixTxt(); if (!/7/.test(t)) errors.push(tag + ' grow-l7: плочката с билетите не показва 7: ' + JSON.stringify(t)); } // 1.24.6: на телефон списъкът с подаръците в хедъра е махнат
     { const d = await page.evaluate(() => document.getElementById('nFill').disabled); if (d) errors.push(tag + ' grow-l7: „Продължи“ е заключен при 7 опаковки'); }
     await page.click('#nFill'); await page.waitForTimeout(600); await shot('grow-celeb'); await check('grow-celeb');
     { const n = await page.evaluate(() => AnsaPromo.state().slots.filter(Boolean).length); if (n !== 7) errors.push(tag + ' grow-celeb: очаквах 7 опаковки, има ' + n); }
