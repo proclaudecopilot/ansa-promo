@@ -479,16 +479,15 @@
       var iSw=sv+'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
       var iGift=sv+'<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
       var iChev=sv+'<path d="m9 6 6 6-6 6"/></svg>';
-      var gsum=['<span data-tix="mfill.gs.tix">'+T('mfill.gs.tix',bv)+'</span>'].concat(main?[T(skey(main),bv)]:[]).join(' <i class="dot">•</i> ');
-      var gall=b.rw.map(function(r){return '<span class="mfgi">'+rimg(r,/^tix/.test(r)?'🛥️':RW(r).ic)+'<b'+ck(gkey(r))+(/^tix/.test(r)?' data-tix="'+gkey(r)+'"':'')+'>'+T(gkey(r),bv)+'</b></span>'}).join('');
       /* v1.0.41 (искане на човека): хедърът е два реда и стои залепен горе — „ГОЛЯМА КУТИЯ · −40% НА ВСИЧКО“ + ✕; „УЧАСТВАШ ЗА ЯХТА И
          КОЗМЕТИЧЕН СЕТ“ + „Виж повече“ (разгъва списъка с всички подаръци) + „Смени кутията“ */
       bv.box_u=esc(String(b.name).toUpperCase());bv.gift=/^cosm/.test(main)?T('fill.g.cosm').toLowerCase():main==='book'?T('fill.g.book').toLowerCase():'';
+      var cosmRw=b.rw.filter(function(r){return /^cosm/.test(r)})[0]||'',cosmKey=cosmRw==='cosm50'?'mfill.b.cosm50':'mfill.b.cosm'; /* 1.24.6 */
       body='<div class="mfs" id="mfS"><div class="mfh mfh2">'
-        +'<div class="mh1"><div class="mh1l"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><span class="mh1p"'+ck('mfill.h.pct')+'>'+T('mfill.h.pct',bv)+'</span></div><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
-        +'<div class="mh2"><span class="mh2g"><span'+ck(bv.gift?'mfill.h.gifts':'mfill.h.gifts1')+'>'+T(bv.gift?'mfill.h.gifts':'mfill.h.gifts1',bv)+'</span> <button class="lnk" id="mfGx" type="button" aria-expanded="false"'+ck('mfill.h.more')+'>'+T('mfill.h.more')+'</button></span>'
-        +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
-        +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div>'
+        /* 1.24.6 (човекът): хедърът е ЕДИН ред — „ГОЛЯМА КУТИЯ“ + пил „−40%“ + „Смени кутията“ + ✕; редът „Участваш за яхта и козметичен сет · Виж повече“
+           и разгъващият се списък с подаръците са махнати — наградите са в „Твоята кутия“ долу (mfill.b.*) */
+        +'<div class="mh1"><div class="mh1l"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><span class="mh1p"'+ck('mfill.h.pct')+'>'+T('mfill.h.pct',bv)+'</span></div>'
+        +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck('fill.quiz.l')+'>'+T('fill.quiz.l')+'</button>'
@@ -497,7 +496,9 @@
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><div class="mftot" id="fTot"></div></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div>'
+        /* 1.24.6 (човекът): под „Спестяваш X“ — „Взимаш козметика за <s>€129</s> €1“ (само кутия с козметичен сет) и „Участваш в томбола за почивка с яхта“; без „−40% на всяка опаковка“ и без „Още N и отключваш…“ на телефон */
+        +'<div class="mfben">'+(cosmRw?'<div class="mfb cosm"'+ck(cosmKey)+'>'+T(cosmKey,bv)+'</div>':'')+'<div class="mfb tix"'+ck('mfill.b.tix')+'>'+T('mfill.b.tix',bv)+'</div></div></div><div class="mftot" id="fTot"></div></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
@@ -511,7 +512,7 @@
         if(fm){if(left>0){fm.hidden=false;fm.innerHTML='<span'+ck('fill.more.n')+'>'+T('fill.more.n',{n:left})+'</span>'}else{fm.innerHTML='<span'+ck('fill.more.first')+'>'+T('fill.more.first')+'</span>'}}};showPg();
       var goPg=function(d){pg=Math.max(0,Math.min(pages-1,pg+d));showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})};
       var pvB=$('f3Pv'),nxB=$('f3Nx'),fmB=$('f3More');if(pvB)pvB.onclick=function(){goPg(-1)};if(nxB)nxB.onclick=function(){goPg(1)};if(fmB)fmB.onclick=function(){if(pg>=pages-1){pg=0;showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})}else goPg(1)}}
-    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
+    /* 1.24.6: „Виж повече“ (mfGx/mfGh) е махнато заедно с втория ред на хедъра */
     if(mob)fitSheet(dc);
     /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
     /* 1.24.5 (човекът: „въпросникът да е първото нещо, което виждаш“): при първото влизане в пълненето (веднъж на сесия) въпросникът се отваря сам върху попъпа;
@@ -564,7 +565,7 @@
       var tot=0,reg=0;Object.keys(needQ).forEach(function(k){if(PROD[k]){tot+=needQ[k]*disc(PROD[k],b);reg+=needQ[k]*PROD[k].price}});tot=r2(tot);reg=r2(reg);
       var ft=$('fTot');if(ft){var pv=ft.dataset.v;ft.innerHTML=t>0?'<span'+ck('mfill.tot')+'>'+T('mfill.tot',{tot:m(tot),reg:m(reg),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('mfill.tot.zero')+'>'+T('mfill.tot.zero',{pct:b.pct})+'</span>';ft.classList.toggle('on',t>0);if(pv!==undefined&&pv!==String(tot)){ft.classList.remove('bump');void ft.offsetWidth;ft.classList.add('bump')}ft.dataset.v=String(tot)}
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
-      var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
+      var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T(mobF?'mfill.go':'fill.go')} /* 1.24.6: на телефон „Натисни и финализирай →“ */
     sync();
     function inc(k){if(total()>=maxFor(b)){toast(T(grows(b)?'fill.max':'fill.over2'),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
     dc.querySelectorAll('[data-inc]').forEach(function(x){x.onclick=function(e){e.stopPropagation();inc(x.dataset.inc)}});
