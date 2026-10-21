@@ -10,7 +10,7 @@
   var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
   var scen={utm:'',box:'l',screen:'boxes',full:true};
-  var SCREEN_LABELS={gate:'Имейл-попъп',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
+  var SCREEN_LABELS={gate:'Имейл-попъп',cosm:'Попъп „Козметиката за €1“ (UTM cosm)',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
 
   /* ── помощници за конфига ── */
@@ -56,7 +56,7 @@
     return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)}}}
   function postCfg(){post({ansaPromo:'cfg',runtime:runtimePartial()})}
   function renderCanvas(){var c=$('#apEdCanvas');if(!D.page){c.innerHTML='<div class="ap-ed-scen">Няма страница — избери я в 🧰 Инструменти.</div>';return}
-    if(!frame){c.innerHTML='';var bar=h('<div class="ap-ed-scen"><label>UTM <select id="apScUtm"><option value="">— без —</option>'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'">'+esc(p.name)+'</option>'}).join('')+'</select></label>'
+    if(!frame){c.innerHTML='';var bar=h('<div class="ap-ed-scen"><label>UTM <select id="apScUtm"><option value="">— без (general) —</option><optgroup label="Кампания"><option value="cosm">💄 Козметика (utm_content=cosm)</option><option value="yacht">⛵ Яхта (utm_content=yacht)</option><option value="general">🎁 Общ (utm_content=general)</option></optgroup><optgroup label="Продукт (retargeting)">'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'">'+esc(p.name)+' (utm_content='+esc(p.key)+')</option>'}).join('')+'</optgroup></select></label>'
       +'<label>Кутия <select id="apScBox"><option value="">— няма —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'">'+esc(b.ic+' '+b.name)+'</option>'}).join('')+'</select></label>'
       +'<label>Екран <select id="apScScreen">'+Object.keys(SCREEN_LABELS).map(function(s){return '<option value="'+s+'">'+esc(SCREEN_LABELS[s])+'</option>'}).join('')+'</select></label>'
       +'<label><input type="checkbox" id="apScFull"> пълна кутия</label><span class="sp" style="flex:1"></span>'

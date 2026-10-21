@@ -24,6 +24,15 @@ const { chromium } = require('playwright');
     for (const gv of ['yacht', 'cosm']) { await page.evaluate(g => AnsaPromo.scenario({ screen: 'gate', utm: null, gv: g }), gv); await page.waitForTimeout(250); await shot('gate-' + gv); await check('gate-' + gv);
       const h = await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''); if (!(gv === 'yacht' ? /яхта/ : /козметичен сет/).test(h)) errors.push(tag + ' gate-' + gv + ': заглавието е „' + h + '“');
       if (gv === 'cosm' && !(await page.evaluate(() => document.querySelector('#apDc .g2rw .g2r').classList.contains('gold')))) errors.push(tag + ' gate-cosm: сетът не е първата награда'); }
+    // 1.24.12: попъпът за козметиката (?utm_content=cosm): „Искам помощ“ → Голямата кутия с въпросника отпред; „Не искам помощ“ → направо пълненето
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'cosm', utm: 'cosm' })); await page.waitForTimeout(300); await shot('cosm-pop'); await check('cosm-pop');
+    if (!(await page.$('#cpYes')) || !(await page.$('#cpNo'))) errors.push(tag + ' cosm-pop: липсват бутоните Искам/Не искам помощ');
+    { const t = await page.evaluate(() => document.querySelector('#apDc').innerText); if (!/за 1 евро ще бъде твоя/.test(t) || !/на цената на три/.test(t)) errors.push(tag + ' cosm-pop: текстът не е този на човека: ' + t.slice(0, 120)); }
+    await page.click('#cpNo'); await page.waitForTimeout(500); await shot('cosm-direct'); await check('cosm-direct');
+    { const st = await page.evaluate(() => { const s = AnsaPromo.state(); return { box: s.box, hasFill: !!(document.querySelector('#fSlotsN') || document.querySelector('#apDc.fpm #mfMore')), quiz: !!document.querySelector('#fqGo') }; }); if (st.box === null || !st.hasFill || st.quiz) errors.push(tag + ' cosm-direct: очаквах Голямата кутия с пълненето без въпросник, а е ' + JSON.stringify(st)); }
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'cosm', utm: 'cosm', box: null })); await page.waitForTimeout(300);
+    await page.click('#cpYes'); await page.waitForTimeout(500); await shot('cosm-help'); await check('cosm-help');
+    { const st = await page.evaluate(() => { const s = AnsaPromo.state(); return { box: s.box, quiz: !!document.querySelector('#fqGo') }; }); if (st.box === null || !st.quiz) errors.push(tag + ' cosm-help: очаквах Голямата кутия с въпросника отпред, а е ' + JSON.stringify(st)); }
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'gate', utm: 'sakura', gv: null })); await page.waitForTimeout(250);
     if (!/Sakura/.test(await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''))) errors.push(tag + ' gate-sakura: заглавието не е за продукта');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
