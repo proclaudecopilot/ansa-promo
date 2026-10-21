@@ -358,7 +358,7 @@ final class Copy {
 				'fill.more'          => 'Повече за продукта ›',
 				'fill.more.s'        => 'Повече ›',
 				'fill.dots'          => '{{n}} от {{packs}}',
-				'fill.need'          => 'Избери още {{need}} {{opk}}',
+				'fill.need'          => 'Добави още {{need}} {{opk}}', /* 1.24.9 (човекът): „Избери“ → „Добави“ */
 				'fill.pct'           => '−{{pct}}% · спестяваш {{save}}',
 				'fill.in'            => '✓ В кутията',
 				'fill.inN'           => '✓ ×{{n}} в кутията',
