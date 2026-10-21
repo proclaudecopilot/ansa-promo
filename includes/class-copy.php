@@ -60,6 +60,11 @@ final class Copy {
 				'gate.title'         => 'Ти избра <span>{{core_full}}</span>',
 				'gate.title.noutm'   => 'До <span>−{{max_pct}}%</span> и подаръци с всяка поръчка',
 				'gate.sub.noutm'     => 'само до {{deadline}}',
+				/* 1.24.7 (човекът): gate по рекламата — ?utm_content=yacht / cosm (general = общият вариант по-горе; продукт = gate.title) */
+				'gate.title.yacht'   => 'Почивка с <span>яхта в Гърция</span> за теб и 5 твои близки',
+				'gate.sub.yacht'     => 'всяка кутия носи билети за томболата · само до {{deadline}}',
+				'gate.title.cosm'    => 'Новият козметичен сет за <span>€{{cosm_pay_l}}</span> вместо €{{cosm_value}}',
+				'gate.sub.cosm'      => 'само в Голямата кутия · само до {{deadline}}',
 				'gate.s1'            => 'Можеш да получиш:',
 				'gate.r1.b'          => 'Почивка с яхта',
 				'gate.r1.s'          => 'томбола · 5 дни в Гърция за теб и 5 твои близки',

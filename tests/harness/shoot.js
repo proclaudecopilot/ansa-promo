@@ -20,6 +20,12 @@ const { chromium } = require('playwright');
       if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' ' + name + ': undefined/NaN в текста: ' + (t.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
     }
     await shot('gate'); await check('gate');
+    // 1.24.7: gate по рекламата — yacht / cosm (general = общият)
+    for (const gv of ['yacht', 'cosm']) { await page.evaluate(g => AnsaPromo.scenario({ screen: 'gate', utm: null, gv: g }), gv); await page.waitForTimeout(250); await shot('gate-' + gv); await check('gate-' + gv);
+      const h = await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''); if (!(gv === 'yacht' ? /яхта/ : /козметичен сет/).test(h)) errors.push(tag + ' gate-' + gv + ': заглавието е „' + h + '“');
+      if (gv === 'cosm' && !(await page.evaluate(() => document.querySelector('#apDc .g2rw .g2r').classList.contains('gold')))) errors.push(tag + ' gate-cosm: сетът не е първата награда'); }
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'gate', utm: 'sakura', gv: null })); await page.waitForTimeout(250);
+    if (!/Sakura/.test(await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''))) errors.push(tag + ' gate-sakura: заглавието не е за продукта');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
     await page.screenshot({ path: S + '/shots/' + tag + '-boxes-full.png', fullPage: true });
     // v1.23.1: един плаващ бутон „?“ → попъпът „Как работи играта“
