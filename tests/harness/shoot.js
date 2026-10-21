@@ -47,10 +47,12 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
     // v1.0.39: въпросникът „Не си сигурна какво ти трябва?“ → избор на 2 проблема → подредба с етикет „според теб“
     await page.click('#fQuiz'); await shot('quiz'); await check('quiz');
-    // v1.23.3: „Продължи“ е неактивен с 0 и 1 отбелязани, активен от 2
+    // 1.24.5: с UTM продукт — „Продължи“ е неактивен с 0, активен от 1; редът на продукта липсва
     if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен без избор');
     await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
-    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен с 1 избор');
+    if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz: „Продължи“ е неактивен с 1 избор (с UTM продукт един стига)');
+    if (await page.$('.fqz input[value="sakura"]')) errors.push(tag + ' quiz: редът на UTM продукта (Sakura) е във въпросника');
+    if (!/Sakura е перфектен избор/.test(await page.evaluate(() => document.querySelector('.fqz h3').textContent))) errors.push(tag + ' quiz: заглавието с UTM не е „Sakura е перфектен избор…“');
     await shot('quiz-one');
     await page.evaluate(() => { const i = document.querySelector('.fqz input[value="berber"]'); if (i) i.click(); });
     if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz: „Продължи“ е неактивен с 2 избора');
@@ -64,6 +66,15 @@ const { chromium } = require('playwright');
     await page.click('#cGo'); await shot('order'); await check('order');
     { const f = await page.$('#finish'); if (f && await f.isVisible()) { await f.click(); await page.waitForTimeout(200); await shot('order-toast'); } } // v1.5.1: без екран „Поръчка“ — бутонът може да липсва
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null })); await shot('boxes-noutm'); await check('boxes-noutm');
+    // 1.24.5: въпросникът е първото нещо при влизане в пълненето (quiz:true в сценария) — с UTM: заглавие с продукта; без UTM: „Кое от следното те касае?“ и минимум 2
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura', quiz: true })); await page.waitForTimeout(300); await shot('quiz-auto'); await check('quiz-auto');
+    if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' quiz-auto: въпросникът не се отвори сам при влизане в пълненето');
+    if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' quiz-auto: интро листът е върху въпросника');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: null, quiz: true })); await page.waitForTimeout(300); await shot('quiz-auto-noutm'); await check('quiz-auto-noutm');
+    if (!/Кое от следното те касае/.test(await page.evaluate(() => (document.querySelector('.fqz h3') || {}).textContent || ''))) errors.push(tag + ' quiz-auto-noutm: заглавието без UTM не е „Кое от следното те касае?“');
+    await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
+    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz-auto-noutm: „Продължи“ е активен с 1 избор без UTM');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null }));
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'm', utm: null })); await check('fill-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'celeb', box: 's', utm: 'sakura', full: true })); await shot('celeb-small'); await check('celeb-small');
     // 1.23.9: „Честито“ с 11 опаковки от 6 продукта — групирани, най-много 4 реда (десктоп) / 1 (телефон) видими, останалите зад „Виж всички (+N)“
