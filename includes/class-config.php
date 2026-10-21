@@ -74,6 +74,7 @@ final class Config {
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
 			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
 			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
+			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika' ), /* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата) */
 			/* v1.9.0: книгата с рецепти — страницата /kniga (class-book.php): телефон + имейл от поръчката → PDF. file = относителен път в
 			   {uploads}/ansa-promo-book/ (качва се от 🧰 Инструменти), url = външен линк (алтернатива), remember = колко дни браузърът я помни
 			   (подписана бисквитка); отключва се при „получена“ поръчка = tombola.statuses */
@@ -338,6 +339,7 @@ final class Config {
 		/* v1.6.0: томбола */
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
 		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
+		$out['li']['enabled'] = ! empty( $out['li']['enabled'] ); $out['li']['slug'] = sanitize_title( (string) ( $out['li']['slug'] ?? 'kozmetika' ) ) ?: 'kozmetika'; /* 1.24.20 */
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
 		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );
 		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];

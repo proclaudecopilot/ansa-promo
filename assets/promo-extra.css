@@ -1873,3 +1873,38 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.cpop .cpb.yes small{opacity:.9}
 @media(hover:hover){.ansa-promo .dc.cpop .cpb:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(180,83,9,.2)}}
 .ansa-promo .dc.cpop .cpb:active{transform:scale(.99)}
+
+/* ── 46 · 1.24.20 (човекът): listicle страницата {промо}/kozmetika „Комплектът за 1 €“ (.dc.hw.li) — хероят е розово-златен (козметиката),
+      броячът „Останаха X от N“ е пил под бележката, картите на петте продукта (li-cards), писмото „Къде е уловката“, залепеният бутон носи
+      и ред „Комплектът за 1 € е вътре · Останаха X“. Останалото е рамката на /info (секция 43). ── */
+.ansa-promo .dc.hw .li-hero{background:linear-gradient(135deg,#f9c7d4 0%,#fbd9c3 45%,#fdf0e2 100%)}
+.ansa-promo .dc.hw .li-hero h2{font-size:30px;line-height:1.15;letter-spacing:-.02em;color:#7c2d3a;margin:0 0 12px}
+.ansa-promo .dc.hw .li-hero .hw-kick{color:#9f1239}
+.ansa-promo .dc.hw .li-hero .hw-hpic span{font-size:150px}
+.ansa-promo .dc.hw .li-left{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 14px;border-radius:999px;background:#fff;border:1.5px solid #e9b32a;color:var(--goldd);font-size:13.5px;font-weight:900;box-shadow:0 4px 12px rgba(217,119,6,.18)}
+.ansa-promo .dc.hw .li-left::before{content:"⏳"}
+.ansa-promo .dc.hw .li-catch .hw-letter p{font-size:16px;line-height:1.55;font-weight:600;color:var(--ink2);margin:0 0 12px}
+.ansa-promo .dc.hw .li-catch .hw-letter p.hw-sign{margin-top:16px}
+.ansa-promo .dc.hw .li-set>p{font-size:15.5px;line-height:1.5;font-weight:600;color:var(--ink2);margin:0 0 10px}
+.ansa-promo .dc.hw .li-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px}
+.ansa-promo .dc.hw .li-card{position:relative;background:#fff;border:1.5px solid #f3b7c7;border-radius:16px;padding:16px 14px 14px 48px;box-shadow:0 4px 16px rgba(120,60,20,.08)}
+.ansa-promo .dc.hw .li-card i{position:absolute;left:12px;top:14px;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f472b6,#be185d);color:#fff;font-style:normal;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center}
+.ansa-promo .dc.hw .li-card b{display:block;font-size:15.5px;font-weight:900;color:var(--ink);margin:0 0 4px}
+.ansa-promo .dc.hw .li-card p{font-size:13.5px;line-height:1.4;font-weight:600;color:var(--ink2);margin:0}
+.ansa-promo .dc.hw .li-in .hw-bul li b,.ansa-promo .dc.hw .li-box .hw-facts li b{color:var(--od)}
+.ansa-promo .dc.hw .li-st .hw-steps li p{font-size:14.5px}
+.ansa-promo .dc.hw .li-box p.hw-ex{font-size:14px;font-weight:700;color:var(--goldd);margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#fff;border:1.5px dashed #e9b32a}
+.ansa-promo .dc.hw .li-box .cta{margin-top:4px}
+.ansa-promo .dc.hw .li-y p{font-size:15px;line-height:1.5;font-weight:600;margin:0 0 10px}
+.ansa-promo .dc.hw .li-link{display:inline-block;margin:4px 0 8px;font-size:14px;font-weight:900;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.ansa-promo .dc.hw .li-faq .li-links a{color:var(--od);font-weight:900;text-decoration:underline;text-underline-offset:3px}
+.ansa-promo .dc.hw .li-stk{flex-direction:column;align-items:center;gap:4px}
+.ansa-promo .dc.hw .li-stkw{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:420px}
+.ansa-promo .dc.hw .li-stkw .cta{width:100%}
+.ansa-promo .dc.hw .li-stkw small{font-size:12.5px;font-weight:700;color:var(--tan);line-height:1.3;text-align:center}
+.ansa-promo .dc.hw .li-stkw small b{color:var(--goldd)}
+@media(max-width:760px){
+.ansa-promo .dc.hw .li-hero h2{font-size:24px}
+.ansa-promo .dc.hw .li-hero .hw-hpic span{font-size:96px}
+.ansa-promo .dc.hw .li-cards{grid-template-columns:1fr}
+}

@@ -16,4 +16,7 @@ open(out + '/harness/index.html', 'w', encoding='utf-8').write(html)
 # v1.8.0: самостоятелната страница „Как работи“ (runtime.mode = info) → harness/info.html
 rt2 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', 'sakura', '', 'info']).decode()
 open(out + '/harness/info.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt2 + ';</script>'))
-print('harness →', out + '/harness/index.html', '+ info.html')
+# 1.24.20: страницата „Комплектът за 1 €“ (runtime.mode = li) → harness/kozmetika.html
+rt3 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', '', '', 'li']).decode()
+open(out + '/harness/kozmetika.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt3 + ';</script>'))
+print('harness →', out + '/harness/index.html', '+ info.html + kozmetika.html')
