@@ -416,22 +416,12 @@
     S.slots=down?kept.slice(0,b.packs):kept;normSlots();
     startTimer();saveS();
     /* попъпът пълни кутията докрай; таблото (екран 2) е само резервен екран за редакция */
-    if(!full()){if(S.screen!==2)render();if(!keep&&S.screen!==2&&!S.know){knowPopup();return}S._fillPending=(S.screen!==2);fillModePopup();return}
+    if(!full()){if(S.screen!==2)render();S._fillPending=(S.screen!==2);fillModePopup();return} /* 1.24.4 (човекът: „излишен friction“): без попъпа „Запозната ли си с продуктите?“ — кутията се отваря направо; въпросникът остава през „Не си сигурна какво ти трябва?“ */
     if(S.screen===2){go(2);return}
     render();S._fillPending=false;setTimeout(celebrate,200);
   }
 
-  /* v1.23.2 (човекът): при избор на кутия първо питаме „Запозната ли си с продуктите на ansa?“ — „Да, знам ги“ отваря пълненето,
-     „Не ги знам, насочете ме“ отваря пълненето с въпросника „Кое от следното те касае?“ отгоре. Отговорът се помни за сесията. */
-  function knowPopup(){
-    S._fillPending=false;
-    info(T('know.t'),'<p class="knows"'+ck('know.s')+'>'+T('know.s',boxVars(BX()))+'</p>'
-      +'<button class="knowb yes" id="knowYes" type="button"><b'+ck('know.yes')+'>'+T('know.yes')+'</b><small'+ck('know.yes.s')+'>'+T('know.yes.s')+'</small></button>'
-      +'<button class="knowb no" id="knowNo" type="button"><b'+ck('know.no')+'>'+T('know.no')+'</b><small'+ck('know.no.s')+'>'+T('know.no.s')+'</small></button>');
-    $('apDc').classList.add('know');
-    var pick=function(v){S.know=v;S._quizFirst=(v==='no');saveS();S._fillPending=true;fillModePopup()};
-    $('knowYes').onclick=function(){pick('yes')};$('knowNo').onclick=function(){pick('no')};
-  }
+  /* 1.24.4: knowPopup() („Запозната ли си с продуктите на ansa™?“, 1.23.2) е махнат — човекът: „излишен friction“ */
   /* ── ЕДИН попъп за пълнене: наградите на кутията + категории със степери (десктоп) / пълноекранен лист (мобилно) ── */
   var needQ={},needOrder=[];
   function fillModePopup(){S._fillPg=0;needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
@@ -524,7 +514,7 @@
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
     /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
-    if(mob&&!again&&!S._quizFirst)unlockPopup(b,P);
+    if(mob&&!again)unlockPopup(b,P);
     /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
     var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){var end=ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24;mm.classList.toggle('off',end);if(!end){var lim=ms.getBoundingClientRect().bottom,n=0;ms.querySelectorAll('.mitem:not(.pg-off)').forEach(function(it){if(it.getBoundingClientRect().top>lim-40)n++});mm.innerHTML='<span'+ck(n?'mfill.more.n':'mfill.more.dn')+'>'+(n?T('mfill.more.n',{n:n}):T('mfill.more.dn'))+'</span>'}};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}} /* v1.18.1: с броя */
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -533,7 +523,6 @@
     /* v1.0.39: въпросникът е панел върху попъпа — един ред на продукт (t + sub от „проблемите“), минимум един избор; „Покажи ми
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
-    if(S._quizFirst){S._quizFirst=false;$('apOv2').classList.add('off');if(fq)fq.onclick()}
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
     function sync(){var t=total();
       /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
