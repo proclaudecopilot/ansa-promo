@@ -49,6 +49,10 @@
   /* 1.24.7 (човекът): utm_content е ключ на продукт (sakura, greens, berber, meno, yoni…) ИЛИ името му без интервали (dihydroberberine, menostop, yonibiotic, dailygreens)
      → персонализиран gate за продукта; yacht / cosm / general → gate за яхтата / козметичния сет / общ (A.gv) */
   var GV=['yacht','cosm','general'];
+  /* 1.24.14 (човекът): кампанията по UTM — конфигът (campaigns) казва за този UTM има ли имейл-попъп (gate: default/on/off), има ли попъп
+     „Козметиката за €1“ (cosm_pop) и дали кутията се избира сама (box) или се виждат всички. Без запис: cosm → попъпът за козметиката. */
+  function campKey(){return A.utm||A.gv||'general'}
+  function camp(){var k=campKey(),c=(A.campaigns&&A.campaigns[k])||{};return {gate:c.gate||'default',cosm_pop:c.cosm_pop!==undefined?!!c.cosm_pop:k==='cosm',box:c.box||''}}
   function utmProd(u){u=String(u||'').toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(!u)return '';if(PROD[u])return u;var n=u.replace(/[^a-z0-9]/g,'');for(var k in PROD){if(String(PROD[k].name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===n)return k}return ''}
   try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){var pk=utmProd(qsU);if(pk)A.utm=pk;else{var g=String(qsU).toLowerCase().replace(/[^a-z]/g,'');if(GV.indexOf(g)>-1)A.gv=g}}}catch(e){}
   if(A.utm&&!PROD[A.utm])A.utm=utmProd(A.utm)||null;
@@ -908,7 +912,8 @@
       if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce; /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       /* v1.18.2 (човекът: „натиснах изключи на попъпа и пак се появява“): кешираната страница носи стария gate.enabled — свежият решава;
          ако попъпът е изключен и вече е отворен, затваря се веднага и продължава каквото е чакало след него */
-      if(d.gate&&A.gate&&!!d.gate.enabled!==!!A.gate.enabled){A.gate=Object.assign({},A.gate,d.gate);if(!d.gate.enabled){S.emailDone=true;S._lockOv=false;var dc0=$('apDc');if(dc0&&dc0.classList.contains('gatew')&&!$('apOv').classList.contains('off'))closeInfo();saveS();if(S._afterGate){var af0=S._afterGate;S._afterGate=null;setTimeout(af0,100)}}}
+      if(d.campaigns)A.campaigns=d.campaigns; /* 1.24.14 */
+      if(d.gate&&A.gate&&!A._gateForced&&!!d.gate.enabled!==!!A.gate.enabled){A.gate=Object.assign({},A.gate,d.gate);if(!d.gate.enabled){S.emailDone=true;S._lockOv=false;var dc0=$('apDc');if(dc0&&dc0.classList.contains('gatew')&&!$('apOv').classList.contains('off'))closeInfo();saveS();if(S._afterGate){var af0=S._afterGate;S._afterGate=null;setTimeout(af0,100)}}}
       /* v1.19.0: кешираната страница носи кутиите/седмицата от преди смяната — свежите печелят (проценти, стълба, чип) */
       if(d.season!==undefined&&JSON.stringify(d.season||null)!==JSON.stringify(A.season||null)){A.season=d.season;changed=true}
       if(d.boxes&&JSON.stringify(d.boxes)!==JSON.stringify(A.boxes)){A.boxes=d.boxes;changed=true}
@@ -989,11 +994,17 @@
   var restored=restoreS();
   /* v1.18.2: кацане от имейл (utm_medium=email / utm_source с mail, sendgrid, newsletter, fka) или ?gate=0 → без имейл-попъп (имейлът вече е известен) */
   try{var qg=new URLSearchParams(location.search),gm=(qg.get('utm_medium')||'').toLowerCase(),gs=(qg.get('utm_source')||'').toLowerCase();if(qg.get('gate')==='0'||gm==='email'||gm==='e-mail'||/mail|sendgrid|newsletter|fka/.test(gs)){S.emailDone=true;gateMark()}}catch(e){}
+  /* 1.24.14: имейл-попъпът по кампания — off: без попъп за този UTM; on: с попъп и при изключен глобално (runtime refresh не го връща) */
+  try{var cpg=camp();if(!A.editor){if(cpg.gate==='off'){S.emailDone=true;gateMark()}else if(cpg.gate==='on'&&A.gate&&!A.gate.enabled){A.gate=Object.assign({},A.gate,{enabled:true});A._gateForced=true;if(!gateSeen())S.emailDone=false}}}catch(e){}
   if(A.editor){S.emailDone=true;A.editorNoGate=true;go(1)}
   else{go(S.screen===2&&restored?2:1);if(restored&&full()){toast(T('ms.restored'),false)}else if(restored&&!full()){S._fillPending=false;fillModePopup()}}
   refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
-  /* v1.8.0: кацане с ?box=s|m|l (от страницата /info) → кутията се избира сама; с имейл-попъп — след него */
-  try{var qB=new URLSearchParams(location.search).get('box');if(qB&&BI[qB]!=null&&!A.editor&&S.box===null){var runB=function(){if(S.box===null)chooseBox(BI[qB])};if(S.emailDone||gateSeen())setTimeout(runB,300);else S._afterGate=runB}}catch(e){}
-  /* 1.24.12: реклама за козметиката (?utm_content=cosm) без ?box= → попъпът „Козметиката за 1 евро ще бъде твоя“ (след имейл-попъпа), веднъж на сесия */
-  try{var qB2=new URLSearchParams(location.search).get('box');if(A.gv==='cosm'&&!(qB2&&BI[qB2]!=null)&&!A.editor&&S.box===null&&!restored&&!sessionStorage.getItem('ansa_promo_cosmpop')){var runC=function(){if(S.box===null)cosmPopup()};if(S.emailDone||gateSeen())setTimeout(runC,350);else S._afterGate=runC}}catch(e){}
+  /* v1.8.0: кацане с ?box=s|m|l → кутията се избира сама; 1.24.12: попъпът за козметиката; 1.24.14: и двете идват от кампанията по UTM
+     (campaigns[utm].box / .cosm_pop) — ?box= от адреса печели над конфига; попъпът за козметиката е веднъж на сесия и води към кутията сам */
+  try{var cpl=camp(),qB=new URLSearchParams(location.search).get('box');var boxId=(qB&&BI[qB]!=null)?qB:((cpl.box&&BI[cpl.box]!=null)?cpl.box:'');
+    if(!A.editor&&S.box===null){var runL=null;
+      if(cpl.cosm_pop&&!qB&&!restored&&!sessionStorage.getItem('ansa_promo_cosmpop'))runL=function(){if(S.box===null)cosmPopup()};
+      else if(boxId)runL=function(){if(S.box===null)chooseBox(BI[boxId])};
+      if(runL){if(S.emailDone||gateSeen())setTimeout(runL,320);else S._afterGate=runL}}
+  }catch(e){}
 })();
