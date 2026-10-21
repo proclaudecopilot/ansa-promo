@@ -115,7 +115,7 @@
   function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}
   function liveUrl(){var u=D.page_url||D.page||''; /* публичната страница; кутията/попъпите идват от кампанията в конфига, не от адреса */var q=[];q.push('utm_content='+encodeURIComponent(scen.utm||'general'));return u+(u.indexOf('?')<0?'?':'&')+q.join('&')}
   function fitFrame(){if(!frame)return;var wrap=$('#apEdFrame'),w=wrap.clientWidth-24,need=device==='mob'?390:1280,z=Math.min(1,w/need);frame.style.transform='scale('+z+')';frame.style.height=device==='mob'?'780px':((wrap.clientHeight-24)/z)+'px'}
-  window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false)}});
+  window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false,true)}});
 
   /* ── рейл ── */
   function renderRail(){var r=$('#apEdRail'),out='';
@@ -133,7 +133,9 @@
     $$('[data-k]',r).forEach(function(b){b.onclick=function(){mode='copy';region=KEYS[b.dataset.k].g;select(b.dataset.k,true)}});
     $$('[data-mode]',r).forEach(function(b){b.onclick=function(){mode=b.dataset.mode;sel=null;renderRail();renderInsp()}})}
   function goToKeyScreen(k){if(!k)return;var sc=SCREENS[KEYS[k].g]||[];if(sc.length&&sc.indexOf(scen.screen)<0){scen.screen=sc[0];if(sc[0]!=='boxes'&&!scen.box)scen.box='l';renderCanvas();postScenario()}}
-  function select(k,scroll){mode='copy';region=KEYS[k]?KEYS[k].g:region;sel=k;renderRail();renderInsp();goToKeyScreen(k);post({ansaPromo:'mark',key:k,scroll:!!scroll});var ta=$('#apTa');if(ta&&scroll){ta.focus()}}
+  /* 1.24.16 (човекът: „като цъкам на секции да ги едитвам, ми мести Стъпка“): клик върху хотспот в канваса (fromCanvas) НИКОГА не сменя
+     стъпката — текстът е на екрана, който гледаш; само изборът от списъка вляво навигира към екрана на ключа */
+  function select(k,scroll,fromCanvas){mode='copy';region=KEYS[k]?KEYS[k].g:region;sel=k;renderRail();renderInsp();if(!fromCanvas)goToKeyScreen(k);post({ansaPromo:'mark',key:k,scroll:!!scroll});var ta=$('#apTa');if(ta&&scroll){ta.focus()}}
 
   /* ── инспектор ── */
   function renderInsp(){var p=$('#apEdInsp');
