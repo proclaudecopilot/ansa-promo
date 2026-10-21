@@ -505,7 +505,7 @@
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><div class="mftot" id="fTot"></div></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
@@ -545,7 +545,7 @@
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
       /* v1.10.0: прогресът е към следващата кутия („3 от 5“), на най-голямата — просто броят („7 опаковки“) */
       var topN=t>=goal&&!nx,mobF=!!$('mfS'); /* десктоп: „Избрани 7 опаковки“ (думата е в хедъра); телефон: „7 опаковки“ */
-      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}else if(mobF)cnt=''; /* 1.24.2: на телефон броят е в плочките — мястото му във футъра е за тотала */
       var fb=$('fBar');if(fb){var pc=Math.min(100,Math.round(t/goal*100));fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
       var fn=$('fNext');if(fn){var nt=need>0||!grows(b)?'':(nx?T('fill.next',tgtVars(nx,t)):T('fill.top',tixVars(b,t)));fn.innerHTML=nt;fn.className='fnext'+(need>0||nx?'':' top');fn.style.display=nt?'':'none'}
       /* v1.12.0: билетите в плочките следват броя (+tix_extra за всяка опаковка над packs) */
@@ -564,6 +564,10 @@
       else fsEl.innerHTML=cnt+tiles;
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*(PROD[k].price-disc(PROD[k],b))});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2((pr.price-disc(pr,b))*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
+      /* 1.24.2 (човекът: „Трябва да има тотала at all times докато си пълниш количката“): тоталът, който ще платиш (с отстъпката) + зачертано
+         колко би било по редовни цени — на мястото на „5 опаковки“ в лепкавия футър на телефона; „Спестяваш“ отляво е разликата между двете */
+      var tot=0,reg=0;Object.keys(needQ).forEach(function(k){if(PROD[k]){tot+=needQ[k]*disc(PROD[k],b);reg+=needQ[k]*PROD[k].price}});tot=r2(tot);reg=r2(reg);
+      var ft=$('fTot');if(ft){var pv=ft.dataset.v;ft.innerHTML=t>0?'<span'+ck('mfill.tot')+'>'+T('mfill.tot',{tot:m(tot),reg:m(reg),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('mfill.tot.zero')+'>'+T('mfill.tot.zero',{pct:b.pct})+'</span>';ft.classList.toggle('on',t>0);if(pv!==undefined&&pv!==String(tot)){ft.classList.remove('bump');void ft.offsetWidth;ft.classList.add('bump')}ft.dataset.v=String(tot)}
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
     sync();

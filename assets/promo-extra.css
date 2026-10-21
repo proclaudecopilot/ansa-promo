@@ -1828,3 +1828,12 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .dc.fpm .fslots.many .fs{flex:0 0 50px;width:50px;scroll-snap-align:start}
 .ansa-promo .dc.fpm .fsarr{flex:none;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--o);background:#fff;color:var(--od);font:inherit;font-size:20px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 0 2px;box-shadow:0 2px 8px rgba(232,114,42,.15);transition:opacity .15s}
 .ansa-promo .dc.fpm .fsarr.off{opacity:.3;pointer-events:none}
+
+/* 1.24.2 (човекът: „липсва тоталът, който ще платиш — трябва да го има at all times докато си пълниш количката“): в лепкавия футър на
+   телефона вместо „5 опаковки“ стои тоталът — голяма оранжева сума (с отстъпката) + зачертана сума по редовни цени; „Спестяваш €X“ отляво е разликата */
+.ansa-promo .dc.fpm .mftot{flex:none;min-width:0;text-align:right}
+.ansa-promo .dc.fpm .mftot span{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.ansa-promo .dc.fpm .mftot b{font-size:24px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:var(--od);white-space:nowrap}
+.ansa-promo .dc.fpm .mftot s{font-size:13px;font-weight:700;line-height:1.2;color:#8a7f76;text-decoration:line-through;white-space:nowrap}
+.ansa-promo .dc.fpm .mftot:not(.on) b{color:#a89d94}
+.ansa-promo .dc.fpm .mftot.bump{animation:apBump .35s ease}
