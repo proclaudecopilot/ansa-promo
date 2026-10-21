@@ -926,11 +926,29 @@
     }).catch(function(){});
   }
 
+  /* ── 1.24.12 (човекът): кацане от реклама за козметиката (?utm_content=cosm) — попъп „Козметиката за 1 евро ще бъде твоя.
+     За да продължиш, избери си 5 продукта добавки на цената на три. Искаш ли да ти помогнем с избора или искаш директно да си избереш?“
+     „Искам помощ“ → Голямата кутия с въпросника „С какво да ти помогнем“ отпред; „Не искам помощ“ → направо пълненето на Голямата кутия.
+     Излиза след имейл-попъпа (или веднага, ако го няма/е минат), веднъж на сесия, не и при ?box= (тогава кутията се избира сама). ── */
+  function bigBox(){var b=null;BOXES.forEach(function(x){if(!b||x.packs>b.packs)b=x});return b}
+  function cosmPopup(){
+    var b=bigBox();if(!b)return;var bv=boxVars(b);
+    info('<span'+ck('cosm.pop.t')+'>'+T('cosm.pop.t',bv)+'</span>','<p class="cpp"'+ck('cosm.pop.p')+'>'+T('cosm.pop.p',bv)+'</p>'
+      +'<button class="cpb yes" id="cpYes" type="button"><b'+ck('cosm.pop.yes')+'>'+T('cosm.pop.yes')+'</b><small'+ck('cosm.pop.yes.s')+'>'+T('cosm.pop.yes.s')+'</small></button>'
+      +'<button class="cpb no" id="cpNo" type="button"><b'+ck('cosm.pop.no')+'>'+T('cosm.pop.no')+'</b><small'+ck('cosm.pop.no.s')+'>'+T('cosm.pop.no.s')+'</small></button>');
+    $('apDc').classList.add('cpop');
+    try{sessionStorage.setItem('ansa_promo_cosmpop','1')}catch(e){}
+    /* интро листът „За да отключиш тези награди… ОК, разбрах“ се пропуска — попъпът вече е казал „избери си 5 продукта“ (същият флаг като при автоматичния въпросник) */
+    var go2=function(help){S.quizSeen=!help;S._fillPending=false;saveS();try{sessionStorage.setItem('ansa_promo_unlock_'+b.id,'1')}catch(e){}closeInfo();if(S.box===null)chooseBox(BI[b.id]);else{S._fillPending=(S.screen!==2);fillModePopup()}};
+    $('cpYes').onclick=function(){go2(true)};$('cpNo').onclick=function(){go2(false)};
+  }
+
   /* ── редактор: хотспотове + живо копи + сценарии ── */
   function scenario(o){
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
     S.quizSeen=!o.quiz; /* 1.24.5: сценариите (харнес/редактор) виждат автоматичния въпросник само с quiz:true */
-    if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
+    /* 1.24.12: редакторът е по UTM — селектът „UTM“ праща и кампания (cosm/yacht/general) като utm; тя става вариант на gate-а (A.gv) без продукт */
+    if(o.utm!==undefined){if(o.utm&&!PROD[o.utm]&&GV.indexOf(o.utm)>-1){S.utm=null;S.core=null;A.gv=o.utm}else{S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm;if(o.gv===undefined)A.gv=null}}
     if(o.gv!==undefined)A.gv=o.gv&&GV.indexOf(o.gv)>-1?o.gv:null; /* 1.24.7: вариантът на gate-а (yacht/cosm/general) */
     if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
@@ -949,6 +967,7 @@
     else if(sc==='order'){go(5)}
     else if(sc==='product'){go(1);productPopup(S.core||ORDER[0],function(){})}
     else if(sc==='how'){go(1);howPopup()}
+    else if(sc==='cosm'){go(1);cosmPopup()} /* 1.24.12 */
   }
   window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
   if(A.editor){
@@ -975,4 +994,6 @@
   refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
   /* v1.8.0: кацане с ?box=s|m|l (от страницата /info) → кутията се избира сама; с имейл-попъп — след него */
   try{var qB=new URLSearchParams(location.search).get('box');if(qB&&BI[qB]!=null&&!A.editor&&S.box===null){var runB=function(){if(S.box===null)chooseBox(BI[qB])};if(S.emailDone||gateSeen())setTimeout(runB,300);else S._afterGate=runB}}catch(e){}
+  /* 1.24.12: реклама за козметиката (?utm_content=cosm) без ?box= → попъпът „Козметиката за 1 евро ще бъде твоя“ (след имейл-попъпа), веднъж на сесия */
+  try{var qB2=new URLSearchParams(location.search).get('box');if(A.gv==='cosm'&&!(qB2&&BI[qB2]!=null)&&!A.editor&&S.box===null&&!restored&&!sessionStorage.getItem('ansa_promo_cosmpop')){var runC=function(){if(S.box===null)cosmPopup()};if(S.emailDone||gateSeen())setTimeout(runC,350);else S._afterGate=runC}}catch(e){}
 })();
