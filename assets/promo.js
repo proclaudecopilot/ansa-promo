@@ -70,10 +70,11 @@
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
     Object.keys(s).forEach(function(k){S[k]=s[k]});
-    /* 1.24.17: UTM в адреса → той е продуктът (без започната кутия става и основен); без UTM и без започната кутия → общият сезон, не запомненият
-       продукт от предишен адрес в същия таб; започната кутия пази продукта си (човекът е по средата на играта) */
+    /* 1.24.17/1.24.18 (човекът: „ако изтриеш UTM от URL, показва нещата от UTM“): АДРЕСЪТ печели винаги. UTM в адреса → той е продуктът
+       (без започната кутия става и основен); без UTM → общият сезон (S.utm = S.core = null) дори при започната кутия — кутията и опаковките
+       в нея остават, само копито/попъпът стават общи */
     if(A.utm&&PROD[A.utm]){S.utm=A.utm;S.core=S.box===null?A.utm:(S.core||A.utm)}
-    else if(!A.editor&&S.box===null){S.utm=null;S.core=null}
+    else if(!A.editor){S.utm=null;S.core=null}
     if(!(A.gate&&A.gate.enabled))S.emailDone=true; /* v1.18.2: изключеният попъп печели над запомнено emailDone:false */
     if(S.chosen==null||!BOXES[S.chosen])S.chosen=S.box;if(S.box!==null)syncBox(); /* v1.10.0 */
     return S.box!==null&&S.slots.filter(Boolean).length>0}catch(e){return false}}
