@@ -16,6 +16,8 @@
   document.body.classList.add('ansa-promo-page');document.documentElement.classList.add('ansa-promo-html'); /* v1.0.52: overflow-x:hidden и на <html> */
   /* v1.0.24: на телефон лентата с яхтата е плаваща картинка долу вдясно (в портала, за да не я хване transform на темата) */
   var yfab=document.createElement('div');yfab.className='yfab';yfab.id='apYfab';yfab.style.display='none';portal.appendChild(yfab);
+  /* 1.24.3 (човекът: „Бих го направил на sticky countdown — без допълнителни обяснения, освен ако не цъкнеш“): лепкава лента в дъното на екрана с кутиите — „Побързай!“ + дни · часа · мин · сек до края на текущата седмица (после отстъпките се променят; последната седмица — до края на сезона) + „?“; цък → „Как работи играта“ на стълбата на сезона */
+  var cdEl=document.createElement('div');cdEl.className='apcd';cdEl.id='apCd';cdEl.style.display='none';portal.appendChild(cdEl);
 
   /* ── помощници ── */
   function m(n){return '€ '+Number(n).toFixed(2).replace('.',',')}
@@ -80,7 +82,7 @@
   function avgPrice(){var s=0;ORDER.forEach(function(k){s+=PROD[k].price});return ORDER.length?s/ORDER.length:0}
   function boxSaveMax(b){return r2(b.packs*avgPrice()*b.pct/100+extraVal(b)+(b.rw.indexOf('ship')>-1?SHIP:0))}
   /* v1.19.0: седмиците на сезона (A.season от сървъра: week/total/days_left/next{box id => %}/next_from/ladder). Кутиите (b.pct) идват вече
-     с процента на текущата седмица; тук се смята само „изпускаш X“ = опаковки × средна цена × разликата до следващата седмица. */
+     с процента на текущата седмица; тук се смята само „изпускаш X“ = опаковки × средна цена × разликата до следващата седмица. 1.24.3: лентата с точките е махната — countdown (renderCd) до s.ends. */
   function SEAS(){return A.season&&A.season.on?A.season:null}
   function nextPct(b){var s=SEAS();return s&&s.next&&s.next[b.id]!=null?Number(s.next[b.id]):null}
   function loseOf(b){var n=nextPct(b);if(n==null)return 0;return r2(b.packs*avgPrice()*Math.max(0,Number(b.pct)-n)/100)}
@@ -505,7 +507,7 @@
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><div class="mftot" id="fTot"></div></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
@@ -545,7 +547,7 @@
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
       /* v1.10.0: прогресът е към следващата кутия („3 от 5“), на най-голямата — просто броят („7 опаковки“) */
       var topN=t>=goal&&!nx,mobF=!!$('mfS'); /* десктоп: „Избрани 7 опаковки“ (думата е в хедъра); телефон: „7 опаковки“ */
-      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}else if(mobF)cnt=''; /* 1.24.2: на телефон броят е в плочките — мястото му във футъра е за тотала */
       var fb=$('fBar');if(fb){var pc=Math.min(100,Math.round(t/goal*100));fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
       var fn=$('fNext');if(fn){var nt=need>0||!grows(b)?'':(nx?T('fill.next',tgtVars(nx,t)):T('fill.top',tixVars(b,t)));fn.innerHTML=nt;fn.className='fnext'+(need>0||nx?'':' top');fn.style.display=nt?'':'none'}
       /* v1.12.0: билетите в плочките следват броя (+tix_extra за всяка опаковка над packs) */
@@ -564,6 +566,10 @@
       else fsEl.innerHTML=cnt+tiles;
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*(PROD[k].price-disc(PROD[k],b))});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2((pr.price-disc(pr,b))*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
+      /* 1.24.2 (човекът: „Трябва да има тотала at all times докато си пълниш количката“): тоталът, който ще платиш (с отстъпката) + зачертано
+         колко би било по редовни цени — на мястото на „5 опаковки“ в лепкавия футър на телефона; „Спестяваш“ отляво е разликата между двете */
+      var tot=0,reg=0;Object.keys(needQ).forEach(function(k){if(PROD[k]){tot+=needQ[k]*disc(PROD[k],b);reg+=needQ[k]*PROD[k].price}});tot=r2(tot);reg=r2(reg);
+      var ft=$('fTot');if(ft){var pv=ft.dataset.v;ft.innerHTML=t>0?'<span'+ck('mfill.tot')+'>'+T('mfill.tot',{tot:m(tot),reg:m(reg),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('mfill.tot.zero')+'>'+T('mfill.tot.zero',{pct:b.pct})+'</span>';ft.classList.toggle('on',t>0);if(pv!==undefined&&pv!==String(tot)){ft.classList.remove('bump');void ft.offsetWidth;ft.classList.add('bump')}ft.dataset.v=String(tot)}
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
       var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
     sync();
@@ -597,12 +603,7 @@
   /* ── ЕКРАН 1: избор на кутия (v73: лента −%, мобилно резюме, награди, „за да отключиш“) ── */
   /* v1.19.0: редът „От петък 13.11: −31% · изпускаш €6,50“ в картата (десктоп .bweek, телефон .bmweek в мини картата); последна седмица — „до 31.12“ */
   /* v1.23.2: редът „Последни N дни… след X отстъпката пада“ в картите е махнат — повтаряше лентата над кутиите (човекът забрани повторенията) */
-  function seasonStrip(){var s=SEAS();if(!s)return '';var k=s.last?'season.strip.last':s.days_left<=1?'season.strip.today':'season.strip';var dots='';for(var i=1;i<=s.total;i++)dots+='<i class="'+(i<s.week?'past':i===s.week?'cur':'')+'"></i>';
-    var lose=''; /* v1.23.2 (човекът): без „до −€5,98“ — лентата казва само, че отстъпките се променят */
-    /* 1.19.2 (човекът): на телефон лентата е видима карта под хедъра — точките, „Остават 7 дни на тези цени“ едро, „От петък 30.10 отстъпките падат“ отдолу */
-    if(MOB()){var k1=s.last?'season.strip.m1.last':s.days_left<=1?'season.strip.m1.today':'season.strip.m1';
-      return '<div class="wkbar m'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wkm1"'+ck(k1)+'>'+T(k1)+'</div>'+(s.last?'':'<div class="wkm2"><span'+ck('season.strip.m2')+'>'+T('season.strip.m2')+'</span>'+lose+'</div>')+'</div>'}
-    return '<div class="wkbar'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wktx"><span'+ck(k)+'>'+T(k)+'</span>'+lose+'</div></div>'}
+  /* 1.24.3: seasonStrip() (точките на седмиците + „Седмица 3 от 10 · остават 3 дни“) е махната — човекът: „бие на очи и краде внимание от самото промо“, Илиян: „остава впечатление, че трябва да минеш през 9 стъпки“ */
   function boxCard(b,i){
     var c=S.core&&PROD[S.core]?PROD[S.core]:null,bv=boxVars(b);
     var from=c?r2(c.price*b.packs*(1-ppct(c,b)/100)+(b.rw.indexOf('ship')>-1?0:SHIP)):null;bv.from=from!=null?m(from):'';if(c){bv.core=esc(c.name)}
@@ -661,7 +662,7 @@
       +'<div class="s1hero">'+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
       +'<div class="s1info top"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
       +'<div class="ib2 c" id="s1C"><i class="ibpic">'+(GI.cosm?'<img src="'+esc(GI.cosm)+'" alt="">':'🌸')+'</i><div class="ibtx"><em'+ck('cban.tag')+'>'+T('cban.tag')+'</em><b'+ck('cban.b')+'>'+T('cban.b')+'</b><small'+ck('cban.s')+'>'+T('cban.s')+'</small><button class="lnk" type="button" data-rw="cosm1"'+ck('cban.more')+'>'+T('cban.more')+'</button></div></div></div>'
-      +seasonStrip()
+      /* 1.24.3 (човекът + Илиян): лентата със седмиците (точки = „11 стъпки“) е махната — вместо нея лепкавият countdown в дъното (renderCd) */
       +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
 
       +'<div class="guarl"><span'+ck('boxes.guar')+'>'+T('boxes.guar')+'</span>'+(c?' · <button class="lnk" id="chg1"'+ck('boxes.chg')+'>'+T('boxes.chg')+'</button>':'')+'</div>';
@@ -876,7 +877,18 @@
     yfab.innerHTML='<button class="yhow" type="button"'+ck('yfab.how')+'><i>?</i><span>'+T('yfab.how')+'</span></button>';
     yfab.querySelector('.yhow').onclick=function(){howPopup()};
   }
-  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  /* 1.24.3: countdown-ът брои от часа на сървъра (A.season.now при зареждане/опресняване на runtime-а) до A.season.ends — часовникът на телефона не влияе; при 0 стои 00 (свежият runtime носи новата седмица) */
+  var cdT=null;function p2(n){return (n<10?'0':'')+n}
+  function cdLeft(s){if(s._t0==null)s._t0=Date.now();var now=(s.now?s.now*1000:s._t0)+(Date.now()-s._t0);return Math.max(0,Math.floor((s.ends*1000-now)/1000))}
+  function renderCd(){var s=SEAS(),on=!!(s&&s.ends)&&S.screen===1&&A.mode!=='info';clearInterval(cdT);cdT=null;cdEl.style.display=on?'':'none';portal.classList.toggle('has-cd',on);document.body.classList.toggle('ansa-cd-on',on);if(!on){cdEl.innerHTML='';return}
+    var lk=s.last?'cd.hurry.last':'cd.hurry';cdEl.className='apcd'+(s.last?' last':'');
+    cdEl.innerHTML='<button class="apcdb" type="button" title="'+T('cd.title').replace(/<[^>]+>/g,'')+'"><span class="apcdl"'+ck(lk)+'>'+T(lk)+'</span><span class="apcdn" id="apCdN" aria-live="off"></span><span class="apcdq" aria-hidden="true"'+ck('cd.q')+'>'+T('cd.q')+'</span></button>';
+    var tick=function(){var n=$('apCdN');if(!n){clearInterval(cdT);return}var L=cdLeft(s),d=Math.floor(L/86400),h=Math.floor(L%86400/3600),mi=Math.floor(L%3600/60),se=L%60;
+      n.innerHTML=[[d,T('cd.u.d',{n:d,dni:dni(d)})],[h,T('cd.u.h',{n:h,chasa:h===1?'час':'часа'})],[mi,T('cd.u.m')],[se,T('cd.u.s')]].map(function(u){return '<span><b>'+p2(u[0])+'</b><small>'+u[1]+'</small></span>'}).join('')};
+    tick();cdT=setInterval(tick,1000);
+    cdEl.querySelector('.apcdb').onclick=function(){howPopup();var l=$('hwLadder');if(l)setTimeout(function(){l.scrollIntoView({block:'start',behavior:'smooth'})},50)};
+  }
+  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
