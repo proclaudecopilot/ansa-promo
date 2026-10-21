@@ -46,6 +46,8 @@ final class Config {
 			/* 1.24.14: кампании по UTM — ключ (general / cosm / yacht / продукт) → gate: default|on|off (имейл-попъпът за този UTM), cosm_pop: попъпът
 			   „Козметиката за €1“, box: '' = всички кутии (екранът с трите) или id на кутия, която се избира сама (направо пълненето) */
 			'campaigns' => array(),
+			/* 1.24.19: текстове по UTM — utm ключ → { copy ключ → текст }; override над общия copy само за този UTM (редакторът пише тук при избран UTM) */
+			'copy_utm'  => array(),
 			/* „С какво да ти помогнем?“ — проблем → продукт (по един продукт на проблем) */
 			'problems'  => array(),
 			'boxes'     => array(
@@ -353,6 +355,14 @@ final class Config {
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
+		/* 1.24.19: copy_utm — само познати ключове от регистъра, непразни текстове; празен UTM пада */
+		$cu = array(); $reg = Copy::defaults();
+		foreach ( (array) ( $out['copy_utm'] ?? array() ) as $uk => $m ) {
+			$uk = strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $uk ) ); if ( '' === $uk || 'general' === $uk || ! is_array( $m ) ) { continue; }
+			$o = array(); foreach ( $m as $k => $v ) { if ( isset( $reg[ $k ] ) && is_string( $v ) && trim( $v ) !== '' ) { $o[ $k ] = $v; } }
+			if ( $o ) { $cu[ $uk ] = $o; }
+		}
+		$out['copy_utm'] = $cu;
 		return $out;
 	}
 
