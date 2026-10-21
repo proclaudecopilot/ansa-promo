@@ -75,7 +75,7 @@
       c.appendChild(bar);var fr=h('<div class="ap-ed-frame" id="apEdFrame"><iframe id="apEdIframe" src="'+esc(D.page)+'"></iframe></div>');c.appendChild(fr);frame=$('#apEdIframe');
       frame.addEventListener('load',function(){frameReady=true;setTimeout(function(){postAllCopy();postCfg();postScenario();postChanged();if(sel)post({ansaPromo:'mark',key:sel})},150)});
       $('#apScUtm').onchange=function(){scen.utm=this.value;stepDefaults();renderCanvas();postScenario()};
-      $('#apScScreen').onchange=function(){scen.screen=this.value;stepDefaults();renderCanvas();postScenario()};
+      $('#apScScreen').onchange=function(){scen.screen=this.value;stepDefaults(true);renderCanvas();postScenario()}; /* изрично избрана ⛔ стъпка остава (за редакция на текстовете ѝ) */
       $('#apScGate').onchange=function(){setCamp('gate',this.value)};$('#apScCosm').onchange=function(){setCamp('cosm_pop',this.checked)};$('#apScCBox').onchange=function(){setCamp('box',this.value)};
       $('#apScBox').onchange=function(){scen.box=this.value;renderCanvas();postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;renderCanvas();postScenario()};
       $$('[data-dev]').forEach(function(b){b.onclick=function(){device=b.dataset.dev;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x===b)});$('#apEdFrame').classList.toggle('mob',device==='mob');fitFrame()}});
@@ -86,7 +86,9 @@
     $('#apScUtm').value=scen.utm;$('#apScBox').value=scen.box;$('#apScScreen').value=scen.screen;$('#apScFull').checked=scen.full;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x.dataset.dev===device)});
     var lu=liveUrl(),bn=function(id){return (cfg.boxes.filter(function(b){return b.id===id})[0]||{}).name||id};
     $('#apScOpen').href=lu;
-    $('#apScHint').innerHTML='👁 Показва: <b>'+esc(utmLabel())+'</b> → <b>'+esc(stepLabel(scen.screen))+'</b>'+(scen.box?' · '+esc(bn(scen.box))+(scen.full?' (пълна)':''):'')
+    var si=stepInfo(scen.screen);
+    $('#apScHint').innerHTML='👁 Показва: <b>'+esc(utmLabel())+'</b> → <b>'+esc(si.l)+'</b>'+(scen.box?' · '+esc(bn(scen.box))+(scen.full?' (пълна)':''):'')
+      +(si.off?' · <span class="warn">⚠ на живо при този UTM тази стъпка я няма — виждаш я само за да редактираш текстовете ѝ</span>':'')
       +' · кампанията: имейл-попъп <b>'+(gateOn()?'да':'не')+'</b> · попъп козметика <b>'+(cp.cosm_pop?'да':'не')+'</b> · кутии <b>'+(cp.box?'само '+esc(bn(cp.box)):'всички')+'</b>'+(dirty?' · <span class="warn">незаписано — „Запази“, после „Публикувай“</span>':'');
     $('#apScUrl').innerHTML='🔗 URL за рекламата: <input type="text" readonly id="apScUrlIn" value="'+esc(lu)+'"><button type="button" class="sm" id="apScCopy">📋 копирай</button>';
     $('#apScCopy').onclick=function(){var i=$('#apScUrlIn');i.select();try{navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}this.textContent='✓ копиран';var b=this;setTimeout(function(){b.textContent='📋 копирай'},1500)};
@@ -96,16 +98,19 @@
   function campGet(k){var c=(cfg.campaigns&&cfg.campaigns[k])||{};return {gate:c.gate||'default',cosm_pop:c.cosm_pop!==undefined?!!c.cosm_pop:k==='cosm',box:c.box||''}}
   function setCamp(f,v){if(!cfg.campaigns||Array.isArray(cfg.campaigns))cfg.campaigns={};var k=campKey(),c=campGet(k);c[f]=v;cfg.campaigns[k]=c;markDirty();postCfg();stepDefaults();renderCanvas();postScenario()}
   function gateOn(){var g=campGet(campKey()).gate;return g==='on'||(g==='default'&&!!(cfg.gate&&cfg.gate.enabled))}
-  function stepList(){var cp=campGet(campKey()),bn=cp.box?((cfg.boxes.filter(function(b){return b.id===cp.box})[0]||{}).name||cp.box):'';var path=[];
-    if(gateOn())path.push({k:'gate',l:'1 · Имейл-попъп'});if(cp.cosm_pop)path.push({k:'cosm',l:'1b · Попъп „Козметиката за €1“'});
-    if(!cp.box)path.push({k:'boxes',l:'2 · Кутиите (всички кутии)'});path.push({k:'fill',l:(cp.box?'2 · Пълнене на '+bn+' (избира се сама)':'3 · Напълни кутията')});
+  /* 1.24.14.1: списъкът е винаги пълен — стъпка, която не важи за този UTM, е със „⛔ не се показва при този UTM“ (off:true), за да може
+     да се редактират текстовете ѝ (напр. от списъка вляво), но да е ясно, че на живо я няма; stepDefaults я прескача при смяна на настройка */
+  function stepList(){var cp=campGet(campKey()),bn=cp.box?((cfg.boxes.filter(function(b){return b.id===cp.box})[0]||{}).name||cp.box):'';var OFF=' ⛔ не се показва при този UTM';var path=[];
+    path.push({k:'gate',l:'1 · Имейл-попъп'+(gateOn()?'':OFF),off:!gateOn()});path.push({k:'cosm',l:'1b · Попъп „Козметиката за €1“'+(cp.cosm_pop?'':OFF),off:!cp.cosm_pop});
+    path.push({k:'boxes',l:'2 · Кутиите (всички кутии)'+(cp.box?' ⛔ кутията се избира сама':''),off:!!cp.box});path.push({k:'fill',l:(cp.box?'2 · Пълнене на '+bn+' (избира се сама)':'3 · Напълни кутията')});
     path.push({k:'celeb',l:'4 · Честито (кутията е пълна)'});path.push({k:'order',l:'5 · Поръчка'});
     return [{l:'Пътят на клиента при този UTM',s:path},{l:'Други екрани',s:STEP_GROUPS[1].s.map(function(k){return {k:k,l:SCREEN_LABELS[k]}})}]}
-  function stepLabel(k){var f=null;stepList().forEach(function(g){g.s.forEach(function(x){if(x.k===k)f=x.l})});return f||SCREEN_LABELS[k]||k}
+  function stepInfo(k){var f=null;stepList().forEach(function(g){g.s.forEach(function(x){if(x.k===k)f=x})});return f||{k:k,l:SCREEN_LABELS[k]||k}}
+  function stepLabel(k){return stepInfo(k).l}
   /* 1.24.13: кампаниите и стъпките на лентата; стъпката нагласява кутията/„пълна“ сама */
   var CAMPAIGNS=[{v:'cosm',l:'💄 Козметика'},{v:'yacht',l:'⛵ Яхта'},{v:'general',l:'🎁 Общ'}];
   var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how']}];
-  function stepDefaults(){var cp=campGet(campKey()),ok=[];stepList().forEach(function(g){g.s.forEach(function(x){ok.push(x.k)})});if(ok.indexOf(scen.screen)<0)scen.screen=ok[0];
+  function stepDefaults(keep){var cp=campGet(campKey()),ok=[];stepList().forEach(function(g){g.s.forEach(function(x){if(!x.off)ok.push(x.k)})});if(!keep&&ok.indexOf(scen.screen)<0)scen.screen=ok[0];
     var sc=scen.screen;if(sc==='gate'||sc==='cosm'||sc==='boxes'){scen.box='';scen.full=false}else if(sc==='fill'){scen.box=cp.box||scen.box||'l';scen.full=false}else{scen.box=cp.box||scen.box||'l';scen.full=true}}
   function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}
   function liveUrl(){var u=D.page_url||D.page||''; /* публичната страница; кутията/попъпите идват от кампанията в конфига, не от адреса */var q=[];q.push('utm_content='+encodeURIComponent(scen.utm||'general'));return u+(u.indexOf('?')<0?'?':'&')+q.join('&')}
