@@ -58,7 +58,7 @@ final class Editor {
 	}
 	/** Коя група къде се вижда на канваса (сценарий); '' = извън канваса (чекаут/имейл). */
 	public static function group_screens() {
-		return array( 'gate' => array( 'gate' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
+		return array( 'gate' => array( 'gate' ), 'cosm' => array( 'cosm' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
 	}
 	/** Празни асоциативни масиви (copy, fit) стават {} в JSON, не [] — иначе JS ги вижда като Array и губи ключовете. */
 	public static function out( $cfg ) { $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['campaigns'] = (object) ( $cfg['campaigns'] ?? array() ); /* 1.24.14 */ $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }
