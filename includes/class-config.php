@@ -43,6 +43,9 @@ final class Config {
 			'products'  => array(),
 			/* FIT: key => [key, key, key] — препоръчани към основния */
 			'fit'       => array(),
+			/* 1.24.14: кампании по UTM — ключ (general / cosm / yacht / продукт) → gate: default|on|off (имейл-попъпът за този UTM), cosm_pop: попъпът
+			   „Козметиката за €1“, box: '' = всички кутии (екранът с трите) или id на кутия, която се избира сама (направо пълненето) */
+			'campaigns' => array(),
 			/* „С какво да ти помогнем?“ — проблем → продукт (по един продукт на проблем) */
 			'problems'  => array(),
 			'boxes'     => array(
@@ -282,6 +285,14 @@ final class Config {
 		$fit = array();
 		foreach ( (array) $out['fit'] as $k => $ks ) { if ( isset( $seen[ $k ] ) ) { $fit[ $k ] = array_values( array_filter( array_map( 'strval', (array) $ks ), function ( $x ) use ( $seen, $k ) { return isset( $seen[ $x ] ) && $x !== $k; } ) ); } }
 		$out['fit'] = $fit;
+		/* 1.24.14: кампаниите по UTM */
+		$camps = array();
+		foreach ( (array) ( $out['campaigns'] ?? array() ) as $ck => $cv ) {
+			$ck = strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $ck ) ); if ( '' === $ck || ! is_array( $cv ) ) { continue; }
+			$g = (string) ( $cv['gate'] ?? 'default' ); $b = sanitize_key( (string) ( $cv['box'] ?? '' ) );
+			$camps[ $ck ] = array( 'gate' => in_array( $g, array( 'on', 'off' ), true ) ? $g : 'default', 'cosm_pop' => ! empty( $cv['cosm_pop'] ), 'box' => in_array( $b, array( 's', 'm', 'l' ), true ) ? $b : '' );
+		}
+		$out['campaigns'] = $camps;
 		/* problems */
 		$pr = array();
 		foreach ( (array) $out['problems'] as $x ) { if ( is_array( $x ) && isset( $seen[ (string) ( $x['key'] ?? '' ) ] ) ) { $pr[] = array( 't' => sanitize_text_field( (string) ( $x['t'] ?? '' ) ), 'sub' => sanitize_text_field( (string) ( $x['sub'] ?? '' ) ), 'why' => sanitize_text_field( (string) ( $x['why'] ?? '' ) ), 'key' => (string) $x['key'] ); } }

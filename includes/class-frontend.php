@@ -302,6 +302,7 @@ final class Frontend {
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'gv'        => $gv, /* 1.24.7 */
+			'campaigns' => (object) ( $cfg['campaigns'] ?? array() ), /* 1.24.14: по UTM — gate / попъп козметика / кутия */
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
 			'deadline'  => $deadline,
 			'season'    => self::season_runtime( $cfg ), /* v1.19.0: седмицата на сезона, следващите проценти, стълбата */
