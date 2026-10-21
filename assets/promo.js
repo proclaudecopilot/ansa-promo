@@ -228,7 +228,7 @@
   function weekKey(){var s=SEAS();return s?(s.last?'head.week.last':s.days_left<=1?'head.week.today':'head.week'):'head.deadline'} /* v1.19.0 */
   function renderTimer(){var el=$('apTimer');if(el){el.innerHTML='<span'+ck(weekKey())+'>'+T(weekKey())+'</span>';el.classList.remove('hot');el.classList.toggle('wk',!!SEAS());
     /* v1.23.2 (човекът: „два пъти информация коя седмица си“): на екрана с кутиите седмицата я казва само лентата над тях — чипът в хедъра е скрит */
-    el.style.display=(S.screen===1&&SEAS()&&A.mode!=='info')?'none':''}var t2=$('apTimer2');if(t2){t2.innerHTML='';t2.classList.remove('hot')}}
+    el.style.display=(S.screen===1&&SEAS()&&A.mode!=='info'&&A.mode!=='li')?'none':''}var t2=$('apTimer2');if(t2){t2.innerHTML='';t2.classList.remove('hot')}}
 
   /* ── тост + undo ── */
   var toastT;
@@ -344,8 +344,67 @@
     renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
     var s1=$('apS1');s1.innerHTML='<div class="dc hw inl"><div class="ib">'+howHtml()+'</div></div>';s1.classList.add('on');howBind(s1.firstChild,true);
   }
+
+  /* ── 1.24.20 (човекът): listicle страницата {промо}/kozmetika — „Комплектът за 1 €“ (текстът на човека, ключове li.*). Същата рамка като /info
+     (.dc.hw.inl), но ВСЕКИ бутон води към промо страницата с ?utm_content=cosm (кацането от рекламата за козметиката: попъпът „Искам помощ /
+     Не искам помощ“ → въпросник или направо Голямата кутия). Броячът „Останаха X от N“ излиза само когато са останали ≤ 40 % от комплектите.
+     Продуктите на комплекта (li.set.N.t/.d) се показват като карти само когато имат заглавие — иначе стои „Показваме първите три на 1 ноември…“. ── */
+  function liLeft(){var limit=Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||0,res=Number(A.cosm_reserved)||0,left=limit-res;if(limit<=0||left<=0||left/limit>.4)return null;return {left:ths(left),n:left,limit:limit}}
+  function liUrl(){var u=addQ(A.promo_url||'/',A.utm_param||'utm_content','cosm');try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
+  function liHtml(){
+    var GI=(A.gate&&A.gate.images)||{},bl=boxOf('l')||bigBox(),ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null,lf=liLeft();
+    var exv={ex_name:exp?esc(exp.name):'',ex_full:'',ex_pay:''};if(exp&&Number(exp.price)>0&&bl){var fullp=r2(exp.price*bl.packs);exv.ex_full=m(fullp);exv.ex_pay=m(r2(fullp*(1-ppct(exp,bl)/100)))}
+    var lv=lf?{left:lf.left}:{left:''};
+    function p(k,tag,cls,v){tag=tag||'p';return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+T(k,v)+'</'+tag+'>'}
+    function cta(k,cls){return '<button class="cta'+(cls?' '+cls:'')+'" type="button" data-li="go"'+ck(k)+'>'+T(k)+'</button>'}
+    var pic1=function(k,emo){return GI[k]?'<img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'};
+    var cnt=lf?'<div class="li-left"'+ck('li.left')+'>'+T('li.left',lv)+'</div>':'';
+    var info_u=A.info_url||'',rules_u=A.tombola_url||info_u;
+    /* 1 · hero */
+    var h='<section class="hw-hero li-hero"><div class="hw-htx">'+p('li.hero.kick','div','hw-kick')+p('li.hero.h','h2')+p('li.hero.sub','p','hw-sub')
+      +'<div class="hw-ctas">'+cta('li.hero.cta','gold')+'</div>'+p('li.hero.note','p','hw-note')+cnt+'</div><div class="hw-hpic">'+pic1('cosm','🌸')+'</div></section>';
+    /* 2 · къде е уловката (писмото) */
+    var c='<section class="hw-sec hw-w li-catch"><div class="hw-letter">'+p('li.catch.h','h3')+[1,2,3,4,5,6,7].map(function(i){return p('li.catch.p'+i)}).join('')+p('li.catch.sign','p','hw-sign')+'</div></section>';
+    /* 3 · комплектът — картите само с попълнено заглавие */
+    var cards='';for(var i=1;i<=5;i++){if(T('li.set.'+i+'.t')==='')continue;cards+='<div class="li-card"><i>'+i+'</i>'+p('li.set.'+i+'.t','b')+p('li.set.'+i+'.d')+'</div>'}
+    var st='<section class="hw-sec li-set"><div class="hw-sh">'+p('li.set.h','h3')+'</div>'+p('li.set.p1')+p('li.set.p2','p','hw-n')+(cards?'<div class="li-cards">'+cards+'</div>':p('li.set.p3','p','hw-n'))+'</section>';
+    /* 4 · какво получаваш веднага */
+    var inn='<section class="hw-sec li-in"><div class="hw-sh">'+p('li.in.h','h3')+p('li.in.p','p','hw-lead')+'</div><ul class="hw-bul">'+[1,2,3,4,5].map(function(i){return '<li'+ck('li.in.'+i)+'>'+T('li.in.'+i)+'</li>'}).join('')+'</ul>'+p('li.in.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.in.cta')+'</div></section>';
+    /* 5 · три стъпки */
+    var sp='<section class="hw-sec li-st"><div class="hw-sh">'+p('li.st.h','h3')+'</div><ol class="hw-steps">'+[1,2,3].map(function(i){return '<li><i>'+i+'</i>'+p('li.st.'+i)+'</li>'}).join('')+'</ol>'+p('li.st.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.st.cta')+'</div></section>';
+    /* 6 · в кутията */
+    var bx='<section class="hw-sec hw-k li-box"><div class="hw-kpic">'+pic1('cosm','🌸')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('li.box.h','h3')
+      +'<ul class="hw-facts">'+[1,2,3,4,5].map(function(i){return '<li'+ck('li.box.'+i)+'>'+T('li.box.'+i)+'</li>'}).join('')+'</ul>'+(exp?p('li.box.ex','p','hw-ex',exv):'')
+      +cta('li.box.cta','gold')+p('li.box.note','p','hw-n')+p('li.legal','p','hw-legal')+'</div></section>';
+    /* 7 · яхтата */
+    var y='<section class="hw-sec hw-y li-y"><div class="hw-ypic">'+pic1('yacht','🛥️')+'</div><div class="hw-ytx">'+p('li.y.h','h3')+p('li.y.p1')+p('li.y.p2')
+      +(info_u?'<a class="li-link" href="'+esc(info_u)+'"'+ck('li.y.link')+'>'+T('li.y.link')+' ›</a>':'')+p('li.legal.y','p','hw-legal')+'</div></section>';
+    /* 8 · въпроси */
+    var fq='';for(var j=1;j<=7;j++){fq+='<details><summary'+ck('li.faq.'+j+'.q')+'>'+T('li.faq.'+j+'.q')+'<i>▾</i></summary>'+p('li.faq.'+j+'.a')+'</details>'}
+    var links=info_u?'<p class="hw-n li-links"><span'+ck('li.faq.note')+'>'+T('li.faq.note')+'</span> <a href="'+esc(info_u)+'"'+ck('li.faq.l1')+'>'+T('li.faq.l1')+'</a> · <a href="'+esc(rules_u)+'"'+ck('li.faq.l2')+'>'+T('li.faq.l2')+'</a></p>':'';
+    var faq='<section class="hw-sec hw-faq li-faq">'+p('li.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div>'+links+'</section>';
+    /* 9 · залепен бутон */
+    var stk='<div class="hw-stk li-stk"><div class="li-stkw">'+cta('li.stk.cta','gold')+'<small><span'+ck('li.stk.note')+'>'+T('li.stk.note')+'</span>'+(lf?' · <b'+ck('li.stk.left')+'>'+T('li.stk.left',lv)+'</b>':'')+'</small></div></div>';
+    return h+c+st+inn+sp+bx+y+faq+stk;
+  }
+  /* бутоните: на /kozmetika (nav) → промо страницата с ?utm_content=cosm (+ utm_source/medium/campaign от адреса); в редактора (попъп) → сценарият „козметика“ на място */
+  function liBind(dc,nav){
+    dc.querySelectorAll('[data-li="go"]').forEach(function(b){if(nav){var u=liUrl();b.setAttribute('data-go',u);b.onclick=function(){location.href=u};return}
+      b.onclick=function(){closeInfo();S.utm=null;S.core=null;A.utm=null;A.gv='cosm';go(1);cosmPopup()}});
+  }
+  function liPopup(){
+    var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0;
+    info('',liHtml(),true);
+    dc.classList.add('hw');dc.classList.add('li');if(keepY)dc.querySelector('.ib').scrollTop=keepY;$('apOv').classList.add('ovhw');if(MOBF())lockBody();S._last=liPopup;
+    liBind(dc,false);
+  }
+  function renderLi(){
+    var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');br.onclick=function(){location.href=liUrl()};br.style.cursor='pointer';
+    renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
+    var s1=$('apS1');s1.innerHTML='<div class="dc hw inl li"><div class="ib">'+liHtml()+'</div></div>';s1.classList.add('on');liBind(s1.firstChild,true);
+  }
   /* 1.8.10: бутонът „ℹ️ Как работи играта?“ в хедъра — връзката към попъпа беше изпусната при 1.8.0 (разделянето howPopup → howHtml/howBind); на /info хедърът няма този бутон */
-  if(A.mode!=='info')$('apHow').onclick=howPopup;
+  if(A.mode!=='info'&&A.mode!=='li')$('apHow').onclick=howPopup;
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
   function prodBody(k){var pr=PROD[k];return '<p><b>'+esc(pr.ds)+'</b></p><p>'+esc(pr.desc)+'</p><p'+ck('prod.pack')+'>'+packTxt(pr)+'</p><div class="il"><span'+ck('prod.price')+'>'+T('prod.price')+'</span><b>'+m(disc(pr))+' <s class="was">'+m(pr.price)+'</s></b></div>'}
@@ -906,7 +965,7 @@
   /* 1.24.3: countdown-ът брои от часа на сървъра (A.season.now при зареждане/опресняване на runtime-а) до A.season.ends — часовникът на телефона не влияе; при 0 стои 00 (свежият runtime носи новата седмица) */
   var cdT=null;function p2(n){return (n<10?'0':'')+n}
   function cdLeft(s){if(s._t0==null)s._t0=Date.now();var now=(s.now?s.now*1000:s._t0)+(Date.now()-s._t0);return Math.max(0,Math.floor((s.ends*1000-now)/1000))}
-  function renderCd(){var s=SEAS(),on=!!(s&&s.ends)&&S.screen===1&&A.mode!=='info';clearInterval(cdT);cdT=null;cdEl.style.display=on?'':'none';portal.classList.toggle('has-cd',on);document.body.classList.toggle('ansa-cd-on',on);if(!on){cdEl.innerHTML='';return}
+  function renderCd(){var s=SEAS(),on=!!(s&&s.ends)&&S.screen===1&&A.mode!=='info'&&A.mode!=='li';clearInterval(cdT);cdT=null;cdEl.style.display=on?'':'none';portal.classList.toggle('has-cd',on);document.body.classList.toggle('ansa-cd-on',on);if(!on){cdEl.innerHTML='';return}
     var lk=s.last?'cd.hurry.last':'cd.hurry';cdEl.className='apcd'+(s.last?' last':'');
     cdEl.innerHTML='<button class="apcdb" type="button" title="'+T('cd.title').replace(/<[^>]+>/g,'')+'"><span class="apcdl"'+ck(lk)+'>'+T(lk)+'</span><span class="apcdn" id="apCdN" aria-live="off"></span><span class="apcdq" aria-hidden="true"'+ck('cd.q')+'>'+T('cd.q')+'</span></button>';
     var tick=function(){var n=$('apCdN');if(!n){clearInterval(cdT);return}var L=cdLeft(s),d=Math.floor(L/86400),h=Math.floor(L%86400/3600),mi=Math.floor(L%3600/60),se=L%60;
@@ -914,7 +973,7 @@
     tick();cdT=setInterval(tick,1000);
     cdEl.querySelector('.apcdb').onclick=function(){howPopup();var l=$('hwLadder');if(l)setTimeout(function(){l.scrollIntoView({block:'start',behavior:'smooth'})},50)};
   }
-  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  function render(){if(A.mode==='info'){renderInfo();return}if(A.mode==='li'){renderLi();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
@@ -938,7 +997,7 @@
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render();if(fresh&&!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.22.1: отвореният попъп („Как работи“) също се прерисува с новото копи */
       /* 1.8.9: броячът „Първите N са резервирани“ идва свеж (кешираната страница носи 0 до rewards.cosm.bar_from); на /info се рендира наново */
-      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo()}
+      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo();else if(A.mode==='li')renderLi()}
     }).catch(function(){});
   }
 
@@ -984,6 +1043,7 @@
     else if(sc==='product'){go(1);productPopup(S.core||ORDER[0],function(){})}
     else if(sc==='how'){go(1);howPopup()}
     else if(sc==='cosm'){go(1);cosmPopup()} /* 1.24.12 */
+    else if(sc==='li'){go(1);liPopup()} /* 1.24.20 */
   }
   window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
   if(A.editor){
@@ -997,9 +1057,10 @@
       else if(d.ansaPromo==='goto'){scenario({screen:d.screen})}
     });
   }
-  window.addEventListener('resize',function(){if(A.mode==='info')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
+  window.addEventListener('resize',function(){if(A.mode==='info'||A.mode==='li')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
 
   /* ── старт ── */
+  if(A.mode==='li'){root.classList.add('info');root.classList.add('li');S.emailDone=true;A.editorNoGate=true;renderLi();refreshRuntime();return} /* 1.24.20: /kozmetika — като /info */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
   var restored=restoreS();

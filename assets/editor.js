@@ -10,7 +10,7 @@
   var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
   var scen={utm:'',box:'',screen:'boxes',full:false}; /* 1.24.13: тръгва от „Кутиите“ без избрана кутия — стъпката нагласява кутията */
-  var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта'};
+  var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта',li:'Страница „Комплектът за 1 €“ (/kozmetika)'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
 
   /* ── помощници за конфига ── */
@@ -123,7 +123,7 @@
   function stepLabel(k){return stepInfo(k).l}
   /* 1.24.13: кампаниите и стъпките на лентата; стъпката нагласява кутията/„пълна“ сама */
   var CAMPAIGNS=[{v:'cosm',l:'💄 Козметика'},{v:'yacht',l:'⛵ Яхта'},{v:'general',l:'🎁 Общ'}];
-  var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how']}];
+  var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how','li']}];
   function stepDefaults(keep){var cp=campGet(campKey()),ok=[];stepList().forEach(function(g){g.s.forEach(function(x){if(!x.off)ok.push(x.k)})});if(!keep&&ok.indexOf(scen.screen)<0)scen.screen=ok[0];
     var sc=scen.screen;if(sc==='gate'||sc==='cosm'||sc==='boxes'){scen.box='';scen.full=false}else if(sc==='fill'){scen.box=cp.box||scen.box||'l';scen.full=false}else{scen.box=cp.box||scen.box||'l';scen.full=true}}
   function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}

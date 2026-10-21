@@ -152,8 +152,43 @@ const { chromium } = require('playwright');
     console.log(tag, 'shots:', shots.join(' '));
     await ctx.close();
   }
+  // 1.24.20: listicle страницата /kozmetika (runtime.mode = li): без грешки/плейсхолдъри, всеки бутон води към промо страницата с ?utm_content=cosm,
+  // 7 въпроса, залепен бутон, броячът „Останаха“ е скрит при 90 % останали (1000 от 10 000 резервирани) и се показва при ≤ 40 %
+  async function runLi(w, h, tag) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, isMobile: w < 500, hasTouch: w < 500 });
+    const page = await ctx.newPage();
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    page.on('pageerror', e => errors.push(tag + ': ' + e.message));
+    page.on('console', m => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+    await page.goto('file://' + S + '/harness/kozmetika.html?utm_source=fb&utm_medium=paid&utm_campaign=set', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: S + '/shots/' + tag + '-li.png', fullPage: true });
+    const t = await page.evaluate(() => document.body.innerText);
+    const left = (t.match(/\{\{[^}]*\}\}/g) || []); if (left.length) errors.push(tag + ' li: непопълнени плейсхолдъри ' + JSON.stringify(left.slice(0, 5)));
+    if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' li: undefined/NaN: ' + (t.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
+    for (const s of ['Къде е уловката', 'Какви са козметичните продукти', 'Три стъпки', 'Правилно прочете', 'Въпроси', 'Екатерина и екипът на ansa']) if (t.indexOf(s) < 0) errors.push(tag + ' li: липсва „' + s + '“');
+    const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 [data-li="go"]')).map(b => b.getAttribute('data-go') || ''));
+    if (btns.length < 5) errors.push(tag + ' li: само ' + btns.length + ' бутона');
+    btns.forEach((u, i) => { if (!/utm_content=cosm/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=set/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' li: бутон ' + i + ' води към ' + u); });
+    if ((await page.$$('#apS1 .hw-faqs details')).length !== 7) errors.push(tag + ' li: въпросите не са 7');
+    if (!(await page.$('#apS1 .hw-stk.li-stk .cta'))) errors.push(tag + ' li: няма залепен бутон');
+    if (await page.$('#apS1 .li-left')) errors.push(tag + ' li: броячът „Останаха“ се показва при 90 % останали');
+    if (!/Показваме първите три/.test(t)) errors.push(tag + ' li: без карти на продуктите трябва да стои „Показваме първите три…“');
+    const links = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 .li-link, #apS1 .li-links a')).map(a => a.href));
+    if (links.length !== 3 || links.some(u => !/sezonut-na-ansa\/(info|tombola)\//.test(u))) errors.push(tag + ' li: линковете към /info и правилата: ' + JSON.stringify(links));
+    // броячът при 6 500 резервирани (35 % остават) → „Останаха 3 500 от 10 000“ и в залепения ред
+    await page.evaluate(() => { window.AnsaPromoRuntime.cosm_reserved = 6500; AnsaPromo.render(); }); await page.waitForTimeout(300);
+    const t2 = await page.evaluate(() => document.body.innerText);
+    if (!/Останаха 3 500 от 10 000/.test(t2)) errors.push(tag + ' li: броячът при 35 % липсва: ' + (t2.match(/Останаха[^\n]{0,30}/) || [''])[0]);
+    if (!(await page.$('#apS1 .li-stk .li-left, #apS1 .li-stk b'))) errors.push(tag + ' li: броячът не е в залепения ред');
+    await page.screenshot({ path: S + '/shots/' + tag + '-li-left.png', fullPage: false });
+    console.log(tag, 'li ok');
+    await ctx.close();
+  }
   await run(390, 780, 'm390');
   await run(1280, 900, 'd1280');
+  await runLi(390, 780, 'm390');
+  await runLi(1280, 900, 'd1280');
   await browser.close();
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');
 })();
