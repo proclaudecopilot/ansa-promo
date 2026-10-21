@@ -46,7 +46,12 @@
   }
   bind();
   /* v1.4.3: UTM-ът и от адреса — кешът (FlyingPress) връща една и съща страница за ?utm_content=…, със сървърен utm '' */
-  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){qsU=String(qsU).toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(qsU&&PROD[qsU])A.utm=qsU}}catch(e){}
+  /* 1.24.7 (човекът): utm_content е ключ на продукт (sakura, greens, berber, meno, yoni…) ИЛИ името му без интервали (dihydroberberine, menostop, yonibiotic, dailygreens)
+     → персонализиран gate за продукта; yacht / cosm / general → gate за яхтата / козметичния сет / общ (A.gv) */
+  var GV=['yacht','cosm','general'];
+  function utmProd(u){u=String(u||'').toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(!u)return '';if(PROD[u])return u;var n=u.replace(/[^a-z0-9]/g,'');for(var k in PROD){if(String(PROD[k].name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===n)return k}return ''}
+  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){var pk=utmProd(qsU);if(pk)A.utm=pk;else{var g=String(qsU).toLowerCase().replace(/[^a-z]/g,'');if(GV.indexOf(g)>-1)A.gv=g}}}catch(e){}
+  if(A.utm&&!PROD[A.utm])A.utm=utmProd(A.utm)||null;
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';
@@ -140,7 +145,11 @@
   function gateSeen(){try{return sessionStorage.getItem('ansa_promo_gate')==='1'}catch(e){return false}}
   function gateMark(){try{sessionStorage.setItem('ansa_promo_gate','1')}catch(e){}}
   function emailGate(){
-    if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;var t=(c&&c.theme)||['#ffe3cf','#ffb37a','#c2410c'];
+    if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;
+    /* 1.24.7 (човекът): вариант на gate-а по рекламата — продукт (c) печели; иначе A.gv: yacht (синьо, яхтата в кръгчето, „Почивка с яхта в Гърция…“),
+       cosm (златно, сетът в кръгчето, „Новият козметичен сет за €1…“, сетът е първата награда), general/без UTM — общият вариант */
+    var gv=!c&&A.gv&&A.gv!=='general'?A.gv:'';
+    var t=(c&&c.theme)||(gv==='yacht'?['#e0f2fe','#7dd3fc','#0c4a6e']:gv==='cosm'?['#fff4d6','#f6c453','#92400e']:['#ffe3cf','#ffb37a','#c2410c']);
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
     var dc=$('apDc');dc.className='dc gatew';dc.scrollTop=0;
     /* v1.0.8: снимки вместо емоджита на плочките (gate.images от настройките; празно = примерна снимка). Без URL → емоджито от мокъпа. */
@@ -148,13 +157,13 @@
     function gi(k,emo){return GI[k]?'<i class="g2i"><img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async"></i>':'<i>'+emo+'</i>'}
     function gcl(k){return GI[k]?' pic':''}
     function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+gcl('box_'+b.id)+'">'+gi('box_'+b.id,b.ic)+'<b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
+    var r1='<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>',
+        r2='<div class="g2r gold'+gcl('cosm')+'">'+gi('cosm','👑')+'<div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>';
     dc.innerHTML='<div class="gate g2" style="--g1:'+t[0]+';--g2:'+t[1]+';--g3:'+t[2]+'">'
-      +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
-      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
+      +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):gv&&GI[gv]?'<img class="gimg" src="'+esc(GI[gv])+'" alt="">':gv==='yacht'?'🛥️':gv==='cosm'?'👑':'🎁')+'</div></div>'
+      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':gv?'<h3'+ck('gate.title.'+gv)+'>'+T('gate.title.'+gv)+'</h3><p'+ck('gate.sub.'+gv)+'>'+T('gate.sub.'+gv)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
       +'<div class="g2s"><span class="g2n">1</span><span'+ck('gate.s1')+'>'+T('gate.s1')+'</span></div>'
-      +'<div class="g2rw">'
-        +'<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>'
-        +'<div class="g2r gold'+gcl('cosm')+'">'+gi('cosm','👑')+'<div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>'
+      +'<div class="g2rw">'+(gv==='cosm'?r2+r1:r1+r2) /* 1.24.7: при реклама за козметика сетът е първи */
         +'<div class="g2r'+gcl('book')+'">'+gi('book','📖')+'<div><b'+ck('gate.r3.b')+'>'+T('gate.r3.b')+'</b><small'+ck('gate.r3.s')+'>'+T('gate.r3.s')+'</small></div></div>'
         +'<div class="g2r'+gcl('pct')+'">'+gi('pct','💸')+'<div><b'+ck('gate.r4.b')+'>'+T('gate.r4.b')+'</b><small'+ck('gate.r4.s')+'>'+T('gate.r4.s')+'</small></div></div>'
       +'</div>'
@@ -172,7 +181,7 @@
   }
   function sendLead(email,consent){
     if(!A.ajax||A.editor)return;
-    var fd=new FormData();fd.append('action','ansa_promo_lead');fd.append('nonce',A.nonce||'');fd.append('email',email);fd.append('consent',consent?'1':'0');fd.append('utm',S.utm||'');fd.append('box_seen',S.box!==null&&BX()?BX().id:'');
+    var fd=new FormData();fd.append('action','ansa_promo_lead');fd.append('nonce',A.nonce||'');fd.append('email',email);fd.append('consent',consent?'1':'0');fd.append('utm',S.utm||(A.gv||''));fd.append('box_seen',S.box!==null&&BX()?BX().id:'');
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(r&&r.success&&r.data&&r.data.lead){S.lead=r.data.lead;saveS()}}).catch(function(){});
   }
 
@@ -916,6 +925,7 @@
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
     S.quizSeen=!o.quiz; /* 1.24.5: сценариите (харнес/редактор) виждат автоматичния въпросник само с quiz:true */
     if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
+    if(o.gv!==undefined)A.gv=o.gv&&GV.indexOf(o.gv)>-1?o.gv:null; /* 1.24.7: вариантът на gate-а (yacht/cosm/general) */
     if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
     S.emailDone=true;A.editorNoGate=true;
