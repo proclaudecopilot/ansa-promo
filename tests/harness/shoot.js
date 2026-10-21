@@ -24,13 +24,11 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: S + '/shots/' + tag + '-boxes-full.png', fullPage: true });
     // v1.23.1: един плаващ бутон „?“ → попъпът „Как работи играта“
     await page.click('.yfab .yhow'); await shot('yfab'); await check('yfab'); await page.click('#apUx'); await page.waitForTimeout(200);
-    // v1.23.2: клик на кутия → „Запозната ли си с продуктите?“; „Не ги знам“ → пълненето с въпросника отгоре
-    await page.evaluate(() => document.querySelector('.box.l [data-box]').click()); await shot('know'); await check('know');
-    if (!(await page.$('#knowNo'))) errors.push(tag + ' know: попъпът „Запозната ли си“ липсва');
-    await page.click('#knowNo'); await page.waitForTimeout(400); await shot('know-quiz'); await check('know-quiz');
-    if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' know-quiz: въпросникът не се отвори');
-    if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' know-quiz: интро листът „За да отключиш…“ е върху въпросника');
-    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await page.evaluate(() => { AnsaPromo.state().know = null; });
+    // 1.24.4: клик на кутия → направо пълненето (без „Запозната ли си с продуктите?“)
+    await page.evaluate(() => document.querySelector('.box.l [data-box]').click()); await page.waitForTimeout(400); await shot('box-fill'); await check('box-fill');
+    if (await page.$('#knowNo')) errors.push(tag + ' box-fill: попъпът „Запозната ли си“ още се показва');
+    if (!(await page.$('#apDc [data-inc]')) && !(await page.$('#okBtn'))) errors.push(tag + ' box-fill: пълненето не се отвори след клик на кутия');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' }));
     // 1.23.8: над 5 опаковки плочките са слайдер със стрелки (телефон); до 5 — без слайдер
     if (w < 500) {
       await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura', full: true })); await page.waitForTimeout(300);
