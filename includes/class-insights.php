@@ -28,12 +28,14 @@ defined( 'ABSPATH' ) || exit;
 final class Insights {
 
 	const STEPS   = array( 'view', 'gate', 'box', 'full', 'order', 'add', 'created', 'paid', 'activated' );
-	const CLIENT  = array( 'view', 'gate', 'box', 'item', 'full', 'order', 'add' );
+	const CLIENT  = array( 'view', 'gate', 'box', 'item', 'full', 'order', 'add', 'sh_view', 'sh_pick', 'sh_more' ); /* 1.24.2: sh_* = 4-тата опция (3+2) в Shrine; sh_add идва само от сървъра */
+	/* 1.24.2: събитията от продуктовите страници (Shrine, промо картата „5 = 3+2“): видяла картата · избрала я · „Виж повече“ · сложила кутията в количката */
+	const SHRINE  = array( 'sh_view', 'sh_pick', 'sh_more', 'sh_add' );
 	/* редът на стъпките за „най-далечна“ (item не е стъпка на фунията — брои се отделно) */
-	const ORDER   = array( 'view' => 1, 'gate' => 2, 'box' => 3, 'item' => 3, 'full' => 4, 'order' => 5, 'add' => 6, 'created' => 7, 'paid' => 8, 'activated' => 9 );
+	const ORDER   = array( 'view' => 1, 'gate' => 2, 'box' => 3, 'item' => 3, 'full' => 4, 'order' => 5, 'add' => 6, 'created' => 7, 'paid' => 8, 'activated' => 9, 'sh_view' => 1, 'sh_pick' => 1, 'sh_more' => 1, 'sh_add' => 4 );
 	const FUNNEL  = array( 'view', 'gate', 'box', 'full', 'order', 'add', 'created', 'paid', 'activated' );
 	const LABELS  = array( 'view' => 'Видели страницата', 'gate' => 'Минали попъпа', 'box' => 'Избрали кутия', 'item' => 'Сложили продукт', 'full' => 'Напълнили кутията', 'order' => 'Екран „Поръчка“', 'add' => 'Към плащане', 'created' => 'Поръчка', 'paid' => 'Платена (билет)', 'activated' => 'Активиран билет' );
-	const SHORT   = array( 'view' => '👀 видяла', 'gate' => '📧 попъп', 'box' => '📦 кутия', 'item' => '➕ продукт', 'full' => '✅ пълна', 'order' => '🧾 поръчка', 'add' => '💳 плащане', 'created' => '🛒 поръчала', 'paid' => '🎟️ платена', 'activated' => '🏆 активиран' );
+	const SHORT   = array( 'view' => '👀 видяла', 'gate' => '📧 попъп', 'box' => '📦 кутия', 'item' => '➕ продукт', 'full' => '✅ пълна', 'order' => '🧾 поръчка', 'add' => '💳 плащане', 'created' => '🛒 поръчала', 'paid' => '🎟️ платена', 'activated' => '🏆 активиран', 'sh_view' => '🛍️ видяла 3+2', 'sh_pick' => '👆 избрала 3+2', 'sh_more' => '👁️ виж повече', 'sh_add' => '🛒 3+2 в количката' );
 	const NONCE   = 'ansa_promo_insights';
 
 	public static function register() {
@@ -82,6 +84,9 @@ final class Insights {
 	private static function tok( $v, $len = 64, $re = '/[^a-z0-9_\-\.]/i' ) { return substr( preg_replace( $re, '', (string) $v ), 0, $len ); }
 
 	/** Записва събитие и опреснява сесията. $d: sid, ev, box, utm, k, n, lead, items, src, med, camp, ref, dev. */
+	/** Стъпката на фунията за събитие: item → box (в кутия е сложен продукт), sh_add → full (кутията е в количката), другите sh_* → view. */
+	private static function step_of( $ev ) { if ( in_array( $ev, self::FUNNEL, true ) ) { return $ev; } if ( 'item' === $ev ) { return 'box'; } if ( 'sh_add' === $ev ) { return 'full'; } return 'view'; }
+
 	public static function track( $d ) {
 		global $wpdb;
 		$sid = self::sid( $d['sid'] ?? '' ); $ev = sanitize_key( (string) ( $d['ev'] ?? '' ) );
@@ -98,19 +103,19 @@ final class Insights {
 		$ord = self::ORDER[ $ev ];
 		/* 1.17.1: сървърна дедупликация — стъпка веднъж на сесия (box: веднъж на кутия; item: веднъж на продукт); клиентът дедупира само в таба */
 		if ( $row ) {
-			$dup = 'item' === $ev ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s AND k = %s LIMIT 1", $sid, $ev, $k ) )
+			$dup = ( 'item' === $ev || in_array( $ev, self::SHRINE, true ) ) ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s AND k = %s LIMIT 1", $sid, $ev, $k ) )
 				: ( 'box' === $ev ? $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s AND box = %s LIMIT 1", $sid, $ev, $box ) ) : $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $te WHERE sid = %s AND ev = %s LIMIT 1", $sid, $ev ) ) );
 			if ( $dup ) { $wpdb->update( $ts, $upd, array( 'id' => (int) $row['id'] ) ); return true; }
 		}
 		if ( ! $row ) {
 			$ins = array_merge( array(
 				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^a-z0-9_\-\.\s]/i' ),
-				'ref' => substr( esc_url_raw( (string) ( $d['ref'] ?? '' ) ), 0, 191 ), 'device' => in_array( $d['dev'] ?? '', array( 'mobile', 'desktop' ), true ) ? $d['dev'] : '', 'box' => $box, 'step' => 'item' === $ev ? 'box' : $ev, 'ip' => Leads::ip(),
+				'ref' => substr( esc_url_raw( (string) ( $d['ref'] ?? '' ) ), 0, 191 ), 'device' => in_array( $d['dev'] ?? '', array( 'mobile', 'desktop' ), true ) ? $d['dev'] : '', 'box' => $box, 'step' => self::step_of( $ev ), 'ip' => Leads::ip(),
 			), $upd );
 			$wpdb->insert( $ts, $ins );
 		} else {
-			$cur = self::ORDER[ $row['step'] ] ?? 0;
-			if ( $ord > $cur && 'item' !== $ev ) { $upd['step'] = $ev; }
+			$cur = self::ORDER[ $row['step'] ] ?? 0; $sev = self::step_of( $ev );
+			if ( $ord > $cur && ( in_array( $ev, self::FUNNEL, true ) || 'sh_add' === $ev ) ) { $upd['step'] = $sev; } /* 1.24.2: sh_add = кутията е пълна (в количката) */
 			if ( ! $box && $row['box'] ) { $box = $row['box']; }
 			if ( ! $utm && $row['utm'] ) { $utm = $row['utm']; }
 			$wpdb->update( $ts, $upd, array( 'id' => (int) $row['id'] ) );
@@ -289,6 +294,18 @@ final class Insights {
 		/* „цъкнал“ продукт — събитията item (и без да е напълнил) */
 		$we = is_array( $range ) ? 'WHERE ' . self::where_range( 'at', $range ) . $wpdb->prepare( ' AND ev = %s', 'item' ) : ( $since ? $wpdb->prepare( 'WHERE at >= %s AND ev = %s', $since, 'item' ) : $wpdb->prepare( 'WHERE ev = %s', 'item' ) );
 		foreach ( (array) $wpdb->get_results( "SELECT k, COUNT(DISTINCT sid) AS s, COUNT(*) AS c FROM $te $we GROUP BY k", ARRAY_A ) as $r ) { if ( ! isset( $out['items'][ $r['k'] ] ) ) { $out['items'][ $r['k'] ] = array( 'sessions' => 0, 'packs' => 0, 'ordered' => 0 ); } $out['items'][ $r['k'] ]['clicked'] = (int) $r['s']; $out['items'][ $r['k'] ]['clicks'] = (int) $r['c']; }
+		/* 1.24.2: Shrine — 4-тата опция (3+2) по продукт: видели картата · избрали · „Виж повече“ · в количката · поръчали (сесия със sh_add и поръчка) */
+		$out['shrine'] = array();
+		$ws = is_array( $range ) ? 'WHERE ' . self::where_range( 'e.at', $range ) : ( $since ? $wpdb->prepare( 'WHERE e.at >= %s', $since ) : 'WHERE 1=1' );
+		$shin = "'" . implode( "','", self::SHRINE ) . "'";
+		foreach ( (array) $wpdb->get_results( "SELECT e.k, e.ev, COUNT(DISTINCT e.sid) AS s FROM $te e $ws AND e.ev IN ($shin) GROUP BY e.k, e.ev", ARRAY_A ) as $r ) {
+			$kk = (string) $r['k']; if ( ! isset( $out['shrine'][ $kk ] ) ) { $out['shrine'][ $kk ] = array( 'view' => 0, 'pick' => 0, 'more' => 0, 'add' => 0, 'created' => 0 ); }
+			$out['shrine'][ $kk ][ substr( $r['ev'], 3 ) ] = (int) $r['s'];
+		}
+		foreach ( (array) $wpdb->get_results( "SELECT e.k, COUNT(DISTINCT e.sid) AS s FROM $te e INNER JOIN $ts s ON s.sid = e.sid $ws AND e.ev = 'sh_add' AND s.order_id > 0 GROUP BY e.k", ARRAY_A ) as $r ) {
+			$kk = (string) $r['k']; if ( isset( $out['shrine'][ $kk ] ) ) { $out['shrine'][ $kk ]['created'] = (int) $r['s']; }
+		}
+		uasort( $out['shrine'], function ( $a, $b ) { return $b['view'] <=> $a['view']; } );
 		$out['visitors'] = count( $vis ); foreach ( $vg as $grp => $keys ) { foreach ( $keys as $key => $set ) { $out[ $grp ][ $key ]['v'] = count( $set ); } }
 		foreach ( self::FUNNEL as $st ) { $out['vfunnel'][ $st ] = count( $vf[ $st ] ?? array() ); $out['vstopped'][ $st ] = count( $vs[ $st ] ?? array() ); }
 		foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
@@ -419,10 +436,16 @@ final class Insights {
 			'rev_lost'    => array( 'revenue', 'Загубен оборот', self::money( $os['lost']['total'] ), 'отказани / неуспешни · <b data-k="o_lost2">' . (int) $os['lost']['n'] . '</b> бр.', 'bad', false ),
 			'avg'         => array( 'revenue', 'Среден кош', self::money( $os['avg'] ), 'на поръчка · общо <b data-k="o_total2">' . esc_html( self::money( $os['total'] ) ) . '</b>', '', false ),
 		);
+		/* 1.24.2: Shrine · 3+2 — сборове по всички продукти */
+		$sh = array( 'view' => 0, 'pick' => 0, 'more' => 0, 'add' => 0, 'created' => 0 ); foreach ( (array) ( $r['shrine'] ?? array() ) as $v ) { foreach ( $sh as $kk => $_ ) { $sh[ $kk ] += (int) ( $v[ $kk ] ?? 0 ); } }
+		$t['sh_view']    = array( 'shrine', 'Видели картата 3+2', (string) $sh['view'], 'сесии на продуктови страници с промо картата', '', false );
+		$t['sh_pick']    = array( 'shrine', 'Избрали 3+2', (string) $sh['pick'], esc_html( self::pct( $sh['pick'], $sh['view'] ) ) . ' от видeлите · „Виж повече“: <b data-k="sh_more">' . (int) $sh['more'] . '</b>', '', false );
+		$t['sh_add']     = array( 'shrine', 'Сложили кутията в количката', (string) $sh['add'], esc_html( self::pct( $sh['add'], $sh['view'] ) ) . ' от видeлите', 'info', false );
+		$t['sh_created'] = array( 'shrine', 'Поръчали през 3+2', (string) $sh['created'], esc_html( self::pct( $sh['created'], $sh['view'] ) ) . ' от видeлите · ' . esc_html( self::pct( $sh['created'], $sh['add'] ) ) . ' от количката', 'good', false );
 		return $t;
 	}
-	const GROUPS = array( 'traffic' => '👥 Трафик', 'funnel' => '🔻 Фуния по сесии', 'orders' => '🛒 Поръчки (WooCommerce)', 'revenue' => '💶 Оборот' );
-	const GROUP_HINTS = array( 'traffic' => 'сесия = едно влизане; посетител = различен IP', 'funnel' => 'докъде стига всяка сесия, веднъж на стъпка', 'orders' => 'взети = статус „получена“ (Delivered); в път = всичко между поръчка и получаване', 'revenue' => 'сумите на поръчките с ДДС и доставка, както са в WooCommerce' );
+	const GROUPS = array( 'traffic' => '👥 Трафик', 'funnel' => '🔻 Фуния по сесии', 'shrine' => '🛍️ Shrine · 3+2', 'orders' => '🛒 Поръчки (WooCommerce)', 'revenue' => '💶 Оборот' );
+	const GROUP_HINTS = array( 'traffic' => 'сесия = едно влизане; посетител = различен IP', 'funnel' => 'докъде стига всяка сесия, веднъж на стъпка', 'shrine' => 'промо картата „5 = 3+2“ на продуктовите страници (ansa™ Shrine)', 'orders' => 'взети = статус „получена“ (Delivered); в път = всичко между поръчка и получаване', 'revenue' => 'сумите на поръчките с ДДС и доставка, както са в WooCommerce' );
 	private static function tile( $label, $value, $sub = '', $tone = '', $k = '', $hero = false ) {
 		return '<div class="ap-st' . ( $tone ? ' ap-st--' . $tone : '' ) . ( $hero ? ' ap-st--hero' : '' ) . '"><span class="ap-st__l">' . esc_html( $label ) . '</span><b class="ap-st__v"' . ( $k ? ' data-k="' . esc_attr( $k ) . '"' : '' ) . '>' . esc_html( $value ) . '</b>' . ( '' !== $sub ? '<small class="ap-st__s"' . ( $k ? ' data-ks="' . esc_attr( $k ) . '"' : '' ) . '>' . $sub . '</small>' : '' ) . '</div>';
 	}
@@ -492,6 +515,13 @@ final class Insights {
 		foreach ( self::FUNNEL as $st ) { $n = (int) $f[ $st ]; $w = max( 2, round( 100 * $n / $max ) ); $h .= '<div class="ap-fn"><span class="ap-fn__l">' . esc_html( self::LABELS[ $st ] ) . '</span><span class="ap-fn__bar"><i style="width:' . $w . '%"></i></span><b class="ap-fn__n">' . $n . '</b><small>' . esc_html( self::pct( $n, $max ) ) . ( null !== $prev ? ' · ' . esc_html( self::pct( $n, $prev ) ) . ' от предишната' : '' ) . ( is_array( $vf ) ? ' · 👤 ' . (int) $vf[ $st ] : '' ) . '</small></div>'; $prev = $n ?: $prev; }
 		return $h . '</div>';
 	}
+	/** 1.24.2: таблицата „Shrine · 3+2“ — по продукт: видели картата · избрали · „Виж повече“ · в количката · поръчали. */
+	public static function shrine_table_html( $rows, $names ) {
+		$h = '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛍️ Shrine · офертата „5 = 3+2“ на продуктовите страници</span></div><div class="ap-sec__hint">Промо картата (4-тата опция) в ansa™ Shrine: колко сесии са я видели, избрали, отворили „Виж повече“, сложили Голямата кутия в количката и поръчали. Сесия = същата бисквитка като на промо страницата — човек, минал и оттам, е една сесия.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>продукт</th><th>видели картата</th><th>избрали</th><th>„Виж повече“</th><th>в количката</th><th>поръчали</th><th>конверсия (поръчали / видели)</th></tr></thead><tbody>';
+		foreach ( (array) $rows as $k => $v ) { $h .= '<tr><td><b>' . esc_html( $names[ $k ] ?? $k ) . '</b> <small>' . esc_html( $k ) . '</small></td><td>' . (int) $v['view'] . '</td><td>' . (int) $v['pick'] . '</td><td>' . (int) $v['more'] . '</td><td>' . (int) $v['add'] . '</td><td><b>' . (int) $v['created'] . '</b></td><td>' . esc_html( self::pct( $v['created'], $v['view'] ) ) . '</td></tr>'; }
+		if ( ! $rows ) { $h .= '<tr><td colspan="7"><small>още няма данни за периода — събитията идват от Shrine ≥ 6.26.8, когато промо картата е включена</small></td></tr>'; }
+		return $h . '</tbody></table></div></div>';
+	}
 	/** Таблица-разбивка (по UTM / източник / кутия / устройство / дни). */
 	private static function table_html( $title, $rows, $first, $fmt = null ) {
 		$cols = array( 'n' => 'сесии', 'v' => 'посетители', 'gate' => 'попъп', 'box' => 'кутия', 'full' => 'пълна', 'add' => 'плащане', 'created' => 'поръчка', 'paid' => 'платена' );
@@ -535,6 +565,8 @@ final class Insights {
 		foreach ( $r['items'] as $kk => $v ) { echo '<tr><td><b>' . esc_html( $names[ $kk ] ?? $kk ) . '</b> <small>' . esc_html( $kk ) . '</small></td><td>' . (int) ( $v['clicked'] ?? 0 ) . '</td><td>' . (int) ( $v['clicks'] ?? 0 ) . '</td><td>' . (int) $v['sessions'] . '</td><td>' . (int) $v['packs'] . '</td><td>' . (int) $v['ordered'] . '</td></tr>'; }
 		if ( ! $r['items'] ) { echo '<tr><td colspan="6"><small>още няма данни за периода</small></td></tr>'; }
 		echo '</tbody></table></div></div>';
+		/* 1.24.2: Shrine — 4-тата опция (3+2) на продуктовите страници */
+		echo self::shrine_table_html( $r['shrine'] ?? array(), $names );
 		/* разбивки */
 		echo self::table_html( '🏷️ По UTM (кацане с продукт)', $r['by_utm'], 'UTM', function ( $k ) use ( $names ) { return ( $names[ $k ] ?? $k ) . ( isset( $names[ $k ] ) ? ' (' . $k . ')' : '' ); } );
 		echo self::table_html( '📣 По източник (utm_source / директно)', $r['by_src'], 'източник' );

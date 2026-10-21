@@ -160,10 +160,30 @@ $ok( 'orders_stats по статус: processing 3, delivered 2, cancelled 1 (п
 $ok( 'orders_stats без период: всички 8 (и 10 от 15.10, и 21)', 8 === Insights::orders_stats( null )['n'] );
 $ok( 'money: хиляди с интервал, запетая, €', '1 234,50 €' === Insights::money( 1234.5 ) && '0,00 €' === Insights::money( 0 ) );
 $flat = Insights::dashboard_flat( Insights::dashboard_data( Insights::sessions_report( 0, array( 'from' => '2026-10-16', 'to' => '2026-10-17' ) ), $os, array( 'period' => 'тест' ) ) );
-$ok( 'dashboard_flat за живото опресняване: стойности и sub-ове по ключ', '6' === $flat['kpi']['o_n'] && '270,00 €' === $flat['kpi']['rev_real'] && '2' === $flat['kpi']['o_delivered'] && false !== strpos( $flat['kpi_sub']['o_delivered'], '33,3%' ) && false !== strpos( $flat['kpi_sub']['sessions'], 'тест' ) && 17 === count( $flat['kpi'] ), json_encode( array_keys( $flat['kpi'] ) ) );
+$ok( 'dashboard_flat за живото опресняване: стойности и sub-ове по ключ', '6' === $flat['kpi']['o_n'] && '270,00 €' === $flat['kpi']['rev_real'] && '2' === $flat['kpi']['o_delivered'] && false !== strpos( $flat['kpi_sub']['o_delivered'], '33,3%' ) && false !== strpos( $flat['kpi_sub']['sessions'], 'тест' ) && 21 === count( $flat['kpi'] ), json_encode( array_keys( $flat['kpi'] ) ) ); /* 1.24.2: + 4 плочки Shrine · 3+2 */
 $h = $render( array( 'view' => 'history' ) ); $ok( 'история след сверката: поръчали (сесии) 6 = поръчани 6 (+ order-30) без ⚠, hero 270,00 €', (bool) preg_match( '/data-k="created">6<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_n">6<\/b>/u', $h ) && false === strpos( $h, '⚠ в WooCommerce' ) && (bool) preg_match( '/data-k="rev_real">270,00 €<\/b>/u', $h ) && false !== strpos( $h, '🧾 само поръчката' ) );
 $h = $render( array( 'days' => '0' ) ); $ok( 'преглед: дашбордът за целия период (8 поръчки, взети 3: 11, 20, 21) + таблицата по статус', (bool) preg_match( '/data-k="o_n">8<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_delivered">3<\/b>/u', $h ) && false !== strpos( $h, '📦 Поръчките по статус · целия период' ) && false !== strpos( $h, 'броят се от ' ) );
 $ok( 'преглед: редът „Поръчките“ в 🩺 с бутона за сверка', false !== strpos( $h, 'промо поръчки в WooCommerce' ) && false !== strpos( $h, 'id="apInsBackfill"' ) && false !== strpos( $h, 'ansa_promo_insights_backfill' ) );
+/* 1.24.2: Shrine — 4-тата опция (3+2): sh_view/sh_pick/sh_more от клиента, sh_add от сървъра; сесията стига до „full“; таблица и плочки */
+$_SERVER['REMOTE_ADDR'] = '9.9.9.9';
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_view', 'box' => 'l', 'k' => 'dg', 'utm' => '', 'src' => 'facebook', 'dev' => 'mobile' ) );
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_view', 'box' => 'l', 'k' => 'dg' ) ); /* дубликат — не се брои пак */
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_view', 'box' => 'l', 'k' => 'vit' ) ); /* друг продукт — брои се */
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_pick', 'box' => 'l', 'k' => 'dg' ) );
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_more', 'box' => 'l', 'k' => 'dg' ) );
+Insights::track( array( 'sid' => 'shrineS0001', 'ev' => 'sh_add', 'box' => 'l', 'k' => 'dg', 'items' => array( 'dg', 'dg', 'dg', 'dg', 'dg' ) ) );
+Insights::track( array( 'sid' => 'shrineS0002', 'ev' => 'sh_view', 'box' => 'l', 'k' => 'dg' ) );
+$srow = $wpdb->get_row( "SELECT step, box, device, src FROM wp_ansa_promo_sessions WHERE sid = 'shrineS0001'", ARRAY_A );
+$ok( 'shrine: сесията е на стъпка full (кутията е в количката), кутия l, mobile/facebook', $srow && 'full' === $srow['step'] && 'l' === $srow['box'] && 'mobile' === $srow['device'] && 'facebook' === $srow['src'], json_encode( $srow ) );
+$ok( 'shrine: sh_view е веднъж на продукт на сесия', 2 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM wp_ansa_promo_events WHERE sid = 'shrineS0001' AND ev = 'sh_view'" ) );
+$wpdb->query( "UPDATE wp_ansa_promo_sessions SET order_id = 77 WHERE sid = 'shrineS0001'" );
+$rs = Insights::sessions_report( 0 );
+$ok( 'shrine: отчетът по продукт — dg: видели 2, избрали 1, виж повече 1, в количката 1, поръчали 1; vit: видели 1', isset( $rs['shrine']['dg'] ) && array( 'view' => 2, 'pick' => 1, 'more' => 1, 'add' => 1, 'created' => 1 ) === $rs['shrine']['dg'] && 1 === (int) ( $rs['shrine']['vit']['view'] ?? 0 ) && 0 === (int) ( $rs['shrine']['vit']['add'] ?? 0 ), json_encode( $rs['shrine'] ?? null ) );
+$ok( 'shrine: сесиите от Shrine са във фунията (full)', $rs['funnel']['full'] >= 1 );
+$h = $render( array( 'days' => '0' ) ); $ok( 'преглед: таблицата „Shrine · 3+2“ и плочките', false !== strpos( $h, 'Shrine · офертата „5 = 3+2“' ) && false !== strpos( $h, 'Видели картата 3+2' ) && false !== strpos( $h, '🛍️ Shrine · 3+2' ) );
+$fd = Insights::feed( 50 ); $shs = array_values( array_filter( $fd, function ( $s ) { return 'shrineS0001' === $s['sid']; } ) )[0] ?? null;
+$ok( 'фийдът: пътят на Shrine сесията с чиповете 3+2', $shs && count( $shs['timeline'] ) >= 4 && false !== strpos( wp_json_encode( $shs['timeline'] ), '3+2' ), $shs ? wp_json_encode( $shs['timeline'], JSON_UNESCAPED_UNICODE ) : 'няма' );
+
 $ok( 'без SQL грешки по пътя', ! $GLOBALS['sql_errors'], implode( ' | ', array_slice( $GLOBALS['sql_errors'], 0, 3 ) ) );
 
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
