@@ -20,17 +20,21 @@ const { chromium } = require('playwright');
       if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' ' + name + ': undefined/NaN в текста: ' + (t.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
     }
     await shot('gate'); await check('gate');
+    // 1.24.7: gate по рекламата — yacht / cosm (general = общият)
+    for (const gv of ['yacht', 'cosm']) { await page.evaluate(g => AnsaPromo.scenario({ screen: 'gate', utm: null, gv: g }), gv); await page.waitForTimeout(250); await shot('gate-' + gv); await check('gate-' + gv);
+      const h = await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''); if (!(gv === 'yacht' ? /яхта/ : /козметичен сет/).test(h)) errors.push(tag + ' gate-' + gv + ': заглавието е „' + h + '“');
+      if (gv === 'cosm' && !(await page.evaluate(() => document.querySelector('#apDc .g2rw .g2r').classList.contains('gold')))) errors.push(tag + ' gate-cosm: сетът не е първата награда'); }
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'gate', utm: 'sakura', gv: null })); await page.waitForTimeout(250);
+    if (!/Sakura/.test(await page.evaluate(() => (document.querySelector('#apDc .g2hd h3') || {}).textContent || ''))) errors.push(tag + ' gate-sakura: заглавието не е за продукта');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await shot('boxes'); await check('boxes');
     await page.screenshot({ path: S + '/shots/' + tag + '-boxes-full.png', fullPage: true });
     // v1.23.1: един плаващ бутон „?“ → попъпът „Как работи играта“
     await page.click('.yfab .yhow'); await shot('yfab'); await check('yfab'); await page.click('#apUx'); await page.waitForTimeout(200);
-    // v1.23.2: клик на кутия → „Запозната ли си с продуктите?“; „Не ги знам“ → пълненето с въпросника отгоре
-    await page.evaluate(() => document.querySelector('.box.l [data-box]').click()); await shot('know'); await check('know');
-    if (!(await page.$('#knowNo'))) errors.push(tag + ' know: попъпът „Запозната ли си“ липсва');
-    await page.click('#knowNo'); await page.waitForTimeout(400); await shot('know-quiz'); await check('know-quiz');
-    if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' know-quiz: въпросникът не се отвори');
-    if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' know-quiz: интро листът „За да отключиш…“ е върху въпросника');
-    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' })); await page.evaluate(() => { AnsaPromo.state().know = null; });
+    // 1.24.4: клик на кутия → направо пълненето (без „Запозната ли си с продуктите?“)
+    await page.evaluate(() => document.querySelector('.box.l [data-box]').click()); await page.waitForTimeout(400); await shot('box-fill'); await check('box-fill');
+    if (await page.$('#knowNo')) errors.push(tag + ' box-fill: попъпът „Запозната ли си“ още се показва');
+    if (!(await page.$('#apDc [data-inc]')) && !(await page.$('#okBtn'))) errors.push(tag + ' box-fill: пълненето не се отвори след клик на кутия');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: 'sakura' }));
     // 1.23.8: над 5 опаковки плочките са слайдер със стрелки (телефон); до 5 — без слайдер
     if (w < 500) {
       await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura', full: true })); await page.waitForTimeout(300);
@@ -49,10 +53,12 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { const d = document.getElementById('apDc'); for (let i = 0; i < 4; i++) { const b = d.querySelector('[data-inc="meno"]:not([disabled])') || d.querySelector('[data-inc]:not([disabled])'); if (b) b.click(); } });
     // v1.0.39: въпросникът „Не си сигурна какво ти трябва?“ → избор на 2 проблема → подредба с етикет „според теб“
     await page.click('#fQuiz'); await shot('quiz'); await check('quiz');
-    // v1.23.3: „Продължи“ е неактивен с 0 и 1 отбелязани, активен от 2
+    // 1.24.5: с UTM продукт — „Продължи“ е неактивен с 0, активен от 1; редът на продукта липсва
     if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен без избор');
     await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
-    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz: „Продължи“ е активен с 1 избор');
+    if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz: „Продължи“ е неактивен с 1 избор (с UTM продукт един стига)');
+    if (await page.$('.fqz input[value="sakura"]')) errors.push(tag + ' quiz: редът на UTM продукта (Sakura) е във въпросника');
+    if (!/Sakura е перфектен избор/.test(await page.evaluate(() => document.querySelector('.fqz h3').textContent))) errors.push(tag + ' quiz: заглавието с UTM не е „Sakura е перфектен избор…“');
     await shot('quiz-one');
     await page.evaluate(() => { const i = document.querySelector('.fqz input[value="berber"]'); if (i) i.click(); });
     if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz: „Продължи“ е неактивен с 2 избора');
@@ -66,6 +72,15 @@ const { chromium } = require('playwright');
     await page.click('#cGo'); await shot('order'); await check('order');
     { const f = await page.$('#finish'); if (f && await f.isVisible()) { await f.click(); await page.waitForTimeout(200); await shot('order-toast'); } } // v1.5.1: без екран „Поръчка“ — бутонът може да липсва
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null })); await shot('boxes-noutm'); await check('boxes-noutm');
+    // 1.24.5: въпросникът е първото нещо при влизане в пълненето (quiz:true в сценария) — с UTM: заглавие с продукта; без UTM: „Кое от следното те касае?“ и минимум 2
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: 'sakura', quiz: true })); await page.waitForTimeout(300); await shot('quiz-auto'); await check('quiz-auto');
+    if (!(await page.$('#apDc .fqz'))) errors.push(tag + ' quiz-auto: въпросникът не се отвори сам при влизане в пълненето');
+    if (await page.evaluate(() => !document.getElementById('apOv2').classList.contains('off'))) errors.push(tag + ' quiz-auto: интро листът е върху въпросника');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: null, quiz: true })); await page.waitForTimeout(300); await shot('quiz-auto-noutm'); await check('quiz-auto-noutm');
+    if (!/Кое от следното те касае/.test(await page.evaluate(() => (document.querySelector('.fqz h3') || {}).textContent || ''))) errors.push(tag + ' quiz-auto-noutm: заглавието без UTM не е „Кое от следното те касае?“');
+    await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
+    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz-auto-noutm: „Продължи“ е активен с 1 избор без UTM');
+    await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null }));
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'm', utm: null })); await check('fill-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'celeb', box: 's', utm: 'sakura', full: true })); await shot('celeb-small'); await check('celeb-small');
     // 1.23.9: „Честито“ с 11 опаковки от 6 продукта — групирани, най-много 4 реда (десктоп) / 1 (телефон) видими, останалите зад „Виж всички (+N)“
@@ -108,12 +123,11 @@ const { chromium } = require('playwright');
     if (await nextTxt()) errors.push(tag + ' grow-l1: редът „Още …“ се показва преди минимума');
     await incN(4); await page.waitForTimeout(250); await shot('grow-l'); await check('grow-l');
     if (await boxId() !== 'l') errors.push(tag + ' grow-l: кутията не е l');
-    { const t = await nextTxt(); if (!/\+1 билет/.test(t) || !/5\s+билета/.test(t)) errors.push(tag + ' grow-l: редът „+1 билет … сега 5 билета“ липсва: ' + JSON.stringify(t)); }
+    // 1.20.3: билетите вече не са в реда над футъра (fill.top = „−X% на всяка опаковка“); 1.24.6: на телефон редът го няма — проверките за „+1 билет / 5 билета“ са махнати
     if (!await canInc()) errors.push(tag + ' grow-l: степерите са заключени на 5');
     await incN(2); await page.waitForTimeout(250); await shot('grow-l7'); await check('grow-l7');
     if (await boxId() !== 'l') errors.push(tag + ' grow-l7: кутията не е l');
-    { const t = await nextTxt(); if (!/7\s+билета/.test(t)) errors.push(tag + ' grow-l7: „сега 7 билета“ липсва: ' + JSON.stringify(t)); }
-    { const t = await tixTxt(); if (!/7/.test(t)) errors.push(tag + ' grow-l7: плочката с билетите не показва 7: ' + JSON.stringify(t)); }
+    if (w >= 500) { const t = await tixTxt(); if (!/7/.test(t)) errors.push(tag + ' grow-l7: плочката с билетите не показва 7: ' + JSON.stringify(t)); } // 1.24.6: на телефон списъкът с подаръците в хедъра е махнат
     { const d = await page.evaluate(() => document.getElementById('nFill').disabled); if (d) errors.push(tag + ' grow-l7: „Продължи“ е заключен при 7 опаковки'); }
     await page.click('#nFill'); await page.waitForTimeout(600); await shot('grow-celeb'); await check('grow-celeb');
     { const n = await page.evaluate(() => AnsaPromo.state().slots.filter(Boolean).length); if (n !== 7) errors.push(tag + ' grow-celeb: очаквах 7 опаковки, има ' + n); }

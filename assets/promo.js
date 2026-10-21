@@ -16,6 +16,8 @@
   document.body.classList.add('ansa-promo-page');document.documentElement.classList.add('ansa-promo-html'); /* v1.0.52: overflow-x:hidden и на <html> */
   /* v1.0.24: на телефон лентата с яхтата е плаваща картинка долу вдясно (в портала, за да не я хване transform на темата) */
   var yfab=document.createElement('div');yfab.className='yfab';yfab.id='apYfab';yfab.style.display='none';portal.appendChild(yfab);
+  /* 1.24.3 (човекът: „Бих го направил на sticky countdown — без допълнителни обяснения, освен ако не цъкнеш“): лепкава лента в дъното на екрана с кутиите — „Побързай!“ + дни · часа · мин · сек до края на текущата седмица (после отстъпките се променят; последната седмица — до края на сезона) + „?“; цък → „Как работи играта“ на стълбата на сезона */
+  var cdEl=document.createElement('div');cdEl.className='apcd';cdEl.id='apCd';cdEl.style.display='none';portal.appendChild(cdEl);
 
   /* ── помощници ── */
   function m(n){return '€ '+Number(n).toFixed(2).replace('.',',')}
@@ -44,13 +46,18 @@
   }
   bind();
   /* v1.4.3: UTM-ът и от адреса — кешът (FlyingPress) връща една и съща страница за ?utm_content=…, със сървърен utm '' */
-  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){qsU=String(qsU).toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(qsU&&PROD[qsU])A.utm=qsU}}catch(e){}
+  /* 1.24.7 (човекът): utm_content е ключ на продукт (sakura, greens, berber, meno, yoni…) ИЛИ името му без интервали (dihydroberberine, menostop, yonibiotic, dailygreens)
+     → персонализиран gate за продукта; yacht / cosm / general → gate за яхтата / козметичния сет / общ (A.gv) */
+  var GV=['yacht','cosm','general'];
+  function utmProd(u){u=String(u||'').toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(!u)return '';if(PROD[u])return u;var n=u.replace(/[^a-z0-9]/g,'');for(var k in PROD){if(String(PROD[k].name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===n)return k}return ''}
+  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){var pk=utmProd(qsU);if(pk)A.utm=pk;else{var g=String(qsU).toLowerCase().replace(/[^a-z]/g,'');if(GV.indexOf(g)>-1)A.gv=g}}}catch(e){}
+  if(A.utm&&!PROD[A.utm])A.utm=utmProd(A.utm)||null;
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';
   function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
   var S=freshS();
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,know:S.know||null}}))}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,quizSeen:!!S.quizSeen}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
     Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
@@ -80,7 +87,7 @@
   function avgPrice(){var s=0;ORDER.forEach(function(k){s+=PROD[k].price});return ORDER.length?s/ORDER.length:0}
   function boxSaveMax(b){return r2(b.packs*avgPrice()*b.pct/100+extraVal(b)+(b.rw.indexOf('ship')>-1?SHIP:0))}
   /* v1.19.0: седмиците на сезона (A.season от сървъра: week/total/days_left/next{box id => %}/next_from/ladder). Кутиите (b.pct) идват вече
-     с процента на текущата седмица; тук се смята само „изпускаш X“ = опаковки × средна цена × разликата до следващата седмица. */
+     с процента на текущата седмица; тук се смята само „изпускаш X“ = опаковки × средна цена × разликата до следващата седмица. 1.24.3: лентата с точките е махната — countdown (renderCd) до s.ends. */
   function SEAS(){return A.season&&A.season.on?A.season:null}
   function nextPct(b){var s=SEAS();return s&&s.next&&s.next[b.id]!=null?Number(s.next[b.id]):null}
   function loseOf(b){var n=nextPct(b);if(n==null)return 0;return r2(b.packs*avgPrice()*Math.max(0,Number(b.pct)-n)/100)}
@@ -138,7 +145,11 @@
   function gateSeen(){try{return sessionStorage.getItem('ansa_promo_gate')==='1'}catch(e){return false}}
   function gateMark(){try{sessionStorage.setItem('ansa_promo_gate','1')}catch(e){}}
   function emailGate(){
-    if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;var t=(c&&c.theme)||['#ffe3cf','#ffb37a','#c2410c'];
+    if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;
+    /* 1.24.7 (човекът): вариант на gate-а по рекламата — продукт (c) печели; иначе A.gv: yacht (синьо, яхтата в кръгчето, „Почивка с яхта в Гърция…“),
+       cosm (златно, сетът в кръгчето, „Новият козметичен сет за €1…“, сетът е първата награда), general/без UTM — общият вариант */
+    var gv=!c&&A.gv&&A.gv!=='general'?A.gv:'';
+    var t=(c&&c.theme)||(gv==='yacht'?['#e0f2fe','#7dd3fc','#0c4a6e']:gv==='cosm'?['#fff4d6','#f6c453','#92400e']:['#ffe3cf','#ffb37a','#c2410c']);
     var bs=boxOf('s'),bm=boxOf('m'),bl=boxOf('l');
     var dc=$('apDc');dc.className='dc gatew';dc.scrollTop=0;
     /* v1.0.8: снимки вместо емоджита на плочките (gate.images от настройките; празно = примерна снимка). Без URL → емоджито от мокъпа. */
@@ -146,13 +157,13 @@
     function gi(k,emo){return GI[k]?'<i class="g2i"><img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async"></i>':'<i>'+emo+'</i>'}
     function gcl(k){return GI[k]?' pic':''}
     function gbx(b,cls){if(!b)return '';return '<div class="g2b'+(cls||'')+gcl('box_'+b.id)+'">'+gi('box_'+b.id,b.ic)+'<b'+ck('gate.bx.'+b.id+'.name')+'>'+T('gate.bx.'+b.id+'.name')+'</b><small'+ck('gate.bx.packs')+'>'+T('gate.bx.packs',boxVars(b))+'</small><em'+ck('gate.bx.'+b.id+'.em')+'>'+T('gate.bx.'+b.id+'.em')+'</em></div>'}
+    var r1='<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>',
+        r2='<div class="g2r gold'+gcl('cosm')+'">'+gi('cosm','👑')+'<div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>';
     dc.innerHTML='<div class="gate g2" style="--g1:'+t[0]+';--g2:'+t[1]+';--g3:'+t[2]+'">'
-      +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):'🎁')+'</div></div>'
-      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
+      +'<div class="g2band"><div class="g2bt"><b><span'+ck('head.title')+'>'+T('head.title')+'</span> <i'+ck('head.brand')+'>'+T('head.brand')+'</i></b><em'+ck('gate.band')+'>'+T('gate.band')+'</em></div><div class="g2pic">'+(c?pic(c,'gimg'):gv&&GI[gv]?'<img class="gimg" src="'+esc(GI[gv])+'" alt="">':gv==='yacht'?'🛥️':gv==='cosm'?'👑':'🎁')+'</div></div>'
+      +'<div class="g2hd">'+(c?'<h3'+ck('gate.title')+'>'+T('gate.title')+'</h3><p>'+esc(c.gsub||c.ds)+'</p>':gv?'<h3'+ck('gate.title.'+gv)+'>'+T('gate.title.'+gv)+'</h3><p'+ck('gate.sub.'+gv)+'>'+T('gate.sub.'+gv)+'</p>':'<h3'+ck('gate.title.noutm')+'>'+T('gate.title.noutm')+'</h3><p'+ck('gate.sub.noutm')+'>'+T('gate.sub.noutm')+'</p>')+'</div>'
       +'<div class="g2s"><span class="g2n">1</span><span'+ck('gate.s1')+'>'+T('gate.s1')+'</span></div>'
-      +'<div class="g2rw">'
-        +'<div class="g2r hot'+gcl('yacht')+'">'+gi('yacht','🛥️')+'<div><b'+ck('gate.r1.b')+'>'+T('gate.r1.b')+'</b><small'+ck('gate.r1.s')+'>'+T('gate.r1.s')+'</small></div></div>'
-        +'<div class="g2r gold'+gcl('cosm')+'">'+gi('cosm','👑')+'<div><b'+ck('gate.r2.b')+'>'+T('gate.r2.b')+'</b><small'+ck('gate.r2.s')+'>'+T('gate.r2.s')+'</small></div></div>'
+      +'<div class="g2rw">'+(gv==='cosm'?r2+r1:r1+r2) /* 1.24.7: при реклама за козметика сетът е първи */
         +'<div class="g2r'+gcl('book')+'">'+gi('book','📖')+'<div><b'+ck('gate.r3.b')+'>'+T('gate.r3.b')+'</b><small'+ck('gate.r3.s')+'>'+T('gate.r3.s')+'</small></div></div>'
         +'<div class="g2r'+gcl('pct')+'">'+gi('pct','💸')+'<div><b'+ck('gate.r4.b')+'>'+T('gate.r4.b')+'</b><small'+ck('gate.r4.s')+'>'+T('gate.r4.s')+'</small></div></div>'
       +'</div>'
@@ -170,7 +181,7 @@
   }
   function sendLead(email,consent){
     if(!A.ajax||A.editor)return;
-    var fd=new FormData();fd.append('action','ansa_promo_lead');fd.append('nonce',A.nonce||'');fd.append('email',email);fd.append('consent',consent?'1':'0');fd.append('utm',S.utm||'');fd.append('box_seen',S.box!==null&&BX()?BX().id:'');
+    var fd=new FormData();fd.append('action','ansa_promo_lead');fd.append('nonce',A.nonce||'');fd.append('email',email);fd.append('consent',consent?'1':'0');fd.append('utm',S.utm||(A.gv||''));fd.append('box_seen',S.box!==null&&BX()?BX().id:'');
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(r&&r.success&&r.data&&r.data.lead){S.lead=r.data.lead;saveS()}}).catch(function(){});
   }
 
@@ -414,22 +425,12 @@
     S.slots=down?kept.slice(0,b.packs):kept;normSlots();
     startTimer();saveS();
     /* попъпът пълни кутията докрай; таблото (екран 2) е само резервен екран за редакция */
-    if(!full()){if(S.screen!==2)render();if(!keep&&S.screen!==2&&!S.know){knowPopup();return}S._fillPending=(S.screen!==2);fillModePopup();return}
+    if(!full()){if(S.screen!==2)render();S._fillPending=(S.screen!==2);fillModePopup();return} /* 1.24.4 (човекът: „излишен friction“): без попъпа „Запозната ли си с продуктите?“ — кутията се отваря направо; въпросникът остава през „Не си сигурна какво ти трябва?“ */
     if(S.screen===2){go(2);return}
     render();S._fillPending=false;setTimeout(celebrate,200);
   }
 
-  /* v1.23.2 (човекът): при избор на кутия първо питаме „Запозната ли си с продуктите на ansa?“ — „Да, знам ги“ отваря пълненето,
-     „Не ги знам, насочете ме“ отваря пълненето с въпросника „Кое от следното те касае?“ отгоре. Отговорът се помни за сесията. */
-  function knowPopup(){
-    S._fillPending=false;
-    info(T('know.t'),'<p class="knows"'+ck('know.s')+'>'+T('know.s',boxVars(BX()))+'</p>'
-      +'<button class="knowb yes" id="knowYes" type="button"><b'+ck('know.yes')+'>'+T('know.yes')+'</b><small'+ck('know.yes.s')+'>'+T('know.yes.s')+'</small></button>'
-      +'<button class="knowb no" id="knowNo" type="button"><b'+ck('know.no')+'>'+T('know.no')+'</b><small'+ck('know.no.s')+'>'+T('know.no.s')+'</small></button>');
-    $('apDc').classList.add('know');
-    var pick=function(v){S.know=v;S._quizFirst=(v==='no');saveS();S._fillPending=true;fillModePopup()};
-    $('knowYes').onclick=function(){pick('yes')};$('knowNo').onclick=function(){pick('no')};
-  }
+  /* 1.24.4: knowPopup() („Запозната ли си с продуктите на ansa™?“, 1.23.2) е махнат — човекът: „излишен friction“ */
   /* ── ЕДИН попъп за пълнене: наградите на кутията + категории със степери (десктоп) / пълноекранен лист (мобилно) ── */
   var needQ={},needOrder=[];
   function fillModePopup(){S._fillPg=0;needQ={};needOrder=[];S.slots.filter(Boolean).forEach(function(k){if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1});if(S.core&&PROD[S.core]&&!needQ[S.core]){needQ[S.core]=1;needOrder.unshift(S.core)}fillPopup()}
@@ -454,8 +455,8 @@
     /* v1.0.33 (мокъпът на човека): картата е на три реда — заглавие + бадж −X% · снимка (30%) + „за какво е“/описание/„За продукта ›“ ·
        стара цена, нова цена, „+ Добави“/степер — еднакво на десктоп (.drow) и телефон (.mrow) */
     /* v1.0.36 (инспирацията на човека): на телефон категорията е малък етикет вътре в картата над името (catIn), не заглавие отвън */
-    var fcard=function(r,cls,catIn){var pr=PROD[r.key];return '<div class="fcat '+cls+' r3'+(r.core?' core':'')+'" data-nq="'+r.key+'">'
-      +'<div class="r3h"><div class="r3t">'+(catIn?'<em class="r3cat'+(r.core?' core':r.pick?' pick':'')+'">'+(r.core?'★ ':'')+catIn+'</em>':'')+'<b>'+esc(pr.name)+'</b></div><span class="fpct mb">−'+b.pct+'%</span><span class="r3in" data-in="'+r.key+'"'+ck('fill.in')+'></span></div>'
+    var fcard=function(r,cls,catIn){var pr=PROD[r.key];return '<div class="fcat '+cls+' r3'+(r.core?' core':'')+(r.pick?' pick':'')+'" data-nq="'+r.key+'">' /* 1.24.8: .pick = препоръчан от въпросника */
+      +'<div class="r3h"><div class="r3t">'+(catIn?(r.pick?'<em class="r3cat pick"'+ck('fill.quiz.pick')+'>'+T('fill.quiz.pick')+'</em>':'')+'<em class="r3cat'+(r.core?' core':'')+'">'+(r.core?'★ ':'')+catIn+'</em>':'')+'<b>'+esc(pr.name)+'</b></div><span class="fpct mb">−'+b.pct+'%</span><span class="r3in" data-in="'+r.key+'"'+ck('fill.in')+'></span></div>'
       +'<div class="r3m"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(pr.ds?'<span class="f3ds">'+esc(pr.ds)+'</span>':'')+'<small>'+esc(r.core&&pr.ds===r.why?pr.desc:r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('fill.more.l')+'>'+T('fill.more.l')+'</button></div></div>'
       +'<div class="fbar r3f">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'};
     var dmain=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
@@ -471,6 +472,8 @@
       +'<div class="fnext" id="fNext" style="display:none"></div>' /* v1.10.0: „Още 2 опаковки и отключваш голяма кутия с −40%“ */
       +'<div class="fslots" id="fSlots" hidden></div>'
       /* v1.18.1 (човекът: продуктите да са си на мястото, а „още продукти“ да се вижда): стрелки отстрани на картите + бутон във футъра */
+      /* 1.24.8 (човекът: „не е ясно, че това са препоръчани продукти — пише За ТЕБ, ама едвам се вижда“): лента над картите с имената на препоръчаните */
+      +(qz&&rows.some(function(r){return r.pick})?'<div class="frec"'+ck('fill.rec.d')+'>'+T('fill.rec.d',{names:rows.filter(function(r){return r.pick}).map(function(r){return '<b>'+esc(PROD[r.key].name)+'</b>'}).join(', ')})+'</div>':'')
       +'<div class="f3gw">'+(rows.length>MPP?'<button type="button" class="f3arr pv" id="f3Pv" aria-label="предишни">‹</button><button type="button" class="f3arr nx" id="f3Nx" aria-label="още продукти">›</button>':'')+'<div class="fcats f3grid">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="f3item" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="f3cat'+(r.core?' core':r.pick?' pick':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):r.pick?pcat(String(pr.cat||'').trim()||r.t):mcat(pr,r))+'</h5>'+fcard(r,'drow')+'</div>'}).join('')+'</div></div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
       +'<div class="f3f"><div class="f3s"><i class="f3pig"></i><div><div class="fsave" id="fSave"></div><small'+ck('fill.save.sub')+'>'+T('fill.save.sub',bv)+'</small></div></div>'+(rows.length>MPP?'<button type="button" class="f3more" id="f3More"></button>':'')+'<button class="cta" id="nFill"></button></div>';
     var mob=MOBF();S._fillMob=mob;
@@ -487,25 +490,30 @@
       var iSw=sv+'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
       var iGift=sv+'<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
       var iChev=sv+'<path d="m9 6 6 6-6 6"/></svg>';
-      var gsum=['<span data-tix="mfill.gs.tix">'+T('mfill.gs.tix',bv)+'</span>'].concat(main?[T(skey(main),bv)]:[]).join(' <i class="dot">•</i> ');
-      var gall=b.rw.map(function(r){return '<span class="mfgi">'+rimg(r,/^tix/.test(r)?'🛥️':RW(r).ic)+'<b'+ck(gkey(r))+(/^tix/.test(r)?' data-tix="'+gkey(r)+'"':'')+'>'+T(gkey(r),bv)+'</b></span>'}).join('');
       /* v1.0.41 (искане на човека): хедърът е два реда и стои залепен горе — „ГОЛЯМА КУТИЯ · −40% НА ВСИЧКО“ + ✕; „УЧАСТВАШ ЗА ЯХТА И
          КОЗМЕТИЧЕН СЕТ“ + „Виж повече“ (разгъва списъка с всички подаръци) + „Смени кутията“ */
       bv.box_u=esc(String(b.name).toUpperCase());bv.gift=/^cosm/.test(main)?T('fill.g.cosm').toLowerCase():main==='book'?T('fill.g.book').toLowerCase():'';
+      var cosmRw=b.rw.filter(function(r){return /^cosm/.test(r)})[0]||'',cosmKey=cosmRw==='cosm50'?'mfill.b.cosm50':'mfill.b.cosm'; /* 1.24.6 */
       body='<div class="mfs" id="mfS"><div class="mfh mfh2">'
-        +'<div class="mh1"><div class="mh1l"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><span class="mh1p"'+ck('mfill.h.pct')+'>'+T('mfill.h.pct',bv)+'</span></div><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
-        +'<div class="mh2"><span class="mh2g"><span'+ck(bv.gift?'mfill.h.gifts':'mfill.h.gifts1')+'>'+T(bv.gift?'mfill.h.gifts':'mfill.h.gifts1',bv)+'</span> <button class="lnk" id="mfGx" type="button" aria-expanded="false"'+ck('mfill.h.more')+'>'+T('mfill.h.more')+'</button></span>'
-        +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button></div>'
-        +'<div class="mfgh" id="mfGh" hidden>'+gall+'</div>'
+        /* 1.24.6 (човекът): хедърът е ЕДИН ред — „ГОЛЯМА КУТИЯ“ + пил „−40%“ + „Смени кутията“ + ✕; редът „Участваш за яхта и козметичен сет · Виж повече“
+           и разгъващият се списък с подаръците са махнати — наградите са в „Твоята кутия“ долу (mfill.b.*) */
+        +'<div class="mh1"><div class="mh1l"><b class="mh1t"'+ck('mfill.h.title')+'>'+T('mfill.h.title',bv)+'</b><span class="mh1p"'+ck('mfill.h.pct')+'>'+T('mfill.h.pct',bv)+'</span></div>'
+        +'<button class="mfsw" id="fBack" type="button"'+ck('mfill.sw')+'>'+iSw+'<span>'+T('mfill.sw')+'</span></button><button class="mfx" id="fClose" aria-label="затвори">✕</button></div>'
         +'</div>'
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck('fill.quiz.l')+'>'+T('fill.quiz.l')+'</button>'
         /* v1.0.25: 2 продукта на страница; категорията е заглавие над картата (.mcath), не вътре в нея */
-        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',r.pick?pcat(String(pr.cat||'').trim()||r.t):esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')
+        /* 1.24.8 (човекът): препоръчаните от въпросника са ясно отделени — оранжево заглавие „★ Препоръчани за теб според отговорите ти“ над тях,
+           картите с оранжева рамка и пил „★ Препоръчано за теб · категория“; после „Останалите продукти“ */
+        +'<div class="mfl" id="mfL">'+(function(){var recN=rows.filter(function(r){return r.pick}).length,h1=false,h2=false;return rows.map(function(r,ri){var pr=PROD[r.key],h='';
+          if(r.pick&&!h1){h1=true;h='<div class="mfsec rec"'+ck('fill.rec.h')+'>'+T('fill.rec.h')+'</div>'}else if(recN&&h1&&!h2&&!r.pick&&!r.core){h2=true;h='<div class="mfsec rest"'+ck('fill.rec.rest')+'>'+T('fill.rec.rest')+'</div>'}
+          return h+'<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')})()
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
-        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div><div class="fnext" id="fNext" style="display:none"></div></div><span class="mffn" id="fSlotsN"></span></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
+        +'<div class="mff"><button class="mfmore" id="mfMore" type="button"'+ck('mfill.more.dn')+'>'+T('mfill.more.dn')+'</button><div class="mfft"><div class="mfftx"><b'+ck('mfill.box')+'>'+T('mfill.box')+'</b><div class="fsave" id="fSave"></div>'
+        /* 1.24.6 (човекът): под „Спестяваш X“ — „Взимаш козметика за <s>€129</s> €1“ (само кутия с козметичен сет) и „Участваш в томбола за почивка с яхта“; без „−40% на всяка опаковка“ и без „Още N и отключваш…“ на телефон */
+        +'<div class="mfben">'+(cosmRw?'<div class="mfb cosm"'+ck(cosmKey)+'>'+T(cosmKey,bv)+'</div>':'')+'<div class="mfb tix"'+ck('mfill.b.tix')+'>'+T('mfill.b.tix',bv)+'</div></div></div><div class="mftot" id="fTot"></div></div><div class="fslots" id="fSlots"></div><button class="cta" id="nFill"></button></div>';
     }
     info(mob?'':T('fill.title'),body);var dc=$('apDc');dc.classList.add('fpw');if(mob){dc.classList.add('fpm');$('apOv').classList.add('ovfpm');lockBody();setTimeout(function(){fitSheet(dc)},350)} /* v1.0.45: страницата зад листа не скролва; v1.0.52: iOS-safe lock (body fixed) */ /* v1.0.35: без :has — overlay-ят е без отстъпи */
     /* v1.0.17: пагинация на телефон; v1.0.25: 2 на страница, бутоните са с текст „Назад“ / „Още продукти“ + точки + „1 от 3“ */
@@ -519,10 +527,13 @@
         if(fm){if(left>0){fm.hidden=false;fm.innerHTML='<span'+ck('fill.more.n')+'>'+T('fill.more.n',{n:left})+'</span>'}else{fm.innerHTML='<span'+ck('fill.more.first')+'>'+T('fill.more.first')+'</span>'}}};showPg();
       var goPg=function(d){pg=Math.max(0,Math.min(pages-1,pg+d));showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})};
       var pvB=$('f3Pv'),nxB=$('f3Nx'),fmB=$('f3More');if(pvB)pvB.onclick=function(){goPg(-1)};if(nxB)nxB.onclick=function(){goPg(1)};if(fmB)fmB.onclick=function(){if(pg>=pages-1){pg=0;showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})}else goPg(1)}}
-    var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
+    /* 1.24.6: „Виж повече“ (mfGx/mfGh) е махнато заедно с втория ред на хедъра */
     if(mob)fitSheet(dc);
     /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
-    if(mob&&!again&&!S._quizFirst)unlockPopup(b,P);
+    /* 1.24.5 (човекът: „въпросникът да е първото нещо, което виждаш“): при първото влизане в пълненето (веднъж на сесия) въпросникът се отваря сам върху попъпа;
+       интро листът на телефона („За да отключиш…“) се пропуска за тази кутия — въпросникът го замества. С UTM продукт — друго заглавие и без неговия ред (виж quizPanel) */
+    var autoQ=!again&&!S.quizSeen;
+    if(mob&&!again&&!autoQ)unlockPopup(b,P);
     /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
     var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){var end=ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24;mm.classList.toggle('off',end);if(!end){var lim=ms.getBoundingClientRect().bottom,n=0;ms.querySelectorAll('.mitem:not(.pg-off)').forEach(function(it){if(it.getBoundingClientRect().top>lim-40)n++});mm.innerHTML='<span'+ck(n?'mfill.more.n':'mfill.more.dn')+'>'+(n?T('mfill.more.n',{n:n}):T('mfill.more.dn'))+'</span>'}};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}} /* v1.18.1: с броя */
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -531,7 +542,7 @@
     /* v1.0.39: въпросникът е панел върху попъпа — един ред на продукт (t + sub от „проблемите“), минимум един избор; „Покажи ми
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
-    if(S._quizFirst){S._quizFirst=false;$('apOv2').classList.add('off');if(fq)fq.onclick()}
+    if(autoQ&&fq){S.quizSeen=true;saveS();try{sessionStorage.setItem('ansa_promo_unlock_'+b.id,'1')}catch(e){}fq.onclick()}
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
     function sync(){var t=total();
       /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
@@ -545,7 +556,7 @@
       var sl=[];needOrder.forEach(function(k){for(var i=0;i<(needQ[k]||0);i++)sl.push(k)});
       /* v1.10.0: прогресът е към следващата кутия („3 от 5“), на най-голямата — просто броят („7 опаковки“) */
       var topN=t>=goal&&!nx,mobF=!!$('mfS'); /* десктоп: „Избрани 7 опаковки“ (думата е в хедъра); телефон: „7 опаковки“ */
-      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}
+      var cnt='<span class="fsl"'+ck('fill.dots')+'>'+(topN?(mobF?T('fill.n',{n:t,opk_n:opk(t)}):'<b>'+t+'</b>'):T('fill.dots',{n:t,packs:goal}))+'</span>',sn=$('fSlotsN');if(sn){sn.innerHTML=cnt;cnt=''}else if(mobF)cnt=''; /* 1.24.2: на телефон броят е в плочките — мястото му във футъра е за тотала */
       var fb=$('fBar');if(fb){var pc=Math.min(100,Math.round(t/goal*100));fb.style.width=pc+'%';var fp=$('fPct');if(fp)fp.textContent=pc+'%'}
       var fn=$('fNext');if(fn){var nt=need>0||!grows(b)?'':(nx?T('fill.next',tgtVars(nx,t)):T('fill.top',tixVars(b,t)));fn.innerHTML=nt;fn.className='fnext'+(need>0||nx?'':' top');fn.style.display=nt?'':'none'}
       /* v1.12.0: билетите в плочките следват броя (+tix_extra за всяка опаковка над packs) */
@@ -564,8 +575,12 @@
       else fsEl.innerHTML=cnt+tiles;
       var save=0;Object.keys(needQ).forEach(function(k){if(PROD[k])save+=needQ[k]*(PROD[k].price-disc(PROD[k],b))});save=r2(save);
       dc.querySelectorAll('.fpct[data-pct]').forEach(function(x){var pr=PROD[x.dataset.pct];if(!pr)return;var q=needQ[pr.key]||0;x.innerHTML=T('fill.pct',{pct:b.pct,save:m(r2((pr.price-disc(pr,b))*Math.max(1,q)))})+(q>1?' <i>×'+q+'</i>':'')});
+      /* 1.24.2 (човекът: „Трябва да има тотала at all times докато си пълниш количката“): тоталът, който ще платиш (с отстъпката) + зачертано
+         колко би било по редовни цени — на мястото на „5 опаковки“ в лепкавия футър на телефона; „Спестяваш“ отляво е разликата между двете */
+      var tot=0,reg=0;Object.keys(needQ).forEach(function(k){if(PROD[k]){tot+=needQ[k]*disc(PROD[k],b);reg+=needQ[k]*PROD[k].price}});tot=r2(tot);reg=r2(reg);
+      var ft=$('fTot');if(ft){var pv=ft.dataset.v;ft.innerHTML=t>0?'<span'+ck('mfill.tot')+'>'+T('mfill.tot',{tot:m(tot),reg:m(reg),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck('mfill.tot.zero')+'>'+T('mfill.tot.zero',{pct:b.pct})+'</span>';ft.classList.toggle('on',t>0);if(pv!==undefined&&pv!==String(tot)){ft.classList.remove('bump');void ft.offsetWidth;ft.classList.add('bump')}ft.dataset.v=String(tot)}
       var fs=$('fSave');if(fs){var prev=fs.dataset.v;var mk=dc.classList.contains('fpm');fs.innerHTML=t>0?'<span'+ck(mk?'mfill.save':'fill.save')+'>'+T(mk?'mfill.save':'fill.save',{save:m(save),n:t,opk:opk(t),pct:b.pct})+'</span>':'<span'+ck(mk?'mfill.save.zero':'fill.save.zero')+'>'+T(mk?'mfill.save.zero':'fill.save.zero',{pct:b.pct})+'</span>';fs.classList.toggle('on',t>0);fs.classList.toggle('full',t>=P);if(prev!==undefined&&prev!==String(save)){fs.classList.remove('bump');void fs.offsetWidth;fs.classList.add('bump')}fs.dataset.v=String(save)}
-      var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T('fill.go')}
+      var f=$('nFill');f.disabled=need>0;f.innerHTML=need>0?T('fill.need',{need:need,opk:opk(need)}):T(mobF?'mfill.go':'fill.go')} /* 1.24.6: на телефон „Натисни и финализирай →“ */
     sync();
     function inc(k){if(total()>=maxFor(b)){toast(T(grows(b)?'fill.max':'fill.over2'),true);return}if(!needQ[k])needOrder.push(k);needQ[k]=(needQ[k]||0)+1;sync()}
     dc.querySelectorAll('[data-inc]').forEach(function(x){x.onclick=function(e){e.stopPropagation();inc(x.dataset.inc)}});
@@ -580,16 +595,18 @@
   }
 
   function quizPanel(dc,done){
-    var cur=Array.isArray(S.quiz)?S.quiz:[];var items=allProbs();
+    /* 1.24.5 (човекът): с UTM продукт (Sakura, Greens…) заглавието е „Sakura е перфектен избор. С какво още би искала да ти помогнем?“, редът на продукта липсва
+       (вече е в кутията — човекът го допълва с други или с още от същия) и един отбелязан стига; без UTM — „Кое от следното те касае?“ и минимум 2 */
+    var cur=Array.isArray(S.quiz)?S.quiz:[],c=S.core&&PROD[S.core]?PROD[S.core]:null;var items=allProbs().filter(function(p){return !c||p.key!==S.core});var cv={core:c?esc(c.name):''},tk=c?'fill.quiz.t.core':'fill.quiz.t',sk=c?'fill.quiz.s.core':'fill.quiz.s';
     var el=document.createElement('div');el.className='fqz';
-    el.innerHTML='<div class="fqzc"><h3'+ck('fill.quiz.t')+'>'+T('fill.quiz.t')+'</h3><p'+ck('fill.quiz.s')+'>'+T('fill.quiz.s')+'</p>'
+    el.innerHTML='<div class="fqzc"><h3'+ck(tk)+'>'+T(tk,cv)+'</h3><p'+ck(sk)+'>'+T(sk,cv)+'</p>'
       +'<div class="fqzg">'+items.map(function(p){return '<label class="fqzi"><input type="checkbox" value="'+esc(p.key)+'"'+(cur.indexOf(p.key)>-1?' checked':'')+'><span><b>'+esc(p.t)+'</b>'+(p.sub?'<small>'+esc(p.sub)+'</small>':'')+'</span></label>'}).join('')+'</div>'
       +'<div class="fqza"><small class="fqzn" id="fqN"></small><button class="cta" id="fqGo" type="button"'+ck('fill.quiz.go')+'>'+T('fill.quiz.go')+'</button><button class="lnk" id="fqSkip" type="button"'+ck('fill.quiz.skip')+'>'+T('fill.quiz.skip')+'</button></div></div>';
     dc.appendChild(el);el.scrollTop=0;
     var go=el.querySelector('#fqGo'),picked=function(){return Array.from(el.querySelectorAll('input:checked')).map(function(x){return x.value})};
     /* v1.23.3 (човекът): „Продължи“ в лепкав футър, активен при минимум 2 отбелязани; броячът казва докъде си */
-    var MIN=2,n=el.querySelector('#fqN');
-    var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T('fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
+    var MIN=c?1:2,n=el.querySelector('#fqN');
+    var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T(MIN===1?'fill.quiz.min1':'fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
     go.onclick=function(){var k=picked();if(k.length<MIN)return;el.remove();done(k)};
     el.querySelector('#fqSkip').onclick=function(){el.remove()};
   }
@@ -597,12 +614,7 @@
   /* ── ЕКРАН 1: избор на кутия (v73: лента −%, мобилно резюме, награди, „за да отключиш“) ── */
   /* v1.19.0: редът „От петък 13.11: −31% · изпускаш €6,50“ в картата (десктоп .bweek, телефон .bmweek в мини картата); последна седмица — „до 31.12“ */
   /* v1.23.2: редът „Последни N дни… след X отстъпката пада“ в картите е махнат — повтаряше лентата над кутиите (човекът забрани повторенията) */
-  function seasonStrip(){var s=SEAS();if(!s)return '';var k=s.last?'season.strip.last':s.days_left<=1?'season.strip.today':'season.strip';var dots='';for(var i=1;i<=s.total;i++)dots+='<i class="'+(i<s.week?'past':i===s.week?'cur':'')+'"></i>';
-    var lose=''; /* v1.23.2 (човекът): без „до −€5,98“ — лентата казва само, че отстъпките се променят */
-    /* 1.19.2 (човекът): на телефон лентата е видима карта под хедъра — точките, „Остават 7 дни на тези цени“ едро, „От петък 30.10 отстъпките падат“ отдолу */
-    if(MOB()){var k1=s.last?'season.strip.m1.last':s.days_left<=1?'season.strip.m1.today':'season.strip.m1';
-      return '<div class="wkbar m'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wkm1"'+ck(k1)+'>'+T(k1)+'</div>'+(s.last?'':'<div class="wkm2"><span'+ck('season.strip.m2')+'>'+T('season.strip.m2')+'</span>'+lose+'</div>')+'</div>'}
-    return '<div class="wkbar'+(s.last?' last':'')+'"><div class="wkdots" aria-hidden="true">'+dots+'</div><div class="wktx"><span'+ck(k)+'>'+T(k)+'</span>'+lose+'</div></div>'}
+  /* 1.24.3: seasonStrip() (точките на седмиците + „Седмица 3 от 10 · остават 3 дни“) е махната — човекът: „бие на очи и краде внимание от самото промо“, Илиян: „остава впечатление, че трябва да минеш през 9 стъпки“ */
   function boxCard(b,i){
     var c=S.core&&PROD[S.core]?PROD[S.core]:null,bv=boxVars(b);
     var from=c?r2(c.price*b.packs*(1-ppct(c,b)/100)+(b.rw.indexOf('ship')>-1?0:SHIP)):null;bv.from=from!=null?m(from):'';if(c){bv.core=esc(c.name)}
@@ -661,7 +673,7 @@
       +'<div class="s1hero">'+'<h1'+ck(c?'boxes.h1':'boxes.h1.noutm')+'>'+T(c?'boxes.h1':'boxes.h1.noutm')+'</h1><p class="s1sub"'+ck('boxes.sub')+'>'+T('boxes.sub')+'</p></div>'
       +'<div class="s1info top"><div class="ib2 y" id="s1Y"><i class="ibpic">'+(GI.yacht?'<img src="'+esc(GI.yacht)+'" alt="">':'🛥️')+'</i><div class="ibtx"><em'+ck('yban.tag')+'>'+T('yban.tag')+'</em><b'+ck('yban.b')+'>'+T('yban.b')+'</b><small'+ck('yban.s')+'>'+T('yban.s')+'</small><button class="lnk" type="button" data-rw="tix"'+ck('yban.more')+'>'+T('yban.more')+'</button></div></div>'
       +'<div class="ib2 c" id="s1C"><i class="ibpic">'+(GI.cosm?'<img src="'+esc(GI.cosm)+'" alt="">':'🌸')+'</i><div class="ibtx"><em'+ck('cban.tag')+'>'+T('cban.tag')+'</em><b'+ck('cban.b')+'>'+T('cban.b')+'</b><small'+ck('cban.s')+'>'+T('cban.s')+'</small><button class="lnk" type="button" data-rw="cosm1"'+ck('cban.more')+'>'+T('cban.more')+'</button></div></div></div>'
-      +seasonStrip()
+      /* 1.24.3 (човекът + Илиян): лентата със седмиците (точки = „11 стъпки“) е махната — вместо нея лепкавият countdown в дъното (renderCd) */
       +'<div class="boxes">'+ord.filter(function(id){return BI[id]!=null}).map(function(id){return boxCard(boxOf(id),BI[id])}).join('')+'</div><div class="bnote-m"'+ck('box.note')+'>'+T('box.note')+'</div>'
 
       +'<div class="guarl"><span'+ck('boxes.guar')+'>'+T('boxes.guar')+'</span>'+(c?' · <button class="lnk" id="chg1"'+ck('boxes.chg')+'>'+T('boxes.chg')+'</button>':'')+'</div>';
@@ -876,7 +888,18 @@
     yfab.innerHTML='<button class="yhow" type="button"'+ck('yfab.how')+'><i>?</i><span>'+T('yfab.how')+'</span></button>';
     yfab.querySelector('.yhow').onclick=function(){howPopup()};
   }
-  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  /* 1.24.3: countdown-ът брои от часа на сървъра (A.season.now при зареждане/опресняване на runtime-а) до A.season.ends — часовникът на телефона не влияе; при 0 стои 00 (свежият runtime носи новата седмица) */
+  var cdT=null;function p2(n){return (n<10?'0':'')+n}
+  function cdLeft(s){if(s._t0==null)s._t0=Date.now();var now=(s.now?s.now*1000:s._t0)+(Date.now()-s._t0);return Math.max(0,Math.floor((s.ends*1000-now)/1000))}
+  function renderCd(){var s=SEAS(),on=!!(s&&s.ends)&&S.screen===1&&A.mode!=='info';clearInterval(cdT);cdT=null;cdEl.style.display=on?'':'none';portal.classList.toggle('has-cd',on);document.body.classList.toggle('ansa-cd-on',on);if(!on){cdEl.innerHTML='';return}
+    var lk=s.last?'cd.hurry.last':'cd.hurry';cdEl.className='apcd'+(s.last?' last':'');
+    cdEl.innerHTML='<button class="apcdb" type="button" title="'+T('cd.title').replace(/<[^>]+>/g,'')+'"><span class="apcdl"'+ck(lk)+'>'+T(lk)+'</span><span class="apcdn" id="apCdN" aria-live="off"></span><span class="apcdq" aria-hidden="true"'+ck('cd.q')+'>'+T('cd.q')+'</span></button>';
+    var tick=function(){var n=$('apCdN');if(!n){clearInterval(cdT);return}var L=cdLeft(s),d=Math.floor(L/86400),h=Math.floor(L%86400/3600),mi=Math.floor(L%3600/60),se=L%60;
+      n.innerHTML=[[d,T('cd.u.d',{n:d,dni:dni(d)})],[h,T('cd.u.h',{n:h,chasa:h===1?'час':'часа'})],[mi,T('cd.u.m')],[se,T('cd.u.s')]].map(function(u){return '<span><b>'+p2(u[0])+'</b><small>'+u[1]+'</small></span>'}).join('')};
+    tick();cdT=setInterval(tick,1000);
+    cdEl.querySelector('.apcdb').onclick=function(){howPopup();var l=$('hwLadder');if(l)setTimeout(function(){l.scrollIntoView({block:'start',behavior:'smooth'})},50)};
+  }
+  function render(){if(A.mode==='info'){renderInfo();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   function refreshRuntime(){
@@ -906,7 +929,9 @@
   /* ── редактор: хотспотове + живо копи + сценарии ── */
   function scenario(o){
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
+    S.quizSeen=!o.quiz; /* 1.24.5: сценариите (харнес/редактор) виждат автоматичния въпросник само с quiz:true */
     if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
+    if(o.gv!==undefined)A.gv=o.gv&&GV.indexOf(o.gv)>-1?o.gv:null; /* 1.24.7: вариантът на gate-а (yacht/cosm/general) */
     if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
     S.emailDone=true;A.editorNoGate=true;

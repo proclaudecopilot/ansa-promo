@@ -763,7 +763,7 @@ body.ansa-promo-page #fkcart-floating-toggler,body.ansa-promo-page .fkcart-float
 /* телефон/таблет: плочките остават под кутиите (flex order) */
 @media(max-width:999px){
 .ansa-promo #apS1.on{display:flex;flex-direction:column}
-.ansa-promo #apS1>.wkbar{order:-1}.ansa-promo #apS1>.s1hero{order:0}.ansa-promo #apS1>.steps{order:1}.ansa-promo #apS1>.boxes{order:2} /* 1.19.2: телефон — лентата на сезона, заглавието, после стъпките */.ansa-promo #apS1>.bnote-m{order:3}.ansa-promo #apS1>.s1info{order:4;margin-top:16px}.ansa-promo #apS1>.guarl{order:5}
+.ansa-promo #apS1>.s1hero{order:0}.ansa-promo #apS1>.steps{order:1}.ansa-promo #apS1>.boxes{order:2} /* 1.19.2: телефон — лентата на сезона, заглавието, после стъпките */.ansa-promo #apS1>.bnote-m{order:3}.ansa-promo #apS1>.s1info{order:4;margin-top:16px}.ansa-promo #apS1>.guarl{order:5}
 }
 
 /* ── 25 · v1.0.31 (мокъпът на човека): „Напълни кутията си“ на десктоп — хедър с кутията и „Промени“; панел „С пълна кутия получаваш“
@@ -1665,30 +1665,15 @@ html.ansa-promo-html .ansa-promo{max-width:100vw;overflow-x:hidden}
 
 /* ═══ v1.19.0 · седмиците на сезона: чипът в хедъра, лентата над кутиите, редът „от петък“ в картата, стълбата в „Как работи“ ═══ */
 .ansa-promo .timer.wk{white-space:normal;text-align:right;line-height:1.25}
-.ansa-promo .wkbar{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:8px 14px;border-radius:12px;background:#fff;border:1.5px solid var(--ol);box-shadow:0 4px 14px rgba(232,114,42,.10)}
-.ansa-promo .wkbar.last{border-color:var(--gold)}
-.ansa-promo .wkdots{display:flex;gap:4px;flex:0 0 160px;align-items:center}
-.ansa-promo .wkdots i{flex:1;height:6px;border-radius:999px;background:rgba(232,114,42,.18)}
-.ansa-promo .wkdots i.past{background:var(--tan);opacity:.45}
-.ansa-promo .wkdots i.cur{background:linear-gradient(90deg,var(--o),var(--o2));height:8px;box-shadow:0 0 0 3px rgba(232,114,42,.18)}
-.ansa-promo .wktx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;font-weight:700;color:var(--ink2);min-width:0}
-.ansa-promo .wktx b{color:var(--od);font-weight:900}
 .ansa-promo .wklose{margin-left:auto;color:#b91c1c;background:rgba(207,34,46,.08);border-radius:8px;padding:3px 9px;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ansa-promo .bweek{text-align:center;font-size:12.5px;font-weight:700;color:var(--muted);border-top:1px dashed var(--ol);padding:8px 0 0;margin:0 0 10px;font-variant-numeric:tabular-nums}
 .ansa-promo .bweek b{color:#b91c1c;font-weight:900;background:rgba(207,34,46,.08);border-radius:8px;padding:2px 7px;margin-left:2px}
 .ansa-promo .bweek.last{color:var(--goldd)}
 .ansa-promo .bmweek{display:none}
-@media(max-width:999px){.ansa-promo #apS1>.wkbar{margin:10px 0 4px}}
 /* 1.19.4 (човекът): на телефон хедърът е само „Сезонът на ansa“ — чипът на седмицата повтаря картата под него; на /info (без карта) остава */
 @media(max-width:640px){.ansa-promo:not(.info) .timer.wk{display:none}}
-@media(max-width:640px){.ansa-promo .wkbar.m{display:block;padding:12px 14px 11px;margin:8px 0 2px;border-radius:14px;border:1.5px solid var(--o);background:linear-gradient(135deg,#fff7ef,#fff);box-shadow:0 8px 24px rgba(232,114,42,.16)}
-.ansa-promo .wkbar.m.last{border-color:var(--gold);background:linear-gradient(135deg,#fff7f1,#fff)}
-.ansa-promo .wkbar.m .wkdots{flex:none;width:100%;margin:0 0 9px}
-.ansa-promo .wkm1{font-size:17px;font-weight:800;color:var(--ink);line-height:1.25;text-align:center}
-.ansa-promo .wkm1 b{color:var(--od);font-weight:900}
-.ansa-promo .wkm2{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:12.5px;font-weight:700;color:var(--muted);text-align:center}
-.ansa-promo .wkm2 .wklose{margin-left:0}
-.ansa-promo .wkbar:not(.m){gap:8px;padding:7px 10px;margin:0 0 10px}.ansa-promo .wkbar:not(.m) .wkdots{flex:0 0 72px;gap:3px}.ansa-promo .wktx{font-size:12px;gap:6px}.ansa-promo .wklose{font-size:11.5px;padding:2px 7px}
+@media(max-width:640px){
+.ansa-promo .wklose{font-size:11.5px;padding:2px 7px}
 .ansa-promo .box .bweek{display:none}
 .ansa-promo .bmweek{display:block;margin:7px 0 0;font-size:11.5px;font-weight:700;color:var(--muted);text-align:left;font-variant-numeric:tabular-nums}
 .ansa-promo .bmweek b{color:#b91c1c;font-weight:900}.ansa-promo .bmweek.last{color:var(--goldd)}}
@@ -1724,7 +1709,6 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .dc.fpm .mfl{background:#f4ddd3}
 .ansa-promo .box.l,.ansa-promo .dc.hw .hw-box.l{background:linear-gradient(180deg,#fff0e3 0%,#fff 42%)}
 .ansa-promo .box.l .bsave,.ansa-promo .box.l .bmsave,.ansa-promo .br.hl,.ansa-promo .mfg2,.ansa-promo .fp3 .fnext{background:linear-gradient(135deg,#fff4e8,#ffe4cf)!important}
-.ansa-promo .wkbar.m.last{background:linear-gradient(135deg,#fff7f1,#fff)}
 /* 2 · еднакви кутии (десктоп) */
 @media(min-width:1000px){
 .ansa-promo .boxes{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
@@ -1751,17 +1735,6 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 /* ═══ v1.23.2 (човекът: без повторения на седмицата; без „Твоят избор“; без „до −€X“; попъп „Запозната ли си с продуктите?“) ═══
    седмицата се казва веднъж — лентата над кутиите (чипът в хедъра е скрит на екран 1, редът в картите е махнат; JS);
    попъпът при избор на кутия: заглавие, един ред контекст, две големи опции една под друга */
-.ansa-promo .dc.know{max-width:520px;text-align:center;padding:26px 24px 22px}
-.ansa-promo .dc.know h3{font-size:22px;padding:0 28px;line-height:1.2;margin-bottom:4px}
-.ansa-promo .dc.know .knows{margin:0 0 18px;font-size:14px;font-weight:700;color:var(--muted)}
-.ansa-promo .dc.know .knowb{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;margin:0 0 10px;padding:14px 16px;border-radius:16px;font:inherit;cursor:pointer;text-align:center;transition:transform .15s,box-shadow .15s}
-.ansa-promo .dc.know .knowb b{font-size:16.5px;font-weight:900;line-height:1.25}
-.ansa-promo .dc.know .knowb small{font-size:12.5px;font-weight:700;line-height:1.3;opacity:.9}
-.ansa-promo .dc.know .knowb.yes{background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;border:none;box-shadow:0 8px 22px rgba(232,114,42,.35)}
-.ansa-promo .dc.know .knowb.no{background:#fff;color:var(--od);border:2px solid var(--o);margin-bottom:0}
-.ansa-promo .dc.know .knowb.no small{color:var(--muted)}
-.ansa-promo .dc.know .knowb:hover{transform:translateY(-1px)}
-.ansa-promo .wkbar:not(.m) .wktx{justify-content:center;flex:1}
 
 /* ═══ v1.23.3 (човекът): въпросникът „Кое от следното те касае?“ — лепкав футър „Продължи“, активен при поне 2 отбелязани; броячът над бутона ═══ */
 .ansa-promo .fqzc{max-height:100%;overflow:auto;display:flex;flex-direction:column}
@@ -1828,3 +1801,62 @@ body.ansa-promo-fullscreen,body.ansa-promo-page{background:#f4ddd3}
 .ansa-promo .dc.fpm .fslots.many .fs{flex:0 0 50px;width:50px;scroll-snap-align:start}
 .ansa-promo .dc.fpm .fsarr{flex:none;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--o);background:#fff;color:var(--od);font:inherit;font-size:20px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 0 2px;box-shadow:0 2px 8px rgba(232,114,42,.15);transition:opacity .15s}
 .ansa-promo .dc.fpm .fsarr.off{opacity:.3;pointer-events:none}
+
+/* 1.24.2 (човекът: „липсва тоталът, който ще платиш — трябва да го има at all times докато си пълниш количката“): в лепкавия футър на
+   телефона вместо „5 опаковки“ стои тоталът — голяма оранжева сума (с отстъпката) + зачертана сума по редовни цени; „Спестяваш €X“ отляво е разликата */
+.ansa-promo .dc.fpm .mftot{flex:none;min-width:0;text-align:right}
+.ansa-promo .dc.fpm .mftot span{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.ansa-promo .dc.fpm .mftot b{font-size:24px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:var(--od);white-space:nowrap}
+.ansa-promo .dc.fpm .mftot s{font-size:13px;font-weight:700;line-height:1.2;color:#8a7f76;text-decoration:line-through;white-space:nowrap}
+.ansa-promo .dc.fpm .mftot:not(.on) b{color:#a89d94}
+.ansa-promo .dc.fpm .mftot.bump{animation:apBump .35s ease}
+
+/* 1.24.3 (човекът + Илиян: лентата със седмиците „бие на очи и краде внимание от самото промо“, точките изглеждат като 11 стъпки): лепкав
+   минималистичен countdown в дъното на екрана с кутиите — тъмна лента „Побързай!“ · 02 дни · 15 часа · 20 мин · 35 сек · „?“; без обяснения,
+   цък → „Как работи играта“ на стълбата на сезона. Плаващият „?“ се вдига над лентата; страницата получава място отдолу */
+.ansa-promo-portal .apcd{position:fixed;left:0;right:0;bottom:0;z-index:2147482995;display:flex;justify-content:center;padding:0 12px calc(10px + env(safe-area-inset-bottom));pointer-events:none;font-family:'Nunito',system-ui,sans-serif}
+.ansa-promo-portal .apcdb{pointer-events:auto;display:flex;align-items:center;gap:16px;padding:8px 12px 8px 18px;border-radius:999px;border:none;background:#1a1a2e;color:#fff;box-shadow:0 10px 30px rgba(26,26,46,.35);cursor:pointer;font:inherit;max-width:100%}
+.ansa-promo-portal .apcd.last .apcdb{background:#7f1d1d}
+.ansa-promo-portal .apcdl{font-size:14px;font-weight:900;letter-spacing:.02em;white-space:nowrap}
+.ansa-promo-portal .apcdn{display:flex;gap:12px}
+.ansa-promo-portal .apcdn span{display:flex;flex-direction:column;align-items:center;min-width:36px}
+.ansa-promo-portal .apcdn b{font-size:22px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ansa-promo-portal .apcdn small{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7;margin-top:3px;line-height:1}
+.ansa-promo-portal .apcdq{width:26px;height:26px;border-radius:50%;background:var(--o,#e8722a);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
+.ansa-promo-portal.has-cd .yfab{bottom:calc(74px + env(safe-area-inset-bottom))}
+body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
+@media(max-width:640px){.ansa-promo-portal .apcd{padding:0 8px calc(8px + env(safe-area-inset-bottom))}.ansa-promo-portal .apcdb{gap:10px;padding:7px 9px 7px 13px;width:100%;justify-content:space-between}.ansa-promo-portal .apcdl{font-size:12.5px}.ansa-promo-portal .apcdn{gap:8px}.ansa-promo-portal .apcdn span{min-width:30px}.ansa-promo-portal .apcdn b{font-size:19px}.ansa-promo-portal .apcdn small{font-size:9px}.ansa-promo-portal.has-cd .yfab{bottom:calc(66px + env(safe-area-inset-bottom))}}
+
+/* 1.24.6 (човекът): хедърът на листа е един ред — „ГОЛЯМА КУТИЯ“ · пил „−40%“ · „Смени кутията“ · ✕ (без „Участваш за яхта… Виж повече“);
+   футърът „Твоята кутия“: Спестяваш X · Взимаш козметика за <s>€129</s> €1 · Участваш в томбола за почивка с яхта; бутонът „Натисни и финализирай →“ */
+.ansa-promo .dc.fpm .mfh.mfh2 .mh1{gap:8px;align-items:center}
+.ansa-promo .dc.fpm .mfh2 .mh1l{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:6px}
+.ansa-promo .dc.fpm .mfh2 .mh1t{font-size:15.5px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.ansa-promo .dc.fpm .mfh2 .mh1p{font-size:10.5px;padding:3px 8px;letter-spacing:.04em}
+.ansa-promo .dc.fpm .mfh2 .mh1 .mfsw{min-height:30px;padding:0 10px 0 8px;font-size:11.5px;gap:5px}
+.ansa-promo .dc.fpm .mfh2 .mh1 .mfsw svg{width:12px;height:12px}
+.ansa-promo .dc.fpm .mfh2 .mh1 .mfx{width:30px;height:30px;font-size:14px}
+@media(max-width:380px){.ansa-promo .dc.fpm .mfh2 .mh1t{font-size:14px;letter-spacing:0}.ansa-promo .dc.fpm .mfh2 .mh1 .mfsw{padding:0 8px 0 7px;font-size:11px}.ansa-promo .dc.fpm .mfh2 .mh1p{padding:3px 6px;font-size:10px}}
+.ansa-promo .dc.fpm .mfben{display:flex;flex-direction:column;gap:2px;margin:3px 0 0}
+.ansa-promo .dc.fpm .mfb{font-size:12.5px;font-weight:800;color:var(--ink2);line-height:1.3}
+.ansa-promo .dc.fpm .mfb b{color:var(--od);font-size:inherit;font-weight:900}
+.ansa-promo .dc.fpm .mfb s{color:var(--muted);font-weight:700}
+
+/* 1.24.8 (човекът: „като минеш куиза не е ясно, че това са препоръчани продукти — пише За ТЕБ, ама едвам се вижда“): препоръчаните са ясно отделени —
+   телефон: оранжево заглавие „★ Препоръчани за теб според отговорите ти“ над тях, картите с оранжева рамка и оранжев пил; после „Останалите продукти“;
+   десктоп: лента над картите „★ Според отговорите ти препоръчваме: Dihydroberberine, ThyroZen“ + лентата на категорията е „★ ПРЕПОРЪЧАНО ЗА ТЕБ · …“ */
+.ansa-promo .dc.fpm .mfsec{margin:4px 0 0;font-size:12.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);line-height:1.2}
+.ansa-promo .dc.fpm .mfsec.rec{color:#fff;background:linear-gradient(135deg,#ef8c4f,#e8722a);border-radius:12px;padding:9px 12px;letter-spacing:.03em;box-shadow:0 4px 12px rgba(232,114,42,.25);text-transform:none;font-size:14px}
+.ansa-promo .dc.fpm .mfsec.rest{margin-top:12px;padding:0 2px}
+.ansa-promo .dc.fpm .fcat.r3.pick{border:2px solid var(--o);box-shadow:0 4px 14px rgba(232,114,42,.18)}
+.ansa-promo .dc.fpm .fcat.r3.pick.on{border-color:var(--g)}
+.ansa-promo .fcat.r3 .r3cat.pick{display:inline-block;align-self:flex-start;background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;padding:3px 9px;border-radius:999px;font-size:10px;letter-spacing:.06em;line-height:1.2;margin-bottom:1px}
+.ansa-promo .dc .fcat.r3.on .r3cat.pick{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}
+.ansa-promo .fp3 .frec{margin:0 0 10px;padding:9px 14px;border-radius:12px;background:linear-gradient(135deg,#ef8c4f,#e8722a);color:#fff;font-size:13.5px;font-weight:800;line-height:1.3;box-shadow:0 4px 12px rgba(232,114,42,.25)}
+.ansa-promo .fp3 .frec b{color:#fff;font-weight:900;text-decoration:underline;text-underline-offset:2px}
+
+/* 1.24.10 (човекът): „+ Добави“ на препоръчаните от въпросника леко пулсира, докато продуктът не е в кутията; без анимация при prefers-reduced-motion */
+@keyframes apAddPulse{0%,100%{transform:scale(1);box-shadow:0 4px 12px rgba(232,114,42,.28)}50%{transform:scale(1.045);box-shadow:0 6px 18px rgba(232,114,42,.45),0 0 0 5px rgba(232,114,42,.14)}}
+.ansa-promo .fcat.r3.pick:not(.on) .madd{animation:apAddPulse 1.9s ease-in-out infinite;will-change:transform}
+.ansa-promo .fcat.r3.pick:not(.on) .madd:hover{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.ansa-promo .fcat.r3.pick:not(.on) .madd{animation:none}}
