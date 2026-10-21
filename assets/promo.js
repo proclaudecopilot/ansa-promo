@@ -455,8 +455,8 @@
     /* v1.0.33 (мокъпът на човека): картата е на три реда — заглавие + бадж −X% · снимка (30%) + „за какво е“/описание/„За продукта ›“ ·
        стара цена, нова цена, „+ Добави“/степер — еднакво на десктоп (.drow) и телефон (.mrow) */
     /* v1.0.36 (инспирацията на човека): на телефон категорията е малък етикет вътре в картата над името (catIn), не заглавие отвън */
-    var fcard=function(r,cls,catIn){var pr=PROD[r.key];return '<div class="fcat '+cls+' r3'+(r.core?' core':'')+'" data-nq="'+r.key+'">'
-      +'<div class="r3h"><div class="r3t">'+(catIn?'<em class="r3cat'+(r.core?' core':r.pick?' pick':'')+'">'+(r.core?'★ ':'')+catIn+'</em>':'')+'<b>'+esc(pr.name)+'</b></div><span class="fpct mb">−'+b.pct+'%</span><span class="r3in" data-in="'+r.key+'"'+ck('fill.in')+'></span></div>'
+    var fcard=function(r,cls,catIn){var pr=PROD[r.key];return '<div class="fcat '+cls+' r3'+(r.core?' core':'')+(r.pick?' pick':'')+'" data-nq="'+r.key+'">' /* 1.24.8: .pick = препоръчан от въпросника */
+      +'<div class="r3h"><div class="r3t">'+(catIn?(r.pick?'<em class="r3cat pick"'+ck('fill.quiz.pick')+'>'+T('fill.quiz.pick')+'</em>':'')+'<em class="r3cat'+(r.core?' core':'')+'">'+(r.core?'★ ':'')+catIn+'</em>':'')+'<b>'+esc(pr.name)+'</b></div><span class="fpct mb">−'+b.pct+'%</span><span class="r3in" data-in="'+r.key+'"'+ck('fill.in')+'></span></div>'
       +'<div class="r3m"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(pr.ds?'<span class="f3ds">'+esc(pr.ds)+'</span>':'')+'<small>'+esc(r.core&&pr.ds===r.why?pr.desc:r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('fill.more.l')+'>'+T('fill.more.l')+'</button></div></div>'
       +'<div class="fbar r3f">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'};
     var dmain=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
@@ -472,6 +472,8 @@
       +'<div class="fnext" id="fNext" style="display:none"></div>' /* v1.10.0: „Още 2 опаковки и отключваш голяма кутия с −40%“ */
       +'<div class="fslots" id="fSlots" hidden></div>'
       /* v1.18.1 (човекът: продуктите да са си на мястото, а „още продукти“ да се вижда): стрелки отстрани на картите + бутон във футъра */
+      /* 1.24.8 (човекът: „не е ясно, че това са препоръчани продукти — пише За ТЕБ, ама едвам се вижда“): лента над картите с имената на препоръчаните */
+      +(qz&&rows.some(function(r){return r.pick})?'<div class="frec"'+ck('fill.rec.d')+'>'+T('fill.rec.d',{names:rows.filter(function(r){return r.pick}).map(function(r){return '<b>'+esc(PROD[r.key].name)+'</b>'}).join(', ')})+'</div>':'')
       +'<div class="f3gw">'+(rows.length>MPP?'<button type="button" class="f3arr pv" id="f3Pv" aria-label="предишни">‹</button><button type="button" class="f3arr nx" id="f3Nx" aria-label="още продукти">›</button>':'')+'<div class="fcats f3grid">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="f3item" data-pg="'+Math.floor(ri/MPP)+'"><h5 class="f3cat'+(r.core?' core':r.pick?' pick':'')+'"'+ck('mfill.cat')+'>'+(r.core?T('mfill.core',{t:mcat(pr,r)}):r.pick?pcat(String(pr.cat||'').trim()||r.t):mcat(pr,r))+'</h5>'+fcard(r,'drow')+'</div>'}).join('')+'</div></div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
       +'<div class="f3f"><div class="f3s"><i class="f3pig"></i><div><div class="fsave" id="fSave"></div><small'+ck('fill.save.sub')+'>'+T('fill.save.sub',bv)+'</small></div></div>'+(rows.length>MPP?'<button type="button" class="f3more" id="f3More"></button>':'')+'<button class="cta" id="nFill"></button></div>';
     var mob=MOBF();S._fillMob=mob;
@@ -501,7 +503,11 @@
         +'<h4 class="mfpk"'+ck('mfill.pick')+'>'+T('mfill.pick')+'</h4>'
         +'<button class="lnk fqzl" id="fQuiz" type="button"'+ck('fill.quiz.l')+'>'+T('fill.quiz.l')+'</button>'
         /* v1.0.25: 2 продукта на страница; категорията е заглавие над картата (.mcath), не вътре в нея */
-        +'<div class="mfl" id="mfL">'+rows.map(function(r,ri){var pr=PROD[r.key];return '<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',r.pick?pcat(String(pr.cat||'').trim()||r.t):esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')
+        /* 1.24.8 (човекът): препоръчаните от въпросника са ясно отделени — оранжево заглавие „★ Препоръчани за теб според отговорите ти“ над тях,
+           картите с оранжева рамка и пил „★ Препоръчано за теб · категория“; после „Останалите продукти“ */
+        +'<div class="mfl" id="mfL">'+(function(){var recN=rows.filter(function(r){return r.pick}).length,h1=false,h2=false;return rows.map(function(r,ri){var pr=PROD[r.key],h='';
+          if(r.pick&&!h1){h1=true;h='<div class="mfsec rec"'+ck('fill.rec.h')+'>'+T('fill.rec.h')+'</div>'}else if(recN&&h1&&!h2&&!r.pick&&!r.core){h2=true;h='<div class="mfsec rest"'+ck('fill.rec.rest')+'>'+T('fill.rec.rest')+'</div>'}
+          return h+'<div class="mitem" data-pg="'+Math.floor(ri/MPP)+'">'+fcard(r,'mrow',esc(String(pr.cat||'').trim()||r.t))+'</div>'}).join('')})()
         /* v1.0.35: пагинацията е в скрол зоната под картите (не закотвена над футъра) — на нисък екран се вижда повече от картата */
         +'</div>'+(rows.length>MPP?'<div class="mpg" id="mPg"></div>':'')+'</div>'
         /* v1.0.25: „Спестяваш €X“ е отделен ясен ред под „Твоята кутия“ (зелен при избрани опаковки) */
