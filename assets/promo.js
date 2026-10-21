@@ -140,7 +140,8 @@
     if(S.box!==null&&BX()){var b=BX();v.box=esc(b.name);v.box_l=esc(b.name.toLowerCase());v.box_ic=b.ic;v.packs=b.packs;v.opk=opk(b.packs);v.pct=b.pct;v.tickets=tixOf(b,boxes());v.shans=shans(v.tickets);v.bileta=v.tickets===1?'билет':'билета';v.tix_extra=Number(b.tix_extra)||0;v.cosm_pay=b.cosm_pay!=null?money(b.cosm_pay):'';v.s_box=sPrep(b.name);v.need=Math.max(0,b.packs-boxes());v.n=boxes();v.save=m0(save());v.pay=m(pay());v.value=m0(value());v.rest=b.packs-1;v.opk_rest=opk(b.packs-1);v.produkt=b.packs===1?'продукт':'продукти'}
     return v;
   }
-  function T(k,v){var s=A.copy&&A.copy[k];if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
+  /* 1.24.19: текст по UTM печели над общия — A.copy_utm[campKey()][k] (Sakura, Greens, cosm…); без override → общият copy → ключът */
+  function T(k,v){var cu=A.copy_utm&&A.copy_utm[campKey()],s=cu&&cu[k]!=null&&cu[k]!==''?cu[k]:null;if(s==null)s=A.copy&&A.copy[k];if(s==null)s=k;return tpl(s,Object.assign(baseVars(),v||{}))}
   function ck(k){return A.editor?' data-ck="'+k+'"':''}
   function RW(r){return {ic:IC[r]||'🎁',sh:T('rw.'+r+'.sh'),t:T('rw.'+r+'.t'),s:T('rw.'+r+'.s')}}
   /* v1.0.13: снимка на награда (gate.images от настройките: yacht/cosm/book/ship; празно = примерна) — без URL пада на емоджито */
@@ -988,7 +989,7 @@
   if(A.editor){
     [root,portal].forEach(function(r){r.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true)});
     window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;
-      if(d.ansaPromo==='copy'){if(d.key){A.copy[d.key]=d.value}else{A.copy=Object.assign({},A.copy,d.copy||{})}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
+      if(d.ansaPromo==='copy'){if(d.key){if(d.utm){A.copy_utm=A.copy_utm||{};var cum=A.copy_utm[d.utm]=A.copy_utm[d.utm]||{};if(d.value==null||d.value==='')delete cum[d.key];else cum[d.key]=d.value}else{A.copy[d.key]=d.value}}else{A.copy=Object.assign({},A.copy,d.copy||{});if(d.copy_utm)A.copy_utm=d.copy_utm}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.24.19: utm → текст само за този UTM */
       else if(d.ansaPromo==='cfg'&&d.runtime){if(d.runtime.gate)d.runtime.gate=Object.assign({},A.gate,d.runtime.gate);Object.assign(A,d.runtime);bind();render();if(!$('apOv').classList.contains('off')&&S._last)S._last()}
       else if(d.ansaPromo==='mark'){document.querySelectorAll('[data-ck].ck-on').forEach(function(x){x.classList.remove('ck-on')});document.querySelectorAll('[data-ck="'+d.key+'"]').forEach(function(x){x.classList.add('ck-on');if(d.scroll)try{x.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}})}
       else if(d.ansaPromo==='changed'){var ch=d.keys||{};document.querySelectorAll('[data-ck]').forEach(function(x){x.classList.toggle('ck-ch',!!ch[x.dataset.ck])})}

@@ -16,14 +16,28 @@
   /* ── помощници за конфига ── */
   function get(path){return path.split('.').reduce(function(o,k){return o==null?undefined:o[k]},cfg)}
   function set(path,v){var ks=path.split('.'),o=cfg;for(var i=0;i<ks.length-1;i++){if(o[ks[i]]==null||typeof o[ks[i]]!=='object')o[ks[i]]={};o=o[ks[i]]}o[ks[ks.length-1]]=v;markDirty()}
-  function copyVal(k){return cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)?cfg.copy[k]:KEYS[k].d}
+  /* 1.24.19 (човекът: „написах копи за Sakura, после за Greens, после за Берберин — накрая всички UTM бяха с последното“): при избран UTM
+     редакцията е override САМО за него (cfg.copy_utm[utm][key]); без UTM (или „Общ“) — общият текст (cfg.copy). Канвасът показва текста за UTM-а. */
+  function utmKey(){return scen.utm&&scen.utm!=='general'?scen.utm:''}
+  function utmMap(u){u=u===undefined?utmKey():u;return u&&cfg.copy_utm&&cfg.copy_utm[u]?cfg.copy_utm[u]:null}
+  function hasOvr(k,u){var m=utmMap(u);return !!(m&&Object.prototype.hasOwnProperty.call(m,k)&&m[k]!=='')}
+  function ovrCount(u){var m=utmMap(u);return m?Object.keys(m).filter(function(k){return m[k]!==''}).length:0}
+  function ovrTotal(){var n=0;Object.keys(cfg.copy_utm||{}).forEach(function(u){n+=ovrCount(u)});return n}
+  function copyValGlobal(k){return cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)?cfg.copy[k]:KEYS[k].d}
+  function copyVal(k){return hasOvr(k)?cfg.copy_utm[utmKey()][k]:copyValGlobal(k)}
   function changed(k){return !!(cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)&&cfg.copy[k]!==KEYS[k].d)}
   /* 1.23.7: кое е на живо — сравнение с публикуваните текстове (state.published_copy) */
   function isLive(k){var pc=state.published_copy||{};return (cfg.copy||{})[k]===pc[k]}
+  function ovrLive(k){var u=utmKey(),pc=(state.published_copy_utm||{})[u]||{};return hasOvr(k)&&pc[k]===cfg.copy_utm[u][k]}
   function unpublished(k){var pc=state.published_copy||{},c=cfg.copy||{};return (c[k]||'')!==(pc[k]||'')}
-  function unpublishedCount(){var pc=state.published_copy||{},c=cfg.copy||{},n=0,seen={};Object.keys(c).concat(Object.keys(pc)).forEach(function(k){if(seen[k])return;seen[k]=1;if((c[k]||'')!==(pc[k]||''))n++});return n}
-  function changedMap(){var m={};Object.keys(KEYS).forEach(function(k){if(changed(k))m[k]=1});return m}
-  function setCopy(k,v){if(!cfg.copy)cfg.copy={};if(v===KEYS[k].d||v==='')delete cfg.copy[k];else cfg.copy[k]=v;markDirty();validate(k);postLive(k,v||KEYS[k].d)}
+  function unpublishedCount(){var pc=state.published_copy||{},c=cfg.copy||{},n=0,seen={};
+    (function(){var pu=state.published_copy_utm||{},cu=cfg.copy_utm||{},us={};Object.keys(cu).concat(Object.keys(pu)).forEach(function(u){if(us[u])return;us[u]=1;var a=cu[u]||{},b=pu[u]||{},ks={};Object.keys(a).concat(Object.keys(b)).forEach(function(k){if(ks[k])return;ks[k]=1;if((a[k]||'')!==(b[k]||''))n++})})})();Object.keys(c).concat(Object.keys(pc)).forEach(function(k){if(seen[k])return;seen[k]=1;if((c[k]||'')!==(pc[k]||''))n++});return n}
+  function changedMap(){var m={};Object.keys(KEYS).forEach(function(k){if(changed(k))m[k]=1;if(hasOvr(k))m[k]=2});return m} /* 2 = свой текст за избрания UTM */
+  function setCopy(k,v){var u=utmKey();
+    if(u){if(!cfg.copy_utm||Array.isArray(cfg.copy_utm))cfg.copy_utm={};if(!cfg.copy_utm[u])cfg.copy_utm[u]={};
+      if(v===''||v===copyValGlobal(k)){delete cfg.copy_utm[u][k];if(!Object.keys(cfg.copy_utm[u]).length)delete cfg.copy_utm[u]}else cfg.copy_utm[u][k]=v;
+      markDirty();validate(k);postLive(k,hasOvr(k)?v:'',u);return}
+    if(!cfg.copy)cfg.copy={};if(v===KEYS[k].d||v==='')delete cfg.copy[k];else cfg.copy[k]=v;markDirty();validate(k);postLive(k,v||KEYS[k].d)}
   function validate(k){var v=copyVal(k),e=[];if((v.match(/\{\{/g)||[]).length!==(v.match(/\}\}/g)||[]).length)e.push('небалансирани {{ }}');(v.match(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi)||[]).forEach(function(x){var n=x.replace(/[{}\s]/g,'');if(REG.vars.indexOf(n)<0)e.push('непознат плейсхолдър {{'+n+'}}')});if(e.length)invalid[k]=e.join('; ');else delete invalid[k];return !e.length}
   function markDirty(){dirty=JSON.stringify(cfg)!==lastSaveJSON;renderTop();clearTimeout(autosaveT);if(dirty)autosaveT=setTimeout(function(){save(true)},20000)}
   function groupKeys(g){return Object.keys(KEYS).filter(function(k){return KEYS[k].g===g})}
@@ -34,7 +48,7 @@
   /* ── ajax ── */
   function ajax(action,data){var fd=new FormData();fd.append('action','ansa_promo_editor_'+action);fd.append('nonce',D.nonce);Object.keys(data||{}).forEach(function(k){fd.append(k,data[k])});
     return fetch(D.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success){var e=new Error((r&&r.data&&r.data.msg)||'Грешка');e.data=r&&r.data;throw e}return r.data})}
-  function fixCfg(c){['copy','fit','campaigns'].forEach(function(k){if(!c[k]||Array.isArray(c[k]))c[k]={}});if(!c.problems)c.problems=[];return c}
+  function fixCfg(c){['copy','fit','campaigns','copy_utm'].forEach(function(k){if(!c[k]||Array.isArray(c[k]))c[k]={}});if(!c.problems)c.problems=[];return c}
   function applyState(d){if(d.cfg){cfg=fixCfg(d.cfg);lastSaveJSON=JSON.stringify(cfg);dirty=false;savedAt=new Date()}if(d.state)state=d.state;invalid={};Object.keys(cfg.copy||{}).forEach(validate);renderAll()}
   var saving=false;
   var savePromise=null; /* 1.23.7: публикуването изчаква текущия запис, вместо да го надбягва */
@@ -48,8 +62,8 @@
 
   /* ── канвас ── */
   function post(m){if(frame&&frame.contentWindow)try{frame.contentWindow.postMessage(m,'*')}catch(e){}}
-  function postLive(k,v){clearTimeout(liveT);liveT=setTimeout(function(){post({ansaPromo:'copy',key:k,value:v})},150)}
-  function postAllCopy(){post({ansaPromo:'copy',copy:cfg.copy||{}})}
+  function postLive(k,v,u){clearTimeout(liveT);liveT=setTimeout(function(){post({ansaPromo:'copy',key:k,value:v,utm:u||''})},150)}
+  function postAllCopy(){post({ansaPromo:'copy',copy:cfg.copy||{},copy_utm:cfg.copy_utm||{}})}
   function postChanged(){post({ansaPromo:'changed',keys:changedMap()})}
   function postScenario(){post({ansaPromo:'scenario',screen:scen.screen,utm:scen.utm||null,box:scen.box||null,full:!!scen.full})}
   function runtimePartial(){var dl='';if(cfg.deadline){var m=String(cfg.deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)dl=m[3]+'.'+m[2]+'.'+m[1]}
@@ -74,7 +88,7 @@
       +'<div class="hint" id="apScHint"></div><div class="url" id="apScUrl"></div></div>');
       c.appendChild(bar);var fr=h('<div class="ap-ed-frame" id="apEdFrame"><iframe id="apEdIframe" src="'+esc(D.page)+'"></iframe></div>');c.appendChild(fr);frame=$('#apEdIframe');
       frame.addEventListener('load',function(){frameReady=true;setTimeout(function(){postAllCopy();postCfg();postScenario();postChanged();if(sel)post({ansaPromo:'mark',key:sel})},150)});
-      $('#apScUtm').onchange=function(){scen.utm=this.value;stepDefaults();renderCanvas();postScenario()};
+      $('#apScUtm').onchange=function(){scen.utm=this.value;stepDefaults();renderCanvas();postScenario();renderRail();renderInsp();invalid={};Object.keys(KEYS).forEach(function(k){if(changed(k)||hasOvr(k))validate(k)})}; /* 1.24.19: текстовете са по UTM */
       $('#apScScreen').onchange=function(){scen.screen=this.value;stepDefaults(true);renderCanvas();postScenario()}; /* изрично избрана ⛔ стъпка остава (за редакция на текстовете ѝ) */
       $('#apScGate').onchange=function(){setCamp('gate',this.value)};$('#apScCosm').onchange=function(){setCamp('cosm_pop',this.checked)};$('#apScCBox').onchange=function(){setCamp('box',this.value)};
       $('#apScBox').onchange=function(){scen.box=this.value;renderCanvas();postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;renderCanvas();postScenario()};
@@ -89,7 +103,7 @@
     var si=stepInfo(scen.screen);
     $('#apScHint').innerHTML='👁 Показва: <b>'+esc(utmLabel())+'</b> → <b>'+esc(si.l)+'</b>'+(scen.box?' · '+esc(bn(scen.box))+(scen.full?' (пълна)':''):'')
       +(si.off?' · <span class="warn">⚠ на живо при този UTM тази стъпка я няма — виждаш я само за да редактираш текстовете ѝ</span>':'')
-      +' · кампанията: имейл-попъп <b>'+(gateOn()?'да':'не')+'</b> · попъп козметика <b>'+(cp.cosm_pop?'да':'не')+'</b> · кутии <b>'+(cp.box?'само '+esc(bn(cp.box)):'всички')+'</b>'+(dirty?' · <span class="warn">незаписано — „Запази“, после „Публикувай“</span>':'');
+      +(utmKey()?' · <b style="color:#c2410c">✎ '+ovrCount()+' свои текста</b>':'')+' · кампанията: имейл-попъп <b>'+(gateOn()?'да':'не')+'</b> · попъп козметика <b>'+(cp.cosm_pop?'да':'не')+'</b> · кутии <b>'+(cp.box?'само '+esc(bn(cp.box)):'всички')+'</b>'+(dirty?' · <span class="warn">незаписано — „Запази“, после „Публикувай“</span>':'');
     $('#apScUrl').innerHTML='🔗 URL за рекламата: <input type="text" readonly id="apScUrlIn" value="'+esc(lu)+'"><button type="button" class="sm" id="apScCopy">📋 копирай</button>';
     $('#apScCopy').onclick=function(){var i=$('#apScUrlIn');i.select();try{navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}this.textContent='✓ копиран';var b=this;setTimeout(function(){b.textContent='📋 копирай'},1500)};
     fitFrame()}
@@ -120,10 +134,11 @@
   /* ── рейл ── */
   function renderRail(){var r=$('#apEdRail'),out='';
     out+='<div class="srch"><input type="text" id="apSearch" placeholder="🔍 търси в текстовете…" value="'+esc(search)+'"></div><label class="cb" style="margin:0 6px 6px;font-size:12px;display:block"><input type="checkbox" id="apOnlyCh"'+(onlyChanged?' checked':'')+'> само променените</label>';
-    out+='<h4>Текстове</h4>';var chm=changedMap();
+    out+='<h4>Текстове'+(utmKey()?' <small style="color:#c2410c;font-weight:600">· за '+esc(utmLabel())+' (✎ = свой текст)</small>':' <small style="color:#6b5f58;font-weight:600">· общите (без UTM)</small>')+'</h4>';var chm=changedMap();
     Object.keys(GROUPS).forEach(function(g){var ks=groupKeys(g),ch=ks.filter(function(k){return chm[k]}).length,vis=ks.filter(function(k){return matches(k)&&(!onlyChanged||chm[k])});if((search||onlyChanged)&&!vis.length)return;
-      out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+'" data-g="'+g+'">'+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch?' · <b>'+ch+'</b>':'')+'</span></button>';
-      if(mode==='copy'&&region===g||search||onlyChanged){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?' ch':'')+(invalid[k]?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+esc(k)+'</button>'}).join('')+'</div>'}});
+      var ov=ks.filter(function(k){return chm[k]===2}).length;
+      out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+'" data-g="'+g+'">'+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch-ov?' · <b>'+(ch-ov)+'</b>':'')+(ov?' · <b style="color:#c2410c">✎'+ov+'</b>':'')+'</span></button>';
+      if(mode==='copy'&&region===g||search||onlyChanged){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?' ch':'')+(chm[k]===2?' ov':'')+(invalid[k]?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+(chm[k]===2?'✎ ':'')+esc(k)+'</button>'}).join('')+'</div>'}});
     out+='<h4>⚙️ Двигател</h4>';[['game','🎮 Играта'],['boxes','📦 Кутиите'],['rewards','🎁 Наградите'],['checkout','💳 Плащане'],['tickets','🎟️ Билети'],['fit','🔗 FIT · проблеми']].forEach(function(x){out+='<button class="rg'+(mode===x[0]?' on':'')+'" data-mode="'+x[0]+'">'+esc(x[1])+'</button>'});
     out+='<a class="rg" href="'+esc(D.products_tab)+'" target="_blank">📦 Продукти ↗</a>';
     out+='<h4>🧰 Инструменти</h4><button class="rg" data-mode="doctor">🩺 Doctor'+(state.checks.some(function(c){return c.level==='bad'})?' <span class="n"><b>⛔</b></span>':'')+'</button><button class="rg" data-mode="history">🕘 История <span class="n">'+state.history.length+'</span></button><button class="rg" data-mode="json">{ } JSON</button><a class="rg" href="'+esc(D.admin)+'">← Инструменти (стария екран)</a>';
@@ -141,17 +156,19 @@
   function renderInsp(){var p=$('#apEdInsp');
     if(mode==='copy'){if(!sel){p.innerHTML='<div class="empty">Цъкни текст в канваса или избери ключ вляво.</div>';return}
       var k=sel,m=KEYS[k],v=copyVal(k),ks=groupKeys(m.g),i=ks.indexOf(k),sc=SCREENS[m.g]||[];var vars=m.v.slice();REG.vars.forEach(function(x){if(vars.indexOf(x)<0)vars.push(x)});
-      p.innerHTML='<h3>'+esc(GROUPS[m.g])+'</h3><div class="key">'+esc(k)+(changed(k)?(isLive(k)?' <span style="color:#15803d">● публикуван</span>':' <span style="color:#e8722a">● променен · НЕ е публикуван — натисни 🚀 Публикувай</span>'):(unpublished(k)?' <span style="color:#e8722a">● върнат към дефолта · НЕ е публикуван</span>':''))+'</div><div class="grp">'+(sc.length?'Вижда се на: '+sc.map(function(s){return SCREEN_LABELS[s]||s}).join(', '):'Не е на канваса — '+(m.g==='checkout'?'чекаут / благодаря':(m.g==='emails'?'имейл / стикер':'съобщение')))+'</div>'
+      var u=utmKey();function ustatHtml(){return u?(hasOvr(k)?'<span style="color:#7c3a0a">✎ свой текст за <b>'+esc(utmLabel())+'</b>'+(ovrLive(k)?' · публикуван':' · НЕ е публикуван — натисни 🚀 Публикувай')+'</span>':'<span style="color:#6b5f58">ползва общия текст — каквото напишеш тук, важи само за <b>'+esc(utmLabel())+'</b></span>'):''}
+      var ustat=' <span id="apUstat">'+ustatHtml()+'</span>';
+      p.innerHTML='<h3>'+esc(GROUPS[m.g])+(u?' <small style="font-weight:600;color:#c2410c">· за '+esc(utmLabel())+'</small>':'')+'</h3><div class="key">'+esc(k)+(u?ustat:(changed(k)?(isLive(k)?' <span style="color:#15803d">● публикуван</span>':' <span style="color:#e8722a">● променен · НЕ е публикуван — натисни 🚀 Публикувай</span>'):(unpublished(k)?' <span style="color:#e8722a">● върнат към дефолта · НЕ е публикуван</span>':'')))+'</div><div class="grp">'+(sc.length?'Вижда се на: '+sc.map(function(s){return SCREEN_LABELS[s]||s}).join(', '):'Не е на канваса — '+(m.g==='checkout'?'чекаут / благодаря':(m.g==='emails'?'имейл / стикер':'съобщение')))+'</div>'
         +'<textarea id="apTa" rows="4">'+esc(v)+'</textarea><div class="err" id="apErr">'+esc(invalid[k]||'')+'</div>'
         +'<div class="hint">Плейсхолдъри (цък → вмъква): '+(m.v.length?'за този текст: ':'')+'</div><div class="chips">'+m.v.map(function(x){return '<span class="chip" data-ph="'+x+'">{{'+x+'}}</span>'}).join('')+'<details style="width:100%"><summary class="hint" style="cursor:pointer">всички '+REG.vars.length+'</summary><div class="chips">'+REG.vars.map(function(x){return '<span class="chip" data-ph="'+x+'">{{'+x+'}}</span>'}).join('')+'</div></details></div>'
         +(sc.length?'':'<div class="prev" id="apPrev"></div>')
-        +'<div class="def"><b>Дефолт:</b>\n'+esc(m.d)+'</div>'
-        +'<div class="row"><button class="sm" id="apReset"'+(changed(k)?'':' disabled')+'>⟲ Върни дефолта</button><span class="sp" style="flex:1"></span><button class="sm" id="apPrev2"'+(i<=0?' disabled':'')+'>← предишен</button><button class="sm" id="apNext"'+(i>=ks.length-1?' disabled':'')+'>следващ →</button></div><div class="hint">Ctrl+Enter = приложи · Ctrl+S = запази черновата</div>';
+        +(u?'<div class="def"><b>Общият текст (без UTM):</b>\n'+esc(copyValGlobal(k))+'</div>':'<div class="def"><b>Дефолт:</b>\n'+esc(m.d)+'</div>')
+        +'<div class="row"><button class="sm" id="apReset"'+((u?hasOvr(k):changed(k))?'':' disabled')+'>'+(u?'⟲ Ползвай общия текст':'⟲ Върни дефолта')+'</button><span class="sp" style="flex:1"></span><button class="sm" id="apPrev2"'+(i<=0?' disabled':'')+'>← предишен</button><button class="sm" id="apNext"'+(i>=ks.length-1?' disabled':'')+'>следващ →</button></div><div class="hint">Ctrl+Enter = приложи · Ctrl+S = запази черновата</div>';
       var ta=$('#apTa');function grow(){ta.style.height='auto';ta.style.height=Math.min(420,ta.scrollHeight+4)+'px'}grow();
-      ta.oninput=function(){setCopy(k,ta.value);$('#apErr').textContent=invalid[k]||'';$('#apReset').disabled=!changed(k);grow();preview()};
+      ta.oninput=function(){setCopy(k,ta.value);$('#apErr').textContent=invalid[k]||'';$('#apReset').disabled=!(u?hasOvr(k):changed(k));var us=$('#apUstat');if(us)us.innerHTML=ustatHtml();grow();preview()};
       ta.onkeydown=function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();setCopy(k,ta.value);post({ansaPromo:'copy',key:k,value:copyVal(k)});renderRail()}};
       $$('.chip',p).forEach(function(c){c.onclick=function(){var s=ta.selectionStart||0,e=ta.selectionEnd||0,ins='{{'+c.dataset.ph+'}}';ta.value=ta.value.slice(0,s)+ins+ta.value.slice(e);ta.selectionStart=ta.selectionEnd=s+ins.length;ta.focus();ta.oninput()}});
-      $('#apReset').onclick=function(){ta.value=m.d;ta.oninput();renderRail()};$('#apPrev2').onclick=function(){select(ks[i-1],true)};$('#apNext').onclick=function(){select(ks[i+1],true)};
+      $('#apReset').onclick=function(){ta.value=u?copyValGlobal(k):m.d;ta.oninput();renderRail();renderInsp()};$('#apPrev2').onclick=function(){select(ks[i-1],true)};$('#apNext').onclick=function(){select(ks[i+1],true)};
       function preview(){var pv=$('#apPrev');if(!pv)return;var sample={box:'Голяма кутия',box_l:'голяма кутия',box_ic:'👑',packs:5,opk:'опаковки',pct:40,tickets:5,bileta:'билета',shans:'шанса',cosm_pay:'1',cosm_value:'129',book_value:'19',yacht:'8 800',ship:'€ 2,55',url:'#',name:cfg.name,customer:'Мария',order:'12345',code:'ABCD-EFGH-JKLM',voucher:'VABC1234',portal_url:cfg.tickets.portal_url||D.page_url,book_url:cfg.rewards.book.url||'#',secret_pct:cfg.secret.pct,bonus:1,bonus_bileta:'билет',deadline:cfg.deadline};pv.innerHTML=copyVal(k).replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi,function(x,n){return sample[n]!==undefined?'<b style="color:#c2410c">'+esc(sample[n])+'</b>':x})}preview();return}
     if(mode==='doctor'){p.innerHTML='<h3>🩺 Doctor</h3><div class="hint">Publish gate: ⛔ спира публикуването, ⚠ само предупреждава.</div><ul class="ap-ed-doc">'+state.checks.map(function(c){return '<li class="'+c.level+'">'+({bad:'⛔',warn:'⚠',ok:'✓',info:'ℹ'}[c.level]||'')+' '+esc(c.msg)+'</li>'}).join('')+'</ul><p><button class="sm" id="apDocRun">↻ провери пак (записва черновата)</button></p>';$('#apDocRun').onclick=function(){save().then(function(){renderInsp()})};return}
     if(mode==='history'){p.innerHTML='<h3>🕘 История</h3><div class="hint">Публикувано: версия '+state.version+(state.published_at?' · '+new Date(state.published_at*1000).toLocaleString('bg-BG'):'')+'</div><ul class="ap-ed-hist">'+(state.history.length?state.history.map(function(x){return '<li>версия '+x.version+' · '+new Date(x.at*1000).toLocaleString('bg-BG')+'<span style="flex:1"></span><button class="sm" data-rv="'+x.version+'">върни като чернова</button></li>'}).join(''):'<li>още няма публикувани версии</li>')+'</ul>';$$('[data-rv]',p).forEach(function(b){b.onclick=function(){restore(b.dataset.rv)}});return}
@@ -183,7 +200,7 @@
 
   /* ── горна лента ── */
   function renderTop(){var t=$('#apEdTop'),nch=Object.keys(changedMap()).length,bad=state.checks.some(function(c){return c.level==='bad'});
-    t.innerHTML='<span class="t">✏️ ansa™ Промо</span><span class="st'+(dirty?' dirty':'')+'">'+(dirty?'● незаписани промени':'чернова')+' · '+nch+' променени текста'+(function(){var u=unpublishedCount();return u?' · <b style="color:#e8722a">'+u+' непубликувани</b>':' · всичко е на живо'})()+' · '+(saving?'записва…':'запазена '+fmtTime(savedAt))+' · публикувано v'+state.version+(state.live?' · на живо':' · играта е изключена')+'</span><span class="sp"></span>'
+    t.innerHTML='<span class="t">✏️ ansa™ Промо</span><span class="st'+(dirty?' dirty':'')+'">'+(dirty?'● незаписани промени':'чернова')+' · '+Object.keys(changedMap()).filter(function(k){return changed(k)}).length+' променени текста'+(ovrTotal()?' · <b style="color:#c2410c">✎ '+ovrTotal()+' по UTM</b>':'')+(function(){var u=unpublishedCount();return u?' · <b style="color:#e8722a">'+u+' непубликувани</b>':' · всичко е на живо'})()+' · '+(saving?'записва…':'запазена '+fmtTime(savedAt))+' · публикувано v'+state.version+(state.live?' · на живо':' · играта е изключена')+'</span><span class="sp"></span>'
       +'<button id="apSave"'+(dirty&&!saving?'':' disabled')+'>💾 Запази</button><button class="pri" id="apPub" title="'+(bad?'Doctor спира публикуването — виж 🩺':'')+'">🚀 Публикувай</button><button id="apDoc">🩺'+(bad?' ⛔':'')+'</button><button id="apDiscard">↶ Откажи черновата</button>';
     $('#apSave').onclick=function(){save()};$('#apPub').onclick=function(){publish(false)};$('#apDoc').onclick=function(){mode='doctor';sel=null;renderRail();renderInsp()};$('#apDiscard').onclick=discard}
   function doctorModal(blocking){var bad=state.checks.filter(function(c){return c.level==='bad'});var m=h('<div class="ap-ed-modal"><div class="m"><h2>🩺 Doctor спира публикуването</h2><ul class="ap-ed-doc">'+state.checks.map(function(c){return '<li class="'+c.level+'">'+({bad:'⛔',warn:'⚠',ok:'✓',info:'ℹ'}[c.level]||'')+' '+esc(c.msg)+'</li>'}).join('')+'</ul><p><button id="apMClose">Затвори</button> <button class="lnk" id="apMForce">Публикувай въпреки '+bad.length+' ⛔ (на твоя отговорност)</button></p></div></div>');document.body.appendChild(m);$('#apMClose').onclick=function(){m.remove()};$('#apMForce').onclick=function(){m.remove();if(confirm('Сигурна ли си? Страницата може да се счупи за клиентите.'))publish(true)}}
