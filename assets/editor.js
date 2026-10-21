@@ -9,8 +9,8 @@
   function h(html){var t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild}
   var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
-  var scen={utm:'',box:'l',screen:'boxes',full:true};
-  var SCREEN_LABELS={gate:'Имейл-попъп',cosm:'Попъп „Козметиката за €1“ (UTM cosm)',boxes:'Кутиите',fill:'Напълни кутията',celeb:'Честито',builder:'Таблото',picker:'Селектор',product:'Продукт',sure:'Сигурна ли си?',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи'};
+  var scen={utm:'',box:'',screen:'boxes',full:false}; /* 1.24.13: тръгва от „Кутиите“ без избрана кутия — стъпката нагласява кутията */
+  var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
 
   /* ── помощници за конфига ── */
@@ -56,18 +56,38 @@
     return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)}}}
   function postCfg(){post({ansaPromo:'cfg',runtime:runtimePartial()})}
   function renderCanvas(){var c=$('#apEdCanvas');if(!D.page){c.innerHTML='<div class="ap-ed-scen">Няма страница — избери я в 🧰 Инструменти.</div>';return}
-    if(!frame){c.innerHTML='';var bar=h('<div class="ap-ed-scen"><label>UTM <select id="apScUtm"><option value="">— без (general) —</option><optgroup label="Кампания"><option value="cosm">💄 Козметика (utm_content=cosm)</option><option value="yacht">⛵ Яхта (utm_content=yacht)</option><option value="general">🎁 Общ (utm_content=general)</option></optgroup><optgroup label="Продукт (retargeting)">'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'">'+esc(p.name)+' (utm_content='+esc(p.key)+')</option>'}).join('')+'</optgroup></select></label>'
-      +'<label>Кутия <select id="apScBox"><option value="">— няма —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'">'+esc(b.ic+' '+b.name)+'</option>'}).join('')+'</select></label>'
-      +'<label>Екран <select id="apScScreen">'+Object.keys(SCREEN_LABELS).map(function(s){return '<option value="'+s+'">'+esc(SCREEN_LABELS[s])+'</option>'}).join('')+'</select></label>'
-      +'<label><input type="checkbox" id="apScFull"> пълна кутия</label><span class="sp" style="flex:1"></span>'
-      +'<span class="dev"><button class="sm" data-dev="desk">💻 1280</button><button class="sm" data-dev="mob">📱 390</button></span><button class="sm" id="apScReload" title="презареди канваса">⟳</button><a class="btn sm" target="_blank" href="'+esc(D.page)+'">↗ отвори</a></div>');
+    if(!frame){c.innerHTML='';
+      /* 1.24.13 (човекът: „тотално объркано е“): лентата е по пътя на клиента — 1) откъде идва (UTM: кампания или продукт),
+         2) на коя стъпка е. Кутията и „пълна кутия“ се нагласят сами по стъпката и стоят в „⚙ детайли“. Под лентата пише какво
+         точно се показва и има линк за тест на живо със същия UTM. */
+      var utmOpts='<option value="">— без UTM (общ сезон) —</option><optgroup label="Кампания">'+CAMPAIGNS.map(function(x){return '<option value="'+x.v+'">'+esc(x.l)+' · ?utm_content='+x.v+'</option>'}).join('')+'</optgroup>'
+        +'<optgroup label="Продукт (retargeting)">'+D.products.filter(function(p){return p.enabled}).map(function(p){return '<option value="'+esc(p.key)+'">'+esc(p.name)+' · ?utm_content='+esc(p.key)+'</option>'}).join('')+'</optgroup>';
+      var stepOpts=STEP_GROUPS.map(function(g){return '<optgroup label="'+esc(g.l)+'">'+g.s.map(function(k){return '<option value="'+k+'">'+esc(SCREEN_LABELS[k])+'</option>'}).join('')+'</optgroup>'}).join('');
+      var bar=h('<div class="ap-ed-scen"><label title="откъде идва човекът — кампания или продукт от рекламата">1 · Откъде идва <select id="apScUtm">'+utmOpts+'</select></label>'
+      +'<label title="коя стъпка от пътя му гледаш">2 · Стъпка <select id="apScScreen">'+stepOpts+'</select></label>'
+      +'<details class="ap-ed-det"><summary>⚙ детайли</summary><label>Кутия <select id="apScBox"><option value="">— всички (екранът с кутиите) —</option>'+cfg.boxes.map(function(b){return '<option value="'+b.id+'">'+esc(b.ic+' '+b.name)+'</option>'}).join('')+'</select></label>'
+      +'<label title="пълна = всички опаковки са сложени (за Честито, Поръчка)"><input type="checkbox" id="apScFull"> кутията е пълна</label></details><span class="sp" style="flex:1"></span>'
+      +'<span class="dev"><button class="sm" data-dev="desk">💻 1280</button><button class="sm" data-dev="mob">📱 390</button></span><button class="sm" id="apScReload" title="презареди канваса">⟳</button><a class="btn sm" target="_blank" id="apScOpen" href="'+esc(D.page)+'">↗ тест на живо</a>'
+      +'<div class="hint" id="apScHint"></div></div>');
       c.appendChild(bar);var fr=h('<div class="ap-ed-frame" id="apEdFrame"><iframe id="apEdIframe" src="'+esc(D.page)+'"></iframe></div>');c.appendChild(fr);frame=$('#apEdIframe');
       frame.addEventListener('load',function(){frameReady=true;setTimeout(function(){postAllCopy();postCfg();postScenario();postChanged();if(sel)post({ansaPromo:'mark',key:sel})},150)});
-      $('#apScUtm').onchange=function(){scen.utm=this.value;postScenario()};$('#apScBox').onchange=function(){scen.box=this.value;postScenario()};$('#apScScreen').onchange=function(){scen.screen=this.value;postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;postScenario()};
+      $('#apScUtm').onchange=function(){scen.utm=this.value;if(scen.screen==='cosm'&&scen.utm!=='cosm'){scen.screen='boxes'}renderCanvas();postScenario()};
+      $('#apScScreen').onchange=function(){scen.screen=this.value;stepDefaults();renderCanvas();postScenario()};
+      $('#apScBox').onchange=function(){scen.box=this.value;renderCanvas();postScenario()};$('#apScFull').onchange=function(){scen.full=this.checked;renderCanvas();postScenario()};
       $$('[data-dev]').forEach(function(b){b.onclick=function(){device=b.dataset.dev;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x===b)});$('#apEdFrame').classList.toggle('mob',device==='mob');fitFrame()}});
       $('#apScReload').onclick=function(){frame.src=D.page};
       window.addEventListener('resize',fitFrame)}
-    $('#apScUtm').value=scen.utm;$('#apScBox').value=scen.box;$('#apScScreen').value=scen.screen;$('#apScFull').checked=scen.full;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x.dataset.dev===device)});fitFrame()}
+    $('#apScUtm').value=scen.utm;$('#apScBox').value=scen.box;$('#apScScreen').value=scen.screen;$('#apScFull').checked=scen.full;$$('[data-dev]').forEach(function(x){x.classList.toggle('on',x.dataset.dev===device)});
+    var lu=liveUrl();$('#apScOpen').href=lu;$('#apScHint').innerHTML='👁 Показва: <b>'+esc(utmLabel())+'</b> → <b>'+esc(SCREEN_LABELS[scen.screen]||scen.screen)+'</b>'+(scen.box?' · '+esc((cfg.boxes.filter(function(b){return b.id===scen.box})[0]||{}).name||scen.box)+(scen.full?' (пълна)':''):'')
+      +(scen.screen==='cosm'&&scen.utm!=='cosm'?' · <span class="warn">попъпът за козметиката излиза само при UTM „Козметика“</span>':'')
+      +' · тест на живо (нов таб): <a href="'+esc(lu)+'" target="_blank">'+esc(lu.replace(/^https?:\/\//,''))+'</a>';
+    fitFrame()}
+  /* 1.24.13: кампаниите и стъпките на лентата; стъпката нагласява кутията/„пълна“ сама */
+  var CAMPAIGNS=[{v:'cosm',l:'💄 Козметика'},{v:'yacht',l:'⛵ Яхта'},{v:'general',l:'🎁 Общ'}];
+  var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how']}];
+  function stepDefaults(){var sc=scen.screen;if(sc==='gate'||sc==='cosm'||sc==='boxes'){scen.box='';scen.full=false}else if(sc==='fill'){if(!scen.box)scen.box='l';scen.full=false}else{if(!scen.box)scen.box='l';scen.full=true}}
+  function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}
+  function liveUrl(){var u=D.page_url||D.page||''; /* публичната страница, не черновата на канваса */var q=[];if(scen.utm)q.push('utm_content='+encodeURIComponent(scen.utm));if(scen.box)q.push('box='+encodeURIComponent(scen.box));return q.length?u+(u.indexOf('?')<0?'?':'&')+q.join('&'):u}
   function fitFrame(){if(!frame)return;var wrap=$('#apEdFrame'),w=wrap.clientWidth-24,need=device==='mob'?390:1280,z=Math.min(1,w/need);frame.style.transform='scale('+z+')';frame.style.height=device==='mob'?'780px':((wrap.clientHeight-24)/z)+'px'}
   window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false)}});
 

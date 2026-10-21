@@ -26,6 +26,10 @@
 .ap-ed-scen{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;font-size:12px}
 .ap-ed-scen label{display:flex;align-items:center;gap:4px;font-weight:600}.ap-ed-scen select{width:auto}
 .ap-ed-scen .dev button.on{background:#fff5ee;border-color:rgba(232,114,42,.5)}
+/* 1.24.13: лентата по пътя на клиента — детайлите (кутия/пълна) са прибрани, под лентата пише какво се показва + линк за тест на живо */
+.ap-ed-scen .ap-ed-det{display:flex;align-items:center;gap:8px}.ap-ed-scen .ap-ed-det summary{cursor:pointer;font-weight:600;color:#6b5f58;list-style:none}.ap-ed-scen .ap-ed-det summary::-webkit-details-marker{display:none}
+.ap-ed-scen .ap-ed-det[open] summary{color:#c2410c}
+.ap-ed-scen .hint{width:100%;font-size:11.5px;color:#6b5f58;padding-top:4px;border-top:1px dashed var(--line);margin-top:2px}.ap-ed-scen .hint .warn{color:#b91c1c;font-weight:700}.ap-ed-scen .hint a{color:#c2410c}
 .ap-ed-frame{flex:1;min-height:0;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:12px}
 .ap-ed-frame iframe{background:#fff;border:1px solid #d9d1c7;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);width:1280px;height:100%;transform-origin:top center}
 .ap-ed-frame.mob iframe{width:390px;height:780px;border-radius:28px}
