@@ -54,7 +54,12 @@
   function campKey(){return A.utm||A.gv||'general'}
   function camp(){var k=campKey(),c=(A.campaigns&&A.campaigns[k])||{};return {gate:c.gate||'default',cosm_pop:c.cosm_pop!==undefined?!!c.cosm_pop:k==='cosm',box:c.box||''}}
   function utmProd(u){u=String(u||'').toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(!u)return '';if(PROD[u])return u;var n=u.replace(/[^a-z0-9]/g,'');for(var k in PROD){if(String(PROD[k].name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===n)return k}return ''}
-  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');if(qsU){var pk=utmProd(qsU);if(pk)A.utm=pk;else{var g=String(qsU).toLowerCase().replace(/[^a-z]/g,'');if(GV.indexOf(g)>-1)A.gv=g}}}catch(e){}
+  /* 1.24.17 (човекът: „влязох без UTM, а копито е за Сакура“): на живата страница АДРЕСЪТ е единственият източник на UTM/вариант —
+     сървърният utm/gv в runtime-а идва от $_GET и кешът на страницата (FlyingPress) може да го е запекъл от чужд адрес и да го сервира на всички.
+     Редакторът (iframe без UTM) получава UTM-а от сценария. */
+  try{var qsU=new URLSearchParams(location.search).get(A.utm_param||'utm_content');
+    if(!A.editor){A.utm=null;A.gv=null}
+    if(qsU){var pk=utmProd(qsU);if(pk)A.utm=pk;else{var g=String(qsU).toLowerCase().replace(/[^a-z]/g,'');if(GV.indexOf(g)>-1)A.gv=g}}}catch(e){}
   if(A.utm&&!PROD[A.utm])A.utm=utmProd(A.utm)||null;
 
   /* ── състояние (мокъп S) + sessionStorage ── */
@@ -64,7 +69,11 @@
   function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,quizSeen:!!S.quizSeen}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
-    Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
+    Object.keys(s).forEach(function(k){S[k]=s[k]});
+    /* 1.24.17: UTM в адреса → той е продуктът (без започната кутия става и основен); без UTM и без започната кутия → общият сезон, не запомненият
+       продукт от предишен адрес в същия таб; започната кутия пази продукта си (човекът е по средата на играта) */
+    if(A.utm&&PROD[A.utm]){S.utm=A.utm;S.core=S.box===null?A.utm:(S.core||A.utm)}
+    else if(!A.editor&&S.box===null){S.utm=null;S.core=null}
     if(!(A.gate&&A.gate.enabled))S.emailDone=true; /* v1.18.2: изключеният попъп печели над запомнено emailDone:false */
     if(S.chosen==null||!BOXES[S.chosen])S.chosen=S.box;if(S.box!==null)syncBox(); /* v1.10.0 */
     return S.box!==null&&S.slots.filter(Boolean).length>0}catch(e){return false}}
