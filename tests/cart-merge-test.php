@@ -135,5 +135,20 @@ ok( ! empty( $merge( 200 )['ok'] ) && ! empty( $merge( 300 )['ok'] ) && 16 === (
 $r = $merge( 200 );
 ok( empty( $r['ok'] ) && 'max' === $r['code'] && 16 === (int) grp()['sum'], '(6) 21 > max_packs → max, количката непокътната: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
 
+/* (7) 1.24.1: ppct от Shrine — само нагоре: 45 печели над 40, 30 не; при вдигане на кутията редът пази вдигнатия процент */
+WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
+$r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ), 'pay' => 'card', 'merge' => true, 'ppct' => 45 ) );
+$g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
+ok( ! empty( $r['ok'] ) && 45.0 === ( $pp[100] ?? 0 ), '(7) ppct 45 е записан в реда: ' . json_encode( $pp ) );
+WC()->cart->calculate_totals();
+ok( abs( WC()->cart->get_total() - round( 43.90 * 0.55, 2 ) * 5 ) < 0.01, '(7) цената е −45% (закръглена на опаковка): ' . WC()->cart->get_total() );
+$r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 200 ), 'pay' => 'card', 'merge' => true, 'ppct' => 30 ) );
+$g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
+ok( ! empty( $r['ok'] ) && 40.0 === ( $pp[200] ?? 0 ) && 45.0 === ( $pp[100] ?? 0 ), '(7) ppct 30 не сваля под конфига (40), старият ред пази 45: ' . json_encode( $pp ) );
+$r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ), 'pay' => 'card', 'merge' => true, 'ppct' => 50 ) );
+$g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
+ok( ! empty( $r['ok'] ) && 50.0 === ( $pp[100] ?? 0 ) && 15 === (int) $g['sum'], '(7) същият продукт пак → количеството расте и процентът се вдига на 50: ' . json_encode( $pp ) );
+$meta = Cart::build_meta( true ); ok( $meta && 15 === (int) $meta['count'] && (int) $meta['tickets']['allowance'] === Config::tickets_for( $bl, 15 ), '(7) order meta при 15 опаковки' );
+
 if ( $errors ) { echo "ГРЕШКИ:\n- " . implode( "\n- ", $errors ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

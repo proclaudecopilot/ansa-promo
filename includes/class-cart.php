@@ -130,7 +130,8 @@ final class Cart {
 	/**
 	 * Цялата логика на add, без HTTP — ползва се от ajax_add и от проверката promo-cart.
 	 * $a: box, items[parent ids], secret[parent ids], pay, email, cosm, utm, lead, draft; trusted=true (само от PHP) = права за чернова;
-	 * merge=true (v1.24.0, Shrine) = добавя към количката вместо да я замени (виж по-долу).
+	 * merge=true (v1.24.0, Shrine) = добавя към количката вместо да я замени (виж по-долу); ppct (v1.24.1, Shrine) = отстъпка за редовете
+	 * на тази заявка, само НАГОРЕ спрямо конфига (Shrine гарантира, че промо картата е най-добрата оферта на продуктовата страница).
 	 * Връща [ok, code, msg] или [ok, group, box, total, checkoutUrl, idempotent] (+ merged, count, tickets, fragments, cart_hash при merge).
 	 */
 	public static function perform_add( $a ) {
@@ -182,7 +183,7 @@ final class Cart {
 				return array_merge( array( 'ok' => true, 'idempotent' => true, 'merged' => true, 'group' => $g['group'], 'box' => $g['box'], 'count' => (int) $g['sum'], 'tickets' => Config::tickets_for( Config::box( $cfg, $g['box'] ) ?: $box, (int) $g['sum'] ), 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url() ), self::fragments() );
 			}
 			if ( self::group_valid( $g ) && $g['promo'] === $cfg['id'] && (bool) $g['draft'] === $draft ) {
-				return self::merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err );
+				return self::merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err, $a );
 			}
 		}
 
@@ -210,6 +211,7 @@ final class Cart {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
 			/* v1.14.0: ppct = отстъпката на този продукт в тази кутия (override от 📦 Продукти или процентът на кутията) — записана в реда като pct */
 			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $box['pct'];
+			$ppct = self::ppct_up( $ppct, $a ); /* v1.24.1 */
 			$key = WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'], 'ppct' => $ppct ) ) ) );
 			if ( $key ) { $added++; }
 		}
@@ -246,7 +248,10 @@ final class Cart {
 	 * досегашната и от поисканата); промяна на кутията пренаписва box/pct/packs/ship (и ppct по продукт) в старите редове. Ред за
 	 * същия продукт → количеството му расте (не втори ред). Книгата се добавя само ако я няма. Секретните редове не се пипат.
 	 */
-	private static function merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err ) {
+	/** v1.24.1: отстъпката на ред от заявката (Shrine 'ppct') печели само ако е по-висока от конфигурираната; таван 90. */
+	private static function ppct_up( $ppct, $a ) { $r = (float) ( $a['ppct'] ?? 0 ); return ( $r > $ppct && $r < 90.01 ) ? round( $r, 2 ) : $ppct; }
+
+	private static function merge_into( $cfg, $g, $box, $counts, $allowed, $ctx, $pay, $sig, $err, $a = array() ) {
 		$total = (int) $g['sum'] + (int) array_sum( $counts );
 		$cur   = Config::box( $cfg, $g['box'] ) ?: $box;
 		$min   = (int) $cur['packs'] >= (int) $box['packs'] ? $cur : $box;
@@ -265,7 +270,7 @@ final class Cart {
 				if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) || (string) $item[ self::META ]['group'] !== $group ) { continue; }
 				$m = $item[ self::META ];
 				$m['box'] = $box_id; $m['pct'] = (float) $eff['pct']; $m['packs'] = (int) $eff['packs']; $m['ship'] = in_array( 'ship', $eff['rw'], true );
-				if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $m['ppct'] = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct']; }
+				if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $np = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct']; $m['ppct'] = max( $np, (float) ( $m['ppct'] ?? 0 ) ); /* 1.24.1: вдигнат от Shrine ред не пада */ }
 				$cart->cart_contents[ $key ][ self::META ] = $m;
 			}
 		}
@@ -274,9 +279,14 @@ final class Cart {
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
 			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct'];
+			$ppct = self::ppct_up( $ppct, $a ); /* v1.24.1 */
 			$have = null;
 			foreach ( $cart->get_cart() as $key => $item ) { if ( ! empty( $item[ self::META ] ) && 'base' === $item[ self::META ]['role'] && (string) $item[ self::META ]['group'] === $group && (int) $item['product_id'] === (int) $pid ) { $have = $key; break; } }
-			if ( $have ) { $cart->set_quantity( $have, (int) $cart->get_cart_item( $have )['quantity'] + (int) $q, false ); $added++; continue; }
+			if ( $have ) {
+				$cart->set_quantity( $have, (int) $cart->get_cart_item( $have )['quantity'] + (int) $q, false );
+				if ( $ppct > (float) ( $cart->cart_contents[ $have ][ self::META ]['ppct'] ?? 0 ) ) { $cart->cart_contents[ $have ][ self::META ]['ppct'] = $ppct; }
+				$added++; continue;
+			}
 			$key = $cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'], 'ppct' => $ppct ) ) ) );
 			if ( $key ) { $added++; }
 		}
