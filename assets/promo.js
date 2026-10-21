@@ -52,7 +52,7 @@
   var SKEY='ansa_promo_s';
   function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
   var S=freshS();
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,know:S.know||null}}))}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,quizSeen:!!S.quizSeen}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
     Object.keys(s).forEach(function(k){S[k]=s[k]});if(A.utm&&PROD[A.utm])S.core=S.core||A.utm;S.utm=A.utm||S.utm;
@@ -514,7 +514,10 @@
     var gx=$('mfGx');if(gx){gx.onclick=function(){var h=$('mfGh');if(!h)return;var open=h.hasAttribute('hidden');if(open)h.removeAttribute('hidden');else h.setAttribute('hidden','');gx.classList.toggle('open',open);gx.setAttribute('aria-expanded',open?'true':'false');var ga=$('mfGa');if(ga)ga.innerHTML=T(open?'mfill.gifts.less':'mfill.gifts.all');if(gx.classList.contains('lnk'))gx.innerHTML=T(open?'mfill.gifts.less':'mfill.h.more')}}
     if(mob)fitSheet(dc);
     /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
-    if(mob&&!again)unlockPopup(b,P);
+    /* 1.24.5 (човекът: „въпросникът да е първото нещо, което виждаш“): при първото влизане в пълненето (веднъж на сесия) въпросникът се отваря сам върху попъпа;
+       интро листът на телефона („За да отключиш…“) се пропуска за тази кутия — въпросникът го замества. С UTM продукт — друго заглавие и без неговия ред (виж quizPanel) */
+    var autoQ=!again&&!S.quizSeen;
+    if(mob&&!again&&!autoQ)unlockPopup(b,P);
     /* v1.0.45: „↓ Още продукти“ над футъра, докато списъкът не е скролнат до края; клик скролва с 70% екран */
     var ms=$('mfS'),mm=$('mfMore');if(ms&&mm){var updMore=function(){var end=ms.scrollTop+ms.clientHeight>=ms.scrollHeight-24;mm.classList.toggle('off',end);if(!end){var lim=ms.getBoundingClientRect().bottom,n=0;ms.querySelectorAll('.mitem:not(.pg-off)').forEach(function(it){if(it.getBoundingClientRect().top>lim-40)n++});mm.innerHTML='<span'+ck(n?'mfill.more.n':'mfill.more.dn')+'>'+(n?T('mfill.more.n',{n:n}):T('mfill.more.dn'))+'</span>'}};ms.addEventListener('scroll',updMore,{passive:true});updMore();setTimeout(updMore,400);mm.onclick=function(){ms.scrollBy({top:Math.round(ms.clientHeight*0.7),behavior:'smooth'})}} /* v1.18.1: с броя */
     /* модален: няма ✕ и клик встрани — изходите са „смени кутията“ и ✕ в хедъра (и двата връщат към кутиите) */
@@ -523,6 +526,7 @@
     /* v1.0.39: въпросникът е панел върху попъпа — един ред на продукт (t + sub от „проблемите“), минимум един избор; „Покажи ми
        продуктите“ записва S.quiz и прерисува попъпа с избраните отпред (количествата се пазят); „Пропусни“ само затваря */
     var fq=$('fQuiz');if(fq)fq.onclick=function(){quizPanel(dc,function(keys){S.quiz=keys;saveS();fillPopup()})};
+    if(autoQ&&fq){S.quizSeen=true;saveS();try{sessionStorage.setItem('ansa_promo_unlock_'+b.id,'1')}catch(e){}fq.onclick()}
     function total(){var t=0;Object.keys(needQ).forEach(function(k){t+=needQ[k]});return t}
     function sync(){var t=total();
       /* v1.10.0: броят сам вдига кутията — попъпът се прерисува за новата (количествата са в needQ), с тост „Отключи …“ */
@@ -575,16 +579,18 @@
   }
 
   function quizPanel(dc,done){
-    var cur=Array.isArray(S.quiz)?S.quiz:[];var items=allProbs();
+    /* 1.24.5 (човекът): с UTM продукт (Sakura, Greens…) заглавието е „Sakura е перфектен избор. С какво още би искала да ти помогнем?“, редът на продукта липсва
+       (вече е в кутията — човекът го допълва с други или с още от същия) и един отбелязан стига; без UTM — „Кое от следното те касае?“ и минимум 2 */
+    var cur=Array.isArray(S.quiz)?S.quiz:[],c=S.core&&PROD[S.core]?PROD[S.core]:null;var items=allProbs().filter(function(p){return !c||p.key!==S.core});var cv={core:c?esc(c.name):''},tk=c?'fill.quiz.t.core':'fill.quiz.t',sk=c?'fill.quiz.s.core':'fill.quiz.s';
     var el=document.createElement('div');el.className='fqz';
-    el.innerHTML='<div class="fqzc"><h3'+ck('fill.quiz.t')+'>'+T('fill.quiz.t')+'</h3><p'+ck('fill.quiz.s')+'>'+T('fill.quiz.s')+'</p>'
+    el.innerHTML='<div class="fqzc"><h3'+ck(tk)+'>'+T(tk,cv)+'</h3><p'+ck(sk)+'>'+T(sk,cv)+'</p>'
       +'<div class="fqzg">'+items.map(function(p){return '<label class="fqzi"><input type="checkbox" value="'+esc(p.key)+'"'+(cur.indexOf(p.key)>-1?' checked':'')+'><span><b>'+esc(p.t)+'</b>'+(p.sub?'<small>'+esc(p.sub)+'</small>':'')+'</span></label>'}).join('')+'</div>'
       +'<div class="fqza"><small class="fqzn" id="fqN"></small><button class="cta" id="fqGo" type="button"'+ck('fill.quiz.go')+'>'+T('fill.quiz.go')+'</button><button class="lnk" id="fqSkip" type="button"'+ck('fill.quiz.skip')+'>'+T('fill.quiz.skip')+'</button></div></div>';
     dc.appendChild(el);el.scrollTop=0;
     var go=el.querySelector('#fqGo'),picked=function(){return Array.from(el.querySelectorAll('input:checked')).map(function(x){return x.value})};
     /* v1.23.3 (човекът): „Продължи“ в лепкав футър, активен при минимум 2 отбелязани; броячът казва докъде си */
-    var MIN=2,n=el.querySelector('#fqN');
-    var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T('fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
+    var MIN=c?1:2,n=el.querySelector('#fqN');
+    var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T(MIN===1?'fill.quiz.min1':'fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
     go.onclick=function(){var k=picked();if(k.length<MIN)return;el.remove();done(k)};
     el.querySelector('#fqSkip').onclick=function(){el.remove()};
   }
@@ -907,6 +913,7 @@
   /* ── редактор: хотспотове + живо копи + сценарии ── */
   function scenario(o){
     o=o||{};closeInfo();$('apOv2').classList.add('off');S._lockOv=false;S._fillPending=false;
+    S.quizSeen=!o.quiz; /* 1.24.5: сценариите (харнес/редактор) виждат автоматичния въпросник само с quiz:true */
     if(o.utm!==undefined){S.utm=o.utm&&PROD[o.utm]?o.utm:null;S.core=S.utm}
     if(o.box!==undefined){if(o.box===null||BI[o.box]==null){S.box=null;S.chosen=null;S.slots=[]}else{var b=boxOf(o.box);S.box=BI[o.box];S.chosen=S.box;var kept=S.slots.filter(Boolean);if(!kept.length&&S.core)kept=[S.core];S.slots=kept.slice(0,b.packs);while(S.slots.length<b.packs)S.slots.push(null)}}
     if(o.full&&S.box!==null){var fillK=S.core||ORDER[0];S.slots=S.slots.map(function(k){return k||fillK})}
