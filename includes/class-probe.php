@@ -23,11 +23,11 @@ final class Probe {
 	public static function suites( $s ) {
 		$s[] = array( 'id' => 'promo-env',  'label' => 'ansa™ Промо · среда (Doctor)',       'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_env' ) );
 		$s[] = array( 'id' => 'promo-page', 'label' => 'ansa™ Промо · страницата на живо',   'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_page' ) );
-		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут',     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
-		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
-		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
+		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-cart', 'auto' => false,     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
+		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-tickets', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
+		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-insights', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
-		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
+		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка) · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-leads', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
 		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
 		$s[] = array( 'id' => 'promo-favorite', 'label' => 'ansa™ Промо · любимият продукт за имейлите {{ansa_promo_fav}} (картата · метриката · сметка по имейл; ?email=…)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_favorite' ) );
 		$s[] = array( 'id' => 'promo-season', 'label' => 'ansa™ Промо · седмиците на сезона (стълбата · цените по седмица · гратисът в количката)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_season' ) );
@@ -36,6 +36,38 @@ final class Probe {
 
 	/* ── season (1.19.0): седмиците без дупки; за всяка седмица „сега“ се подменя (filter ansa_promo_now) и кутиите/runtime-ът носят нейния процент;
 	   количката: добавяне в седмица k, после k+1 с ред по-стар от гратиса → base цените падат на новия процент (override по продукт остава), ctx.repriced. ── */
+	/* ── 1.24.34 (човекът: „В момента влизат яко поръчки от ANSA PROBE“) ──
+	   Probe пуска всички auto суити след ВСЕКИ ъпдейт на ansa-* плъгин (upgrader_process_complete → крон +20 с). Суитите за количка/
+	   билети/лийдове/Insights правят ИСТИНСКИ поръчки през WC_Checkout и ги трият накрая — но ако кронът умре по средата (timeout:
+	   десетки remote GET-ове с 20–40 с), поръчките остават „processing“ и тръгват към куриер/фулфилмънт/имейли. Днес: 6 ъпдейта → десетки
+	   поръчки. Сега: (а) тези суити са auto=false — само ръчно `?suite=promo-cart`; (б) всеки auto отчет (suite_env) чисти сираците
+	   на Probe (billing probe@example.com, до 30 дни); (в) докато суит прави поръчки: WC webhooks не се пращат, а shutdown предпазител
+	   трие поръчките дори при fatal/timeout. */
+	const PROBE_EMAIL = 'probe@example.com';
+	private static $guarded = false;
+	public static function cleanup_orphans( $max_age_days = 30 ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return 0; }
+		$n = 0;
+		try {
+			$orders = wc_get_orders( array( 'limit' => 100, 'billing_email' => self::PROBE_EMAIL, 'date_created' => '>' . ( time() - $max_age_days * DAY_IN_SECONDS ), 'status' => array_keys( wc_get_order_statuses() ), 'return' => 'objects' ) );
+			foreach ( (array) $orders as $o ) {
+				if ( ! is_object( $o ) || strtolower( (string) $o->get_billing_email() ) !== self::PROBE_EMAIL ) { continue; }
+				$o->delete( true ); $n++;
+			}
+		} catch ( \Throwable $e ) {}
+		return $n;
+	}
+	/** Преди суит, който прави поръчки: без WC webhooks към външни системи + shutdown чистене при fatal/timeout. */
+	public static function guard_orders( $t = null ) {
+		add_filter( 'woocommerce_webhook_should_deliver', '__return_false', 99 );
+		if ( ! self::$guarded ) {
+			self::$guarded = true;
+			register_shutdown_function( function () { $e = error_get_last(); if ( $e && in_array( $e['type'], array( E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR ), true ) ) { self::cleanup_orphans( 1 ); } } );
+		}
+		$n = self::cleanup_orphans();
+		if ( $t && $n ) { $t->note( 'Probe сираци', $n . ' стари тестови поръчки изтрити преди старта' ); }
+	}
+
 	public static function suite_season( $t, $params ) {
 		$pub = Config::get_published(); $draft = ! Config::is_live( $pub ); $cfg = $draft ? Config::get_draft() : $pub;
 		if ( ! Config::weekly_on( $cfg ) ) { $t->note( 'седмиците', 'изключени в ' . ( $draft ? 'черновата' : 'публикуваното' ) . ' — процентите на кутиите важат целия сезон (🧰 Настройки → 📅 Седмици на сезона)' ); $t->ok( 'без седмици: Config::at не пипа кутиите', Config::at( $cfg )['boxes'] === $cfg['boxes'] ); return null; }
@@ -181,6 +213,7 @@ final class Probe {
 
 	/* ── env: редовете на Doctor като проверки ── */
 	public static function suite_env( $t, $params ) {
+		$orph = self::cleanup_orphans(); if ( $orph ) { $t->note( 'Probe сираци', $orph . ' тестови поръчки (probe@example.com) намерени и изтрити' ); } /* 1.24.34 */
 		foreach ( Doctor::env() as $r ) {
 			if ( 'bad' === $r['level'] ) { $t->ok( $r['label'], false, $r['value'] ); }
 			elseif ( 'warn' === $r['level'] ) { $t->note( '⚠ ' . $r['label'], $r['value'] ); }
@@ -245,6 +278,7 @@ final class Probe {
 	/* ── cart: Фаза 3 — за всяка кутия: добавяне, цени, книга, доставка, купон, заключване, tamper, грешки, идемпотентност, поръчка ──
 	   Параметри: ?keep=1 оставя тестовата поръчка (иначе се трие); ?box=l само една кутия; ?checkout=0 без изтегляне на чекаута. */
 	public static function suite_cart( $t, $params ) {
+		self::guard_orders( $t ); /* 1.24.34 */
 		if ( ! function_exists( 'WC' ) ) { $t->ok( 'WooCommerce', false ); return null; }
 		if ( ! WC()->cart ) { if ( function_exists( 'wc_load_cart' ) ) { wc_load_cart(); } }
 		if ( ! WC()->cart || ! WC()->session ) { $t->ok( 'WC количка в този контекст', false, 'wc_load_cart() не даде количка' ); return null; }
@@ -382,6 +416,7 @@ final class Probe {
 
 	/* ── tickets: Фаза 4 — поръчка → processing → билет (HMAC код, QR, REST), activate, completed → имейли, cancel → void. ?keep=1 оставя поръчката. */
 	public static function suite_tickets( $t, $params ) {
+		self::guard_orders( $t ); /* 1.24.34 */
 		if ( ! function_exists( 'WC' ) ) { $t->ok( 'WooCommerce', false ); return null; }
 		if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) { wc_load_cart(); }
 		if ( ! WC()->cart || ! WC()->session ) { $t->ok( 'WC количка', false ); return null; }
@@ -518,6 +553,7 @@ final class Probe {
 	}
 
 	public static function suite_leads( $t, $params ) {
+		self::guard_orders( $t ); /* 1.24.34 */
 		global $wpdb;
 		$cfg = Config::get_published(); $l = Lead_Sync::cfg( $cfg );
 		$t->ok( 'таблица leads с колоните fka/contact_id', Schema::exists( Schema::table( 'leads' ) ) && in_array( 'fka', (array) $wpdb->get_col( 'SHOW COLUMNS FROM ' . Schema::table( 'leads' ) ), true ), 'DB ver ' . get_option( Schema::OPT_DB_VER ) );
@@ -559,6 +595,7 @@ final class Probe {
 	}
 
 	public static function suite_insights( $t, $params ) {
+		self::guard_orders( $t ); /* 1.24.34 */
 		global $wpdb;
 		$t->ok( 'таблица stats', Schema::exists( Schema::table( 'stats' ) ), Schema::table( 'stats' ) . ' · DB ver ' . get_option( Schema::OPT_DB_VER ) );
 		$before = Insights::report( 1 )['by_step'];
