@@ -61,3 +61,14 @@
 
 /* 1.24.19: ключ със свой текст за избрания UTM */
 .ap-ed-rail .keys .k.ov{color:#c2410c;font-weight:700}
+
+/* 1.24.21: 📄 Страници — редът на секциите (влачене / ↑ ↓), скрити на живо, снимка по секция */
+.ap-ed-seclist{list-style:none;margin:8px 0;padding:0}
+.ap-ed-seclist .sec{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:6px;padding:7px 8px;margin:4px 0;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:13px}
+.ap-ed-seclist .sec.off{background:#faf6f2;color:var(--mut)}.ap-ed-seclist .sec.off .l em{font-style:normal;font-size:11px;color:#b91c1c;font-weight:700}
+.ap-ed-seclist .sec.drag-over{border-color:var(--o);box-shadow:0 0 0 2px rgba(232,114,42,.25)}.ap-ed-seclist .sec.dragging{opacity:.4}
+.ap-ed-seclist .drag{cursor:grab;color:#c9bfb3;font-weight:900;letter-spacing:-2px;user-select:none}.ap-ed-seclist .i{font-size:11px;font-weight:800;color:var(--mut);min-width:16px}
+.ap-ed-seclist .l{font-weight:700;min-width:0}.ap-ed-seclist .bt{display:flex;gap:3px}.ap-ed-seclist .bt button:disabled{opacity:.35;cursor:default}
+.ap-ed-seclist .pic{grid-column:1 / -1;display:flex;gap:8px;align-items:flex-start;padding:6px 0 0;border-top:1px dashed var(--line);margin-top:2px}
+.ap-ed-seclist .pic img{width:84px;height:64px;object-fit:cover;border-radius:8px;background:var(--bg);flex:none}.ap-ed-seclist .pt{flex:1;min-width:0}.ap-ed-seclist .pt input{margin-top:4px;font-size:12px}
+.ap-ed-seclist .pt .row{margin:4px 0 0}

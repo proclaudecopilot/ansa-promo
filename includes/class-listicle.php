@@ -67,7 +67,7 @@ final class Listicle {
 		$rt = Frontend::runtime( $cfg, $draft ); unset( $rt['registry'] );
 		$rt['editor'] = false; $rt['mode'] = 'li'; $rt['promo_url'] = Cart::promo_url( $cfg ); $rt['info_url'] = Info::enabled( $cfg ) ? Info::url( $cfg ) : ''; $rt['refresh'] = ! $draft;
 		$m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
-		$img = Frontend::gate_images( $cfg ); $og = ( ! empty( $img['cosm'] ) && ! Frontend::gate_image_is_dummy( $cfg, 'cosm' ) ) ? $img['cosm'] : '';
+		$og = Frontend::page_image( $cfg, 'li', 'hero', 'cosm' ); /* 1.24.21: своята снимка на hero секцията, иначе комплектът от имейл-попъпа */
 		$editor = false; ob_start(); include ANSA_PROMO_PATH . 'templates/page.php'; $body = ob_get_clean();
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
 			. ( $draft ? '<meta name="robots" content="noindex,nofollow">' : '' )

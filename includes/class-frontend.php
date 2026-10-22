@@ -253,6 +253,28 @@ final class Frontend {
 		return $out;
 	}
 	public static function gate_dummy( $k ) { return ANSA_PROMO_URL . 'assets/img/gate/' . $k . '.svg'; }
+	/** 1.24.21: секциите на /info (how) и /kozmetika (li) за promo.js — редът, скритите, етикетите/снимковите слотове (за лентата в редактора) и своите
+	 *  снимки по секция като URL (attachment id → medium_large). Секция без своя снимка няма ключ в images — promo.js пада на снимката от имейл-попъпа. */
+	public static function pages_runtime( $cfg ) {
+		$out = array(); $meta = Config::page_sections(); $pages = is_array( $cfg['pages'] ?? null ) ? $cfg['pages'] : Config::pages_defaults();
+		foreach ( $meta as $pg => $m ) {
+			$p = is_array( $pages[ $pg ] ?? null ) ? $pages[ $pg ] : array();
+			$out[ $pg ] = array( 'order' => array_values( (array) ( $p['order'] ?? array_keys( $m['sections'] ) ) ), 'off' => array_values( (array) ( $p['off'] ?? array() ) ), 'images' => (object) self::pages_images( $cfg, $pg ),
+				'labels' => (object) array_map( function ( $s ) { return $s['l']; }, $m['sections'] ), 'img' => (object) array_map( function ( $s ) { return $s['img']; }, $m['sections'] ) );
+		}
+		return $out;
+	}
+	/** Своите снимки на секциите на една страница: секция → URL (attachment id → medium_large, URL → както е); без своя снимка → няма ключ. */
+	public static function pages_images( $cfg, $pg ) {
+		$out = array();
+		foreach ( (array) ( $cfg['pages'][ $pg ]['images'] ?? array() ) as $k => $v ) { $v = (string) $v; $url = ''; if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'medium_large' ); } elseif ( '' !== $v ) { $url = $v; } if ( $url ) { $out[ $k ] = $url; } }
+		return $out;
+	}
+	/** Снимката на секция като URL — своята, иначе снимката от имейл-попъпа ('' ако и тя е примерната). За og:image на /info и /kozmetika. */
+	public static function page_image( $cfg, $pg, $sec, $gate_key ) {
+		$own = self::pages_images( $cfg, $pg ); if ( ! empty( $own[ $sec ] ) ) { return $own[ $sec ]; }
+		$img = self::gate_images( $cfg ); return ( ! empty( $img[ $gate_key ] ) && ! self::gate_image_is_dummy( $cfg, $gate_key ) ) ? $img[ $gate_key ] : '';
+	}
 	public static function gate_image_is_dummy( $cfg, $k ) { return '' === (string) ( $cfg['gate']['images'][ $k ] ?? '' ) || ( ctype_digit( (string) $cfg['gate']['images'][ $k ] ) && ! wp_get_attachment_image_url( (int) $cfg['gate']['images'][ $k ], 'medium_large' ) ); }
 
 	/** Всичко, което promo.js трябва да знае. Никакви цени не идват от клиента. */
@@ -299,6 +321,7 @@ final class Frontend {
 			'ship'      => (float) $cfg['ship']['paid'],
 			'timer'     => $cfg['timer'],
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),
+			'pages'     => self::pages_runtime( $cfg ), /* 1.24.21: редът/скритите/снимките на секциите на /info и /kozmetika */
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'gv'        => $gv, /* 1.24.7 */

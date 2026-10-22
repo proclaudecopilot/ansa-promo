@@ -1908,3 +1908,15 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw .li-hero .hw-hpic span{font-size:96px}
 .ansa-promo .dc.hw .li-cards{grid-template-columns:1fr}
 }
+
+/* 1.24.21: секциите на /info и /kozmetika в редактора — лента „N · име ↑ ↓ 👁 🖼“ над всяка секция (постът към родителя мести/скрива/сменя снимката);
+   скритата на живо секция стои избледняла с червена рамка; .sec-on = току-що преместената */
+[data-editor] .dc.hw section[data-sec]{position:relative}
+[data-editor] .dc.hw .sec-tools{position:absolute;left:50%;top:5px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:4px;padding:3px 5px 3px 4px;border-radius:99px;background:rgba(26,26,46,.9);color:#fff;font-size:11.5px;font-weight:800;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.25);white-space:nowrap;max-width:calc(100% - 20px)}
+[data-editor] .dc.hw .sec-tools b{font-weight:800;padding:0 6px;overflow:hidden;text-overflow:ellipsis;min-width:0}
+[data-editor] .dc.hw .sec-tools button{font:inherit;font-size:11.5px;font-weight:800;padding:2px 7px;margin:0;border-radius:99px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;line-height:1.3;width:auto;height:auto;box-shadow:none}
+[data-editor] .dc.hw .sec-tools button:hover{background:#e8722a;border-color:#e8722a}
+[data-editor] .dc.hw .sec-tools button:disabled{opacity:.35;cursor:default;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}
+[data-editor] .dc.hw section.sec-off{opacity:.45;outline:2px dashed #b91c1c;outline-offset:-4px}
+[data-editor] .dc.hw section.sec-on{outline:3px solid #e8722a;outline-offset:-3px}
+@media (max-width:640px){[data-editor] .dc.hw .sec-tools{font-size:10.5px}[data-editor] .dc.hw .sec-tools b{max-width:120px}}

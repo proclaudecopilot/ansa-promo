@@ -12,6 +12,7 @@
   var scen={utm:'',box:'',screen:'boxes',full:false}; /* 1.24.13: тръгва от „Кутиите“ без избрана кутия — стъпката нагласява кутията */
   var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта',li:'Страница „Комплектът за 1 €“ (/kozmetika)'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
+  var secPage='how',picked={}; /* 1.24.21: 📄 Страници — коя страница е в инспектора; attachment id → URL на току-що избраните снимки (до записа) */
 
   /* ── помощници за конфига ── */
   function get(path){return path.split('.').reduce(function(o,k){return o==null?undefined:o[k]},cfg)}
@@ -67,7 +68,7 @@
   function postChanged(){post({ansaPromo:'changed',keys:changedMap()})}
   function postScenario(){post({ansaPromo:'scenario',screen:scen.screen,utm:scen.utm||null,box:scen.box||null,full:!!scen.full})}
   function runtimePartial(){var dl='';if(cfg.deadline){var m=String(cfg.deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)dl=m[3]+'.'+m[2]+'.'+m[1]}
-    return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)},campaigns:cfg.campaigns||{}}} /* 1.24.14: кампаниите по UTM */
+    return {name:cfg.name,deadline:dl,boxes:cfg.boxes,box_order:cfg.order,rewards:cfg.rewards,secret:cfg.secret,ship:Number(cfg.ship&&cfg.ship.paid)||0,timer:cfg.timer,gate:{enabled:!!cfg.gate.enabled,required:!!cfg.gate.required,consent_default:!!cfg.gate.consent_default},bgn:cfg.bgn,fit:cfg.fit||{},problems:cfg.problems||[],checkout:{cod:!!(cfg.checkout&&cfg.checkout.cod_gateway)},campaigns:cfg.campaigns||{},pages:pagesRuntime()}} /* 1.24.14: кампаниите по UTM · 1.24.21: секциите на /info и /kozmetika */
   function postCfg(){post({ansaPromo:'cfg',runtime:runtimePartial()})}
   function renderCanvas(){var c=$('#apEdCanvas');if(!D.page){c.innerHTML='<div class="ap-ed-scen">Няма страница — избери я в 🧰 Инструменти.</div>';return}
     if(!frame){c.innerHTML='';
@@ -129,7 +130,8 @@
   function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}
   function liveUrl(){var u=D.page_url||D.page||''; /* публичната страница; кутията/попъпите идват от кампанията в конфига, не от адреса */var q=[];q.push('utm_content='+encodeURIComponent(scen.utm||'general'));return u+(u.indexOf('?')<0?'?':'&')+q.join('&')}
   function fitFrame(){if(!frame)return;var wrap=$('#apEdFrame'),w=wrap.clientWidth-24,need=device==='mob'?390:1280,z=Math.min(1,w/need);frame.style.transform='scale('+z+')';frame.style.height=device==='mob'?'780px':((wrap.clientHeight-24)/z)+'px'}
-  window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false,true)}});
+  window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;if(d.ansaPromo==='ck'&&d.key&&KEYS[d.key]){mode='copy';region=KEYS[d.key].g;select(d.key,false,true)}
+    else if(d.ansaPromo==='sec'&&d.page&&D.pages&&D.pages[d.page]){secAct(d.page,d.id,d.act)} /* 1.24.21: лентата над секцията в канваса */});
 
   /* ── рейл ── */
   function renderRail(){var r=$('#apEdRail'),out='';
@@ -139,6 +141,8 @@
       var ov=ks.filter(function(k){return chm[k]===2}).length;
       out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+'" data-g="'+g+'">'+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch-ov?' · <b>'+(ch-ov)+'</b>':'')+(ov?' · <b style="color:#c2410c">✎'+ov+'</b>':'')+'</span></button>';
       if(mode==='copy'&&region===g||search||onlyChanged){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?' ch':'')+(chm[k]===2?' ov':'')+(invalid[k]?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+(chm[k]===2?'✎ ':'')+esc(k)+'</button>'}).join('')+'</div>'}});
+    /* 1.24.21: 📄 Страници — редът на секциите, скритите и снимките на /info и /kozmetika */
+    out+='<h4>📄 Страници · секции и снимки</h4>';Object.keys(D.pages||{}).forEach(function(pg){var P=pageEd(pg),ni=Object.keys(P.images).length;out+='<button class="rg'+(mode==='sections'&&secPage===pg?' on':'')+'" data-secpg="'+pg+'">'+(pg==='how'?'ℹ️ ':'🌸 ')+esc(D.pages[pg].label)+'<span class="n">'+P.order.length+(P.off.length?' · <b>'+P.off.length+' скрити</b>':'')+(ni?' · 🖼'+ni:'')+'</span></button>'});
     out+='<h4>⚙️ Двигател</h4>';[['game','🎮 Играта'],['boxes','📦 Кутиите'],['rewards','🎁 Наградите'],['checkout','💳 Плащане'],['tickets','🎟️ Билети'],['fit','🔗 FIT · проблеми']].forEach(function(x){out+='<button class="rg'+(mode===x[0]?' on':'')+'" data-mode="'+x[0]+'">'+esc(x[1])+'</button>'});
     out+='<a class="rg" href="'+esc(D.products_tab)+'" target="_blank">📦 Продукти ↗</a>';
     out+='<h4>🧰 Инструменти</h4><button class="rg" data-mode="doctor">🩺 Doctor'+(state.checks.some(function(c){return c.level==='bad'})?' <span class="n"><b>⛔</b></span>':'')+'</button><button class="rg" data-mode="history">🕘 История <span class="n">'+state.history.length+'</span></button><button class="rg" data-mode="json">{ } JSON</button><a class="rg" href="'+esc(D.admin)+'">← Инструменти (стария екран)</a>';
@@ -146,7 +150,8 @@
     $('#apSearch').oninput=function(){search=this.value;renderRail()};$('#apOnlyCh').onchange=function(){onlyChanged=this.checked;renderRail()};
     $$('[data-g]',r).forEach(function(b){b.onclick=function(){mode='copy';region=b.dataset.g;var ks=groupKeys(region);if(!sel||KEYS[sel].g!==region)sel=ks[0];renderRail();renderInsp();goToKeyScreen(sel)}});
     $$('[data-k]',r).forEach(function(b){b.onclick=function(){mode='copy';region=KEYS[b.dataset.k].g;select(b.dataset.k,true)}});
-    $$('[data-mode]',r).forEach(function(b){b.onclick=function(){mode=b.dataset.mode;sel=null;renderRail();renderInsp()}})}
+    $$('[data-mode]',r).forEach(function(b){b.onclick=function(){mode=b.dataset.mode;sel=null;renderRail();renderInsp()}});
+    $$('[data-secpg]',r).forEach(function(b){b.onclick=function(){openSections(b.dataset.secpg)}})}
   function goToKeyScreen(k){if(!k)return;var sc=SCREENS[KEYS[k].g]||[];if(sc.length&&sc.indexOf(scen.screen)<0){scen.screen=sc[0];if(sc[0]!=='boxes'&&!scen.box)scen.box='l';renderCanvas();postScenario()}}
   /* 1.24.16 (човекът: „като цъкам на секции да ги едитвам, ми мести Стъпка“): клик върху хотспот в канваса (fromCanvas) НИКОГА не сменя
      стъпката — текстът е на екрана, който гледаш; само изборът от списъка вляво навигира към екрана на ключа */
@@ -173,6 +178,7 @@
     if(mode==='doctor'){p.innerHTML='<h3>🩺 Doctor</h3><div class="hint">Publish gate: ⛔ спира публикуването, ⚠ само предупреждава.</div><ul class="ap-ed-doc">'+state.checks.map(function(c){return '<li class="'+c.level+'">'+({bad:'⛔',warn:'⚠',ok:'✓',info:'ℹ'}[c.level]||'')+' '+esc(c.msg)+'</li>'}).join('')+'</ul><p><button class="sm" id="apDocRun">↻ провери пак (записва черновата)</button></p>';$('#apDocRun').onclick=function(){save().then(function(){renderInsp()})};return}
     if(mode==='history'){p.innerHTML='<h3>🕘 История</h3><div class="hint">Публикувано: версия '+state.version+(state.published_at?' · '+new Date(state.published_at*1000).toLocaleString('bg-BG'):'')+'</div><ul class="ap-ed-hist">'+(state.history.length?state.history.map(function(x){return '<li>версия '+x.version+' · '+new Date(x.at*1000).toLocaleString('bg-BG')+'<span style="flex:1"></span><button class="sm" data-rv="'+x.version+'">върни като чернова</button></li>'}).join(''):'<li>още няма публикувани версии</li>')+'</ul>';$$('[data-rv]',p).forEach(function(b){b.onclick=function(){restore(b.dataset.rv)}});return}
     if(mode==='json'){p.innerHTML='<h3>{ } JSON на черновата</h3><div class="hint">Редактирай и „Внеси“ — минава през normalize на сървъра при запис.</div><textarea id="apJson" style="height:60vh;font:11px/1.4 Menlo,Consolas,monospace">'+esc(JSON.stringify(cfg,null,2))+'</textarea><p><button class="sm" id="apJsonGo">⬆ Внеси в черновата</button></p>';$('#apJsonGo').onclick=function(){try{var d=JSON.parse($('#apJson').value);cfg=d;markDirty();dirty=true;save().then(function(){if(frame)frame.src=D.page})}catch(e){toast('Невалиден JSON: '+e.message,true)}};return}
+    if(mode==='sections'){renderSections(p);return} /* 1.24.21 */
     renderEngine(p)}
 
   /* ── ⚙️ двигател ── */
@@ -197,6 +203,50 @@
     $$('[data-pb]',p).forEach(function(el){el.onchange=function(){var a=el.dataset.pb.split('.');cfg.problems[+a[0]][a[1]]=el.value;markDirty();postCfg()}});
     $$('[data-pbdel]',p).forEach(function(b){b.onclick=function(){cfg.problems.splice(+b.dataset.pbdel,1);markDirty();postCfg();renderInsp()}});
     var add=$('#apProbAdd');if(add)add.onclick=function(){cfg.problems=cfg.problems||[];cfg.problems.push({t:'',sub:'',why:'',key:D.products[0]?D.products[0].key:''});markDirty();renderInsp()}}
+
+  /* ── 1.24.21: 📄 Страници — секциите на /info (how) и /kozmetika (li): ред (влачене / ↑ ↓), скрити на живо, снимка по секция ──
+     Конфиг: cfg.pages[pg] = {order:[id…], off:[id…], images:{id: attachment id | URL}}. Снимката по подразбиране е слотът от имейл-попъпа (D.pages[pg].sections[id].img →
+     D.gate_images). Канвасът получава pages в runtime-а (postCfg) и рендира наново; лентата над всяка секция в канваса праща {ansaPromo:'sec'} → secAct. */
+  function pageEd(pg){var M=D.pages[pg],ids=Object.keys(M.sections);if(!cfg.pages||Array.isArray(cfg.pages))cfg.pages={};var P=cfg.pages[pg];if(!P||typeof P!=='object'||Array.isArray(P))P=cfg.pages[pg]={};
+    var order=[];(Array.isArray(P.order)?P.order:[]).forEach(function(id){if(ids.indexOf(id)>-1&&order.indexOf(id)<0)order.push(id)});ids.forEach(function(id){if(order.indexOf(id)<0)order.push(id)});P.order=order;
+    P.off=(Array.isArray(P.off)?P.off:[]).filter(function(id){return ids.indexOf(id)>-1});if(!P.images||typeof P.images!=='object'||Array.isArray(P.images))P.images={};
+    Object.keys(P.images).forEach(function(id){if(!M.sections[id]||!M.sections[id].img||P.images[id]==='')delete P.images[id]});return P}
+  /* своята снимка на секцията като URL: URL → както е; attachment id → току-що избраната (picked) или от сървъра след записа (state.pages_images); '' = няма/още не е резолвнат */
+  function ownUrl(pg,id){var v=pageEd(pg).images[id];if(!v)return '';v=String(v);if(!/^\d+$/.test(v))return v;return picked[v]||(((state.pages_images||{})[pg]||{})[id])||''}
+  function secUrl(pg,id){return ownUrl(pg,id)||(D.gate_images||{})[D.pages[pg].sections[id].img]||''}
+  function pagesRuntime(){var o={};Object.keys(D.pages||{}).forEach(function(pg){var M=D.pages[pg],P=pageEd(pg),im={},lb={},ig={};Object.keys(M.sections).forEach(function(id){lb[id]=M.sections[id].l;ig[id]=M.sections[id].img;var u=ownUrl(pg,id);if(u)im[id]=u});o[pg]={order:P.order.slice(),off:P.off.slice(),images:im,labels:lb,img:ig}});return o}
+  function openSections(pg){mode='sections';secPage=pg;sel=null;if(scen.screen!==pg){scen.screen=pg;stepDefaults(true);renderCanvas();postScenario()}renderRail();renderInsp()}
+  function secChanged(pg,id){markDirty();postCfg();renderRail();if(mode==='sections')renderInsp();if(id)setTimeout(function(){post({ansaPromo:'sec',id:id})},250)}
+  function moveSec(pg,id,dir){var P=pageEd(pg),i=P.order.indexOf(id),j=i+dir;if(i<0||j<0||j>=P.order.length)return;P.order.splice(i,1);P.order.splice(j,0,id);secChanged(pg,id)}
+  function moveSecTo(pg,id,before){var P=pageEd(pg),i=P.order.indexOf(id);if(i<0||id===before)return;P.order.splice(i,1);var j=before?P.order.indexOf(before):P.order.length;if(j<0)j=P.order.length;P.order.splice(j,0,id);secChanged(pg,id)}
+  function toggleSec(pg,id){var P=pageEd(pg),i=P.off.indexOf(id);if(i<0)P.off.push(id);else P.off.splice(i,1);secChanged(pg,id)}
+  function setSecImg(pg,id,v){var P=pageEd(pg);v=String(v==null?'':v).trim();if(v==='')delete P.images[id];else P.images[id]=v;secChanged(pg,id)}
+  function pickSecImg(pg,id){if(!window.wp||!wp.media){toast('Медийната библиотека не е заредена — презареди страницата или въведи URL/attachment ID в полето.',true);return}
+    var fr=wp.media({title:'Снимка за секцията „'+(D.pages[pg].sections[id]||{}).l+'“',library:{type:'image'},multiple:false,button:{text:'Използвай'}});
+    fr.on('select',function(){var a=fr.state().get('selection').first().toJSON();var sz=a.sizes&&(a.sizes.medium_large||a.sizes.large||a.sizes.full);picked[String(a.id)]=sz?sz.url:a.url;setSecImg(pg,id,String(a.id))});fr.open()}
+  function secAct(pg,id,act){if(!D.pages[pg].sections[id])return;if(mode!=='sections'||secPage!==pg){mode='sections';secPage=pg;sel=null;renderRail();renderInsp()}
+    if(act==='up')moveSec(pg,id,-1);else if(act==='down')moveSec(pg,id,1);else if(act==='off')toggleSec(pg,id);else if(act==='img')pickSecImg(pg,id)}
+  function renderSections(p){var pg=secPage,M=D.pages[pg],P=pageEd(pg),GL=D.gate_slots||{};
+    var out='<div class="ap-ed-eng ap-ed-secs"><h3>📄 '+esc(M.label)+'</h3><div class="hint">Редът на секциите на страницата: влачи реда или ↑ ↓. 👁 скрива секцията на живо (в канваса стои избледняла, за да редактираш текстовете ѝ). 🖼 сменя снимката на секцията — по подразбиране е снимката от имейл-попъпа (⚙️ Наградите · 🧰 Инструменти). Текстовете се редактират от канваса. Влиза с „Запази“ → „Публикувай“.</div><ol class="ap-ed-seclist" id="apSecList">';
+    P.order.forEach(function(id,i){var s=M.sections[id];if(!s)return;var off=P.off.indexOf(id)>-1,own=!!P.images[id];
+      out+='<li class="sec'+(off?' off':'')+'" draggable="true" data-id="'+id+'"><span class="drag" title="влачи, за да преместиш">⋮⋮</span><span class="i">'+(i+1)+'</span><span class="l">'+esc(s.l)+(off?' <em>скрита на живо</em>':'')+'</span><span class="bt"><button class="sm" data-mv="-1" data-id="'+id+'" title="нагоре"'+(i?'':' disabled')+'>↑</button><button class="sm" data-mv="1" data-id="'+id+'" title="надолу"'+(i<P.order.length-1?'':' disabled')+'>↓</button><button class="sm" data-off="'+id+'" title="'+(off?'покажи на живо':'скрий на живо')+'">'+(off?'👁 покажи':'👁‍🗨 скрий')+'</button></span>'
+        +(s.img?'<div class="pic"><img src="'+esc(secUrl(pg,id))+'" alt=""><div class="pt"><div class="hint">'+(own?(ownUrl(pg,id)?'<b style="color:#c2410c">своя снимка</b>':'<b style="color:#c2410c">своя снимка</b> (attachment '+esc(P.images[id])+' — вижда се след „Запази“)'):'снимката от имейл-попъпа („'+esc(GL[s.img]||s.img)+'“)')+'</div><div class="row"><button class="sm" data-pick="'+id+'">🖼 Избери от библиотеката</button>'+(own?'<button class="sm" data-clr="'+id+'">⟲ като в попъпа</button>':'')+'</div><input type="text" data-iurl="'+id+'" placeholder="или URL на снимка / attachment ID" value="'+esc(P.images[id]||'')+'"></div></div>':'')+'</li>'});
+    out+='</ol><div class="row"><button class="sm" id="apSecReset">⟲ Ред по подразбиране · всички видими</button><span class="sp" style="flex:1"></span><button class="sm" id="apSecGo">👁 покажи в канваса</button></div></div>';p.innerHTML=out;
+    $$('[data-mv]',p).forEach(function(b){b.onclick=function(){moveSec(pg,b.dataset.id,+b.dataset.mv)}});
+    $$('[data-off]',p).forEach(function(b){b.onclick=function(){toggleSec(pg,b.dataset.off)}});
+    $$('[data-pick]',p).forEach(function(b){b.onclick=function(){pickSecImg(pg,b.dataset.pick)}});
+    $$('[data-clr]',p).forEach(function(b){b.onclick=function(){setSecImg(pg,b.dataset.clr,'')}});
+    $$('[data-iurl]',p).forEach(function(el){el.onchange=function(){setSecImg(pg,el.dataset.iurl,el.value)}});
+    $('#apSecReset').onclick=function(){P.order=Object.keys(M.sections);P.off=[];secChanged(pg,P.order[0])};
+    $('#apSecGo').onclick=function(){openSections(pg);post({ansaPromo:'sec',id:P.order[0]})};
+    /* влачене на редовете */
+    var dragId=null;$$('.sec',p).forEach(function(li){
+      li.addEventListener('dragstart',function(e){dragId=li.dataset.id;li.classList.add('dragging');try{e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move'}catch(x){}});
+      li.addEventListener('dragend',function(){dragId=null;$$('.sec',p).forEach(function(x){x.classList.remove('dragging','drag-over')})});
+      li.addEventListener('dragover',function(e){if(!dragId||dragId===li.dataset.id)return;e.preventDefault();try{e.dataTransfer.dropEffect='move'}catch(x){}$$('.sec',p).forEach(function(x){x.classList.toggle('drag-over',x===li)})});
+      li.addEventListener('dragleave',function(){li.classList.remove('drag-over')});
+      li.addEventListener('drop',function(e){e.preventDefault();if(!dragId||dragId===li.dataset.id)return;var P2=pageEd(pg),from=P2.order.indexOf(dragId),to=P2.order.indexOf(li.dataset.id),id=dragId;dragId=null;
+        if(from<0||to<0)return;P2.order.splice(from,1);P2.order.splice(to,0,id);secChanged(pg,id)})})}
 
   /* ── горна лента ── */
   function renderTop(){var t=$('#apEdTop'),nch=Object.keys(changedMap()).length,bad=state.checks.some(function(c){return c.level==='bad'});
