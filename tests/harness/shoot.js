@@ -88,7 +88,7 @@ const { chromium } = require('playwright');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'l', utm: null, quiz: true })); await page.waitForTimeout(300); await shot('quiz-auto-noutm'); await check('quiz-auto-noutm');
     if (!/Кое от следното те касае/.test(await page.evaluate(() => (document.querySelector('.fqz h3') || {}).textContent || ''))) errors.push(tag + ' quiz-auto-noutm: заглавието без UTM не е „Кое от следното те касае?“');
     await page.evaluate(() => { const i = document.querySelector('.fqz input[value="thyro"]'); if (i) i.click(); });
-    if (!(await page.evaluate(() => document.getElementById('fqGo').disabled))) errors.push(tag + ' quiz-auto-noutm: „Продължи“ е активен с 1 избор без UTM');
+    if (await page.evaluate(() => document.getElementById('fqGo').disabled)) errors.push(tag + ' quiz-auto-noutm: „Продължи“ е неактивен с 1 избор без UTM (1.24.31: един стига)');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'boxes', utm: null }));
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'fill', box: 'm', utm: null })); await check('fill-noutm');
     await page.evaluate(() => AnsaPromo.scenario({ screen: 'celeb', box: 's', utm: 'sakura', full: true })); await shot('celeb-small'); await check('celeb-small');

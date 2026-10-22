@@ -730,7 +730,7 @@
     dc.appendChild(el);el.scrollTop=0;
     var go=el.querySelector('#fqGo'),picked=function(){return Array.from(el.querySelectorAll('input:checked')).map(function(x){return x.value})};
     /* v1.23.3 (човекът): „Продължи“ в лепкав футър, активен при минимум 2 отбелязани; броячът казва докъде си */
-    var MIN=c?1:2,n=el.querySelector('#fqN');
+    var MIN=1,n=el.querySelector('#fqN'); /* 1.24.31 (човекът: „задължава 2 избора, 1 е достатъчен“): беше 2 без UTM продукт (1.24.5: с UTM — 1) */
     var sync=function(){var c=picked().length;go.disabled=c<MIN;n.innerHTML=c<MIN?T(MIN===1?'fill.quiz.min1':'fill.quiz.min',{n:c,min:MIN}):T('fill.quiz.n',{n:c});n.classList.toggle('ok',c>=MIN)};sync();el.querySelectorAll('input').forEach(function(x){x.onchange=sync});
     go.onclick=function(){var k=picked();if(k.length<MIN)return;el.remove();done(k)};
     el.querySelector('#fqSkip').onclick=function(){el.remove()};
