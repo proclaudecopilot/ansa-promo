@@ -267,16 +267,29 @@
      стъпки · яхтата · комплектът · продуктите · защо го правим · отзиви · въпроси · правила · залепен бутон. Всеки текст е ключ how.* (T()),
      кутиите/цените/билетите/наградите се четат от двигателя (BOXES/PROD/A.rewards); „Избери …“ вика chooseBox, „Добави в кутия“ — addSlot
      или прави продукта основен (S.core) и води към кутиите. Структурата: .dc.hw е flex колона, скролва .ib (✕ стои горе вдясно). */
+  /* 1.24.21 (човекът: „трябва да има местене на секциите и смяна на картинките“): секциите на /info (how) и /kozmetika (li) са по реда от конфига
+     (A.pages[pg].order — редакторът 📄 Страници), скритите (off) не се рендират на живо (в редактора стоят избледнели, за да се редактират текстовете им),
+     снимката на секция е своята (A.pages[pg].images[id]) или тази от имейл-попъпа (gate.images). Всяка секция носи data-sec; в редактора — и лента
+     ↑ ↓ 👁 🖼, която праща {ansaPromo:'sec', page, id, act} на родителя. Залепеният бутон не е секция (винаги последен). */
+  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq']}; /* 1.24.22: prods */
+  function pageCfg(pg){var P=(A.pages&&A.pages[pg])||{},def=PAGE_SECS[pg]||[],order=[];(P.order||[]).forEach(function(id){if(def.indexOf(id)>-1&&order.indexOf(id)<0)order.push(id)});def.forEach(function(id){if(order.indexOf(id)<0)order.push(id)});
+    return {order:order,off:P.off||[],images:P.images||{},labels:P.labels||{},img:P.img||{}}}
+  function secPic(pg,id,gk,emo){var GI=(A.gate&&A.gate.images)||{},u=pageCfg(pg).images[id]||GI[gk];return u?'<img src="'+esc(u)+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'}
+  function secJoin(pg,S){var P=pageCfg(pg),vis=P.order.filter(function(id){return !!S[id]});
+    return vis.map(function(id,i){var html=S[id],off=P.off.indexOf(id)>-1;if(!A.editor&&off)return '';
+      var tools='';if(A.editor){var bt=function(act,t,lbl,dis){return '<button type="button" data-sect="'+act+'" data-pg="'+pg+'" data-id="'+id+'" title="'+t+'"'+(dis?' disabled':'')+'>'+lbl+'</button>'};
+        tools='<div class="sec-tools"><b>'+(i+1)+' · '+esc(P.labels[id]||id)+(off?' · скрита на живо':'')+'</b>'+bt('up','нагоре','↑',!i)+bt('down','надолу','↓',i>=vis.length-1)+bt('off',off?'покажи на живо':'скрий на живо',off?'👁 покажи':'👁‍🗨 скрий')+(P.img[id]?bt('img','смени снимката','🖼 снимка'):'')+'</div>'}
+      return html.replace(/^<section\b([^>]*)>/,function(m,at){var cls=off?'sec-off':'';at=/ class="/.test(at)?at.replace(/ class="/,' class="'+(cls?cls+' ':'')):at+(cls?' class="'+cls+'"':'');return '<section'+at+' data-sec="'+id+'">'+tools})}).join('')}
   function howHtml(){
-    var GI=(A.gate&&A.gate.images)||{},bl=boxOf('l')||BOXES[BOXES.length-1],ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null;
+    var bl=boxOf('l')||BOXES[BOXES.length-1],ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null;
     var maxp=BOXES.length?Math.max.apply(null,BOXES.map(function(b){return b.pct})):0;
     function p(k,tag,cls,v){tag=tag||'p';return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+T(k,v)+'</'+tag+'>'}
     function cta(k,attr,cls){return '<button class="cta'+(cls?' '+cls:'')+'" type="button" '+attr+ck(k)+'>'+T(k)+'</button>'}
-    var pic1=function(k,emo){return GI[k]?'<img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'};
+    var pic1=function(k,emo,sec){return secPic('how',sec,k,emo)}; /* 1.24.21: своята снимка на секцията, иначе тази от имейл-попъпа */
     /* 1 · hero */
     var h='<section class="hw-hero"><div class="hw-htx">'+p('how.title','div','hw-kick')+p('how.hero.dates','div','hw-dates')+p('how.hero.h','h2')+p('how.hero.sub','p','hw-sub')
       +'<ul class="hw-bul">'+['how.hero.b1','how.hero.b2','how.hero.b3'].map(function(k){return '<li'+ck(k)+'>'+T(k)+'</li>'}).join('')+'</ul>'
-      +'<div class="hw-ctas">'+cta('how.hero.cta','data-hw="boxes"')+cta('how.hero.cta2','data-hw="steps"','soft')+'</div>'+p('how.hero.note','p','hw-note')+'</div><div class="hw-hpic">'+pic1('yacht','🛥️')+'</div></section>';
+      +'<div class="hw-ctas">'+cta('how.hero.cta','data-hw="boxes"')+cta('how.hero.cta2','data-hw="steps"','soft')+'</div>'+p('how.hero.note','p','hw-note')+'</div><div class="hw-hpic">'+pic1('yacht','🛥️','hero')+'</div></section>';
     /* 2 · трите кутии — от двигателя */
     var bx='<section class="hw-sec" id="hwBoxes"><div class="hw-sh">'+p('how.bx.h','h3')+p('how.bx.sub','p','hw-lead')+'</div><div class="hw-boxes">'
       +BOXES.map(function(b,i){var bv=boxVars(b),lines=[['how.bx.pct',bv],['how.bx.tix',bv]];
@@ -295,13 +308,13 @@
     var st='<section class="hw-sec" id="hwSteps"><div class="hw-sh">'+p('how.st.h','h3')+p('how.st.sub','p','hw-lead')+'</div><ol class="hw-steps">'
       +[1,2,3].map(function(i){return '<li><i>'+i+'</i>'+p('how.st.'+i+'.t','b')+p('how.st.'+i+'.p')+'</li>'}).join('')+'</ol>'+p('how.st.more','p','hw-more')+cta('how.st.cta','data-hw="boxes"')+'</section>';
     /* 4 · яхтата */
-    var y='<section class="hw-sec hw-y"><div class="hw-ypic">'+pic1('yacht','🛥️')+p('how.y.value','em')+'</div><div class="hw-ytx">'+p('how.y.kick','div','hw-kick')+p('how.y.h','h3')+p('how.y.p')
+    var y='<section class="hw-sec hw-y"><div class="hw-ypic">'+pic1('yacht','🛥️','yacht')+p('how.y.value','em')+'</div><div class="hw-ytx">'+p('how.y.kick','div','hw-kick')+p('how.y.h','h3')+p('how.y.p')
       +'<ul class="hw-facts">'+[1,2,3,4,5].map(function(i){return '<li'+ck('how.y.f'+i)+'>'+T('how.y.f'+i)+'</li>'}).join('')+'</ul>'
       +'<div class="hw-win">'+p('how.y.how.h','b')+p('how.y.how.p')+'</div>'+cta('how.y.cta','data-hw="boxes"')+p('how.legal','p','hw-legal')+'</div></section>';
     /* 5 · комплектът (+ „Първите N са резервирани“ от издадените билети за Голяма) */
     var limit=Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||0,res=Number(A.cosm_reserved)||0,bar='';
     if(limit>0&&res>0){var pc=Math.max(2,Math.min(100,Math.round(res/limit*100)));bar='<div class="hw-bar"><div class="hw-bart">'+p('how.k.bar','span','',{n:ths(res)})+p('how.k.bar.of','small')+'</div><div class="hw-barb"><i style="width:'+pc+'%"></i></div></div>'}
-    var k='<section class="hw-sec hw-k"><div class="hw-kpic">'+pic1('cosm','🌸')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('how.k.kick','div','hw-kick')+p('how.k.h','h3')+p('how.k.sub','p','hw-lead')+p('how.k.p')
+    var k='<section class="hw-sec hw-k"><div class="hw-kpic">'+pic1('cosm','🌸','cosm')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('how.k.kick','div','hw-kick')+p('how.k.h','h3')+p('how.k.sub','p','hw-lead')+p('how.k.p')
       +'<ul class="hw-facts">'+[1,2,3].map(function(i){return '<li'+ck('how.k.f'+i)+'>'+T('how.k.f'+i)+'</li>'}).join('')+'</ul>'
       +'<div class="hw-qa">'+[1,2].map(function(i){return '<div>'+p('how.k.q'+i+'.t','b')+p('how.k.q'+i+'.p')+'</div>'}).join('')+'</div>'+bar
       +'<button class="cta gold" type="button" data-hw-box="'+(bl?BI[bl.id]:0)+'"'+ck('how.k.cta')+'>'+T('how.k.cta')+'</button>'+p('how.k.note','p','hw-legal')+'</div></section>';
@@ -321,7 +334,7 @@
     var faq='<section class="hw-sec hw-faq">'+p('how.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div></section>';
     var ru='<section class="hw-sec hw-ru">'+p('how.rules.h','b')+p('how.rules.p')+'</section>';
     var stk='<div class="hw-stk">'+cta('how.sticky','data-hw="boxes"')+'</div>';
-    return h+bx+lad+st+y+k+pr+w+rv+faq+ru+stk;
+    return secJoin('how',{hero:h,boxes:bx,ladder:lad,steps:st,yacht:y,cosm:k,prods:pr,why:w,reviews:rv,faq:faq,rules:ru})+stk; /* 1.24.21: по реда от конфига */
   }
   function addQ(u,k,v){u=String(u||'');return u+(u.indexOf('?')>-1?'&':'?')+encodeURIComponent(k)+'='+encodeURIComponent(v)}
   /* бутоните на страницата: в попъпа действат на място (chooseBox/addSlot); на /info (nav) водят към промо страницата — data-go носи адреса */
@@ -352,32 +365,37 @@
   function liLeft(){var limit=Number(A.rewards&&A.rewards.cosm&&A.rewards.cosm.limit)||0,res=Number(A.cosm_reserved)||0,left=limit-res;if(limit<=0||left<=0||left/limit>.4)return null;return {left:ths(left),n:left,limit:limit}}
   function liUrl(){var u=addQ(A.promo_url||'/',A.utm_param||'utm_content','cosm');try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
   function liHtml(){
-    var GI=(A.gate&&A.gate.images)||{},bl=boxOf('l')||bigBox(),ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null,lf=liLeft();
+    var bl=boxOf('l')||bigBox(),ex=PROD.greens?'greens':ORDER[0],exp=ex&&PROD[ex]?PROD[ex]:null,lf=liLeft();
     var exv={ex_name:exp?esc(exp.name):'',ex_full:'',ex_pay:''};if(exp&&Number(exp.price)>0&&bl){var fullp=r2(exp.price*bl.packs);exv.ex_full=m(fullp);exv.ex_pay=m(r2(fullp*(1-ppct(exp,bl)/100)))}
     var lv=lf?{left:lf.left}:{left:''};
     function p(k,tag,cls,v){tag=tag||'p';return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+T(k,v)+'</'+tag+'>'}
     function cta(k,cls){return '<button class="cta'+(cls?' '+cls:'')+'" type="button" data-li="go"'+ck(k)+'>'+T(k)+'</button>'}
-    var pic1=function(k,emo){return GI[k]?'<img src="'+esc(GI[k])+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'};
+    var pic1=function(k,emo,sec){return secPic('li',sec,k,emo)}; /* 1.24.21 */
     var cnt=lf?'<div class="li-left"'+ck('li.left')+'>'+T('li.left',lv)+'</div>':'';
     var info_u=A.info_url||'',rules_u=A.tombola_url||info_u;
     /* 1 · hero */
     var h='<section class="hw-hero li-hero"><div class="hw-htx">'+p('li.hero.kick','div','hw-kick')+p('li.hero.h','h2')+p('li.hero.sub','p','hw-sub')
-      +'<div class="hw-ctas">'+cta('li.hero.cta','gold')+'</div>'+p('li.hero.note','p','hw-note')+cnt+'</div><div class="hw-hpic">'+pic1('cosm','🌸')+'</div></section>';
+      +'<div class="hw-ctas">'+cta('li.hero.cta','gold')+'</div>'+p('li.hero.note','p','hw-note')+cnt+'</div><div class="hw-hpic">'+pic1('cosm','🌸','hero')+'</div></section>';
     /* 2 · къде е уловката (писмото) */
     var c='<section class="hw-sec hw-w li-catch"><div class="hw-letter">'+p('li.catch.h','h3')+[1,2,3,4,5,6,7].map(function(i){return p('li.catch.p'+i)}).join('')+p('li.catch.sign','p','hw-sign')+'</div></section>';
     /* 3 · комплектът — картите само с попълнено заглавие */
     var cards='';for(var i=1;i<=5;i++){if(T('li.set.'+i+'.t')==='')continue;cards+='<div class="li-card"><i>'+i+'</i>'+p('li.set.'+i+'.t','b')+p('li.set.'+i+'.d')+'</div>'}
     var st='<section class="hw-sec li-set"><div class="hw-sh">'+p('li.set.h','h3')+'</div>'+p('li.set.p1')+p('li.set.p2','p','hw-n')+(cards?'<div class="li-cards">'+cards+'</div>':p('li.set.p3','p','hw-n'))+'</section>';
+    /* 3б · 1.24.22 (човекът): „Какво се крие в кутията“ — петте продукта като карти (снимка от Настройки → 💄 Козметичните продукти или емоджи; blur =
+       замъглена изненада с „?“); карта без заглавие не се показва */
+    var LI=A.li_items||[],pcards='';for(var q=1;q<=5;q++){if(T('li.pr.'+q+'.t')==='')continue;var it=LI[q-1]||{};
+      pcards+='<div class="li-prod'+(it.blur?' blur':'')+'"><div class="li-ppic">'+(it.img?'<img src="'+esc(it.img)+'" alt="" loading="lazy" decoding="async">':'<span>'+(it.blur?'🎁':'🧴')+'</span>')+(it.blur?'<em>?</em>':'')+'</div><div class="li-ptx">'+p('li.pr.'+q+'.t','b')+p('li.pr.'+q+'.d')+'</div></div>'}
+    var prs='<section class="hw-sec li-pr"><div class="hw-sh">'+p('li.pr.h','h3')+p('li.pr.sub','p','hw-lead')+'</div><div class="li-prods">'+pcards+'</div>'+p('li.pr.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.pr.cta','gold')+'</div></section>';
     /* 4 · какво получаваш веднага */
     var inn='<section class="hw-sec li-in"><div class="hw-sh">'+p('li.in.h','h3')+p('li.in.p','p','hw-lead')+'</div><ul class="hw-bul">'+[1,2,3,4,5].map(function(i){return '<li'+ck('li.in.'+i)+'>'+T('li.in.'+i)+'</li>'}).join('')+'</ul>'+p('li.in.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.in.cta')+'</div></section>';
     /* 5 · три стъпки */
     var sp='<section class="hw-sec li-st"><div class="hw-sh">'+p('li.st.h','h3')+'</div><ol class="hw-steps">'+[1,2,3].map(function(i){return '<li><i>'+i+'</i>'+p('li.st.'+i)+'</li>'}).join('')+'</ol>'+p('li.st.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.st.cta')+'</div></section>';
     /* 6 · в кутията */
-    var bx='<section class="hw-sec hw-k li-box"><div class="hw-kpic">'+pic1('cosm','🌸')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('li.box.h','h3')
+    var bx='<section class="hw-sec hw-k li-box"><div class="hw-kpic">'+pic1('cosm','🌸','box')+(bl&&bl.cosm_pay!=null?'<em><s>€'+COSM+'</s> €'+money(bl.cosm_pay)+'</em>':'')+'</div><div class="hw-ktx">'+p('li.box.h','h3')
       +'<ul class="hw-facts">'+[1,2,3,4,5].map(function(i){return '<li'+ck('li.box.'+i)+'>'+T('li.box.'+i)+'</li>'}).join('')+'</ul>'+(exp?p('li.box.ex','p','hw-ex',exv):'')
       +cta('li.box.cta','gold')+p('li.box.note','p','hw-n')+p('li.legal','p','hw-legal')+'</div></section>';
     /* 7 · яхтата */
-    var y='<section class="hw-sec hw-y li-y"><div class="hw-ypic">'+pic1('yacht','🛥️')+'</div><div class="hw-ytx">'+p('li.y.h','h3')+p('li.y.p1')+p('li.y.p2')
+    var y='<section class="hw-sec hw-y li-y"><div class="hw-ypic">'+pic1('yacht','🛥️','yacht')+'</div><div class="hw-ytx">'+p('li.y.h','h3')+p('li.y.p1')+p('li.y.p2')
       +(info_u?'<a class="li-link" href="'+esc(info_u)+'"'+ck('li.y.link')+'>'+T('li.y.link')+' ›</a>':'')+p('li.legal.y','p','hw-legal')+'</div></section>';
     /* 8 · въпроси */
     var fq='';for(var j=1;j<=7;j++){fq+='<details><summary'+ck('li.faq.'+j+'.q')+'>'+T('li.faq.'+j+'.q')+'<i>▾</i></summary>'+p('li.faq.'+j+'.a')+'</details>'}
@@ -385,7 +403,7 @@
     var faq='<section class="hw-sec hw-faq li-faq">'+p('li.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div>'+links+'</section>';
     /* 9 · залепен бутон */
     var stk='<div class="hw-stk li-stk"><div class="li-stkw">'+cta('li.stk.cta','gold')+'<small><span'+ck('li.stk.note')+'>'+T('li.stk.note')+'</span>'+(lf?' · <b'+ck('li.stk.left')+'>'+T('li.stk.left',lv)+'</b>':'')+'</small></div></div>';
-    return h+c+st+inn+sp+bx+y+faq+stk;
+    return secJoin('li',{hero:h,'catch':c,set:st,prods:prs,'in':inn,steps:sp,box:bx,yacht:y,faq:faq})+stk; /* 1.24.21: по реда от конфига */
   }
   /* бутоните: на /kozmetika (nav) → промо страницата с ?utm_content=cosm (+ utm_source/medium/campaign от адреса); в редактора (попъп) → сценарият „козметика“ на място */
   function liBind(dc,nav){
@@ -1047,6 +1065,8 @@
   }
   window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
   if(A.editor){
+    /* 1.24.21: лентата ↑ ↓ 👁 🖼 над секциите на /info и /kozmetika → родителят мести/скрива/сменя снимката (конфигът pages) */
+    [root,portal].forEach(function(r){r.addEventListener('click',function(e){var b=e.target.closest('[data-sect]');if(!b)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'sec',page:b.dataset.pg,id:b.dataset.id,act:b.dataset.sect},'*')}catch(x){}},true)});
     [root,portal].forEach(function(r){r.addEventListener('click',function(e){var t=e.target.closest('[data-ck]');if(!t||!t.dataset.ck)return;e.preventDefault();e.stopPropagation();try{parent.postMessage({ansaPromo:'ck',key:t.dataset.ck},'*')}catch(x){}},true)});
     window.addEventListener('message',function(e){var d=e.data;if(!d||!d.ansaPromo)return;
       if(d.ansaPromo==='copy'){if(d.key){if(d.utm){A.copy_utm=A.copy_utm||{};var cum=A.copy_utm[d.utm]=A.copy_utm[d.utm]||{};if(d.value==null||d.value==='')delete cum[d.key];else cum[d.key]=d.value}else{A.copy[d.key]=d.value}}else{A.copy=Object.assign({},A.copy,d.copy||{});if(d.copy_utm)A.copy_utm=d.copy_utm}render();if(!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.24.19: utm → текст само за този UTM */
@@ -1055,6 +1075,7 @@
       else if(d.ansaPromo==='changed'){var ch=d.keys||{};document.querySelectorAll('[data-ck]').forEach(function(x){x.classList.toggle('ck-ch',!!ch[x.dataset.ck])})}
       else if(d.ansaPromo==='scenario'){scenario(d)}
       else if(d.ansaPromo==='goto'){scenario({screen:d.screen})}
+      else if(d.ansaPromo==='sec'&&d.id){var se=document.querySelector('[data-sec="'+d.id+'"]');if(se){se.classList.add('sec-on');try{se.scrollIntoView({block:'center',behavior:'smooth'})}catch(x){}setTimeout(function(){se.classList.remove('sec-on')},1400)}} /* 1.24.21: покажи секцията след местене */
     });
   }
   window.addEventListener('resize',function(){if(A.mode==='info'||A.mode==='li')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});

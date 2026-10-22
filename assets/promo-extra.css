@@ -1908,3 +1908,29 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw .li-hero .hw-hpic span{font-size:96px}
 .ansa-promo .dc.hw .li-cards{grid-template-columns:1fr}
 }
+
+/* 1.24.21: секциите на /info и /kozmetika в редактора — лента „N · име ↑ ↓ 👁 🖼“ над всяка секция (постът към родителя мести/скрива/сменя снимката);
+   скритата на живо секция стои избледняла с червена рамка; .sec-on = току-що преместената */
+[data-editor] .dc.hw section[data-sec]{position:relative}
+[data-editor] .dc.hw .sec-tools{position:absolute;left:50%;top:5px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:4px;padding:3px 5px 3px 4px;border-radius:99px;background:rgba(26,26,46,.9);color:#fff;font-size:11.5px;font-weight:800;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.25);white-space:nowrap;max-width:calc(100% - 20px)}
+[data-editor] .dc.hw .sec-tools b{font-weight:800;padding:0 6px;overflow:hidden;text-overflow:ellipsis;min-width:0}
+[data-editor] .dc.hw .sec-tools button{font:inherit;font-size:11.5px;font-weight:800;padding:2px 7px;margin:0;border-radius:99px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;line-height:1.3;width:auto;height:auto;box-shadow:none}
+[data-editor] .dc.hw .sec-tools button:hover{background:#e8722a;border-color:#e8722a}
+[data-editor] .dc.hw .sec-tools button:disabled{opacity:.35;cursor:default;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}
+[data-editor] .dc.hw section.sec-off{opacity:.45;outline:2px dashed #b91c1c;outline-offset:-4px}
+[data-editor] .dc.hw section.sec-on{outline:3px solid #e8722a;outline-offset:-3px}
+@media (max-width:640px){[data-editor] .dc.hw .sec-tools{font-size:10.5px}[data-editor] .dc.hw .sec-tools b{max-width:120px}}
+
+/* 1.24.22: /kozmetika → „Какво се крие в кутията“ — петте продукта като карти (снимка · име · описание); .blur = замъглена изненада с „?“ */
+.ansa-promo .dc.hw .li-prods{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:14px}
+.ansa-promo .dc.hw .li-prod{display:flex;gap:12px;align-items:center;background:#fff;border:1.5px solid #f3b7c7;border-radius:16px;padding:12px;box-shadow:0 4px 16px rgba(120,60,20,.08);min-width:0}
+.ansa-promo .dc.hw .li-ppic{position:relative;flex:none;width:76px;height:76px;border-radius:12px;background:#fdf2f8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ansa-promo .dc.hw .li-ppic img{width:100%;height:100%;object-fit:cover;display:block}
+.ansa-promo .dc.hw .li-ppic span{font-size:36px;line-height:1}
+.ansa-promo .dc.hw .li-prod.blur .li-ppic img{filter:blur(6px);transform:scale(1.15)}
+.ansa-promo .dc.hw .li-prod.blur .li-ppic span{filter:blur(3px)}
+.ansa-promo .dc.hw .li-ppic em{position:absolute;right:4px;bottom:4px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#f472b6,#be185d);color:#fff;font-style:normal;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.ansa-promo .dc.hw .li-ptx{min-width:0}
+.ansa-promo .dc.hw .li-ptx b{display:block;font-size:15px;font-weight:900;color:var(--ink);margin:0 0 3px;line-height:1.25}
+.ansa-promo .dc.hw .li-ptx p{font-size:13px;line-height:1.4;font-weight:600;color:var(--ink2);margin:0}
+@media (max-width:640px){.ansa-promo .dc.hw .li-prods{grid-template-columns:1fr}.ansa-promo .dc.hw .li-ppic{width:64px;height:64px}}

@@ -36,6 +36,7 @@ final class Editor {
 		self::enqueue_now();
 	}
 	public static function enqueue_now() {
+		if ( function_exists( 'wp_enqueue_media' ) ) { wp_enqueue_media(); } /* 1.24.21: снимките на секциите (📄 Страници) се избират от медийната библиотека */
 		wp_enqueue_style( 'ansa-promo-editor', ANSA_PROMO_URL . 'assets/editor.css', array(), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo-editor', ANSA_PROMO_URL . 'assets/editor.js', array(), ANSA_PROMO_VER, true );
 		wp_add_inline_script( 'ansa-promo-editor', 'window.AnsaPromoEditor=' . wp_json_encode( self::boot(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';', 'before' );
@@ -53,6 +54,8 @@ final class Editor {
 			'page_url' => ! empty( $draft['page_id'] ) ? get_permalink( (int) $draft['page_id'] ) : '', 'admin' => Admin::url(), 'products_tab' => Admin::url( array( 'tab' => 'products' ) ),
 			'registry' => array( 'groups' => Copy::groups(), 'keys' => $keys, 'vars' => Copy::vars(), 'screens' => self::group_screens() ),
 			'cfg' => self::out( $draft ), 'state' => self::state(), 'gateways' => $gw, 'products' => $prods,
+			/* 1.24.21: 📄 Страници — секциите на /info и /kozmetika (етикети, снимков слот), снимките от имейл-попъпа като URL (снимката по подразбиране на секцията) */
+			'pages' => Config::page_sections(), 'gate_images' => Frontend::gate_images( $draft ), 'gate_slots' => Config::gate_image_slots(),
 			'rewards' => array( 'tix' => 'Билет', 'tix3' => '3 билета', 'tix5' => '5 билета', 'ship' => 'Безплатна доставка', 'book' => 'Книга', 'cosm50' => 'Сет −50%', 'cosm1' => 'Сетът за €1' ),
 		);
 	}
@@ -61,10 +64,11 @@ final class Editor {
 		return array( 'gate' => array( 'gate' ), 'cosm' => array( 'cosm' ), 'li' => array( 'li' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
 	}
 	/** Празни асоциативни масиви (copy, fit) стават {} в JSON, не [] — иначе JS ги вижда като Array и губи ключовете. */
-	public static function out( $cfg ) { $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['campaigns'] = (object) ( $cfg['campaigns'] ?? array() ); /* 1.24.14 */ $cfg['copy_utm'] = (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ); /* 1.24.19 */ $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }
+	public static function out( $cfg ) { foreach ( (array) ( $cfg['pages'] ?? array() ) as $pg => $p ) { $cfg['pages'][ $pg ]['images'] = (object) ( $p['images'] ?? array() ); } /* 1.24.21 */ $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['campaigns'] = (object) ( $cfg['campaigns'] ?? array() ); /* 1.24.14 */ $cfg['copy_utm'] = (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ); /* 1.24.19 */ $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }
 	public static function state() {
 		/* 1.23.7: published_copy — публикуваните текстове (ключ → текст), за да вижда редакторът кое е на живо и кое е само чернова */
-		return array( 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy_utm' => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( Config::get_published()['copy_utm'] ?? array() ) ), /* 1.24.19 */ 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
+		$draft = Config::get_draft(); $pi = array(); foreach ( array_keys( Config::page_sections() ) as $pg ) { $pi[ $pg ] = (object) Frontend::pages_images( $draft, $pg ); } /* 1.24.21: своите снимки на секциите като URL (attachment id → URL) */
+		return array( 'pages_images' => $pi, 'li_items' => Frontend::li_items( $draft ), /* 1.24.22: снимките на козметичните продукти като URL */ 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy_utm' => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( Config::get_published()['copy_utm'] ?? array() ) ), /* 1.24.19 */ 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
 	}
 
 	private static function auth() {

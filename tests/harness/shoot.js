@@ -174,6 +174,15 @@ const { chromium } = require('playwright');
     if (!(await page.$('#apS1 .hw-stk.li-stk .cta'))) errors.push(tag + ' li: няма залепен бутон');
     if (await page.$('#apS1 .li-left')) errors.push(tag + ' li: броячът „Останаха“ се показва при 90 % останали');
     if (!/Показваме първите три/.test(t)) errors.push(tag + ' li: без карти на продуктите трябва да стои „Показваме първите три…“');
+    // 1.24.22: „Какво се крие в кутията“ — 5 карти след „Какви са козметичните продукти“, 4 и 5 замъглени с „?“, без снимки → емоджи; снимка от runtime.li_items → <img>
+    { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec)); if (o.indexOf('prods') !== o.indexOf('set') + 1) errors.push(tag + ' li: секцията prods не е след set: ' + JSON.stringify(o)); }
+    if (!/Какво се крие в кутията/.test(t) || !/Мицеларен тоник/.test(t) || !/Пребиотичен нощен серум/.test(t)) errors.push(tag + ' li: секцията „Какво се крие в кутията“ липсва или без продуктите');
+    if ((await page.$$('#apS1 .li-prod')).length !== 5) errors.push(tag + ' li: продуктите не са 5');
+    if ((await page.$$('#apS1 .li-prod.blur em')).length !== 2) errors.push(tag + ' li: замъглените изненади с „?“ не са 2');
+    if ((await page.$$('#apS1 .li-ppic img')).length) errors.push(tag + ' li: без снимки трябва да има емоджи, не <img>');
+    await page.evaluate(() => { window.AnsaPromoRuntime.li_items[0].img = window.AnsaPromoRuntime.gate.images.book; AnsaPromo.render(); }); await page.waitForTimeout(250);
+    if (!/book\.svg$/.test(await page.evaluate(() => (document.querySelector('#apS1 .li-prod .li-ppic img') || {}).src || ''))) errors.push(tag + ' li: снимката на продукт 1 не се показва');
+    await page.evaluate(() => { window.AnsaPromoRuntime.li_items[0].img = ''; AnsaPromo.render(); });
     const links = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 .li-link, #apS1 .li-links a')).map(a => a.href));
     if (links.length !== 3 || links.some(u => !/sezonut-na-ansa\/(info|tombola)\//.test(u))) errors.push(tag + ' li: линковете към /info и правилата: ' + JSON.stringify(links));
     // броячът при 6 500 резервирани (35 % остават) → „Останаха 3 500 от 10 000“ и в залепения ред
@@ -185,10 +194,96 @@ const { chromium } = require('playwright');
     console.log(tag, 'li ok');
     await ctx.close();
   }
+  // 1.24.21: секциите на /info и /kozmetika — по реда от runtime.pages, скритите (off) не се рендират, снимката на секция е своята (images) или тази от попъпа
+  async function runPages(w, h, tag) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, isMobile: w < 500, hasTouch: w < 500 });
+    const page = await ctx.newPage();
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    page.on('pageerror', e => errors.push(tag + ': ' + e.message));
+    page.on('console', m => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+    const secs = () => page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec));
+    for (const [file, pg, def, hideId, imgSel] of [['kozmetika.html', 'li', ['hero', 'catch', 'set', 'prods', 'in', 'steps', 'box', 'yacht', 'faq'], 'faq', '.li-hero .hw-hpic img'], ['info.html', 'how', ['hero', 'boxes', 'ladder', 'steps', 'yacht', 'cosm', 'prods', 'why', 'reviews', 'faq', 'rules'], 'reviews', '.hw-hero .hw-hpic img']]) {
+      await page.goto('file://' + S + '/harness/' + file, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(400);
+      let got = await secs(); if (JSON.stringify(got) !== JSON.stringify(def)) errors.push(tag + ' ' + pg + ': редът по подразбиране е ' + JSON.stringify(got));
+      if (await page.$('#apS1 .sec-tools')) errors.push(tag + ' ' + pg + ': лентата ↑↓ се показва на живо (без редактор)');
+      if (!/gate\/(cosm|yacht)\.svg$/.test(await page.evaluate(sel => (document.querySelector('#apS1 ' + sel) || {}).src || '', imgSel))) errors.push(tag + ' ' + pg + ': hero снимката не е тази от попъпа');
+      const rev = def.slice().reverse();
+      await page.evaluate(([pg, rev, hideId]) => { const P = window.AnsaPromoRuntime.pages[pg]; P.order = rev; P.off = [hideId]; P.images = { hero: 'file:///tmp/own-hero.png' }; AnsaPromo.render(); }, [pg, rev, hideId]); await page.waitForTimeout(300);
+      got = await secs(); const want = rev.filter(x => x !== hideId);
+      if (JSON.stringify(got) !== JSON.stringify(want)) errors.push(tag + ' ' + pg + ': след смяна на реда/скриване: ' + JSON.stringify(got) + ' ≠ ' + JSON.stringify(want));
+      if (!/own-hero\.png$/.test(await page.evaluate(sel => (document.querySelector('#apS1 ' + sel) || {}).src || '', imgSel))) errors.push(tag + ' ' + pg + ': своята снимка на hero не се показва');
+      if (!(await page.$('#apS1 .hw-stk .cta'))) errors.push(tag + ' ' + pg + ': залепеният бутон липсва след смяна на реда');
+      const t = await page.evaluate(() => document.body.innerText); if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' ' + pg + ' pages: undefined/NaN');
+      await page.screenshot({ path: S + '/shots/' + tag + '-' + pg + '-reordered.png', fullPage: true });
+    }
+    console.log(tag, 'pages ok'); await ctx.close();
+  }
+  // 1.24.21: редакторът (harness/editor.html + канвас canvas.html): 📄 Страници → списъкът, ↓ в инспектора мести секцията и в канваса, лентата в канваса
+  // (↑ ↓ 👁 🖼) стига до родителя, URL на снимка сменя картинката в канваса, „ред по подразбиране“ връща
+  async function runEditor(tag) {
+    const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+    const page = await ctx.newPage();
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    page.on('pageerror', e => errors.push(tag + ': ' + e.message));
+    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fetch|admin-ajax/.test(m.text())) errors.push(tag + ' console: ' + m.text()); });
+    await page.goto('file://' + S + '/harness/editor.html', { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(800);
+    const fr = () => page.frames().find(f => f !== page.mainFrame());
+    if (!fr()) { errors.push(tag + ': канвасът (iframe) липсва'); await ctx.close(); return; }
+    const btn = await page.$('#apEdRail [data-secpg="li"]'); if (!btn) { errors.push(tag + ': бутонът 📄 /kozmetika липсва в рейла'); await ctx.close(); return; }
+    await btn.click(); await page.waitForTimeout(900);
+    const rows = () => page.evaluate(() => Array.from(document.querySelectorAll('#apSecList .sec')).map(li => li.dataset.id));
+    const canvas = () => fr().evaluate(() => Array.from(document.querySelectorAll('#apDc section[data-sec]')).map(s => s.dataset.sec));
+    const def = ['hero', 'catch', 'set', 'prods', 'in', 'steps', 'box', 'yacht', 'faq'];
+    if (JSON.stringify(await rows()) !== JSON.stringify(def)) errors.push(tag + ': списъкът в инспектора: ' + JSON.stringify(await rows()));
+    if (JSON.stringify(await canvas()) !== JSON.stringify(def)) errors.push(tag + ': канвасът не показва /kozmetika по подразбиране: ' + JSON.stringify(await canvas()));
+    if (!(await fr().$('#apDc .sec-tools [data-sect="up"]'))) errors.push(tag + ': лентата ↑↓ липсва в канваса');
+    await page.screenshot({ path: S + '/shots/' + tag + '-sections.png', fullPage: false });
+    // ↓ на първия ред в инспектора → hero става втори (и в канваса)
+    await page.click('#apSecList .sec[data-id="hero"] [data-mv="1"]'); await page.waitForTimeout(600);
+    const o1 = ['catch', 'hero', 'set', 'prods', 'in', 'steps', 'box', 'yacht', 'faq'];
+    if (JSON.stringify(await rows()) !== JSON.stringify(o1)) errors.push(tag + ': след ↓ инспекторът е ' + JSON.stringify(await rows()));
+    if (JSON.stringify(await canvas()) !== JSON.stringify(o1)) errors.push(tag + ': след ↓ канвасът е ' + JSON.stringify(await canvas()));
+    if (JSON.stringify(await page.evaluate(() => window.AnsaPromoEditor.cfg.pages.li.order)) === JSON.stringify(def)) { /* cfg е локална променлива в editor.js; D.cfg е същият обект при старт */ }
+    // лентата в канваса: ↑ на „set“ (3-та) → 2-ра; 👁 скрий „faq“ → избледняла в канваса, „скрита“ в инспектора
+    await fr().click('#apDc section[data-sec="set"] [data-sect="up"]'); await page.waitForTimeout(600);
+    const o2 = ['catch', 'set', 'hero', 'prods', 'in', 'steps', 'box', 'yacht', 'faq'];
+    if (JSON.stringify(await rows()) !== JSON.stringify(o2)) errors.push(tag + ': след ↑ от канваса инспекторът е ' + JSON.stringify(await rows()));
+    if (JSON.stringify(await canvas()) !== JSON.stringify(o2)) errors.push(tag + ': след ↑ от канваса канвасът е ' + JSON.stringify(await canvas()));
+    await fr().click('#apDc section[data-sec="faq"] [data-sect="off"]'); await page.waitForTimeout(600);
+    if (!(await fr().$('#apDc section[data-sec="faq"].sec-off'))) errors.push(tag + ': скритата секция не е избледняла в канваса');
+    if (!(await page.$('#apSecList .sec[data-id="faq"].off'))) errors.push(tag + ': скритата секция не е отбелязана в инспектора');
+    if (!/скрити/.test(await page.evaluate(() => document.querySelector('#apEdRail [data-secpg="li"]').textContent))) errors.push(tag + ': рейлът не брои скритите');
+    if (!/незаписани/.test(await page.evaluate(() => document.querySelector('#apEdTop .st').textContent))) errors.push(tag + ': промяната не маркира черновата като незаписана');
+    // снимка по URL за hero → канвасът показва нея
+    await page.fill('#apSecList .sec[data-id="hero"] [data-iurl]', 'file:///tmp/own-hero.png'); await page.press('#apSecList .sec[data-id="hero"] [data-iurl]', 'Tab'); await page.waitForTimeout(600);
+    if (!/own-hero\.png$/.test(await fr().evaluate(() => (document.querySelector('#apDc section[data-sec="hero"] .hw-hpic img') || {}).src || ''))) errors.push(tag + ': своята снимка не стигна до канваса');
+    if (!(await page.$('#apSecList .sec[data-id="hero"] [data-clr]'))) errors.push(tag + ': няма „⟲ като в попъпа“ при своя снимка');
+    await page.screenshot({ path: S + '/shots/' + tag + '-sections-changed.png', fullPage: false });
+    await page.click('#apSecList .sec[data-id="hero"] [data-clr]'); await page.waitForTimeout(600);
+    if (!/gate\/cosm\.svg$/.test(await fr().evaluate(() => (document.querySelector('#apDc section[data-sec="hero"] .hw-hpic img') || {}).src || ''))) errors.push(tag + ': след „като в попъпа“ снимката не се върна');
+    // 1.24.22: петте продукта в реда „Какво се крие в кутията“ — URL на снимка и „замъглена“ стигат до канваса
+    if ((await page.$$('#apSecList .sec[data-id="prods"] .item')).length !== 5) errors.push(tag + ': редът prods няма 5 продукта');
+    const bookUrl = await page.evaluate(() => window.AnsaPromoEditor.gate_images.book); await page.fill('#apSecList [data-liurl="0"]', bookUrl); await page.press('#apSecList [data-liurl="0"]', 'Tab'); await page.waitForTimeout(600);
+    if (!/book\.svg$/.test(await fr().evaluate(() => (document.querySelector('#apDc section[data-sec="prods"] .li-prod .li-ppic img') || {}).src || ''))) errors.push(tag + ': снимката на продукт 1 не стигна до канваса');
+    await page.click('#apSecList [data-liblur="4"]'); await page.waitForTimeout(600);
+    if ((await fr().$$('#apDc section[data-sec="prods"] .li-prod.blur')).length !== 1) errors.push(tag + ': махането на „замъглена“ на продукт 5 не стигна до канваса');
+    // ред по подразбиране
+    await page.click('#apSecReset'); await page.waitForTimeout(600);
+    if (JSON.stringify(await rows()) !== JSON.stringify(def) || JSON.stringify(await canvas()) !== JSON.stringify(def)) errors.push(tag + ': „ред по подразбиране“ не върна реда: ' + JSON.stringify(await rows()) + ' / ' + JSON.stringify(await canvas()));
+    if (await fr().$('#apDc section.sec-off')) errors.push(tag + ': „ред по подразбиране“ не показа скритите');
+    // /info също е в рейла и се отваря
+    await page.click('#apEdRail [data-secpg="how"]'); await page.waitForTimeout(900);
+    if ((await rows()).length !== 11) errors.push(tag + ': /info няма 11 секции в инспектора: ' + JSON.stringify(await rows()));
+    if (!(await fr().$('#apDc section[data-sec="boxes"]'))) errors.push(tag + ': канвасът не показва /info');
+    console.log(tag, 'editor ok'); await ctx.close();
+  }
   await run(390, 780, 'm390');
   await run(1280, 900, 'd1280');
   await runLi(390, 780, 'm390');
   await runLi(1280, 900, 'd1280');
+  await runPages(390, 780, 'm390');
+  await runPages(1280, 900, 'd1280');
+  await runEditor('editor');
   await browser.close();
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');
 })();
