@@ -317,7 +317,21 @@ final class Admin {
 								</figure>
 							<?php endforeach; ?>
 							</div>
+						
+						</div></section><section class="ap-sec" id="s-cosm"><div class="ap-sec__h"><span class="ap-sec__t">💄 Козметичните продукти (/kozmetika)</span></div><div class="ap-sec__b">
+							<p class="description" style="margin:0 0 8px">Снимките на петте продукта в секцията <b>„Какво се крие в кутията“</b> на страницата <?php $lu = Listicle::url( $draft ); ?><a href="<?php echo esc_url( $lu ); ?>" target="_blank"><?php echo esc_html( $lu ); ?></a>. Attachment ID или URL; <b>празно = емоджи</b>. „Замъглена“ размива снимката на страницата (изненадите) — махни отметката, ако качиш вече замъглена снимка. Имената и описанията се редактират в ✏️ Редактор (текстове <code>li.pr.N</code>); редът на секциите — в ✏️ Редактор → 📄 Страници.</p>
+							<div class="ap-gi" id="apCosmImgs">
+							<?php $cc = Copy::effective( $draft['copy'] ); foreach ( Frontend::li_items( $draft ) as $i => $it ) : $cur = (string) ( $draft['li']['items'][ $i ]['img'] ?? '' ); $ph = Frontend::gate_dummy( 'cosm' ); ?>
+								<figure data-k="li<?php echo (int) $i; ?>" data-dummy="<?php echo esc_url( $ph ); ?>">
+									<img src="<?php echo esc_url( $it['img'] ?: $ph ); ?>" alt="">
+									<figcaption><?php echo (int) ( $i + 1 ); ?> · <?php echo esc_html( (string) ( $cc[ 'li.pr.' . ( $i + 1 ) . '.t' ] ?? '' ) ); ?> <span class="ap-gi-dummy"<?php echo $it['img'] ? ' hidden' : ''; ?>>· без снимка (емоджи)</span></figcaption>
+									<div class="ap-gi-row"><input type="text" name="li_item_img[<?php echo (int) $i; ?>]" value="<?php echo esc_attr( $cur ); ?>" placeholder="ID или URL"><button type="button" class="button ap-gi-pick" title="избери от медийната библиотека">📁</button><button type="button" class="button ap-gi-clear" title="изчисти → емоджи">✕</button></div>
+									<label style="display:block;font-size:11px;margin-top:4px"><input type="checkbox" name="li_item_blur[<?php echo (int) $i; ?>]" value="1"<?php checked( ! empty( $it['blur'] ) ); ?>> замъглена (изненада)</label>
+								</figure>
+							<?php endforeach; ?>
+							</div>
 							<script>
+							/* 1.24.23 (човекът: „не ми дава да натисна бутона“): скриптът е СЛЕД двете карти — иначе #apCosmImgs още го няма в DOM-а и бутоните му остават без обработчик */
 							(function(){
 								['apGateImgs','apCosmImgs'].forEach(function(rid){var root=document.getElementById(rid);if(!root)return; /* 1.24.22: и козметичните продукти */
 								root.querySelectorAll('figure').forEach(function(f){
@@ -333,19 +347,6 @@ final class Admin {
 								})});
 							})();
 							</script>
-						
-						</div></section><section class="ap-sec" id="s-cosm"><div class="ap-sec__h"><span class="ap-sec__t">💄 Козметичните продукти (/kozmetika)</span></div><div class="ap-sec__b">
-							<p class="description" style="margin:0 0 8px">Снимките на петте продукта в секцията <b>„Какво се крие в кутията“</b> на страницата <?php $lu = Listicle::url( $draft ); ?><a href="<?php echo esc_url( $lu ); ?>" target="_blank"><?php echo esc_html( $lu ); ?></a>. Attachment ID или URL; <b>празно = емоджи</b>. „Замъглена“ размива снимката на страницата (изненадите) — махни отметката, ако качиш вече замъглена снимка. Имената и описанията се редактират в ✏️ Редактор (текстове <code>li.pr.N</code>); редът на секциите — в ✏️ Редактор → 📄 Страници.</p>
-							<div class="ap-gi" id="apCosmImgs">
-							<?php $cc = Copy::effective( $draft['copy'] ); foreach ( Frontend::li_items( $draft ) as $i => $it ) : $cur = (string) ( $draft['li']['items'][ $i ]['img'] ?? '' ); $ph = Frontend::gate_dummy( 'cosm' ); ?>
-								<figure data-k="li<?php echo (int) $i; ?>" data-dummy="<?php echo esc_url( $ph ); ?>">
-									<img src="<?php echo esc_url( $it['img'] ?: $ph ); ?>" alt="">
-									<figcaption><?php echo (int) ( $i + 1 ); ?> · <?php echo esc_html( (string) ( $cc[ 'li.pr.' . ( $i + 1 ) . '.t' ] ?? '' ) ); ?> <span class="ap-gi-dummy"<?php echo $it['img'] ? ' hidden' : ''; ?>>· без снимка (емоджи)</span></figcaption>
-									<div class="ap-gi-row"><input type="text" name="li_item_img[<?php echo (int) $i; ?>]" value="<?php echo esc_attr( $cur ); ?>" placeholder="ID или URL"><button type="button" class="button ap-gi-pick" title="избери от медийната библиотека">📁</button><button type="button" class="button ap-gi-clear" title="изчисти → емоджи">✕</button></div>
-									<label style="display:block;font-size:11px;margin-top:4px"><input type="checkbox" name="li_item_blur[<?php echo (int) $i; ?>]" value="1"<?php checked( ! empty( $it['blur'] ) ); ?>> замъглена (изненада)</label>
-								</figure>
-							<?php endforeach; ?>
-							</div>
 						
 						</div></section><section class="ap-sec" id="s-bgn"><div class="ap-sec__h"><span class="ap-sec__t">Лева в поръчката</span></div><div class="ap-sec__b"><label><input type="checkbox" name="bgn_show" value="1"<?php checked( $draft['bgn']['show'] ); ?>> показвай „(… лв.)“ до крайната сума</label>
 						</div></section><section class="ap-sec" id="s-preview"><div class="ap-sec__h"><span class="ap-sec__t">Преглед с парола</span></div><div class="ap-sec__b">

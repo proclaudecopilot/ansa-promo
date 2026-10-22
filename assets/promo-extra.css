@@ -1934,3 +1934,14 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw .li-ptx b{display:block;font-size:15px;font-weight:900;color:var(--ink);margin:0 0 3px;line-height:1.25}
 .ansa-promo .dc.hw .li-ptx p{font-size:13px;line-height:1.4;font-weight:600;color:var(--ink2);margin:0}
 @media (max-width:640px){.ansa-promo .dc.hw .li-prods{grid-template-columns:1fr}.ansa-promo .dc.hw .li-ppic{width:64px;height:64px}}
+
+/* 1.24.23: „＋ допълнителен текст“ в края на секцията (hw-x) и пунктираните „＋ ключ“ хотспотове на скритите текстове (само в редактора) */
+.ansa-promo .dc.hw .hw-x{margin:10px 0 4px}
+.ansa-promo .dc.hw .hw-x h4{font-size:18px;font-weight:900;line-height:1.25;margin:12px 0 4px;color:var(--ink)}
+.ansa-promo .dc.hw .hw-x p{margin:6px 0;font-size:15px;line-height:1.5}
+.ansa-promo .dc.hw .hw-x p.hw-n{font-size:13px}
+.ansa-promo .dc.hw .hw-x ul.hw-bul{margin:6px 0}
+[data-editor] .dc.hw .ck-empty,[data-editor] .dc.hw button.ck-empty,[data-editor] .dc.hw li.ck-empty,[data-editor] .dc.hw details.ck-empty{display:inline-block;opacity:.6;font:italic 700 12px/1.4 inherit;font-family:inherit;color:#b91c1c;background:rgba(185,28,28,.05);border:1px dashed #b91c1c;border-radius:8px;padding:2px 8px;margin:2px 0;min-height:0;height:auto;width:auto;text-transform:none;letter-spacing:0;box-shadow:none;transform:none;list-style:none}
+[data-editor] .dc.hw .ck-empty::before,[data-editor] .dc.hw .ck-empty::after{display:none}
+[data-editor] .dc.hw .hw-x.ck-empty{display:block;font-size:12px}
+[data-editor] .dc.hw details.ck-empty summary{list-style:none;cursor:pointer;padding:0;font:inherit}

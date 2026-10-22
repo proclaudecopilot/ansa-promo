@@ -183,6 +183,15 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { window.AnsaPromoRuntime.li_items[0].img = window.AnsaPromoRuntime.gate.images.book; AnsaPromo.render(); }); await page.waitForTimeout(250);
     if (!/book\.svg$/.test(await page.evaluate(() => (document.querySelector('#apS1 .li-prod .li-ppic img') || {}).src || ''))) errors.push(tag + ' li: снимката на продукт 1 не се показва');
     await page.evaluate(() => { window.AnsaPromoRuntime.li_items[0].img = ''; AnsaPromo.render(); });
+    // 1.24.23: празен текст = скрит елемент (без „＋“ на живо); „＋ допълнителен текст“ (li.x.catch) с # заглавие, - точки, > бележка
+    await page.evaluate(() => { const c = window.AnsaPromoRuntime.copy; c['li.in.h'] = ''; c['li.in.cta'] = ''; c['li.faq.7.q'] = ''; c['li.x.catch'] = '# Ново заглавие\nАбзац едно.\n- точка едно\n- точка две\n> бележка'; AnsaPromo.render(); }); await page.waitForTimeout(250);
+    if (await page.$('#apS1 .li-in h3') || await page.$('#apS1 .li-in .cta')) errors.push(tag + ' li: скритото заглавие/бутон на „веднага“ още се показва');
+    if (await page.$('#apS1 .ck-empty')) errors.push(tag + ' li: „＋“ хотспот на живо (без редактор)');
+    if ((await page.$$('#apS1 .hw-faqs details')).length !== 6) errors.push(tag + ' li: скритият въпрос 7 още е там');
+    { const x = await page.evaluate(() => { const d = document.querySelector('#apS1 .li-catch .hw-x'); return d ? { h4: (d.querySelector('h4') || {}).textContent, li: d.querySelectorAll('ul li').length, n: (d.querySelector('p.hw-n') || {}).textContent, p: d.querySelectorAll('p:not(.hw-n)').length } : null; });
+      if (!x || x.h4 !== 'Ново заглавие' || x.li !== 2 || x.n !== 'бележка' || x.p !== 1) errors.push(tag + ' li: допълнителният текст не се рендира: ' + JSON.stringify(x)); }
+    await page.screenshot({ path: S + '/shots/' + tag + '-li-xtra.png', fullPage: false });
+    await page.evaluate(() => { const c = window.AnsaPromoRuntime.copy; delete c['li.x.catch']; AnsaPromo.render(); });
     const links = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 .li-link, #apS1 .li-links a')).map(a => a.href));
     if (links.length !== 3 || links.some(u => !/sezonut-na-ansa\/(info|tombola)\//.test(u))) errors.push(tag + ' li: линковете към /info и правилата: ' + JSON.stringify(links));
     // броячът при 6 500 резервирани (35 % остават) → „Останаха 3 500 от 10 000“ и в залепения ред
@@ -231,7 +240,7 @@ const { chromium } = require('playwright');
     if (!fr()) { errors.push(tag + ': канвасът (iframe) липсва'); await ctx.close(); return; }
     const btn = await page.$('#apEdRail [data-secpg="li"]'); if (!btn) { errors.push(tag + ': бутонът 📄 /kozmetika липсва в рейла'); await ctx.close(); return; }
     await btn.click(); await page.waitForTimeout(900);
-    const rows = () => page.evaluate(() => Array.from(document.querySelectorAll('#apSecList .sec')).map(li => li.dataset.id));
+    const rows = () => page.evaluate(() => Array.from(document.querySelectorAll('#apSecList .sec:not(.other)')).map(li => li.dataset.id));
     const canvas = () => fr().evaluate(() => Array.from(document.querySelectorAll('#apDc section[data-sec]')).map(s => s.dataset.sec));
     const def = ['hero', 'catch', 'set', 'prods', 'in', 'steps', 'box', 'yacht', 'faq'];
     if (JSON.stringify(await rows()) !== JSON.stringify(def)) errors.push(tag + ': списъкът в инспектора: ' + JSON.stringify(await rows()));
@@ -261,6 +270,22 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: S + '/shots/' + tag + '-sections-changed.png', fullPage: false });
     await page.click('#apSecList .sec[data-id="hero"] [data-clr]'); await page.waitForTimeout(600);
     if (!/gate\/cosm\.svg$/.test(await fr().evaluate(() => (document.querySelector('#apDc section[data-sec="hero"] .hw-hpic img') || {}).src || ''))) errors.push(tag + ': след „като в попъпа“ снимката не се върна');
+    // 1.24.23: цък върху текст в канваса НЕ сменя панела — отваря реда на секцията и фокусира полето; празно поле = скрит (＋ в канваса); „＋ допълнителен текст“
+    await fr().click('#apDc section[data-sec="in"] [data-ck="li.in.h"]'); await page.waitForTimeout(500);
+    if (!(await page.$('#apSecList'))) errors.push(tag + ': цък върху текст смени панела „Страници“');
+    if (await page.evaluate(() => (document.activeElement || {}).dataset ? document.activeElement.dataset.ta : '') !== 'li.in.h') errors.push(tag + ': полето li.in.h не е на фокус след цък в канваса');
+    if (!(await page.$('#apSecList .sec[data-id="in"] details.txt[open]'))) errors.push(tag + ': текстовете на секцията не се отвориха');
+    await page.fill('#apSecList [data-ta="li.in.h"]', ''); await page.waitForTimeout(500);
+    if (!(await fr().$('#apDc section[data-sec="in"] .ck-empty[data-ck="li.in.h"]'))) errors.push(tag + ': празното заглавие не стана „＋“ в канваса');
+    if (!(await page.$('#apSecList .tk[data-tk="li.in.h"].hid'))) errors.push(tag + ': полето не е отбелязано като скрито');
+    await page.click('#apSecList [data-tr="li.in.h"]'); await page.waitForTimeout(500);
+    if (await fr().$('#apDc section[data-sec="in"] .ck-empty[data-ck="li.in.h"]')) errors.push(tag + ': ⟲ не върна заглавието');
+    await page.fill('#apSecList [data-ta="li.x.in"]', '# Тест заглавие\nТест абзац\n- точка'); await page.waitForTimeout(500);
+    { const x = await fr().evaluate(() => { const d = document.querySelector('#apDc section[data-sec="in"] .hw-x'); return d ? (d.querySelector('h4') || {}).textContent + '|' + d.querySelectorAll('li').length : ''; }); if (x !== 'Тест заглавие|1') errors.push(tag + ': допълнителният текст не стигна до канваса: ' + x); }
+    await fr().click('#apDc section[data-sec="in"] .hw-x'); await page.waitForTimeout(400);
+    if (await page.evaluate(() => (document.activeElement || {}).dataset ? document.activeElement.dataset.ta : '') !== 'li.x.in') errors.push(tag + ': цък върху допълнителния текст не го фокусира');
+    if (!(await page.$('#apSecList .sec.other [data-ta="li.title"]'))) errors.push(tag + ': редът „Други текстове“ (li.title) липсва');
+    await page.screenshot({ path: S + '/shots/' + tag + '-sections-texts.png', fullPage: false });
     // 1.24.22: петте продукта в реда „Какво се крие в кутията“ — URL на снимка и „замъглена“ стигат до канваса
     if ((await page.$$('#apSecList .sec[data-id="prods"] .item')).length !== 5) errors.push(tag + ': редът prods няма 5 продукта');
     const bookUrl = await page.evaluate(() => window.AnsaPromoEditor.gate_images.book); await page.fill('#apSecList [data-liurl="0"]', bookUrl); await page.press('#apSecList [data-liurl="0"]', 'Tab'); await page.waitForTimeout(600);

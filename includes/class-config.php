@@ -244,32 +244,33 @@ final class Config {
 
 	/** 1.24.21 (човекът: „трябва да има местене на секциите и смяна на картинките“): секциите на страниците /info (how) и /kozmetika (li) — редът им
 	 *  се мести от редактора, всяка може да е скрита на живо, а тези със снимка (img = слотът от имейл-попъпа, който е снимката по подразбиране) имат своя.
-	 *  Залепеният бутон не е секция — винаги е последен. Ключовете са тези в promo.js (howHtml/liHtml). */
+	 *  Залепеният бутон не е секция — винаги е последен. Ключовете са тези в promo.js (howHtml/liHtml). 1.24.23 keys: кои текстове (регистър) са на секцията —
+	 *  префикс (с точка накрая) или точен ключ; редакторът ги показва в реда на секцията; „＋ допълнителен текст“ е {pg}.x.{id}. */
 	public static function page_sections() {
 		return array(
 			'how' => array( 'label' => '„Как работи“ — /info', 'sections' => array(
-				'hero'    => array( 'l' => 'Начало (hero) — яхтата', 'img' => 'yacht' ),
-				'boxes'   => array( 'l' => 'Трите кутии', 'img' => '' ),
-				'ladder'  => array( 'l' => 'Стълбата на сезона (само при седмици)', 'img' => '' ),
-				'steps'   => array( 'l' => 'Три стъпки', 'img' => '' ),
-				'yacht'   => array( 'l' => 'Яхтата', 'img' => 'yacht' ),
-				'cosm'    => array( 'l' => 'Комплектът за €1', 'img' => 'cosm' ),
-				'prods'   => array( 'l' => 'Продуктите', 'img' => '' ),
-				'why'     => array( 'l' => 'Защо го правим (писмото)', 'img' => '' ),
-				'reviews' => array( 'l' => 'Отзиви', 'img' => '' ),
-				'faq'     => array( 'l' => 'Въпроси', 'img' => '' ),
-				'rules'   => array( 'l' => 'Правила', 'img' => '' ),
+				'hero'    => array( 'l' => 'Начало (hero) — яхтата', 'img' => 'yacht', 'keys' => array( 'how.title', 'how.hero.' ) ),
+				'boxes'   => array( 'l' => 'Трите кутии', 'img' => '', 'keys' => array( 'how.bx.', 'how.legal' ) ),
+				'ladder'  => array( 'l' => 'Стълбата на сезона (само при седмици)', 'img' => '', 'keys' => array( 'how.lad.' ) ),
+				'steps'   => array( 'l' => 'Три стъпки', 'img' => '', 'keys' => array( 'how.st.' ) ),
+				'yacht'   => array( 'l' => 'Яхтата', 'img' => 'yacht', 'keys' => array( 'how.y.' ) ),
+				'cosm'    => array( 'l' => 'Комплектът за €1', 'img' => 'cosm', 'keys' => array( 'how.k.' ) ),
+				'prods'   => array( 'l' => 'Продуктите', 'img' => '', 'keys' => array( 'how.pr.' ) ),
+				'why'     => array( 'l' => 'Защо го правим (писмото)', 'img' => '', 'keys' => array( 'how.w.' ) ),
+				'reviews' => array( 'l' => 'Отзиви', 'img' => '', 'keys' => array( 'how.rv.' ) ),
+				'faq'     => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'how.faq.' ) ),
+				'rules'   => array( 'l' => 'Правила', 'img' => '', 'keys' => array( 'how.rules.' ) ),
 			) ),
 			'li' => array( 'label' => '„Комплектът за 1 €“ — /kozmetika', 'sections' => array(
-				'hero'  => array( 'l' => 'Начало (hero) — комплектът', 'img' => 'cosm' ),
-				'catch' => array( 'l' => 'Къде е уловката (писмото)', 'img' => '' ),
-				'set'   => array( 'l' => 'Козметичните продукти', 'img' => '' ),
-				'prods' => array( 'l' => 'Какво се крие в кутията (5 продукта)', 'img' => '' ), /* 1.24.22 */
-				'in'    => array( 'l' => 'Какво получаваш веднага', 'img' => '' ),
-				'steps' => array( 'l' => 'Три стъпки', 'img' => '' ),
-				'box'   => array( 'l' => 'Какво получаваш с Голямата кутия', 'img' => 'cosm' ),
-				'yacht' => array( 'l' => 'Почивка на яхта', 'img' => 'yacht' ),
-				'faq'   => array( 'l' => 'Въпроси', 'img' => '' ),
+				'hero'  => array( 'l' => 'Начало (hero) — комплектът', 'img' => 'cosm', 'keys' => array( 'li.hero.', 'li.left' ) ),
+				'catch' => array( 'l' => 'Къде е уловката (писмото)', 'img' => '', 'keys' => array( 'li.catch.' ) ),
+				'set'   => array( 'l' => 'Козметичните продукти', 'img' => '', 'keys' => array( 'li.set.' ) ),
+				'prods' => array( 'l' => 'Какво се крие в кутията (5 продукта)', 'img' => '', 'keys' => array( 'li.pr.' ) ), /* 1.24.22 */
+				'in'    => array( 'l' => 'Какво получаваш веднага', 'img' => '', 'keys' => array( 'li.in.' ) ),
+				'steps' => array( 'l' => 'Три стъпки', 'img' => '', 'keys' => array( 'li.st.' ) ),
+				'box'   => array( 'l' => 'Какво получаваш с Голямата кутия', 'img' => 'cosm', 'keys' => array( 'li.box.', 'li.legal' ) ),
+				'yacht' => array( 'l' => 'Почивка на яхта', 'img' => 'yacht', 'keys' => array( 'li.y.', 'li.legal.y' ) ),
+				'faq'   => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'li.faq.' ) ),
 			) ),
 		);
 	}
