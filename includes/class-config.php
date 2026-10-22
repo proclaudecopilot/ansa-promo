@@ -509,8 +509,41 @@ final class Config {
 	private static function after_publish( $cfg ) {
 		Catalog::purge_runtime();
 		self::schedule_flip( $cfg ); /* v1.19.0: кешът се чисти точно при смяната на седмицата */
-		if ( ! empty( $cfg['page_id'] ) ) { self::purge_page( (int) $cfg['page_id'] ); }
-		do_action( 'ansa_promo_published', $cfg );
+		self::defer_after_publish( $cfg ); /* 1.24.33: кешовете и hook-ът — след отговора към браузъра */
+	}
+
+	/* ── 1.24.33 (човекът: „Публикувай отнема буквално 1–2 минути понякога“) ──
+	   Бавната част на публикуването НЕ е записът, а purge-овете: FlyingPress purge_url на 4 адреса (промо страницата, /kniga,
+	   /info, listicle; всеки може да preload-ва страницата наново), Cloudflare/LiteSpeed/другите кешове и слушателите на
+	   `ansa_promo_published` (Shrine, FunnelKit термини). Всичко това вървеше ВЪТРЕ в ajax заявката и човекът чакаше.
+	   Сега: отговорът „Публикувано“ тръгва веднага, а purge-овете вървят в същия процес СЛЕД като връзката с браузъра е
+	   затворена (fastcgi_finish_request / litespeed_finish_request). Без такава функция — еднократен WP-Cron „веднага“. */
+	const AFTER_HOOK = 'ansa_promo_after_publish';
+	private static $pending_after = null;
+	private static function defer_after_publish( $cfg ) {
+		if ( ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_cron() ) { self::after_publish_slow( $cfg ); return; } /* крон/CLI: няма браузър, върви направо */
+		if ( null === self::$pending_after ) { add_action( 'shutdown', array( __CLASS__, 'run_after_publish' ), 999 ); }
+		self::$pending_after = $cfg;
+	}
+	public static function run_after_publish() {
+		$cfg = self::$pending_after; self::$pending_after = null;
+		if ( ! is_array( $cfg ) ) { return; }
+		$closed = false;
+		if ( function_exists( 'fastcgi_finish_request' ) ) { $closed = (bool) @fastcgi_finish_request(); }
+		elseif ( function_exists( 'litespeed_finish_request' ) ) { @litespeed_finish_request(); $closed = true; }
+		if ( ! $closed ) {
+			if ( ! wp_next_scheduled( self::AFTER_HOOK ) ) { wp_schedule_single_event( time(), self::AFTER_HOOK ); }
+			if ( function_exists( 'spawn_cron' ) ) { spawn_cron(); }
+			return;
+		}
+		@ignore_user_abort( true ); if ( function_exists( 'set_time_limit' ) ) { @set_time_limit( 300 ); }
+		self::after_publish_slow( $cfg );
+	}
+	/** Purge-овете и hook-ът след публикуване (и кронът AFTER_HOOK, когато заявката не може да се затвори рано). */
+	public static function after_publish_slow( $cfg = null ) {
+		$cfg = is_array( $cfg ) ? $cfg : self::get_published();
+		try { if ( ! empty( $cfg['page_id'] ) ) { self::purge_page( (int) $cfg['page_id'] ); } } catch ( \Throwable $e ) {}
+		try { do_action( 'ansa_promo_published', $cfg ); } catch ( \Throwable $e ) {}
 	}
 	/** Purge само на URL-а на страницата — никога purge_everything. */
 	public static function purge_page( $page_id ) {

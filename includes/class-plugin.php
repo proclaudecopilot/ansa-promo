@@ -56,6 +56,7 @@ final class Plugin {
 		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( Config::FLIP_HOOK, array( 'AnsaPromo\\Config', 'on_flip' ) ); /* v1.19.0: смяната на седмицата чисти кеша */
+		add_action( Config::AFTER_HOOK, array( 'AnsaPromo\\Config', 'after_publish_slow' ) ); /* 1.24.33: purge-овете след публикуване, когато заявката не може да се затвори рано */
 		add_action( 'ansa_promo_daily', array( 'AnsaPromo\\Config', 'schedule_flip' ) );
 		add_action( 'init', array( 'AnsaPromo\\Seed', 'maybe_seed' ), 30 );
 		add_action( 'init', array( 'AnsaPromo\\Config', 'maybe_migrate_yoni' ), 31 ); /* 1.14.0: Yonibiotic → WC #15836 (еднократно, след сийда) */

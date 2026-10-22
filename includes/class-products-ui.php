@@ -139,11 +139,11 @@ final class Products_UI {
 	}
 
 	public static function ajax_publish() {
-		self::auth();
+		self::auth(); $t0 = microtime( true );
 		$checks = Doctor::checks( Config::get_draft() ); $bad = array_values( array_filter( $checks, function ( $c ) { return 'bad' === $c['level']; } ) );
 		if ( $bad && empty( $_POST['force'] ) ) { wp_send_json_error( array( 'code' => 'doctor', 'msg' => 'Doctor спира публикуването.', 'checks' => $checks ) ); }
 		$ok = Config::publish();
-		$out = array_merge( self::payload(), array( 'published' => $ok, 'checks' => $checks ) ); self::clean();
+		$out = array_merge( self::payload(), array( 'published' => $ok, 'checks' => $checks, 'took_ms' => (int) round( ( microtime( true ) - $t0 ) * 1000 ) ) ); self::clean();
 		wp_send_json_success( $out );
 	}
 }
