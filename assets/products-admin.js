@@ -54,12 +54,37 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
 
   /* ── ajax ── */
+  /* 1.24.32 (човекът: „Запази/Публикувай → Мрежова грешка, опитай пак“): причината вече се казва. Досега всеки не-JSON отговор
+     (timeout на сървъра 504/524, PHP fatal, WAF страница) и всяка истинска мрежова грешка бяха едно и също „Мрежова грешка“.
+     Сега: HTTP кодът + какво е върнал сървърът (заглавие на HTML-а / PHP грешката), пълният отговор в конзолата. */
+  function ajaxWhy(status, text) {
+    var t = String(text || '');
+    if (status === 504 || status === 524 || status === 522 || status === 408) return 'Сървърът не отговори навреме (HTTP ' + status + ') — заявката е прекалено бавна (кеш purge / друг плъгин). Опитай пак след минута.';
+    var m = /Fatal error:\s*([^\n<]{0,220})/i.exec(t) || /<b>(?:Warning|Notice|Deprecated)<\/b>:\s*([^\n<]{0,160})/i.exec(t);
+    if (m) return 'PHP грешка на сървъра (HTTP ' + status + '): ' + m[1].trim();
+    var tt = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(t);
+    if (tt) return 'Сървърът върна страница вместо отговор (HTTP ' + status + '): „' + tt[1].trim() + '“ — защитна стена / кеш / лимит на хостинга.';
+    if (status === 413) return 'Данните са прекалено големи за сървъра (HTTP 413, post_max_size) — свий текстовете или питай хостинга.';
+    if (status === 403) return 'Сървърът отказа заявката (HTTP 403) — защитна стена (ModSecurity/Cloudflare) или изтекла сесия. Презареди и опитай пак.';
+    if (t.trim() === '0' || t.trim() === '-1') return 'WordPress не разпозна заявката (' + t.trim() + ') — плъгинът е спрян или сесията изтече. Презареди.';
+    return 'Сървърът върна нещо, което не е отговор на плъгина (HTTP ' + status + '): ' + (t.trim().slice(0, 160) || '(празно)');
+  }
   function ajax(action, data, cb, err) {
     var fd = new FormData(); fd.append('action', 'ansa_promo_products_' + action); fd.append('nonce', A.nonce);
     Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); });
-    return fetch(A.ajax, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (r) {
+    var status = 0;
+    return fetch(A.ajax, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { status = r.status; return r.text(); }).then(function (text) {
+      var r = null;
+      try { r = JSON.parse(text); } catch (e) {
+        try { console.error('[ansa-promo] ' + action + ' → HTTP ' + status + ', не е JSON:', text.slice(0, 2000)); } catch (e2) {}
+        toast(ajaxWhy(status, text), 'error'); if (err) err({ code: 'bad_response', status: status }); return;
+      }
       if (r && r.success) { cb(r.data); } else { var d = (r && r.data) || {}; if (err) { err(d); } else { toast(d.msg || 'Грешка', 'error'); } }
-    }).catch(function () { toast('Мрежова грешка — опитай пак.', 'error'); if (err) err({}); });
+    }).catch(function (e) {
+      try { console.error('[ansa-promo] ' + action + ' → мрежова грешка:', e); } catch (e2) {}
+      toast(status ? ('Грешка при четене на отговора (HTTP ' + status + ') — опитай пак.') : 'Няма връзка със сървъра (заявката не стигна или бе прекъсната) — провери интернета / VPN и опитай пак.', 'error');
+      if (err) err({ code: 'network' });
+    });
   }
   function wcSearch(q, cb) {
     fetch(A.ajax + '?action=ansa_promo_admin_search&nonce=' + encodeURIComponent(A.search_nonce) + '&q=' + encodeURIComponent(q), { credentials: 'same-origin' })

@@ -54,6 +54,14 @@ final class Products_UI {
 
 	private static function auth() {
 		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth', 'msg' => 'Нямаш права или сесията изтече — презареди.' ), 403 ); }
+		/* 1.24.32: notice/warning от друг плъгин или от PHP преди JSON-а правеше отговора не-JSON („Мрежова грешка“) — буферира се и пада */
+		ob_start();
+	}
+	/** 1.24.32: каквото е изтекло в буфера преди отговора → в error_log, не към браузъра. */
+	private static function clean() {
+		$noise = '';
+		while ( ob_get_level() > 0 ) { $noise .= (string) ob_get_clean(); }
+		if ( '' !== trim( $noise ) ) { error_log( '[ansa-promo products] stray output before JSON: ' . substr( trim( wp_strip_all_tags( $noise ) ), 0, 500 ) ); }
 	}
 
 	/** Всичко, което екранът показва. */
@@ -126,7 +134,8 @@ final class Products_UI {
 		if ( isset( $d['problems'] ) && is_array( $d['problems'] ) ) { $cfg['problems'] = array_values( $d['problems'] ); }
 		if ( isset( $d['fit'] ) && ( is_array( $d['fit'] ) || is_object( $d['fit'] ) ) ) { $cfg['fit'] = (array) $d['fit']; }
 		$stored = Config::save_draft( $cfg );
-		wp_send_json_success( self::payload( $stored ) );
+		$out = self::payload( $stored ); self::clean();
+		wp_send_json_success( $out );
 	}
 
 	public static function ajax_publish() {
@@ -134,6 +143,7 @@ final class Products_UI {
 		$checks = Doctor::checks( Config::get_draft() ); $bad = array_values( array_filter( $checks, function ( $c ) { return 'bad' === $c['level']; } ) );
 		if ( $bad && empty( $_POST['force'] ) ) { wp_send_json_error( array( 'code' => 'doctor', 'msg' => 'Doctor спира публикуването.', 'checks' => $checks ) ); }
 		$ok = Config::publish();
-		wp_send_json_success( array_merge( self::payload(), array( 'published' => $ok, 'checks' => $checks ) ) );
+		$out = array_merge( self::payload(), array( 'published' => $ok, 'checks' => $checks ) ); self::clean();
+		wp_send_json_success( $out );
 	}
 }
