@@ -1908,3 +1908,39 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw .li-hero .hw-hpic span{font-size:96px}
 .ansa-promo .dc.hw .li-cards{grid-template-columns:1fr}
 }
+
+/* ── 47 · 1.24.21 (човекът, десктоп): „да намалим контейнера с подаръците, за да има повече място за продуктите и at all times да се вижда
+      навигацията под тях за наляво надясно“. (1) Наградите са една лента от чипове (иконка 36px · име · подзаглавие) на два реда (етикет + „Повече ▾“ / чиповете) ≈ 84px вместо ≈ 237px;
+      „Повече ▾“ разгъва старите големи плочки (.f3gd). (2) Попъпът вече не скролва като цяло: .ib/.fp3 са колона, каруселът (.f3gw) взима
+      цялата останала височина, самият .f3grid скролва само ако екранът е много нисък; стрелките ‹ › са центрирани спрямо карусела и са винаги
+      на екрана; редът „Назад · 1 от 3 · Още продукти“ под картите пада (дублира стрелките и „Още N продукта ›“ във футъра). Телефонът (.fpm) не се пипа. ── */
+.ansa-promo .fp3 .f3g.f3gs{padding:8px 14px;margin-bottom:10px}
+.ansa-promo .fp3 .f3gs .f3gsr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;min-width:0;cursor:pointer;border-radius:12px;outline:none}
+.ansa-promo .fp3 .f3gs .f3gsr:focus-visible{box-shadow:0 0 0 3px rgba(232,114,42,.35)}
+.ansa-promo .fp3 .f3gs .f3gt{grid-row:1;grid-column:1;margin:0;font-size:14px;line-height:1.2;min-width:0}
+.ansa-promo .fp3 .f3gs .f3chips{grid-row:2;grid-column:1/-1;display:flex;align-items:stretch;gap:8px;min-width:0}
+.ansa-promo .fp3 .f3gs .f3c{display:inline-flex;align-items:center;gap:8px;flex:1 1 0;min-width:0;min-height:44px;padding:3px 12px 3px 4px;border-radius:999px;background:#fff;border:1.5px solid rgba(232,114,42,.22)}
+.ansa-promo .fp3 .f3gs .f3c.gold{border-color:var(--gold)}
+.ansa-promo .fp3 .f3gs .f3c .f3ci{width:36px;height:36px;border-radius:50%;overflow:hidden;flex:none;font-style:normal;font-size:20px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#fff6ee,#ffe3cf)}
+.ansa-promo .fp3 .f3gs .f3c .f3ci img{width:100%;height:100%;object-fit:cover;display:block}
+.ansa-promo .fp3 .f3gs .f3ct{display:flex;flex-direction:column;min-width:0}
+.ansa-promo .fp3 .f3gs .f3c b{display:block;font-size:13.5px;font-weight:900;color:var(--od);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ansa-promo .fp3 .f3gs .f3c b b{display:inline;font-size:inherit}
+.ansa-promo .fp3 .f3gs .f3c.gold b{color:var(--goldd)}
+.ansa-promo .fp3 .f3gs .f3c small{display:block;font-size:11.5px;font-weight:700;color:var(--muted);line-height:1.2;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ansa-promo .fp3 .f3gs .f3gm{grid-row:1;grid-column:2;font-size:13px;font-weight:800;color:var(--od);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.ansa-promo .fp3 .f3gs .f3gd{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(232,114,42,.3)}
+.ansa-promo .fp3 .f3gs.open .f3gd{display:block}
+.ansa-promo .fp3 .f3gs .f3mix{padding-top:0}
+@media(max-width:900px){.ansa-promo .fp3 .f3gs .f3chips{flex-wrap:wrap}.ansa-promo .fp3 .f3gs .f3c{flex:1 1 calc(50% - 8px)}}
+/* каруселът взима останалата височина; стрелките винаги на екрана */
+.ansa-promo .dc.fpw>.ib{display:flex;flex-direction:column}
+.ansa-promo .dc.fpw>.ib>.fp3{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.ansa-promo .dc.fpw .fp3 .f3h{flex:none;margin-bottom:10px}
+.ansa-promo .dc.fpw .fp3 .f3g,.ansa-promo .dc.fpw .fp3 .f3mixr,.ansa-promo .dc.fpw .fp3 .f3p,.ansa-promo .dc.fpw .fp3 .fnext,.ansa-promo .dc.fpw .fp3 .frec{flex:none}
+.ansa-promo .dc.fpw .fp3 .f3gw{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.ansa-promo .dc.fpw .fp3 .f3grid{flex:1 1 auto;min-height:230px;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 2px 12px;margin:0 -2px;scrollbar-width:thin}
+.ansa-promo .dc.fpw .fp3 .f3arr{top:50%;transform:translateY(-50%)}
+.ansa-promo .dc.fpw .fp3 .f3arr:hover{transform:translateY(-50%) scale(1.06)}
+.ansa-promo .dc.fpw .fp3 .mpg{display:none}
+.ansa-promo .dc.fpw .fp3 .f3f{margin-top:auto}

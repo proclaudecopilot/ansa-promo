@@ -537,9 +537,17 @@
     var dtiles='<div class="f3t">'+rimg('tix','🛥️','f3i')+'<div><b'+ck('fill.g.tix')+' data-tix="fill.g.tix">'+T('fill.g.tix',bv)+'</b><span'+ck('fill.gt.tix.b')+'>'+T('fill.gt.tix.b')+'</span><small'+ck('fill.g.tix.sub')+'>'+T('fill.g.tix.sub')+'</small></div></div>'
       +(dmain==='cosm1'||dmain==='cosm50'?'<div class="f3t gold">'+rimg(dmain,RW(dmain).ic,'f3i')+'<div><b'+ck('fill.gt.cosm.t')+'>'+T('fill.gt.cosm.t',bv)+'</b><span'+ck('fill.gt.cosm.b')+'>'+T('fill.gt.cosm.b',bv)+'</span><small'+ck('fill.gt.cosm.s')+'>'+T('fill.gt.cosm.s')+'</small></div></div>'
         :dmain==='book'?'<div class="f3t">'+rimg('book',RW('book').ic,'f3i')+'<div><b'+ck('fill.g.book')+'>'+T('fill.g.book')+'</b><span'+ck('fill.gt.book.b')+'>'+T('fill.gt.book.b',bv)+'</span><small'+ck('fill.gt.book.s')+'>'+T('fill.gt.book.s')+'</small></div></div>':'');
+    /* 1.24.21: чиповете на лентата — яхтата и сетът с подзаглавие, книгата/доставката само с име; подзаглавието на яхтата е и tooltip */
+    var dchips=b.rw.map(function(r){var w=RW(r),tix=/^tix/.test(r),cosm=/^cosm/.test(r);var lbl=tix?'<b'+ck('fill.g.tix')+'>'+T('fill.g.tix',bv)+'</b>':cosm?'<b'+ck('fill.gt.cosm.t')+'>'+T('fill.gt.cosm.t',bv)+'</b>':'<b'+ck('fill.g.'+r)+'>'+T('fill.g.'+r)+'</b>';
+      var sub=tix?'<small'+ck('fill.gt.tix.b')+'>'+T('fill.gt.tix.b')+'</small>':cosm?'<small'+ck('fill.gt.cosm.b')+'>'+T('fill.gt.cosm.b',bv)+'</small>':'';
+      var tip=tix?T('fill.g.tix.sub'):cosm?T('fill.gt.cosm.s'):r==='book'?T('fill.gt.book.b',bv):'';
+      return '<span class="f3c '+r+(cosm?' gold':'')+'"'+(tip?' title="'+esc(String(tip).replace(/<[^>]+>/g,''))+'"':'')+'>'+rimg(r,tix?'🛥️':w.ic,'f3ci')+'<span class="f3ct">'+lbl+sub+'</span></span>'}).join('');
     var drest=b.rw.filter(function(r){return !/^tix/.test(r)&&r!==dmain}).map(function(r){var w=RW(r);return '<span class="f3r">'+rimg(r,w.ic,'f3ri')+'<b'+ck('fill.g.'+r)+'>'+T('fill.g.'+r)+'</b></span>'}).join('<i class="f3sep"></i>');
     var body='<div class="fp2 fp3"><div class="f3h"><div class="f3hl"><h3'+ck('fill.title2')+'>'+T('fill.title2',bv)+'</h3><button class="lnk" id="fBack" type="button"'+ck('fill.chg')+'>'+T('fill.chg')+'</button></div><button class="f3x" id="fClose" type="button" aria-label="затвори">✕</button></div>'
-      +'<div class="f3g"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t',bv)+'</b><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div>'
+      /* 1.24.21 (човекът: „да намалим контейнера с подаръците, за да има повече място за продуктите“): наградите са една лента от чипове
+         (иконка · име · подзаглавие) с „Повече ▾“, което разгъва старите големи плочки (dtiles/drest); отворено/затворено се пази в S._giftsOpen */
+      +'<div class="f3g f3gs'+(S._giftsOpen?' open':'')+'" id="fGifts"><div class="f3gsr" id="fGiftsR" role="button" tabindex="0" aria-expanded="'+(S._giftsOpen?'true':'false')+'"><b class="f3gt"'+ck('fill.gifts.t')+'>'+T('fill.gifts.t',bv)+'</b><div class="f3chips">'+dchips+'</div><span class="f3gm" id="fGiftsM"'+ck(S._giftsOpen?'fill.gifts.less':'fill.gifts.more')+'>'+T(S._giftsOpen?'fill.gifts.less':'fill.gifts.more')+'</span></div>'
+      +'<div class="f3gd"><div class="f3tiles">'+dtiles+'</div>'+(drest?'<div class="f3rest">'+drest+'</div>':'')+'</div></div>'
       +'<div class="f3mixr"><p class="f3mix"'+ck(grows(b)?'fill.combine.grow':'fill.combine')+'>'+T(grows(b)?'fill.combine.grow':'fill.combine',bv)+'</p><button class="fqzb'+(qz?' on':'')+'" id="fQuiz" type="button"'+ck('fill.quiz.l')+'><i>?</i><span>'+T('fill.quiz.l')+'</span></button></div>'
       +'<div class="f3p"><span class="f3n"><span'+ck('fill.sel.a')+'>'+T('fill.sel.a')+'</span> <span id="fSlotsN"></span> <span'+ck('fill.sel.b')+'>'+T('fill.sel.b')+'</span></span><span class="f3bar"><i id="fBar"></i></span><em id="fPct">0%</em></div>'
 
@@ -601,6 +609,8 @@
         if(fm){if(left>0){fm.hidden=false;fm.innerHTML='<span'+ck('fill.more.n')+'>'+T('fill.more.n',{n:left})+'</span>'}else{fm.innerHTML='<span'+ck('fill.more.first')+'>'+T('fill.more.first')+'</span>'}}};showPg();
       var goPg=function(d){pg=Math.max(0,Math.min(pages-1,pg+d));showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})};
       var pvB=$('f3Pv'),nxB=$('f3Nx'),fmB=$('f3More');if(pvB)pvB.onclick=function(){goPg(-1)};if(nxB)nxB.onclick=function(){goPg(1)};if(fmB)fmB.onclick=function(){if(pg>=pages-1){pg=0;showPg();var g=dc.querySelector('.f3grid');if(g)g.scrollIntoView({block:'nearest',behavior:'smooth'})}else goPg(1)}}
+    /* 1.24.21: лентата с наградите (десктоп) — клик/Enter/Space върху реда разгъва/свива големите плочки */
+    var gR=$('fGiftsR');if(gR){var gTog=function(){var g=$('fGifts'),o=g.classList.toggle('open');S._giftsOpen=o;gR.setAttribute('aria-expanded',o?'true':'false');var m=$('fGiftsM');if(m){m.innerHTML=T(o?'fill.gifts.less':'fill.gifts.more');if(A.editor)m.setAttribute('data-ck',o?'fill.gifts.less':'fill.gifts.more')}};gR.onclick=gTog;gR.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();gTog()}}}
     /* 1.24.6: „Виж повече“ (mfGx/mfGh) е махнато заедно с втория ред на хедъра */
     if(mob)fitSheet(dc);
     /* v1.23.3 (човекът): „Не ги знам, насочете ме“ → направо въпросникът; интро листът „За да отключиш…“ НЕ се отваря върху него (беше след off-а и го покриваше) */
