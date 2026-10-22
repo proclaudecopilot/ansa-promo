@@ -1945,3 +1945,29 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 [data-editor] .dc.hw .ck-empty::before,[data-editor] .dc.hw .ck-empty::after{display:none}
 [data-editor] .dc.hw .hw-x.ck-empty{display:block;font-size:12px}
 [data-editor] .dc.hw details.ck-empty summary{list-style:none;cursor:pointer;padding:0;font:inherit}
+
+/* 1.24.24 (човекът: „трябва да изглежда като имейл или като note“): писмата са бележка — бяла карта с оранжева лента отгоре, имейл-хедър (аватар · от · до: теб),
+   темата е заглавието, подписът курсив; секцията около нея е в топлия тон, за да изпъква картата */
+.ansa-promo .dc.hw .hw-sec.hw-w{background:linear-gradient(180deg,#fbeadb,#f6e4d1)}
+.ansa-promo .dc.hw .hw-note{position:relative;background:#fffdf9;border:1.5px solid #f0dcc9;border-radius:18px;padding:24px 28px 22px;box-shadow:0 16px 40px rgba(120,60,20,.14)}
+.ansa-promo .dc.hw .hw-note::before{content:"";position:absolute;left:-1.5px;right:-1.5px;top:-1.5px;height:7px;border-radius:18px 18px 0 0;background:linear-gradient(90deg,#f6b58a,#e8722a)}
+.ansa-promo .dc.hw .hw-mail{display:flex;align-items:center;gap:11px;padding:0 0 12px;margin:0 0 16px;border-bottom:1px dashed #efd9c6}
+.ansa-promo .dc.hw .hw-mail .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ef8c4f,#c2410c);color:#fff;font-style:normal;font-weight:900;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 4px 12px rgba(194,65,12,.3)}
+.ansa-promo .dc.hw .hw-mail .mt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.ansa-promo .dc.hw .hw-mail .mt b{font-size:15px;font-weight:900;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ansa-promo .dc.hw .hw-mail .mt small{font-size:12px;font-weight:700;color:#9a6b4a}
+.ansa-promo .dc.hw .hw-mail .pin{margin-left:auto;font-size:20px;opacity:.55}
+.ansa-promo .dc.hw .hw-note h3{font-size:22px;line-height:1.25;margin:0 0 14px}
+.ansa-promo .dc.hw .hw-note .hw-kick{margin-bottom:6px}
+.ansa-promo .dc.hw .hw-note p{font-weight:500;line-height:1.65;color:var(--ink)}
+.ansa-promo .dc.hw .hw-note p.hw-sign{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:18px;color:var(--od);margin-top:14px}
+.ansa-promo .dc.hw .hw-note p.hw-sign::before{content:"— "}
+@media (max-width:640px){.ansa-promo .dc.hw .hw-note{padding:18px 16px 16px;border-radius:16px}.ansa-promo .dc.hw .hw-note h3{font-size:20px}.ansa-promo .dc.hw .hw-mail .av{width:36px;height:36px;font-size:16px}}
+
+/* 1.24.24 (човекът): картите на козметичните продукти — 1-ви ред името, 2-ри ред снимка + описание */
+.ansa-promo .dc.hw .li-prods{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.ansa-promo .dc.hw .li-prod{display:flex;flex-direction:column;align-items:stretch;gap:9px;padding:14px 14px 15px}
+.ansa-promo .dc.hw .li-prod .li-pn{display:block;font-size:16px;font-weight:900;line-height:1.25;color:var(--ink);margin:0}
+.ansa-promo .dc.hw .li-pb{display:flex;gap:12px;align-items:flex-start}
+.ansa-promo .dc.hw .li-pb p{font-size:13.5px;line-height:1.45;font-weight:600;color:var(--ink2);margin:0;min-width:0}
+@media (max-width:640px){.ansa-promo .dc.hw .li-prods{grid-template-columns:1fr 1fr;gap:10px}.ansa-promo .dc.hw .li-prod{padding:12px}.ansa-promo .dc.hw .li-prod .li-pn{font-size:15px}.ansa-promo .dc.hw .li-pb{flex-direction:column;gap:8px}.ansa-promo .dc.hw .li-ppic{width:100%;height:96px}}

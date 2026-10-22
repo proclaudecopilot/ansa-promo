@@ -283,6 +283,10 @@
   /* 1.24.23 (човекът: „не мога да изтрия заглавието или да добавя ново“): на /info и /kozmetika празен текст (override '') = елементът не се рендира
      на живо; в редактора стои пунктиран „＋ ключ“ хотспот, за да се върне. xtra(k) = „＋ допълнителен текст“ в края на секцията: всеки ред е блок —
      „# “ заглавие · „- “/„• “ точка (поредните точки са един списък) · „> “ бележка · друго = абзац; празно = нищо (в редактора — „＋“). */
+  /* 1.24.24 (човекът: „трябва да изглежда като имейл или като note“): писмата („Къде е уловката“, „Защо го правим“) са бележка/имейл — хедър с аватар
+     (инициалът от подписа), „от“ името от подписа, „до: теб“; скрит подпис = без хедър */
+  function mailHead(signKey){var nm=String(T(signKey)||'').replace(/^[-–—\s]+/,'').trim();if(!nm)return '';var ini=nm.charAt(0).toUpperCase();
+    return '<div class="hw-mail"><i class="av">'+esc(ini)+'</i><div class="mt"><b>'+nm+'</b><small>до: теб · '+esc(A.name||'ansa')+'</small></div><span class="pin" aria-hidden="true">✉</span></div>'}
   function emptyHs(k,tag,cls){return A.editor?'<'+tag+' class="'+(cls?cls+' ':'')+'ck-empty"'+ck(k)+'>＋ '+esc(k)+'</'+tag+'>':''}
   function lix(k,v){var t=T(k,v);return t===''?emptyHs(k,'li'):'<li'+ck(k)+'>'+t+'</li>'}
   function xtra(k){var s=T(k);if(s==='')return A.editor?'<div class="hw-x ck-empty"'+ck(k)+'>＋ допълнителен текст ('+esc(k)+') — ред „# “ = заглавие, „- “ = точка, „> “ = бележка</div>':'';
@@ -334,7 +338,7 @@
       +'</div>'+p('how.pr.note','p','hw-n')+xtra('how.x.prods')+'</section>';
     /* 7 · защо го правим (видеото се показва само с линк в how.w.video) */
     var vid=A.copy&&A.copy['how.w.video']||'',vidh=/^https?:\/\//.test(vid)?'<a class="hw-vid" href="'+esc(vid)+'" target="_blank" rel="noopener"><i>▶</i>'+p('how.w.video.t','span')+'</a>':(A.editor?'<div class="hw-vid off"'+ck('how.w.video')+'><i>▶</i><span>Видео: сложи линк в how.w.video</span></div>':'');
-    var w='<section class="hw-sec hw-w"><div class="hw-letter">'+p('how.w.kick','div','hw-kick')+p('how.w.h','h3')+vidh+[1,2,3,4,5,6,7,8].map(function(i){return p('how.w.p'+i)}).join('')+xtra('how.x.why')+p('how.w.sign','p','hw-sign')+'</div></section>';
+    var w='<section class="hw-sec hw-w"><div class="hw-letter hw-note">'+mailHead('how.w.sign')+p('how.w.kick','div','hw-kick')+p('how.w.h','h3')+vidh+[1,2,3,4,5,6,7,8].map(function(i){return p('how.w.p'+i)}).join('')+xtra('how.x.why')+p('how.w.sign','p','hw-sign')+'</div></section>';
     /* 8 · отзиви — първият отзив на всеки продукт (до 6) */
     var rvs=[];ORDER.forEach(function(q){var x=PROD[q];if(x&&x.reviews&&x.reviews.length&&rvs.length<6)rvs.push({n:x.reviews[0].n,s:x.reviews[0].s,t:x.reviews[0].t,p:x.name})});
     var rv='<section class="hw-sec hw-rv">'+p('how.rv.h','h3')+p('how.rv.sub','p','hw-lead')+(rvs.length?'<div class="hw-rvs">'+rvs.map(function(r){var n=Math.max(1,Math.min(5,Number(r.s)||5));return '<div class="hw-rv1"><i>'+'★★★★★'.slice(0,n)+'</i><p>'+esc(r.t)+'</p><small>'+esc(r.n)+' · '+esc(r.p)+'</small></div>'}).join('')+'</div>':'')+xtra('how.x.reviews')+'</section>';
@@ -386,14 +390,15 @@
     var h='<section class="hw-hero li-hero"><div class="hw-htx">'+p('li.hero.kick','div','hw-kick')+p('li.hero.h','h2')+p('li.hero.sub','p','hw-sub')
       +'<div class="hw-ctas">'+cta('li.hero.cta','gold')+'</div>'+p('li.hero.note','p','hw-note')+cnt+xtra('li.x.hero')+'</div><div class="hw-hpic">'+pic1('cosm','🌸','hero')+'</div></section>';
     /* 2 · къде е уловката (писмото) */
-    var c='<section class="hw-sec hw-w li-catch"><div class="hw-letter">'+p('li.catch.h','h3')+[1,2,3,4,5,6,7].map(function(i){return p('li.catch.p'+i)}).join('')+xtra('li.x.catch')+p('li.catch.sign','p','hw-sign')+'</div></section>';
+    var c='<section class="hw-sec hw-w li-catch"><div class="hw-letter hw-note">'+mailHead('li.catch.sign')+p('li.catch.h','h3')+[1,2,3,4,5,6,7].map(function(i){return p('li.catch.p'+i)}).join('')+xtra('li.x.catch')+p('li.catch.sign','p','hw-sign')+'</div></section>';
     /* 3 · комплектът — картите само с попълнено заглавие */
     var cards='';for(var i=1;i<=5;i++){if(T('li.set.'+i+'.t')==='')continue;cards+='<div class="li-card"><i>'+i+'</i>'+p('li.set.'+i+'.t','b')+p('li.set.'+i+'.d')+'</div>'}
     var st='<section class="hw-sec li-set"><div class="hw-sh">'+p('li.set.h','h3')+'</div>'+p('li.set.p1')+p('li.set.p2','p','hw-n')+(cards?'<div class="li-cards">'+cards+'</div>':p('li.set.p3','p','hw-n'))+xtra('li.x.set')+'</section>';
     /* 3б · 1.24.22 (човекът): „Какво се крие в кутията“ — петте продукта като карти (снимка от Настройки → 💄 Козметичните продукти или емоджи; blur =
        замъглена изненада с „?“); карта без заглавие не се показва */
     var LI=A.li_items||[],pcards='';for(var q=1;q<=5;q++){if(T('li.pr.'+q+'.t')==='')continue;var it=LI[q-1]||{};
-      pcards+='<div class="li-prod'+(it.blur?' blur':'')+'"><div class="li-ppic">'+(it.img?'<img src="'+esc(it.img)+'" alt="" loading="lazy" decoding="async">':'<span>'+(it.blur?'🎁':'🧴')+'</span>')+(it.blur?'<em>?</em>':'')+'</div><div class="li-ptx">'+p('li.pr.'+q+'.t','b')+p('li.pr.'+q+'.d')+'</div></div>'}
+      /* 1.24.24 (човекът): първи ред — името; втори ред — снимка + описание */
+      pcards+='<div class="li-prod'+(it.blur?' blur':'')+'">'+p('li.pr.'+q+'.t','b','li-pn')+'<div class="li-pb"><div class="li-ppic">'+(it.img?'<img src="'+esc(it.img)+'" alt="" loading="lazy" decoding="async">':'<span>'+(it.blur?'🎁':'🧴')+'</span>')+(it.blur?'<em>?</em>':'')+'</div>'+p('li.pr.'+q+'.d')+'</div></div>'}
     var prs='<section class="hw-sec li-pr"><div class="hw-sh">'+p('li.pr.h','h3')+p('li.pr.sub','p','hw-lead')+'</div><div class="li-prods">'+pcards+'</div>'+p('li.pr.note','p','hw-n')+xtra('li.x.prods')+'<div class="hw-ctas">'+cta('li.pr.cta','gold')+'</div></section>';
     /* 4 · какво получаваш веднага */
     var inn='<section class="hw-sec li-in"><div class="hw-sh">'+p('li.in.h','h3')+p('li.in.p','p','hw-lead')+'</div><ul class="hw-bul">'+[1,2,3,4,5].map(function(i){return lix('li.in.'+i)}).join('')+'</ul>'+p('li.in.note','p','hw-n')+xtra('li.x.in')+'<div class="hw-ctas">'+cta('li.in.cta')+'</div></section>';
