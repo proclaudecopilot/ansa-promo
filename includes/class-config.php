@@ -236,6 +236,28 @@ final class Config {
 		update_option( 'ansa_promo_wctext_v2', $changed ? 'migrated' : 'noop', false );
 	}
 
+	/** 1.24.29 (човекът: „направи същото и за попъпа «За продукта»“): съставките, „за кого е“, рейтингът и отзивите от сийда (мокъпа) са
+	 *  измислени — изчистват се еднократно за seed продуктите, стига да са още дословно сийдовите; попъпът крие празните секции, а
+	 *  админът пише своите в 📦 Продукти → ⋯ Още. Всичко, което админът вече е променил, остава. */
+	public static function maybe_migrate_popup() {
+		if ( get_option( 'ansa_promo_popup_v1' ) ) { return; }
+		$seed = array(); foreach ( Seed::products() as $sp ) { $seed[ $sp['key'] ] = $sp; }
+		$s = self::read_store(); $changed = false;
+		foreach ( array( 'draft', 'published' ) as $slot ) {
+			if ( ! is_array( $s[ $slot ] ) || empty( $s[ $slot ]['products'] ) || ! is_array( $s[ $slot ]['products'] ) ) { continue; }
+			foreach ( $s[ $slot ]['products'] as $i => $p ) {
+				$k = is_array( $p ) ? (string) ( $p['key'] ?? '' ) : '';
+				if ( ! isset( $seed[ $k ] ) ) { continue; }
+				foreach ( array( 'ing', 'who', 'rating', 'reviews' ) as $f ) {
+					$v = isset( $p[ $f ] ) ? trim( (string) $p[ $f ] ) : ''; $sv = trim( (string) ( $seed[ $k ][ $f ] ?? '' ) );
+					if ( '' !== $v && $v === $sv ) { $s[ $slot ]['products'][ $i ][ $f ] = ''; $changed = true; }
+				}
+			}
+		}
+		if ( $changed ) { self::write_store( $s ); Catalog::purge_runtime(); $pub = self::get_published(); if ( ! empty( $pub['page_id'] ) ) { self::purge_page( (int) $pub['page_id'] ); } }
+		update_option( 'ansa_promo_popup_v1', $changed ? 'migrated' : 'noop', false );
+	}
+
 	/** Плочките със снимка (имейл-попъп + картите на кутиите): ключ → етикет за админа. */
 	public static function gate_image_slots() {
 		return array( 'yacht' => 'Почивка с яхта', 'cosm' => 'Козметичен сет', 'book' => 'Книга с рецепти', 'pct' => 'Отстъпка', 'ship' => 'Безплатна доставка', 'box_s' => 'Малка кутия', 'box_m' => 'Средна кутия', 'box_l' => 'Голяма кутия' );
