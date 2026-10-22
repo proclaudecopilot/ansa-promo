@@ -198,7 +198,10 @@ final class Insights {
 	}
 	/** Статусът на поръчката се чете на живо във фийда; тук само опресняваме last_at, за да изплува сесията. */
 	public static function on_status( $order_id, $from, $to ) {
-		global $wpdb; $o = wc_get_order( (int) $order_id ); if ( ! $o || ! $o->get_meta( '_ansa_promo_id' ) ) { return; } $sid = self::order_sid( $o ); if ( '' === $sid ) { return; }
+		global $wpdb; $o = wc_get_order( (int) $order_id ); if ( ! $o || ! $o->get_meta( '_ansa_promo_id' ) ) { return; }
+		/* 1.24.26: кога поръчката е влязла в текущия си статус — за „застояла в път ≥ N дни“ (прогнозата за взети) */
+		try { $o->update_meta_data( self::STATUS_AT_META, (string) time() ); $o->save_meta_data(); } catch ( \Throwable $e ) {}
+		$sid = self::order_sid( $o ); if ( '' === $sid ) { return; }
 		$wpdb->update( Schema::table( 'sessions' ), array( 'last_at' => current_time( 'mysql' ) ), array( 'sid' => $sid ) );
 	}
 	private static function device_of( $ua ) { return '' === $ua ? '' : ( preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop' ); }
@@ -389,11 +392,30 @@ final class Insights {
 	   Поръчките от WooCommerce (промо, без чернови) за период: ВЗЕТИ = „получена“ (tombola.statuses — само Delivered, решение от 1.9.0) → реализиран оборот;
 	   отказани / неуспешни / възстановени → загубен оборот; всичко останало (чака, обработва се, пътува, „изпълнена“) → нереализиран — още може да бъде взет. */
 	const LOST_STATUSES = array( 'cancelled', 'failed', 'refunded', 'trash', 'checkout-draft' );
+	/* ── 1.24.26 (човекът: „трябва да има projected delivery rate… пратка, престояла повече от 5 дни в офис и не е delivered, най-вероятно няма да се вземе;
+	   току-що изпратени и стояли 1 ден не трябва да влизат в изчисленията“) ──
+	   Прогнозата се смята САМО върху РЕШЕНИТЕ поръчки: взети (Delivered) + отказани/неуспешни + „застояли“ (в път, но от ≥ N дни в текущия си статус —
+	   най-вероятно няма да се вземат). Пресните (в път < N дни) са неизвестни и НЕ влизат. proj = взети ÷ решени. Очаквани накрая = взети + пресни × proj
+	   (брой и оборот). Възрастта е от влизането в текущия статус: meta _ansa_promo_status_at (пише се при всяка смяна на статус от 1.24.26), иначе
+	   date_modified, иначе date_created. N по подразбиране 5 дни — чиповете „в път ≥ N дни“ на дашборда (option ansa_promo_ins_mature). */
+	const MATURE_DAYS = 5; const MATURE_OPTIONS = array( 3, 5, 7, 10, 14 ); const STATUS_AT_META = '_ansa_promo_status_at';
+	public static function mature_days() { $n = (int) get_option( 'ansa_promo_ins_mature', self::MATURE_DAYS ); return in_array( $n, self::MATURE_OPTIONS, true ) ? $n : self::MATURE_DAYS; }
+	public static function set_mature_days( $n ) { $n = (int) $n; if ( in_array( $n, self::MATURE_OPTIONS, true ) ) { update_option( 'ansa_promo_ins_mature', $n, false ); } return self::mature_days(); }
+	/** Кога поръчката е влязла в текущия си статус (unix timestamp, UTC). */
+	public static function status_since( $o ) {
+		$m = (string) $o->get_meta( self::STATUS_AT_META ); if ( '' !== $m ) { $ts = ctype_digit( $m ) ? (int) $m : (int) strtotime( $m ); if ( $ts > 0 ) { return $ts; } }
+		foreach ( array( 'get_date_modified', 'get_date_created' ) as $f ) { if ( method_exists( $o, $f ) ) { $d = $o->$f(); if ( $d ) { return (int) $d->getTimestamp(); } } }
+		return 0;
+	}
+	public static function status_age_days( $o, $now = null ) { $since = self::status_since( $o ); if ( ! $since ) { return 0.0; } $now = $now ?: time(); return max( 0.0, ( $now - $since ) / DAY_IN_SECONDS ); }
 	public static function money( $v ) { return number_format( (float) $v, 2, ',', ' ' ) . ' €'; }
 	/** Периодът за $days (1 = днес, 7, 30, 90; 0 = null = всичко). */
 	public static function range_for_days( $days ) { $days = (int) $days; if ( $days <= 0 ) { return null; } return self::range( substr( self::since( $days ), 0, 10 ), current_time( 'Y-m-d' ) ); }
-	public static function orders_stats( $rg = null ) {
-		$z = array( 'n' => 0, 'total' => 0.0 ); $out = array( 'n' => 0, 'total' => 0.0, 'delivered' => $z, 'open' => $z, 'lost' => $z, 'by_status' => array(), 'avg' => 0.0, 'delivered_pct' => '—' );
+	public static function orders_stats( $rg = null, $mature = null, $now = null ) {
+		$mature = (int) $mature ?: self::mature_days(); $now = (int) $now ?: time();
+		$z = array( 'n' => 0, 'total' => 0.0 ); $out = array( 'n' => 0, 'total' => 0.0, 'delivered' => $z, 'open' => $z, 'lost' => $z, 'by_status' => array(), 'avg' => 0.0, 'delivered_pct' => '—',
+			/* 1.24.26: stale = в път ≥ N дни (вероятно загубени), young = пресни (не влизат); decided = взети + загубени + stale; proj = взети ÷ decided */
+			'mature_days' => $mature, 'stale' => $z, 'young' => $z, 'decided' => 0, 'proj_raw' => null, 'proj_pct' => '—', 'proj_n' => 0, 'proj_total' => 0.0, 'proj_final_pct' => '—' );
 		if ( ! function_exists( 'wc_get_orders' ) ) { return $out; }
 		$extra = array();
 		if ( is_array( $rg ) ) {
@@ -406,10 +428,13 @@ final class Insights {
 			$st = (string) $o->get_status(); $t = (float) $o->get_total();
 			$grp = Tombola::delivered( $o, $cfg ) ? 'delivered' : ( in_array( $st, self::LOST_STATUSES, true ) ? 'lost' : 'open' );
 			$out['n']++; $out['total'] += $t; $out[ $grp ]['n']++; $out[ $grp ]['total'] += $t;
-			if ( ! isset( $out['by_status'][ $st ] ) ) { $out['by_status'][ $st ] = array( 'n' => 0, 'total' => 0.0, 'name' => wc_get_order_status_name( $st ), 'grp' => $grp ); }
+			if ( ! isset( $out['by_status'][ $st ] ) ) { $out['by_status'][ $st ] = array( 'n' => 0, 'total' => 0.0, 'name' => wc_get_order_status_name( $st ), 'grp' => $grp, 'stale' => 0, 'young' => 0 ); }
 			$out['by_status'][ $st ]['n']++; $out['by_status'][ $st ]['total'] += $t;
+			if ( 'open' === $grp ) { $sub = self::status_age_days( $o, $now ) >= $mature ? 'stale' : 'young'; $out[ $sub ]['n']++; $out[ $sub ]['total'] += $t; $out['by_status'][ $st ][ $sub ]++; }
 		}
 		$out['avg'] = $out['n'] ? $out['total'] / $out['n'] : 0.0; $out['delivered_pct'] = self::pct( $out['delivered']['n'], $out['n'] );
+		$dec = $out['delivered']['n'] + $out['lost']['n'] + $out['stale']['n']; $out['decided'] = $dec;
+		if ( $dec > 0 ) { $p = $out['delivered']['n'] / $dec; $out['proj_raw'] = $p; $out['proj_pct'] = self::pct( $out['delivered']['n'], $dec ); $out['proj_n'] = $out['delivered']['n'] + (int) round( $out['young']['n'] * $p ); $out['proj_total'] = $out['delivered']['total'] + $out['young']['total'] * $p; $out['proj_final_pct'] = self::pct( $out['proj_n'], $out['n'] ); }
 		uasort( $out['by_status'], function ( $a, $b ) { return $b['n'] <=> $a['n']; } );
 		return $out;
 	}
@@ -417,6 +442,7 @@ final class Insights {
 	public static function dashboard_data( $r, $os, $ctx = array() ) {
 		$f = $r['funnel']; $k = self::kpi( $r ); $n = (int) $r['sessions']; $of = function ( $x ) use ( $n ) { return esc_html( self::pct( $x, $n ) ) . ' от сесиите'; };
 		$per = (string) ( $ctx['period'] ?? '' ); $sfx = $per ? ' · ' . esc_html( $per ) : '';
+		$z = array( 'n' => 0, 'total' => 0.0 ); $st = $os['stale'] ?? $z; $yg = $os['young'] ?? $z; $md = (int) ( $os['mature_days'] ?? self::MATURE_DAYS ); /* 1.24.26 */
 		$t = array(
 			'sessions'    => array( 'traffic', 'Сесии', (string) $n, ( ! empty( $ctx['first'] ) ? 'броят се от ' . esc_html( $ctx['first'] ) : 'влизания в страницата' ) . $sfx, '', false ),
 			'visitors'    => array( 'traffic', 'Уникални посетители', (string) $k['visitors'], 'по IP · <b data-k="per">' . esc_html( $k['per'] ) . '</b> сесии на посетител', 'good', false ),
@@ -429,11 +455,14 @@ final class Insights {
 			'conv'        => array( 'funnel', 'Конверсия сесия → поръчка', (string) $k['conv'], 'напълнили, но не поръчали: <b data-k="full_no">' . (int) max( 0, $f['full'] - $f['created'] ) . '</b>', 'info', false ),
 			'o_n'         => array( 'orders', 'Поръчани', (string) $os['n'], 'промо поръчки в WooCommerce · <b data-k="o_total">' . esc_html( self::money( $os['total'] ) ) . '</b>', 'info', false ),
 			'o_delivered' => array( 'orders', 'Взети (Delivered)', (string) $os['delivered']['n'], '<b data-k="o_delivered_pct">' . esc_html( $os['delivered_pct'] ) . '</b> от поръчаните · ' . esc_html( self::money( $os['delivered']['total'] ) ), 'good', false ),
-			'o_open'      => array( 'orders', 'В път / чакат', (string) $os['open']['n'], 'още не са взети · ' . esc_html( self::money( $os['open']['total'] ) ), 'warn', false ),
+			'o_open'      => array( 'orders', 'В път / чакат', (string) $os['open']['n'], 'още не са взети · ' . esc_html( self::money( $os['open']['total'] ) ) . ' · от тях ≥ ' . $md . ' дни: <b data-k="o_stale">' . (int) $st['n'] . '</b> · пресни: <b data-k="o_young">' . (int) $yg['n'] . '</b>', 'warn', false ),
 			'o_lost'      => array( 'orders', 'Отказани / неуспешни', (string) $os['lost']['n'], 'отказани, неуспешни, възстановени · ' . esc_html( self::money( $os['lost']['total'] ) ), 'bad', false ),
+			/* 1.24.26: прогнозата — само върху решените; пресните (< N дни в път) не влизат */
+			'o_proj'      => array( 'orders', 'Прогноза взети (projected)', (string) ( $os['proj_pct'] ?? '—' ), 'върху решените <b data-k="o_decided">' . (int) ( $os['decided'] ?? 0 ) . '</b>: взети ' . (int) $os['delivered']['n'] . ' + отказани ' . (int) $os['lost']['n'] . ' + в път ≥ ' . $md . ' дни <b data-k="o_stale2">' . (int) $st['n'] . '</b> (вероятно няма да се вземат) · пресните <b data-k="o_young2">' . (int) $yg['n'] . '</b> не влизат', 'info', false ),
 			'rev_real'    => array( 'revenue', 'Реализиран оборот', self::money( $os['delivered']['total'] ), 'взетите поръчки (Delivered) · <b data-k="o_delivered2">' . (int) $os['delivered']['n'] . '</b> бр.', 'good', true ),
 			'rev_open'    => array( 'revenue', 'Нереализиран оборот', self::money( $os['open']['total'] ), 'поръчани, още не взети · <b data-k="o_open2">' . (int) $os['open']['n'] . '</b> бр.', 'warn', false ),
 			'rev_lost'    => array( 'revenue', 'Загубен оборот', self::money( $os['lost']['total'] ), 'отказани / неуспешни · <b data-k="o_lost2">' . (int) $os['lost']['n'] . '</b> бр.', 'bad', false ),
+			'rev_proj'    => array( 'revenue', 'Прогнозен оборот', self::money( $os['proj_total'] ?? 0 ), 'взети + пресните × прогнозата · очаквани накрая ≈ <b data-k="o_proj_n">' . (int) ( $os['proj_n'] ?? 0 ) . '</b> от ' . (int) $os['n'] . ' (' . esc_html( (string) ( $os['proj_final_pct'] ?? '—' ) ) . ') · под риск (в път ≥ ' . $md . ' дни): <b data-k="rev_stale">' . esc_html( self::money( $st['total'] ) ) . '</b>', 'info', false ),
 			'avg'         => array( 'revenue', 'Среден кош', self::money( $os['avg'] ), 'на поръчка · общо <b data-k="o_total2">' . esc_html( self::money( $os['total'] ) ) . '</b>', '', false ),
 		);
 		/* 1.24.2: Shrine · 3+2 — сборове по всички продукти */
@@ -445,7 +474,7 @@ final class Insights {
 		return $t;
 	}
 	const GROUPS = array( 'traffic' => '👥 Трафик', 'funnel' => '🔻 Фуния по сесии', 'shrine' => '🛍️ Shrine · 3+2', 'orders' => '🛒 Поръчки (WooCommerce)', 'revenue' => '💶 Оборот' );
-	const GROUP_HINTS = array( 'traffic' => 'сесия = едно влизане; посетител = различен IP', 'funnel' => 'докъде стига всяка сесия, веднъж на стъпка', 'shrine' => 'промо картата „5 = 3+2“ на продуктовите страници (ansa™ Shrine)', 'orders' => 'взети = статус „получена“ (Delivered); в път = всичко между поръчка и получаване', 'revenue' => 'сумите на поръчките с ДДС и доставка, както са в WooCommerce' );
+	const GROUP_HINTS = array( 'traffic' => 'сесия = едно влизане; посетител = различен IP', 'funnel' => 'докъде стига всяка сесия, веднъж на стъпка', 'shrine' => 'промо картата „5 = 3+2“ на продуктовите страници (ansa™ Shrine)', 'orders' => 'взети = статус „получена“ (Delivered); в път = всичко между поръчка и получаване; прогноза = взети ÷ (взети + отказани + в път ≥ N дни) — пресните не влизат', 'revenue' => 'сумите на поръчките с ДДС и доставка, както са в WooCommerce' );
 	private static function tile( $label, $value, $sub = '', $tone = '', $k = '', $hero = false ) {
 		return '<div class="ap-st' . ( $tone ? ' ap-st--' . $tone : '' ) . ( $hero ? ' ap-st--hero' : '' ) . '"><span class="ap-st__l">' . esc_html( $label ) . '</span><b class="ap-st__v"' . ( $k ? ' data-k="' . esc_attr( $k ) . '"' : '' ) . '>' . esc_html( $value ) . '</b>' . ( '' !== $sub ? '<small class="ap-st__s"' . ( $k ? ' data-ks="' . esc_attr( $k ) . '"' : '' ) . '>' . $sub . '</small>' : '' ) . '</div>';
 	}
@@ -453,8 +482,15 @@ final class Insights {
 	/** Целият дашборд (4 групи) от dashboard_data(). */
 	public static function dashboard_html( $data, $id = 'apInsDash' ) {
 		$h = '<div class="ap-dash" id="' . esc_attr( $id ) . '">';
-		foreach ( self::GROUPS as $g => $title ) { $tiles = ''; foreach ( $data as $k => $t ) { if ( $t[0] === $g ) { $tiles .= self::tile( $t[1], $t[2], $t[3], $t[4], $k, $t[5] ); } } $h .= self::group_html( $title, $tiles, self::GROUP_HINTS[ $g ] ?? '' ); }
+		foreach ( self::GROUPS as $g => $title ) { $tiles = ''; foreach ( $data as $k => $t ) { if ( $t[0] === $g ) { $tiles .= self::tile( $t[1], $t[2], $t[3], $t[4], $k, $t[5] ); } } $h .= self::group_html( $title, $tiles, ( self::GROUP_HINTS[ $g ] ?? '' ) . ( 'orders' === $g ? self::mature_picker() : '' ) ); }
 		return $h . '</div>';
+	}
+	/** 1.24.26: чиповете „застояла = в път ≥ N дни“ (3/5/7/10/14) — пазят се в option и важат за трите екрана и живото опресняване. */
+	public static function mature_picker() {
+		$cur = self::mature_days(); $keep = array(); foreach ( array( 'tab', 'view', 'days', 'from', 'to', 'step', 'mode', 'box', 'ord', 'dev' ) as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $keep[ $k ] = sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ); } } $keep['tab'] = 'insights';
+		$h = ' · <span class="ap-mature" title="от колко дни в текущия статус пратката в път се брои за застояла (най-вероятно няма да се вземе) — такива влизат в прогнозата като загубени; по-пресните не влизат">застояла = в път ≥ ';
+		foreach ( self::MATURE_OPTIONS as $n ) { $h .= '<a class="ap-chip ap-chip--sm' . ( $n === $cur ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array_merge( $keep, array( 'mature' => $n ) ) ) ) . '">' . (int) $n . '</a>'; }
+		return $h . ' дни</span>';
 	}
 	/** За живото опресняване: k => value и k => sub (HTML) — плюс вложените data-k в sub-овете (per, full_no, o_total…), които се сменят с innerHTML на sub-а. */
 	public static function dashboard_flat( $data ) { $v = array(); $sub = array(); foreach ( $data as $k => $t ) { $v[ $k ] = $t[2]; $sub[ $k ] = $t[3]; } return array( 'kpi' => $v, 'kpi_sub' => $sub ); }
@@ -502,6 +538,7 @@ final class Insights {
 	public static function current_view() { $v = sanitize_key( (string) ( $_GET['view'] ?? 'overview' ) ); return isset( self::views()[ $v ] ) ? $v : 'overview'; }
 	public static function render( $days = 30 ) {
 		$view = self::current_view();
+		if ( isset( $_GET['mature'] ) && current_user_can( Plugin::CAP ) ) { self::set_mature_days( (int) $_GET['mature'] ); } /* 1.24.26: прагът „застояла“ */
 		self::backfill_orders(); /* 1.21.1: поръчки без сесия → сесия order-<id> (най-много веднъж на 10 мин) */
 		self::styles();
 		echo '<div class="ap-actions ap-ins-views" style="padding:0 0 12px"><div class="ap-chips">';
@@ -664,9 +701,9 @@ final class Insights {
 	/** 1.23.0: поръчките по статус (WooCommerce) — брой, сума, група (взети / в път / загубени). */
 	public static function status_table_html( $os, $period = '' ) {
 		$gl = array( 'delivered' => '✅ взети', 'open' => '🚚 в път / чакат', 'lost' => '✕ загубени' );
-		$h = '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">📦 Поръчките по статус' . ( $period ? ' · ' . esc_html( $period ) : '' ) . '</span><small>' . (int) $os['n'] . ' поръчки · ' . esc_html( self::money( $os['total'] ) ) . '</small></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>статус (WooCommerce)</th><th>поръчки</th><th>% от всички</th><th>сума</th><th>група</th></tr></thead><tbody>';
-		foreach ( $os['by_status'] as $st => $v ) { $h .= '<tr><td><b>' . esc_html( $v['name'] ) . '</b> <small>' . esc_html( $st ) . '</small></td><td>' . (int) $v['n'] . '</td><td>' . esc_html( self::pct( $v['n'], $os['n'] ) ) . '</td><td>' . esc_html( self::money( $v['total'] ) ) . '</td><td>' . esc_html( $gl[ $v['grp'] ] ?? $v['grp'] ) . '</td></tr>'; }
-		if ( ! $os['by_status'] ) { $h .= '<tr><td colspan="5"><small>няма промо поръчки за периода</small></td></tr>'; }
+		$h = '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">📦 Поръчките по статус' . ( $period ? ' · ' . esc_html( $period ) : '' ) . '</span><small>' . (int) $os['n'] . ' поръчки · ' . esc_html( self::money( $os['total'] ) ) . '</small></div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>статус (WooCommerce)</th><th>поръчки</th><th>% от всички</th><th>сума</th><th>група</th><th title="в път: от колко са от ≥ N дни в този статус (застояли — вероятно няма да се вземат) и колко са пресни">застояли ≥ ' . (int) ( $os['mature_days'] ?? self::MATURE_DAYS ) . ' дни · пресни</th></tr></thead><tbody>';
+		foreach ( $os['by_status'] as $st => $v ) { $h .= '<tr><td><b>' . esc_html( $v['name'] ) . '</b> <small>' . esc_html( $st ) . '</small></td><td>' . (int) $v['n'] . '</td><td>' . esc_html( self::pct( $v['n'], $os['n'] ) ) . '</td><td>' . esc_html( self::money( $v['total'] ) ) . '</td><td>' . esc_html( $gl[ $v['grp'] ] ?? $v['grp'] ) . '</td><td>' . ( 'open' === $v['grp'] ? '<b>' . (int) ( $v['stale'] ?? 0 ) . '</b> · ' . (int) ( $v['young'] ?? 0 ) : '—' ) . '</td></tr>'; }
+		if ( ! $os['by_status'] ) { $h .= '<tr><td colspan="6"><small>няма промо поръчки за периода</small></td></tr>'; }
 		return $h . '</tbody></table></div></div>';
 	}
 	/** Стиловете на екрана (веднъж). */
