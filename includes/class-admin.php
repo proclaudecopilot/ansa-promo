@@ -55,7 +55,7 @@ final class Admin {
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
@@ -142,6 +142,9 @@ final class Admin {
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
 				$gi = (array) ( $_POST['gate_img'] ?? array() ); $cfg['gate']['images'] = array();
 				foreach ( Config::gate_image_slots() as $k => $label ) { $cfg['gate']['images'][ $k ] = sanitize_text_field( (string) wp_unslash( $gi[ $k ] ?? '' ) ); }
+				/* 1.24.22: снимките на петте козметични продукта (/kozmetika → „Какво се крие в кутията“) + замъглени */
+				$ii = (array) ( $_POST['li_item_img'] ?? array() ); $ib = (array) ( $_POST['li_item_blur'] ?? array() ); $cfg['li']['items'] = array();
+				for ( $i = 0; $i < 5; $i++ ) { $cfg['li']['items'][] = array( 'img' => sanitize_text_field( (string) wp_unslash( $ii[ $i ] ?? '' ) ), 'blur' => ! empty( $ib[ $i ] ) ); }
 				$cfg['bgn']['show'] = ! empty( $_POST['bgn_show'] );
 				$cfg['theme']['hide'] = ! empty( $_POST['theme_hide'] ); $cfg['theme']['selectors'] = (string) wp_unslash( $_POST['theme_selectors'] ?? '' );
 				$cfg['preview']['enabled'] = ! empty( $_POST['preview_enabled'] ); $cfg['preview']['password'] = trim( wp_strip_all_tags( (string) wp_unslash( $_POST['preview_password'] ?? '' ) ) );
@@ -314,9 +317,23 @@ final class Admin {
 								</figure>
 							<?php endforeach; ?>
 							</div>
+						
+						</div></section><section class="ap-sec" id="s-cosm"><div class="ap-sec__h"><span class="ap-sec__t">💄 Козметичните продукти (/kozmetika)</span></div><div class="ap-sec__b">
+							<p class="description" style="margin:0 0 8px">Снимките на петте продукта в секцията <b>„Какво се крие в кутията“</b> на страницата <?php $lu = Listicle::url( $draft ); ?><a href="<?php echo esc_url( $lu ); ?>" target="_blank"><?php echo esc_html( $lu ); ?></a>. Attachment ID или URL; <b>празно = емоджи</b>. „Замъглена“ размива снимката на страницата (изненадите) — махни отметката, ако качиш вече замъглена снимка. Имената и описанията се редактират в ✏️ Редактор (текстове <code>li.pr.N</code>); редът на секциите — в ✏️ Редактор → 📄 Страници.</p>
+							<div class="ap-gi" id="apCosmImgs">
+							<?php $cc = Copy::effective( $draft['copy'] ); foreach ( Frontend::li_items( $draft ) as $i => $it ) : $cur = (string) ( $draft['li']['items'][ $i ]['img'] ?? '' ); $ph = Frontend::gate_dummy( 'cosm' ); ?>
+								<figure data-k="li<?php echo (int) $i; ?>" data-dummy="<?php echo esc_url( $ph ); ?>">
+									<img src="<?php echo esc_url( $it['img'] ?: $ph ); ?>" alt="">
+									<figcaption><?php echo (int) ( $i + 1 ); ?> · <?php echo esc_html( (string) ( $cc[ 'li.pr.' . ( $i + 1 ) . '.t' ] ?? '' ) ); ?> <span class="ap-gi-dummy"<?php echo $it['img'] ? ' hidden' : ''; ?>>· без снимка (емоджи)</span></figcaption>
+									<div class="ap-gi-row"><input type="text" name="li_item_img[<?php echo (int) $i; ?>]" value="<?php echo esc_attr( $cur ); ?>" placeholder="ID или URL"><button type="button" class="button ap-gi-pick" title="избери от медийната библиотека">📁</button><button type="button" class="button ap-gi-clear" title="изчисти → емоджи">✕</button></div>
+									<label style="display:block;font-size:11px;margin-top:4px"><input type="checkbox" name="li_item_blur[<?php echo (int) $i; ?>]" value="1"<?php checked( ! empty( $it['blur'] ) ); ?>> замъглена (изненада)</label>
+								</figure>
+							<?php endforeach; ?>
+							</div>
 							<script>
+							/* 1.24.23 (човекът: „не ми дава да натисна бутона“): скриптът е СЛЕД двете карти — иначе #apCosmImgs още го няма в DOM-а и бутоните му остават без обработчик */
 							(function(){
-								var root=document.getElementById('apGateImgs');if(!root)return;
+								['apGateImgs','apCosmImgs'].forEach(function(rid){var root=document.getElementById(rid);if(!root)return; /* 1.24.22: и козметичните продукти */
 								root.querySelectorAll('figure').forEach(function(f){
 									var inp=f.querySelector('input'),img=f.querySelector('img'),dm=f.querySelector('.ap-gi-dummy');
 									function show(url,isDummy){img.src=url;dm.hidden=!isDummy}
@@ -327,7 +344,7 @@ final class Admin {
 										var fr=wp.media({title:'Снимка за попъпа',library:{type:'image'},multiple:false,button:{text:'Използвай'}});
 										fr.on('select',function(){var a=fr.state().get('selection').first().toJSON();inp.value=a.id;var sz=a.sizes&&(a.sizes.medium_large||a.sizes.medium||a.sizes.full);show(sz?sz.url:a.url,false)});
 										fr.open()};
-								});
+								})});
 							})();
 							</script>
 						

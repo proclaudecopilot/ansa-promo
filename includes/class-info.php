@@ -72,7 +72,7 @@ final class Info {
 		$rt = Frontend::runtime( $cfg, $draft ); unset( $rt['registry'] );
 		$rt['editor'] = false; $rt['mode'] = 'info'; $rt['promo_url'] = Cart::promo_url( $cfg ); $rt['refresh'] = ! $draft;
 		$m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
-		$img = Frontend::gate_images( $cfg ); $og = ( ! empty( $img['yacht'] ) && ! Frontend::gate_image_is_dummy( $cfg, 'yacht' ) ) ? $img['yacht'] : '';
+		$og = Frontend::page_image( $cfg, 'how', 'hero', 'yacht' ); /* 1.24.21: своята снимка на hero секцията, иначе яхтата от имейл-попъпа */
 		$editor = false; ob_start(); include ANSA_PROMO_PATH . 'templates/page.php'; $body = ob_get_clean();
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
 			. ( $draft ? '<meta name="robots" content="noindex,nofollow">' : '' )

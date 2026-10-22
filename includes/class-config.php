@@ -74,7 +74,12 @@ final class Config {
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
 			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
 			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
-			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika' ), /* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата) */
+			/* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата); 1.24.22 items: петте козметични продукта в секцията „Какво се крие в кутията“ —
+			   снимка (attachment id или URL; празно = емоджи) и blur (замъглена — изненадите 4 и 5). Текстовете им са li.pr.N.t/.d в регистъра. */
+			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika', 'items' => self::li_item_defaults() ),
+			/* 1.24.21: страниците /info (how) и /kozmetika (li) — редът на секциите (order), скритите (off) и снимка по секция (images: attachment id или URL;
+			   празно = снимката от имейл-попъпа, gate.images). Местят се от редактора (📄 Страници / лентата над секцията в канваса). */
+			'pages'     => self::pages_defaults(),
 			/* v1.9.0: книгата с рецепти — страницата /kniga (class-book.php): телефон + имейл от поръчката → PDF. file = относителен път в
 			   {uploads}/ansa-promo-book/ (качва се от 🧰 Инструменти), url = външен линк (алтернатива), remember = колко дни браузърът я помни
 			   (подписана бисквитка); отключва се при „получена“ поръчка = tombola.statuses */
@@ -237,6 +242,62 @@ final class Config {
 	}
 	public static function gate_image_defaults() { return array_fill_keys( array_keys( self::gate_image_slots() ), '' ); }
 
+	/** 1.24.21 (човекът: „трябва да има местене на секциите и смяна на картинките“): секциите на страниците /info (how) и /kozmetika (li) — редът им
+	 *  се мести от редактора, всяка може да е скрита на живо, а тези със снимка (img = слотът от имейл-попъпа, който е снимката по подразбиране) имат своя.
+	 *  Залепеният бутон не е секция — винаги е последен. Ключовете са тези в promo.js (howHtml/liHtml). 1.24.23 keys: кои текстове (регистър) са на секцията —
+	 *  префикс (с точка накрая) или точен ключ; редакторът ги показва в реда на секцията; „＋ допълнителен текст“ е {pg}.x.{id}. */
+	public static function page_sections() {
+		return array(
+			'how' => array( 'label' => '„Как работи“ — /info', 'sections' => array(
+				'hero'    => array( 'l' => 'Начало (hero) — яхтата', 'img' => 'yacht', 'keys' => array( 'how.title', 'how.hero.' ) ),
+				'boxes'   => array( 'l' => 'Трите кутии', 'img' => '', 'keys' => array( 'how.bx.', 'how.legal' ) ),
+				'ladder'  => array( 'l' => 'Стълбата на сезона (само при седмици)', 'img' => '', 'keys' => array( 'how.lad.' ) ),
+				'steps'   => array( 'l' => 'Три стъпки', 'img' => '', 'keys' => array( 'how.st.' ) ),
+				'yacht'   => array( 'l' => 'Яхтата', 'img' => 'yacht', 'keys' => array( 'how.y.' ) ),
+				'cosm'    => array( 'l' => 'Комплектът за €1', 'img' => 'cosm', 'keys' => array( 'how.k.' ) ),
+				'prods'   => array( 'l' => 'Продуктите', 'img' => '', 'keys' => array( 'how.pr.' ) ),
+				'why'     => array( 'l' => 'Защо го правим (писмото)', 'img' => '', 'keys' => array( 'how.w.' ) ),
+				'reviews' => array( 'l' => 'Отзиви', 'img' => '', 'keys' => array( 'how.rv.' ) ),
+				'faq'     => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'how.faq.' ) ),
+				'rules'   => array( 'l' => 'Правила', 'img' => '', 'keys' => array( 'how.rules.' ) ),
+			) ),
+			'li' => array( 'label' => '„Комплектът за 1 €“ — /kozmetika', 'sections' => array(
+				'hero'  => array( 'l' => 'Начало (hero) — комплектът', 'img' => 'cosm', 'keys' => array( 'li.hero.', 'li.left' ) ),
+				'catch' => array( 'l' => 'Къде е уловката (писмото)', 'img' => '', 'keys' => array( 'li.catch.' ) ),
+				'set'   => array( 'l' => 'Козметичните продукти', 'img' => '', 'keys' => array( 'li.set.' ) ),
+				'prods' => array( 'l' => 'Какво се крие в кутията (5 продукта)', 'img' => '', 'keys' => array( 'li.pr.' ) ), /* 1.24.22 */
+				'in'    => array( 'l' => 'Какво получаваш веднага', 'img' => '', 'keys' => array( 'li.in.' ) ),
+				'steps' => array( 'l' => 'Три стъпки', 'img' => '', 'keys' => array( 'li.st.' ) ),
+				'box'   => array( 'l' => 'Какво получаваш с Голямата кутия', 'img' => 'cosm', 'keys' => array( 'li.box.', 'li.legal' ) ),
+				'yacht' => array( 'l' => 'Почивка на яхта', 'img' => 'yacht', 'keys' => array( 'li.y.', 'li.legal.y' ) ),
+				'faq'   => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'li.faq.' ) ),
+			) ),
+		);
+	}
+	/** 1.24.22: петте козметични продукта на /kozmetika — снимка (attachment id или URL) и blur; 4 и 5 са изненади (замъглени). */
+	public static function li_item_defaults() { $o = array(); for ( $i = 0; $i < 5; $i++ ) { $o[] = array( 'img' => '', 'blur' => $i >= 3 ); } return $o; }
+	public static function normalize_li_items( $in ) {
+		$out = array(); $in = is_array( $in ) ? array_values( $in ) : array(); $d = self::li_item_defaults();
+		for ( $i = 0; $i < 5; $i++ ) { $it = is_array( $in[ $i ] ?? null ) ? $in[ $i ] : array(); $v = trim( (string) ( $it['img'] ?? '' ) ); $out[] = array( 'img' => ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ), 'blur' => array_key_exists( 'blur', $it ) ? ! empty( $it['blur'] ) : $d[ $i ]['blur'] ); }
+		return $out;
+	}
+	public static function pages_defaults() { $out = array(); foreach ( self::page_sections() as $pg => $m ) { $out[ $pg ] = array( 'order' => array_keys( $m['sections'] ), 'off' => array(), 'images' => array() ); } return $out; }
+	/** order: само познати ключове, без повторения, липсващите се добавят отзад по реда по подразбиране; off: подмножество; images: само за секции със снимка, attachment id или URL. */
+	private static function normalize_pages( $in ) {
+		$out = array();
+		foreach ( self::page_sections() as $pg => $m ) {
+			$ids = array_keys( $m['sections'] ); $p = is_array( $in[ $pg ] ?? null ) ? $in[ $pg ] : array();
+			$order = array(); foreach ( (array) ( $p['order'] ?? array() ) as $id ) { $id = sanitize_key( (string) $id ); if ( in_array( $id, $ids, true ) && ! in_array( $id, $order, true ) ) { $order[] = $id; } }
+			/* нова секция (1.24.22 prods) при вече записан ред — влиза на мястото си по подразбиране (след предходната от дефолта), не накрая */
+			foreach ( $ids as $n => $id ) { if ( in_array( $id, $order, true ) ) { continue; } $pos = count( $order ); for ( $j = $n - 1; $j >= 0; $j-- ) { $k = array_search( $ids[ $j ], $order, true ); if ( false !== $k ) { $pos = $k + 1; break; } } if ( $n === 0 ) { $pos = 0; } array_splice( $order, $pos, 0, array( $id ) ); }
+			$off = array(); foreach ( (array) ( $p['off'] ?? array() ) as $id ) { $id = sanitize_key( (string) $id ); if ( in_array( $id, $ids, true ) && ! in_array( $id, $off, true ) ) { $off[] = $id; } }
+			$imgs = array(); $src = is_array( $p['images'] ?? null ) ? $p['images'] : array();
+			foreach ( $m['sections'] as $id => $s ) { if ( '' === $s['img'] ) { continue; } $v = trim( (string) ( $src[ $id ] ?? '' ) ); if ( '' !== $v ) { $imgs[ $id ] = ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ); } }
+			$out[ $pg ] = array( 'order' => $order, 'off' => $off, 'images' => $imgs );
+		}
+		return $out;
+	}
+
 	/** Хедър/футър/плаващи бутони на OceanWP, Elementor, FunnelKit Cart, Claspo — скриват се на промо страницата. */
 	public static function default_hide_selectors() {
 		return "#site-header\n#site-header-sticky-wrapper\n.oceanwp-mobile-menu-icon\n#footer\n#site-footer\n.site-footer\n.page-header\nheader.elementor-location-header\nfooter.elementor-location-footer\n[data-elementor-type=\"header\"]\n[data-elementor-type=\"footer\"]\n.fkcart-floating-toggler\n#fkcart-floating-toggler\n.fkcart-toggler\n#scroll-top\n.claspo-widget\n#elementor-popup-modal";
@@ -340,6 +401,8 @@ final class Config {
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
 		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
 		$out['li']['enabled'] = ! empty( $out['li']['enabled'] ); $out['li']['slug'] = sanitize_title( (string) ( $out['li']['slug'] ?? 'kozmetika' ) ) ?: 'kozmetika'; /* 1.24.20 */
+		$out['pages'] = self::normalize_pages( $out['pages'] ?? null ); /* 1.24.21: секциите на /info и /kozmetika */
+		$out['li']['items'] = self::normalize_li_items( $out['li']['items'] ?? null ); /* 1.24.22 */
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
 		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );
 		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];
