@@ -2022,3 +2022,8 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.fpw .fp3 .f3arr:hover{transform:translateY(-50%) scale(1.06)}
 .ansa-promo .dc.fpw .fp3 .mpg{display:none}
 .ansa-promo .dc.fpw .fp3 .f3f{margin-top:auto}
+
+/* ── 48 · 1.24.30: карта без етикет (продукт без „Категория“ и без ред в „С какво да ти помогнем?“) — на десктоп няма лента над нея,
+      затова картата е с пълни ъгли и горен кант; при избор (.on) зеленият кант си е от 1618 ── */
+.ansa-promo .dc.fpw .fp3 .f3item.nocat .fcat.drow.r3{border-radius:16px!important;border-top-color:rgba(232,114,42,.22)}
+.ansa-promo .dc.fpw .fp3 .f3item.nocat .fcat.drow.r3.on{border-top-color:var(--g)}
