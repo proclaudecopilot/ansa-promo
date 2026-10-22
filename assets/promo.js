@@ -561,9 +561,12 @@
     /* v1.0.33 (мокъпът на човека): картата е на три реда — заглавие + бадж −X% · снимка (30%) + „за какво е“/описание/„За продукта ›“ ·
        стара цена, нова цена, „+ Добави“/степер — еднакво на десктоп (.drow) и телефон (.mrow) */
     /* v1.0.36 (инспирацията на човека): на телефон категорията е малък етикет вътре в картата над името (catIn), не заглавие отвън */
+    /* 1.24.28 (човекът: „полетата в Продукти не се генерират на фронтенда… пише някакви неща измислени от теб“): под „за какво е“ картата
+       показва „Описание“ от 📦 Продукти (или WC краткото описание), както обещава „Как ще се види“; „Защо този продукт“ от реда в
+       „С какво да ти помогнем?“ е само резерва при празно описание (и никога не повтаря „за какво е“) */
     var fcard=function(r,cls,catIn){var pr=PROD[r.key];return '<div class="fcat '+cls+' r3'+(r.core?' core':'')+(r.pick?' pick':'')+'" data-nq="'+r.key+'">' /* 1.24.8: .pick = препоръчан от въпросника */
       +'<div class="r3h"><div class="r3t">'+(catIn?(r.pick?'<em class="r3cat pick"'+ck('fill.quiz.pick')+'>'+T('fill.quiz.pick')+'</em>':'')+'<em class="r3cat'+(r.core?' core':'')+'">'+(r.core?'★ ':'')+catIn+'</em>':'')+'<b>'+esc(pr.name)+'</b></div><span class="fpct mb">−'+b.pct+'%</span><span class="r3in" data-in="'+r.key+'"'+ck('fill.in')+'></span></div>'
-      +'<div class="r3m"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(pr.ds?'<span class="f3ds">'+esc(pr.ds)+'</span>':'')+'<small>'+esc(r.core&&pr.ds===r.why?pr.desc:r.why)+'</small><button class="fmore" data-more="'+r.key+'"'+ck('fill.more.l')+'>'+T('fill.more.l')+'</button></div></div>'
+      +'<div class="r3m"><span class="pic">'+pic(pr,'pimg')+'</span><div class="ftx">'+(pr.ds?'<span class="f3ds">'+esc(pr.ds)+'</span>':'')+(function(){var sm=pr.desc||(r.why&&r.why!==pr.ds?r.why:'');return sm?'<small>'+esc(sm)+'</small>':''})()+'<button class="fmore" data-more="'+r.key+'"'+ck('fill.more.l')+'>'+T('fill.more.l')+'</button></div></div>'
       +'<div class="fbar r3f">'+fprice(pr,b)+'<div class="mact"><button class="madd" data-inc="'+r.key+'"'+ck('mfill.add')+'>'+T('mfill.add')+'</button><span class="stp"><button data-dec="'+r.key+'" aria-label="−">−</button><b data-q="'+r.key+'">0</b><button data-inc="'+r.key+'" aria-label="+">+</button></span></div></div></div>'};
     var dmain=b.rw.indexOf('cosm1')>-1?'cosm1':b.rw.indexOf('cosm50')>-1?'cosm50':b.rw.indexOf('book')>-1?'book':'';
     var dtiles='<div class="f3t">'+rimg('tix','🛥️','f3i')+'<div><b'+ck('fill.g.tix')+' data-tix="fill.g.tix">'+T('fill.g.tix',bv)+'</b><span'+ck('fill.gt.tix.b')+'>'+T('fill.gt.tix.b')+'</span><small'+ck('fill.g.tix.sub')+'>'+T('fill.g.tix.sub')+'</small></div></div>'
