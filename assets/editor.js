@@ -52,7 +52,10 @@
 
   /* ── ajax ── */
   function ajax(action,data){var fd=new FormData();fd.append('action','ansa_promo_editor_'+action);fd.append('nonce',D.nonce);Object.keys(data||{}).forEach(function(k){fd.append(k,data[k])});
-    return fetch(D.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success){var e=new Error((r&&r.data&&r.data.msg)||'Грешка');e.data=r&&r.data;throw e}return r.data})}
+    var status=0;return fetch(D.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){status=r.status;return r.text()}).then(function(text){var r=null;try{r=JSON.parse(text)}catch(x){try{console.error('[ansa-promo editor] '+action+' → HTTP '+status+', не е JSON:',text.slice(0,2000))}catch(x2){}
+      /* 1.24.32: не-JSON отговор (timeout 504/524, PHP fatal, WAF) — причината, не „Unexpected token <“ */
+      var why=(status===504||status===524||status===522)?'сървърът не отговори навреме (HTTP '+status+') — опитай пак след минута':(/Fatal error:\s*([^\n<]{0,200})/i.exec(text)?'PHP грешка: '+/Fatal error:\s*([^\n<]{0,200})/i.exec(text)[1].trim():(/<title[^>]*>([^<]{1,100})<\/title>/i.exec(text)?'сървърът върна страница „'+/<title[^>]*>([^<]{1,100})<\/title>/i.exec(text)[1].trim()+'“ (HTTP '+status+')':'сървърът върна нещо, което не е отговор на плъгина (HTTP '+status+')'));var e0=new Error(why);e0.data={code:'bad_response',status:status};throw e0}
+      if(!r||!r.success){var e=new Error((r&&r.data&&r.data.msg)||'Грешка');e.data=r&&r.data;throw e}return r.data},function(e){var en=new Error('няма връзка със сървъра (заявката не стигна или бе прекъсната)');en.data={code:'network'};throw en})}
   function fixCfg(c){['copy','fit','campaigns','copy_utm'].forEach(function(k){if(!c[k]||Array.isArray(c[k]))c[k]={}});if(!c.problems)c.problems=[];return c}
   function applyState(d){if(d.cfg){cfg=fixCfg(d.cfg);lastSaveJSON=JSON.stringify(cfg);dirty=false;savedAt=new Date()}if(d.state)state=d.state;invalid={};Object.keys(cfg.copy||{}).forEach(validate);renderAll()}
   var saving=false;
