@@ -445,7 +445,9 @@
   /* ── продуктова страница в попъп (второ ниво, върху „Напълни кутията“) ── */
   function stars(n){var h='';for(var i=1;i<=5;i++)h+='<i class="'+(i<=n?'on':'')+'">★</i>';return '<span class="ppstars">'+h+'</span>'}
   function productPopup(k,onAdd){
-    var pr=PROD[k],dc=$('apDc2'),p=pct();var cat='';PROBS.forEach(function(x){if(x.key===k)cat=x.t});if(!cat)cat=pr.cat||'';
+    /* 1.24.29 (човекът: „направи същото и за попъпа «За продукта»“): етикетът горе е „Категория“ от 📦 Продукти; заглавието на реда в
+       „С какво да ти помогнем?“ е само резерва (беше обратното — показваше seed заглавието „Кожа, коса и нокти“ вместо „Кожа и красота“) */
+    var pr=PROD[k],dc=$('apDc2'),p=pct();var cat=pr.cat||'';if(!cat)PROBS.forEach(function(x){if(x.key===k&&!cat)cat=x.t});
     /* v1.0.26: отзивите са карусел — по един, с ‹ › и точки (сменя се и сам на 4.5 s) */
     var RV=(pr.reviews||[]);var revs=RV.length?'<div class="pprc" id="ppRc">'+RV.map(function(r,i){return '<div class="pprv'+(i?'':' on')+'" data-i="'+i+'">'+stars(r.s)+'<p>'+esc(r.t)+'</p><small>— '+esc(r.n)+'</small></div>'}).join('')+(RV.length>1?'<div class="pprn"><button class="pprb" data-rv="-1" aria-label="предишен">‹</button><span class="pprd">'+RV.map(function(_,i){return '<i'+(i?'':' class="on"')+'></i>'}).join('')+'</span><button class="pprb" data-rv="1" aria-label="следващ">›</button></div>':'')+'</div>':'';
     dc.innerHTML='<button class="ux" id="apUx2" aria-label="затвори">✕</button><div class="pph"><div class="ppimg">'+pic(pr,'ppi')+'</div><div class="pptx">'+(cat?'<em class="fct">'+esc(cat)+'</em>':'')+'<h3>'+esc(pr.name)+'</h3><p class="ppds">'+esc(pr.ds)+'</p>'+(pr.rating?'<div class="pprate">'+stars(5)+' <span>'+esc(pr.rating)+'</span></div>':'')+'</div></div>'
