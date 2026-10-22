@@ -414,7 +414,7 @@
     if (S.dirty) { save(function () { publish(); }); return; }
     var go = function (force) {
       if (S.busy) return; S.busy = true; var b = $('apPublish'); if (b) { b.disabled = true; b.textContent = '… публикувам'; }
-      ajax('publish', force ? { force: 1 } : {}, function (d) { S.busy = false; closeModal(); apply(d); toast('Публикувано — версия ' + d.state.version + (d.state.enabled ? '' : ' (играта е изключена — 🧰 Инструменти)'), 'success'); }, function (e) {
+      ajax('publish', force ? { force: 1 } : {}, function (d) { S.busy = false; closeModal(); apply(d); toast('Публикувано — версия ' + d.state.version + (d.took_ms ? ' · ' + (d.took_ms / 1000).toFixed(1) + ' s' : '') + (d.state.enabled ? '' : ' (играта е изключена — 🧰 Инструменти)'), 'success'); }, function (e) {
         S.busy = false; if (b) { b.disabled = false; b.textContent = '🚀 Публикувай'; }
         if (e.code !== 'doctor') { toast(e.msg || 'Грешка при публикуване', 'error'); return; }
         var ch = e.checks || [], bad = ch.filter(function (c) { return c.level === 'bad'; }).length;
