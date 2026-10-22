@@ -254,3 +254,7 @@
   .ap-env__v { grid-column: 2; }
   #ansa-promo-app #ansa-promo-products { grid-template-columns: 1fr; height: auto; }
 }
+
+/* 1.24.26: прагът „застояла = в път ≥ N дни“ в подсказката на групата Поръчки */
+#ansa-promo-app .ap-mature { white-space: nowrap; }
+#ansa-promo-app .ap-chip.ap-chip--sm { padding: 1px 7px; font-size: 11px; margin: 0 1px; }
