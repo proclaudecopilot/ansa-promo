@@ -68,7 +68,7 @@ final class Editor {
 	public static function state() {
 		/* 1.23.7: published_copy — публикуваните текстове (ключ → текст), за да вижда редакторът кое е на живо и кое е само чернова */
 		$draft = Config::get_draft(); $pi = array(); foreach ( array_keys( Config::page_sections() ) as $pg ) { $pi[ $pg ] = (object) Frontend::pages_images( $draft, $pg ); } /* 1.24.21: своите снимки на секциите като URL (attachment id → URL) */
-		return array( 'pages_images' => $pi, 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy_utm' => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( Config::get_published()['copy_utm'] ?? array() ) ), /* 1.24.19 */ 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
+		return array( 'pages_images' => $pi, 'li_items' => Frontend::li_items( $draft ), /* 1.24.22: снимките на козметичните продукти като URL */ 'version' => Config::version(), 'published_at' => Config::published_at(), 'has_draft' => Config::has_draft(), 'draft_at' => (int) ( get_option( Plugin::OPTION )['draft_at'] ?? 0 ), 'history' => Config::history(), 'checks' => Doctor::checks( Config::get_draft() ), 'live' => Config::is_live( Config::get_published() ), 'published_copy_utm' => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( Config::get_published()['copy_utm'] ?? array() ) ), /* 1.24.19 */ 'published_copy' => (object) ( Config::get_published()['copy'] ?? array() ) );
 	}
 
 	private static function auth() {

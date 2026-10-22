@@ -270,6 +270,12 @@ final class Frontend {
 		foreach ( (array) ( $cfg['pages'][ $pg ]['images'] ?? array() ) as $k => $v ) { $v = (string) $v; $url = ''; if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'medium_large' ); } elseif ( '' !== $v ) { $url = $v; } if ( $url ) { $out[ $k ] = $url; } }
 		return $out;
 	}
+	/** 1.24.22: петте козметични продукта на /kozmetika за promo.js — [{img: URL или '', blur}] (attachment id → medium_large). */
+	public static function li_items( $cfg ) {
+		$out = array();
+		foreach ( Config::normalize_li_items( $cfg['li']['items'] ?? null ) as $it ) { $v = (string) $it['img']; $url = ''; if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'medium_large' ); } elseif ( '' !== $v ) { $url = $v; } $out[] = array( 'img' => $url, 'blur' => ! empty( $it['blur'] ) ); }
+		return $out;
+	}
 	/** Снимката на секция като URL — своята, иначе снимката от имейл-попъпа ('' ако и тя е примерната). За og:image на /info и /kozmetika. */
 	public static function page_image( $cfg, $pg, $sec, $gate_key ) {
 		$own = self::pages_images( $cfg, $pg ); if ( ! empty( $own[ $sec ] ) ) { return $own[ $sec ]; }
@@ -322,6 +328,7 @@ final class Frontend {
 			'timer'     => $cfg['timer'],
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),
 			'pages'     => self::pages_runtime( $cfg ), /* 1.24.21: редът/скритите/снимките на секциите на /info и /kozmetika */
+			'li_items'  => self::li_items( $cfg ), /* 1.24.22: петте козметични продукта (снимка, замъглена) */
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'gv'        => $gv, /* 1.24.7 */

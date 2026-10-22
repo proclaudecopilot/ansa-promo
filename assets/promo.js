@@ -271,7 +271,7 @@
      (A.pages[pg].order — редакторът 📄 Страници), скритите (off) не се рендират на живо (в редактора стоят избледнели, за да се редактират текстовете им),
      снимката на секция е своята (A.pages[pg].images[id]) или тази от имейл-попъпа (gate.images). Всяка секция носи data-sec; в редактора — и лента
      ↑ ↓ 👁 🖼, която праща {ansaPromo:'sec', page, id, act} на родителя. Залепеният бутон не е секция (винаги последен). */
-  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','in','steps','box','yacht','faq']};
+  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq']}; /* 1.24.22: prods */
   function pageCfg(pg){var P=(A.pages&&A.pages[pg])||{},def=PAGE_SECS[pg]||[],order=[];(P.order||[]).forEach(function(id){if(def.indexOf(id)>-1&&order.indexOf(id)<0)order.push(id)});def.forEach(function(id){if(order.indexOf(id)<0)order.push(id)});
     return {order:order,off:P.off||[],images:P.images||{},labels:P.labels||{},img:P.img||{}}}
   function secPic(pg,id,gk,emo){var GI=(A.gate&&A.gate.images)||{},u=pageCfg(pg).images[id]||GI[gk];return u?'<img src="'+esc(u)+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'}
@@ -381,6 +381,11 @@
     /* 3 · комплектът — картите само с попълнено заглавие */
     var cards='';for(var i=1;i<=5;i++){if(T('li.set.'+i+'.t')==='')continue;cards+='<div class="li-card"><i>'+i+'</i>'+p('li.set.'+i+'.t','b')+p('li.set.'+i+'.d')+'</div>'}
     var st='<section class="hw-sec li-set"><div class="hw-sh">'+p('li.set.h','h3')+'</div>'+p('li.set.p1')+p('li.set.p2','p','hw-n')+(cards?'<div class="li-cards">'+cards+'</div>':p('li.set.p3','p','hw-n'))+'</section>';
+    /* 3б · 1.24.22 (човекът): „Какво се крие в кутията“ — петте продукта като карти (снимка от Настройки → 💄 Козметичните продукти или емоджи; blur =
+       замъглена изненада с „?“); карта без заглавие не се показва */
+    var LI=A.li_items||[],pcards='';for(var q=1;q<=5;q++){if(T('li.pr.'+q+'.t')==='')continue;var it=LI[q-1]||{};
+      pcards+='<div class="li-prod'+(it.blur?' blur':'')+'"><div class="li-ppic">'+(it.img?'<img src="'+esc(it.img)+'" alt="" loading="lazy" decoding="async">':'<span>'+(it.blur?'🎁':'🧴')+'</span>')+(it.blur?'<em>?</em>':'')+'</div><div class="li-ptx">'+p('li.pr.'+q+'.t','b')+p('li.pr.'+q+'.d')+'</div></div>'}
+    var prs='<section class="hw-sec li-pr"><div class="hw-sh">'+p('li.pr.h','h3')+p('li.pr.sub','p','hw-lead')+'</div><div class="li-prods">'+pcards+'</div>'+p('li.pr.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.pr.cta','gold')+'</div></section>';
     /* 4 · какво получаваш веднага */
     var inn='<section class="hw-sec li-in"><div class="hw-sh">'+p('li.in.h','h3')+p('li.in.p','p','hw-lead')+'</div><ul class="hw-bul">'+[1,2,3,4,5].map(function(i){return '<li'+ck('li.in.'+i)+'>'+T('li.in.'+i)+'</li>'}).join('')+'</ul>'+p('li.in.note','p','hw-n')+'<div class="hw-ctas">'+cta('li.in.cta')+'</div></section>';
     /* 5 · три стъпки */
@@ -398,7 +403,7 @@
     var faq='<section class="hw-sec hw-faq li-faq">'+p('li.faq.h','h3')+'<div class="hw-faqs">'+fq+'</div>'+links+'</section>';
     /* 9 · залепен бутон */
     var stk='<div class="hw-stk li-stk"><div class="li-stkw">'+cta('li.stk.cta','gold')+'<small><span'+ck('li.stk.note')+'>'+T('li.stk.note')+'</span>'+(lf?' · <b'+ck('li.stk.left')+'>'+T('li.stk.left',lv)+'</b>':'')+'</small></div></div>';
-    return secJoin('li',{hero:h,'catch':c,set:st,'in':inn,steps:sp,box:bx,yacht:y,faq:faq})+stk; /* 1.24.21: по реда от конфига */
+    return secJoin('li',{hero:h,'catch':c,set:st,prods:prs,'in':inn,steps:sp,box:bx,yacht:y,faq:faq})+stk; /* 1.24.21: по реда от конфига */
   }
   /* бутоните: на /kozmetika (nav) → промо страницата с ?utm_content=cosm (+ utm_source/medium/campaign от адреса); в редактора (попъп) → сценарият „козметика“ на място */
   function liBind(dc,nav){

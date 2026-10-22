@@ -74,7 +74,9 @@ final class Config {
 			   броени препоръки (0 = без лимит), ref_gift = подаръкът за новия клиент */
 			/* v1.8.0: страницата „Как работи“ — {промо}/info, самостоятелна и индексируема (class-info.php) */
 			'info'      => array( 'enabled' => true, 'slug' => 'info' ),
-			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika' ), /* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата) */
+			/* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата); 1.24.22 items: петте козметични продукта в секцията „Какво се крие в кутията“ —
+			   снимка (attachment id или URL; празно = емоджи) и blur (замъглена — изненадите 4 и 5). Текстовете им са li.pr.N.t/.d в регистъра. */
+			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika', 'items' => self::li_item_defaults() ),
 			/* 1.24.21: страниците /info (how) и /kozmetika (li) — редът на секциите (order), скритите (off) и снимка по секция (images: attachment id или URL;
 			   празно = снимката от имейл-попъпа, gate.images). Местят се от редактора (📄 Страници / лентата над секцията в канваса). */
 			'pages'     => self::pages_defaults(),
@@ -262,6 +264,7 @@ final class Config {
 				'hero'  => array( 'l' => 'Начало (hero) — комплектът', 'img' => 'cosm' ),
 				'catch' => array( 'l' => 'Къде е уловката (писмото)', 'img' => '' ),
 				'set'   => array( 'l' => 'Козметичните продукти', 'img' => '' ),
+				'prods' => array( 'l' => 'Какво се крие в кутията (5 продукта)', 'img' => '' ), /* 1.24.22 */
 				'in'    => array( 'l' => 'Какво получаваш веднага', 'img' => '' ),
 				'steps' => array( 'l' => 'Три стъпки', 'img' => '' ),
 				'box'   => array( 'l' => 'Какво получаваш с Голямата кутия', 'img' => 'cosm' ),
@@ -270,6 +273,13 @@ final class Config {
 			) ),
 		);
 	}
+	/** 1.24.22: петте козметични продукта на /kozmetika — снимка (attachment id или URL) и blur; 4 и 5 са изненади (замъглени). */
+	public static function li_item_defaults() { $o = array(); for ( $i = 0; $i < 5; $i++ ) { $o[] = array( 'img' => '', 'blur' => $i >= 3 ); } return $o; }
+	public static function normalize_li_items( $in ) {
+		$out = array(); $in = is_array( $in ) ? array_values( $in ) : array(); $d = self::li_item_defaults();
+		for ( $i = 0; $i < 5; $i++ ) { $it = is_array( $in[ $i ] ?? null ) ? $in[ $i ] : array(); $v = trim( (string) ( $it['img'] ?? '' ) ); $out[] = array( 'img' => ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ), 'blur' => array_key_exists( 'blur', $it ) ? ! empty( $it['blur'] ) : $d[ $i ]['blur'] ); }
+		return $out;
+	}
 	public static function pages_defaults() { $out = array(); foreach ( self::page_sections() as $pg => $m ) { $out[ $pg ] = array( 'order' => array_keys( $m['sections'] ), 'off' => array(), 'images' => array() ); } return $out; }
 	/** order: само познати ключове, без повторения, липсващите се добавят отзад по реда по подразбиране; off: подмножество; images: само за секции със снимка, attachment id или URL. */
 	private static function normalize_pages( $in ) {
@@ -277,7 +287,8 @@ final class Config {
 		foreach ( self::page_sections() as $pg => $m ) {
 			$ids = array_keys( $m['sections'] ); $p = is_array( $in[ $pg ] ?? null ) ? $in[ $pg ] : array();
 			$order = array(); foreach ( (array) ( $p['order'] ?? array() ) as $id ) { $id = sanitize_key( (string) $id ); if ( in_array( $id, $ids, true ) && ! in_array( $id, $order, true ) ) { $order[] = $id; } }
-			foreach ( $ids as $id ) { if ( ! in_array( $id, $order, true ) ) { $order[] = $id; } }
+			/* нова секция (1.24.22 prods) при вече записан ред — влиза на мястото си по подразбиране (след предходната от дефолта), не накрая */
+			foreach ( $ids as $n => $id ) { if ( in_array( $id, $order, true ) ) { continue; } $pos = count( $order ); for ( $j = $n - 1; $j >= 0; $j-- ) { $k = array_search( $ids[ $j ], $order, true ); if ( false !== $k ) { $pos = $k + 1; break; } } if ( $n === 0 ) { $pos = 0; } array_splice( $order, $pos, 0, array( $id ) ); }
 			$off = array(); foreach ( (array) ( $p['off'] ?? array() ) as $id ) { $id = sanitize_key( (string) $id ); if ( in_array( $id, $ids, true ) && ! in_array( $id, $off, true ) ) { $off[] = $id; } }
 			$imgs = array(); $src = is_array( $p['images'] ?? null ) ? $p['images'] : array();
 			foreach ( $m['sections'] as $id => $s ) { if ( '' === $s['img'] ) { continue; } $v = trim( (string) ( $src[ $id ] ?? '' ) ); if ( '' !== $v ) { $imgs[ $id ] = ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ); } }
@@ -390,6 +401,7 @@ final class Config {
 		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
 		$out['li']['enabled'] = ! empty( $out['li']['enabled'] ); $out['li']['slug'] = sanitize_title( (string) ( $out['li']['slug'] ?? 'kozmetika' ) ) ?: 'kozmetika'; /* 1.24.20 */
 		$out['pages'] = self::normalize_pages( $out['pages'] ?? null ); /* 1.24.21: секциите на /info и /kozmetika */
+		$out['li']['items'] = self::normalize_li_items( $out['li']['items'] ?? null ); /* 1.24.22 */
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
 		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );
 		$out['tombola']['statuses'] = array_values( array_unique( array_filter( array_map( function ( $s ) { return preg_replace( '/^wc-/', '', sanitize_key( (string) $s ) ); }, (array) $sts ) ) ) ) ?: $d['tombola']['statuses'];
