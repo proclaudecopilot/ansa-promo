@@ -534,7 +534,7 @@ final class Insights {
 	   1.21.0 (човекът): три екрана — 📊 Преглед (период: днес/7/30/90/всичко, фуния, продукти, разбивки), 🟢 На живо (ОТДЕЛЕН таб: последните сесии
 	   с опресняване + KPI за днес), 📜 История (от–до, по подразбиране от старта 16.10.2026: KPI, „загубени“, докъде са стигнали и къде са спрели,
 	   по дни, списък на сесиите с филтри стъпка/спрели точно/кутия/поръчка/устройство и страници, CSV на точно този филтър). */
-	public static function views() { return array( 'overview' => '📊 Преглед', 'live' => '🟢 На живо', 'history' => '📜 История' ); }
+	public static function views() { return array( 'overview' => '📊 Преглед', 'live' => '🟢 На живо', 'history' => '📜 История', 'carts' => '🛒 Изоставени колички' ); } /* 1.26.0: carts */
 	public static function current_view() { $v = sanitize_key( (string) ( $_GET['view'] ?? 'overview' ) ); return isset( self::views()[ $v ] ) ? $v : 'overview'; }
 	public static function render( $days = 30 ) {
 		$view = self::current_view();
@@ -544,7 +544,7 @@ final class Insights {
 		echo '<div class="ap-actions ap-ins-views" style="padding:0 0 12px"><div class="ap-chips">';
 		foreach ( self::views() as $v => $l ) { echo '<a class="ap-chip' . ( $v === $view ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'view' => $v ) ) ) . '">' . esc_html( $l ) . '</a>'; }
 		echo '</div></div>';
-		if ( 'live' === $view ) { self::render_live(); } elseif ( 'history' === $view ) { self::render_history(); } else { self::render_overview( $days ); }
+		if ( 'live' === $view ) { self::render_live(); } elseif ( 'history' === $view ) { self::render_history(); } elseif ( 'carts' === $view ) { echo self::carts_html( $days ); } else { self::render_overview( $days ); }
 	}
 	/** Фунията с ленти; $vf — уникални посетители на стъпка (история). */
 	private static function funnel_html( $f, $vf = null ) {
@@ -632,6 +632,37 @@ final class Insights {
 			. 'function tick(){if(!live.checked)return;fetch(ajax+"?action=ansa_promo_insights_feed&nonce="+nonce+"&days=1&limit="+limit,{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success)return;tb.innerHTML=r.data.rows_html||tb.innerHTML;Object.keys(r.data.kpi||{}).forEach(function(k){var el=document.querySelector("#apInsDash .ap-st__v[data-k=\\""+k+"\\"]");if(el)el.textContent=r.data.kpi[k];var sb=document.querySelector("#apInsDash .ap-st__s[data-ks=\\""+k+"\\"]");if(sb&&r.data.kpi_sub&&r.data.kpi_sub[k]!=null)sb.innerHTML=r.data.kpi_sub[k]});at.textContent="опреснено "+r.data.at}).catch(function(){})}'
 			. 'function arm(){clearInterval(t);if(live.checked)t=setInterval(tick,20000)}live.addEventListener("change",function(){live.parentNode.classList.toggle("on",live.checked);arm()});arm();})();</script>';
 	}
+
+	/* ── 🛒 Изоставени колички (1.26.0; човекът: „А дали Ansa Promo следи abandoned carts? … направи такъв екран в Insights“) ──
+	   ansa-promo не записва колички — FunnelKit Automations ги пази в {prefix}bwfan_abandonedcarts (с нашия cart item data ansa_promo
+	   вътре). Екранът ги чете оттам (Cart_Sync::abandoned_rows), само промо количките: кой, кога, кутия, продукти, сума, статусът на FKA,
+	   поръчката при възстановяване и дали контактът носи тага sezon-kolichka (условието на flow-а). Нищо не се дублира и не се пише. */
+	public static function carts_html( $days = 30 ) {
+		$days = in_array( (int) $days, array( 7, 30, 90, 0 ), true ) ? (int) $days : 30;
+		$chips = ''; foreach ( array( 7 => '7 дни', 30 => '30 дни', 90 => '90 дни', 0 => 'всичко' ) as $d => $l ) { $chips .= '<a class="ap-chip' . ( $d === $days ? ' on' : '' ) . '" href="' . esc_url( Admin::url( array( 'tab' => 'insights', 'view' => 'carts', 'days' => $d ) ) ) . '">' . esc_html( $l ) . '</a>'; }
+		$h = '<div class="ap-actions" style="padding:0 0 12px"><div class="ap-chips">' . $chips . '</div></div>';
+		$rows = Cart_Sync::abandoned_rows( $days, 300 );
+		if ( null === $rows ) { return $h . '<div class="ap-sec"><div class="ap-sec__b"><p>Няма таблица на FunnelKit Automations (<code>bwfan_abandonedcarts</code>) — изоставените колички се записват от FKA, не от промото.</p></div></div>'; }
+		$s = Cart_Sync::abandoned_stats( $rows ); $tag = Cart_Sync::tag_name(); $boxes = self::box_names();
+		$tiles = self::tile( 'промо колички', $s['all'], 'с имейл в чекаута', '', '', true )
+			. self::tile( 'изоставени', $s['abandoned'] + $s['skipped'], 'FKA: recoverable ' . $s['abandoned'] . ' · пропуснати ' . $s['skipped'], 'warn' )
+			. self::tile( 'стойност на изоставените', self::money( $s['sum_abandoned'] ), 'без възстановените', 'warn' )
+			. self::tile( 'възстановени', $s['recovered'], self::money( $s['sum_recovered'] ) . ' · ' . self::pct( $s['recovered'], max( 1, $s['all'] - $s['open'] ) ) . ' от приключилите', 'ok' )
+			. self::tile( 'още в чекаута', $s['open'], 'FKA ги обявява изоставени след 15 мин', '' )
+			. self::tile( 'с таг „' . ( $tag ?: '—' ) . '“', $s['tagged'], 'контактът носи тага сега (условието на flow-а)', $s['tagged'] === $s['abandoned'] + $s['skipped'] + $s['open'] ? 'ok' : '' );
+		$h .= '<div class="ap-dash">' . self::group_html( '🛒 Изоставени промо колички · ' . ( $days ? 'последните ' . $days . ' дни' : 'целият период' ), $tiles, 'Данните са от FunnelKit Automations (таблицата на изоставените колички), само количките с промо кутия. Тагът е това, по което flow-ът „Cart Abandoned“ ги различава.' ) . '</div>';
+		$h .= '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛒 Количките</span></div><div class="ap-sec__hint">Статусът е на FKA: <b>в чекаута</b> (още не са минали 15 мин) · <b>изоставена</b> (recoverable, flow-ът може да тръгне) · <b>пропусната</b> (FKA: без активна автоматизация или cool-off) · <b>изгубена</b> (след 15 дни) · <b>възстановена</b> (има поръчка). Последно променените първи.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>кога</th><th>кой</th><th>кутия</th><th>продукти</th><th>сума</th><th>статус</th><th>таг</th><th>поръчка</th></tr></thead><tbody>';
+		foreach ( $rows as $r ) {
+			$m = $r['meta']; $box = $m ? ( $boxes[ $m['box'] ] ?? $m['box'] ) . ( $m['packs'] ? ' · ' . $m['packs'] . ' оп.' : '' ) . ( $m['pct'] ? ' · −' . Cart::fmt( $m['pct'] ) . '%' : '' ) . ( $m['week'] ? ' · седм. ' . $m['week'] : '' ) . ( $m['draft'] ? ' · чернова' : '' ) : '—';
+			$lines = array(); foreach ( $r['lines'] as $l ) { $lines[] = esc_html( $l['name'] ) . ( $l['qty'] > 1 ? ' ×' . $l['qty'] : '' ) . ( 'secret' === $l['role'] ? ' <small>сет</small>' : ( 'book' === $l['role'] ? ' <small>книга</small>' : ( '' === $l['role'] ? ' <small>друго</small>' : '' ) ) ); }
+			$who = '<a href="mailto:' . esc_attr( $r['email'] ) . '">' . esc_html( $r['email'] ) . '</a>' . ( $r['name'] || $r['phone'] ? '<br><small>' . esc_html( trim( $r['name'] . ' ' . $r['phone'] ) ) . '</small>' : '' );
+			$ord = $r['order_id'] > 0 ? '<a href="' . esc_url( admin_url( 'post.php?post=' . (int) $r['order_id'] . '&action=edit' ) ) . '">#' . (int) $r['order_id'] . '</a>' : '—';
+			$h .= '<tr><td>' . esc_html( self::dt_short( $r['modified'] ) ) . '<br><small>от ' . esc_html( self::dt_short( $r['created'] ) ) . '</small></td><td>' . $who . '</td><td>' . esc_html( $box ) . '</td><td>' . implode( '<br>', $lines ) . '</td><td>' . esc_html( self::money( $r['total'] ) ) . '</td><td><span class="ap-pill' . ( $r['tone'] ? ' ap-pill--' . $r['tone'] : '' ) . '">' . esc_html( $r['status_label'] ) . '</span></td><td>' . ( $r['tagged'] ? '🏷️ да' : '<small>не</small>' ) . '</td><td>' . $ord . '</td></tr>';
+		}
+		if ( ! $rows ) { $h .= '<tr><td colspan="8"><small>няма промо колички за периода — появяват се, когато човек с промо кутия напише имейла си в чекаута (гост) или е логнат</small></td></tr>'; }
+		return $h . '</tbody></table></div></div><style>.ap-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef0f2;color:#50575e}.ap-pill--ok{background:#e6f6ec;color:#1a7f37}.ap-pill--warn{background:#fff3e0;color:#a86b09}.ap-pill--info{background:#e8f1fb;color:#1d5fa8}.ap-pill--muted{background:#f0f0f1;color:#8c8f94}</style>';
+	}
+	private static function dt_short( $dt ) { $t = strtotime( (string) $dt ); return $t ? date_i18n( 'd.m H:i', $t ) : (string) $dt; }
 
 	/* ── 📜 История (1.21.0) ── */
 	private static function render_history() {

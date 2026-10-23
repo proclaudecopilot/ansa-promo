@@ -606,6 +606,10 @@ final class Probe {
 			$rc = Cart_Sync::recent_carts( 24 * 30, 200 ); $np = is_array( $rc ) ? count( array_filter( $rc, function ( $x ) { return $x['promo']; } ) ) : 0;
 			$t->note( 'Cart_Sync: колички във FKA за 30 дни', is_array( $rc ) ? count( $rc ) . ' имейла, промо: ' . $np : 'таблицата липсва' );
 			$sw = Cart_Sync::sweep(); $t->ok( 'Cart_Sync: sweep (48 ч) без retry', 0 === (int) $sw['retry'], wp_json_encode( $sw ) );
+			/* 1.26.0: екранът 🛒 Изоставени колички */
+			$ab = Cart_Sync::abandoned_rows( 30, 100 ); $st = is_array( $ab ) ? Cart_Sync::abandoned_stats( $ab ) : null;
+			$t->ok( 'Insights 🛒: промо количките се четат и разбират', is_array( $ab ) && ( ! $ab || ( '' !== $ab[0]['status_label'] && ! empty( $ab[0]['lines'] ) ) ), $st ? count( $ab ) . ' за 30 дни · изоставени ' . ( $st['abandoned'] + $st['skipped'] ) . ' (€ ' . number_format( $st['sum_abandoned'], 2 ) . ') · възстановени ' . $st['recovered'] . ' · с таг ' . $st['tagged'] : 'таблицата липсва' );
+			$html = Insights::carts_html( 30 ); $t->ok( 'Insights 🛒: екранът се рендира', false !== strpos( $html, 'Изоставени промо колички' ) && false !== strpos( $html, '<table' ), strlen( $html ) . ' байта' );
 		}
 		return array( 'contact' => $c ? $c->get_id() : 0, 'list' => $lid, 'tag' => $tid, 'cart_tag' => Cart_Sync::tag_id() );
 	}
