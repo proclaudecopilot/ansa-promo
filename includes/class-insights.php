@@ -463,7 +463,7 @@ final class Insights {
 			'rev_open'    => array( 'revenue', 'Нереализиран оборот', self::money( $os['open']['total'] ), 'поръчани, още не взети · <b data-k="o_open2">' . (int) $os['open']['n'] . '</b> бр.', 'warn', false ),
 			'rev_lost'    => array( 'revenue', 'Загубен оборот', self::money( $os['lost']['total'] ), 'отказани / неуспешни · <b data-k="o_lost2">' . (int) $os['lost']['n'] . '</b> бр.', 'bad', false ),
 			'rev_proj'    => array( 'revenue', 'Прогнозен оборот', self::money( $os['proj_total'] ?? 0 ), 'взети + пресните × прогнозата · очаквани накрая ≈ <b data-k="o_proj_n">' . (int) ( $os['proj_n'] ?? 0 ) . '</b> от ' . (int) $os['n'] . ' (' . esc_html( (string) ( $os['proj_final_pct'] ?? '—' ) ) . ') · под риск (в път ≥ ' . $md . ' дни): <b data-k="rev_stale">' . esc_html( self::money( $st['total'] ) ) . '</b>', 'info', false ),
-			'avg'         => array( 'revenue', 'Среден кош', self::money( $os['avg'] ), 'на поръчка · общо <b data-k="o_total2">' . esc_html( self::money( $os['total'] ) ) . '</b>', '', false ),
+			'avg'         => array( 'revenue', 'Средна количка (AOV)', /* 1.26.1: беше „Среден кош“ (човекът: „няма такова“) */ self::money( $os['avg'] ), 'на поръчка · общо <b data-k="o_total2">' . esc_html( self::money( $os['total'] ) ) . '</b>', '', false ),
 		);
 		/* 1.24.2: Shrine · 3+2 — сборове по всички продукти */
 		$sh = array( 'view' => 0, 'pick' => 0, 'more' => 0, 'add' => 0, 'created' => 0 ); foreach ( (array) ( $r['shrine'] ?? array() ) as $v ) { foreach ( $sh as $kk => $_ ) { $sh[ $kk ] += (int) ( $v[ $kk ] ?? 0 ); } }
