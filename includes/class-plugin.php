@@ -43,6 +43,7 @@ final class Plugin {
 		Frontend::register();
 		Leads::register();
 		Lead_Sync::register(); /* v1.11.0: лийдовете от имейл-попъпа → FunnelKit лист + таг */
+		Cart_Sync::register(); /* v1.25.0: изоставената промо количка → таг на контакта (FKA Cart Abandoned → условие Contact Tags) */
 		Cart::register();
 		Tickets::register();
 		Insights::register();
@@ -74,7 +75,7 @@ final class Plugin {
 		}
 	}
 
-	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); }
+	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); wp_clear_scheduled_hook( Cart_Sync::HOOK ); /* 1.25.0 */ }
 
 	/* ── Shrine (съжителство) ───────────────────────────────────── */
 

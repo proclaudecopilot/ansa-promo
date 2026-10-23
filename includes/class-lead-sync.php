@@ -118,7 +118,7 @@ final class Lead_Sync {
 	}
 
 	/** Слага term ($kind 'lists'|'tags') на контакта: през BWFCRM_Contact (event на FKA), иначе направо. 'crm' | 'db' | 'има' | ''. */
-	private static function attach( $contact, $email, $kind, $tid, $name ) {
+	public static function attach( $contact, $email, $kind, $tid, $name ) { /* 1.25.0: public — Cart_Sync */
 		if ( Merge::contact_has( $email, $kind, $tid ) ) { return 'има'; }
 		if ( class_exists( 'BWFCRM_Contact' ) ) {
 			$mn = 'add_' . $kind;
@@ -146,7 +146,7 @@ final class Lead_Sync {
 	}
 
 	/** Маха term от контакта: през BWFCRM_Contact (remove_tags / remove_lists → event на FKA), иначе направо. 'crm' | 'db' | 'няма' | ''. */
-	private static function detach( $email, $kind, $tid ) {
+	public static function detach( $email, $kind, $tid ) { /* 1.25.0: public — Cart_Sync */
 		if ( ! Merge::contact_has( $email, $kind, $tid ) ) { return 'няма'; }
 		if ( class_exists( 'BWFCRM_Contact' ) ) {
 			$mn = 'remove_' . $kind;

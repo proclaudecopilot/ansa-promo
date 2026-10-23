@@ -89,7 +89,7 @@ final class Config {
 			/* v1.11.0: лийдовете от имейл-попъпа → FunnelKit Automations (Lead_Sync): контакт (и за гост), лист + таг → тригър за
 			   автоматизация „не е завършила поръчката“. consent_only = само с отметнато съгласие; untag_on_order = при промо поръчка
 			   тагът пада от контакта (за да спре/не тръгне автоматизацията), листът остава. Празно име = без лист/без таг. */
-			'leads'     => array( 'fka' => true, 'list' => 'Сезонът на ansa — лийдове', 'tag' => 'sezon-lead', 'consent_only' => true, 'untag_on_order' => true ),
+			'leads'     => array( 'fka' => true, 'list' => 'Сезонът на ansa — лийдове', 'tag' => 'sezon-lead', 'consent_only' => true, 'untag_on_order' => true, 'cart_tag' => 'sezon-kolichka' ), /* 1.25.0 cart_tag: тагът на контакта, докато количката му е промо (Cart_Sync; FKA Cart Abandoned → условие Contact Tags); '' = изключено */
 			'tombola'   => array( 'enabled' => true, 'slug' => 'tombola', 'draw' => '2027-01-25', 'statuses' => array( 'delivered' ), /* 1.9.0: САМО Delivered — „Изпълнена“ не брои (томбола · ваучер за сета · книга) */ 'ref_param' => 'r', 'ref_mult' => 2, 'ref_max' => 10, 'ref_gift' => 1 ),
 			'bgn'       => array( 'show' => true, 'rate' => 1.95583 ),
 			/* v1.0.37: преглед с парола — докато играта не е пусната, страницата показва форма за парола и след нея черновата (за екипа и избрани клиенти) */
@@ -438,7 +438,7 @@ final class Config {
 		/* v1.11.0: лийдовете → FKA */
 		$ld = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = self::merge( $d['leads'], $ld );
 		$out['leads']['fka'] = ! empty( $out['leads']['fka'] ); $out['leads']['consent_only'] = ! empty( $out['leads']['consent_only'] ); $out['leads']['untag_on_order'] = ! empty( $out['leads']['untag_on_order'] );
-		foreach ( array( 'list', 'tag' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) $out['leads'][ $lk ] ) ), 0, 100 ); }
+		foreach ( array( 'list', 'tag', 'cart_tag' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) ( $out['leads'][ $lk ] ?? '' ) ) ), 0, 100 ); }
 		$out['bgn']['show'] = ! empty( $out['bgn']['show'] ); $out['bgn']['rate'] = (float) $out['bgn']['rate'] ?: 1.95583;
 		$out['theme']['hide'] = ! empty( $out['theme']['hide'] ); $out['theme']['selectors'] = implode( "\n", array_filter( array_map( function ( $l ) { return trim( preg_replace( '/[{}<>]/', '', (string) $l ) ); }, preg_split( '/\r?\n/', (string) $out['theme']['selectors'] ) ) ) );
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ) ? $out['copy'] : array() );
