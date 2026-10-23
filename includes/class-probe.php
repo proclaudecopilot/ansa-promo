@@ -591,7 +591,23 @@ final class Probe {
 		} else { $t->note( 'поръчка', 'няма wc_create_order' ); }
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Schema::table( 'leads' ) . ' WHERE email IN (%s, %s)', $email, 'probe-noconsent@example.com' ) );
 		$t->note( 'статус', Lead_Sync::status( $cfg ) );
-		return array( 'contact' => $c ? $c->get_id() : 0, 'list' => $lid, 'tag' => $tid );
+		/* 1.25.0: изоставената промо количка → таг на контакта (Cart_Sync) */
+		$t->ok( 'Cart_Sync: таг за промо количка е зададен (🧰 → Лийдовете → FunnelKit)', Cart_Sync::enabled( $cfg ), Cart_Sync::tag_name( $cfg ) ?: 'празно' );
+		if ( Cart_Sync::enabled( $cfg ) ) {
+			$t->ok( 'Cart_Sync: кронът на 10 мин е насрочен', (bool) wp_next_scheduled( Cart_Sync::HOOK ), Cart_Sync::status( $cfg ) );
+			$t->ok( 'Cart_Sync: таблицата на FKA bwfan_abandonedcarts', $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Cart_Sync::table() ) ) === Cart_Sync::table() );
+			$t->ok( 'Cart_Sync: items_is_promo разпознава промо ред', Cart_Sync::items_is_promo( serialize( array( 'k' => array( Cart::META => array( 'role' => 'base', 'box' => 'l' ), 'product_id' => 1 ) ) ) ) && ! Cart_Sync::items_is_promo( serialize( array( 'k' => array( 'product_id' => 1 ) ) ) ) );
+			$ce = 'probe-cart@example.com';
+			$r1 = Cart_Sync::sync_email( $ce, true, 'probe' ); $ctid = Cart_Sync::tag_id();
+			$t->ok( 'Cart_Sync: промо количка → тагът е на контакта', $ctid > 0 && Merge::contact_has( $ce, 'tags', $ctid ), $r1 . ' · таг #' . $ctid );
+			$t->eq( 'Cart_Sync: повторно → има', 'има', Cart_Sync::sync_email( $ce, true, 'probe' ) );
+			$r2 = Cart_Sync::sync_email( $ce, false, 'probe' );
+			$t->ok( 'Cart_Sync: обикновена количка → тагът падна', $ctid > 0 && ! Merge::contact_has( $ce, 'tags', $ctid ), $r2 );
+			$rc = Cart_Sync::recent_carts( 24 * 30, 200 ); $np = is_array( $rc ) ? count( array_filter( $rc, function ( $x ) { return $x['promo']; } ) ) : 0;
+			$t->note( 'Cart_Sync: колички във FKA за 30 дни', is_array( $rc ) ? count( $rc ) . ' имейла, промо: ' . $np : 'таблицата липсва' );
+			$sw = Cart_Sync::sweep(); $t->ok( 'Cart_Sync: sweep (48 ч) без retry', 0 === (int) $sw['retry'], wp_json_encode( $sw ) );
+		}
+		return array( 'contact' => $c ? $c->get_id() : 0, 'list' => $lid, 'tag' => $tid, 'cart_tag' => Cart_Sync::tag_id() );
 	}
 
 	public static function suite_insights( $t, $params ) {
