@@ -167,6 +167,69 @@ final class Cart_Sync {
 		return $r;
 	}
 
+	/* ── 1.26.0: екранът 📈 Insights → 🛒 Изоставени колички (човекът: „направи такъв екран в Insights“) ── */
+	/** Статусът на FKA като текст: 5 = още в чекаута, 1 = изоставена (recoverable), 3 = пропусната, 2 = изгубена; поръчка → възстановена. */
+	public static function status_label( $status, $order_id = 0 ) {
+		if ( (int) $order_id > 0 ) { return array( 'възстановена', 'ok' ); }
+		switch ( (int) $status ) {
+			case 5: return array( 'в чекаута', 'info' );
+			case 1: return array( 'изоставена', 'warn' );
+			case 3: return array( 'пропусната от FKA', 'info' );
+			case 2: return array( 'изгубена', 'muted' );
+			case 4: return array( 'възстановена', 'ok' );
+			default: return array( 'статус ' . (int) $status, '' );
+		}
+	}
+	/** Редовете на FKA (serialize на get_cart_for_session) → продукти + мета на промото. */
+	public static function parse_items( $items ) {
+		$out = array( 'promo' => false, 'meta' => array(), 'lines' => array() );
+		$arr = @unserialize( (string) $items, array( 'allowed_classes' => false ) ); if ( ! is_array( $arr ) ) { return $out; }
+		foreach ( $arr as $it ) {
+			if ( ! is_array( $it ) ) { continue; }
+			$m = is_array( $it[ Cart::META ] ?? null ) ? $it[ Cart::META ] : array();
+			$pid = (int) ( $it['product_id'] ?? 0 ); $vid = (int) ( $it['variation_id'] ?? 0 ); $qty = (int) ( $it['quantity'] ?? 1 );
+			$name = '';
+			if ( function_exists( 'wc_get_product' ) ) { $p = wc_get_product( $vid ?: $pid ); if ( $p ) { $name = $p->get_name(); } }
+			if ( '' === $name ) { $name = ( $m['key'] ?? '' ) ? (string) $m['key'] : '#' . ( $vid ?: $pid ); }
+			$out['lines'][] = array( 'name' => $name, 'qty' => $qty, 'role' => (string) ( $m['role'] ?? '' ), 'key' => (string) ( $m['key'] ?? '' ), 'pid' => $pid, 'vid' => $vid, 'total' => (float) ( $it['line_total'] ?? 0 ) );
+			if ( $m && 'base' === (string) ( $m['role'] ?? 'base' ) ) { $out['promo'] = true; if ( ! $out['meta'] ) { $out['meta'] = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'box' => (string) ( $m['box'] ?? '' ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'pct' => (float) ( $m['pct'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ) ); } }
+		}
+		return $out;
+	}
+	/** checkout_data на FKA (JSON) → име, телефон, consent. */
+	public static function parse_checkout( $json ) {
+		$d = json_decode( (string) $json, true ); $f = is_array( $d['fields'] ?? null ) ? $d['fields'] : array();
+		return array( 'name' => trim( (string) ( $f['billing_first_name'] ?? '' ) . ' ' . (string) ( $f['billing_last_name'] ?? '' ) ), 'phone' => (string) ( $f['billing_phone'] ?? '' ), 'consent' => ! empty( $f['bwfan_user_consent'] ), 'page_id' => (int) ( $d['current_page_id'] ?? 0 ) );
+	}
+	/**
+	 * Промо количките от таблицата на FKA за период (0 = всички), последни първи. Всеки ред: id, email, status, status_label,
+	 * tone, order_id, created, modified, total, name, phone, consent, meta (box/packs/pct/week), lines, tagged (контактът носи тага).
+	 */
+	public static function abandoned_rows( $days = 30, $limit = 200 ) {
+		global $wpdb; $t = self::table();
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
+		$w = "WHERE items LIKE '%\"" . Cart::META . "\"%'" . ( $days > 0 ? $wpdb->prepare( ' AND created_time > DATE_SUB( NOW(), INTERVAL %d DAY )', (int) $days ) : '' );
+		$rows = (array) $wpdb->get_results( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} {$w} ORDER BY last_modified DESC, ID DESC LIMIT " . (int) $limit, ARRAY_A );
+		$tid = self::tag_id( false ); $out = array();
+		foreach ( $rows as $r ) {
+			$p = self::parse_items( $r['items'] ); if ( ! $p['promo'] ) { continue; } /* LIKE е по-широк (secret/book ред без base) */
+			$c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
+			$email = strtolower( (string) $r['email'] );
+			$out[] = array( 'id' => (int) $r['ID'], 'email' => $email, 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'currency' => (string) ( $r['currency'] ?? '' ), 'name' => $c['name'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'], 'tagged' => $tid > 0 && self::available() && Merge::contact_has( $email, 'tags', $tid ) );
+		}
+		return $out;
+	}
+	/** Обобщение за плочките: брой по състояние, сума на изоставените, с таг. */
+	public static function abandoned_stats( $rows ) {
+		$s = array( 'all' => 0, 'open' => 0, 'abandoned' => 0, 'recovered' => 0, 'lost' => 0, 'skipped' => 0, 'tagged' => 0, 'sum_abandoned' => 0.0, 'sum_recovered' => 0.0 );
+		foreach ( (array) $rows as $r ) {
+			$s['all']++; if ( $r['tagged'] ) { $s['tagged']++; }
+			if ( $r['order_id'] > 0 || 4 === $r['status'] ) { $s['recovered']++; $s['sum_recovered'] += $r['total']; continue; }
+			if ( 5 === $r['status'] ) { $s['open']++; } elseif ( 1 === $r['status'] ) { $s['abandoned']++; $s['sum_abandoned'] += $r['total']; } elseif ( 3 === $r['status'] ) { $s['skipped']++; $s['sum_abandoned'] += $r['total']; } elseif ( 2 === $r['status'] ) { $s['lost']++; }
+		}
+		return $s;
+	}
+
 	/* ── лог / Doctor ── */
 	private static function log( $email, $promo, $src, $txt, $write = true ) {
 		self::$diag = $txt;

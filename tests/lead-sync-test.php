@@ -165,5 +165,27 @@ ok( 'повторен sweep → нищо ново (kept 1)', ( $sw2 = Cart_Sync:
 ok( 'status текст с тага и последната проверка', false !== strpos( Cart_Sync::status( $cfg ), 'таг „sezon-kolichka“ #' . $ctid ) && false !== strpos( Cart_Sync::status( $cfg ), 'последна проверка' ), Cart_Sync::status( $cfg ) );
 ok( 'no-email', 'no-email' === Cart_Sync::sync_email( 'nope', true ) );
 
+/* ══ 1.26.0: екранът 🛒 Изоставени колички — четене/разбор на таблицата на FKA ══ */
+$full_items = 'a:2:{s:32:"16d9160d17ec6e9eeca4acf84c7a5f2d";a:5:{s:10:"ansa_promo";a:7:{s:5:"promo";s:14:"orange_q4_2026";s:3:"box";s:1:"l";s:5:"packs";i:5;s:3:"pct";d:40;s:4:"week";i:2;s:4:"role";s:4:"base";s:3:"key";s:4:"meno";}s:10:"product_id";i:22307;s:8:"quantity";i:2;s:10:"line_total";d:39.9;s:4:"data";O:20:"WC_Product_Variation":1:{s:5:"' . "\0*\0" . 'id";i:22308;}}s:32:"a7d87e8c914d8982d3b71d8e562f93d4";a:4:{s:10:"ansa_promo";a:3:{s:5:"promo";s:14:"orange_q4_2026";s:4:"role";s:6:"secret";s:3:"key";s:4:"cosm";}s:10:"product_id";i:500;s:8:"quantity";i:1;s:10:"line_total";d:1;}}';
+$pi = Cart_Sync::parse_items( $full_items );
+ok( 'parse_items: промо, мета от base реда, 2 реда (base + secret), име = ключът без WC', $pi['promo'] && 'l' === $pi['meta']['box'] && 5 === $pi['meta']['packs'] && 40.0 === $pi['meta']['pct'] && 2 === $pi['meta']['week'] && 2 === count( $pi['lines'] ) && 'meno' === $pi['lines'][0]['name'] && 2 === $pi['lines'][0]['qty'] && 'secret' === $pi['lines'][1]['role'], json_encode( $pi ) );
+ok( 'parse_items: обикновена количка → не е промо, редът е „друго“', ! Cart_Sync::parse_items( $plain_items )['promo'] && '' === Cart_Sync::parse_items( $plain_items )['lines'][0]['role'] && '#3994' === Cart_Sync::parse_items( $plain_items )['lines'][0]['name'] );
+$pc = Cart_Sync::parse_checkout( '{"fields":{"bwfan_user_consent":"1","billing_phone":"+359897884945","billing_last_name":"Михайлова","billing_first_name":"Милена"},"current_page_id":"5840"}' );
+ok( 'parse_checkout: име, телефон, consent, страница', 'Милена Михайлова' === $pc['name'] && '+359897884945' === $pc['phone'] && $pc['consent'] && 5840 === $pc['page_id'] );
+ok( 'parse_checkout: счупен JSON → празно', '' === Cart_Sync::parse_checkout( 'x' )['name'] && ! Cart_Sync::parse_checkout( '' )['consent'] );
+ok( 'status_label: 5 в чекаута · 1 изоставена · 3 пропусната · 2 изгубена · с поръчка възстановена', 'в чекаута' === Cart_Sync::status_label( 5 )[0] && 'изоставена' === Cart_Sync::status_label( 1 )[0] && 'пропусната от FKA' === Cart_Sync::status_label( 3 )[0] && 'изгубена' === Cart_Sync::status_label( 2 )[0] && 'възстановена' === Cart_Sync::status_label( 2, 777 )[0] && 'ok' === Cart_Sync::status_label( 1, 5 )[1] );
+$wpdb->carts = array(
+	array( 'ID' => 21, 'email' => 'A@example.com', 'status' => 1, 'order_id' => 0, 'created_time' => '2026-10-22 20:55:51', 'last_modified' => '2026-10-22 21:24:57', 'total' => '137.54', 'currency' => 'EUR', 'items' => $full_items, 'checkout_data' => '{"fields":{"billing_first_name":"Ана","billing_phone":"0888"}}' ),
+	array( 'ID' => 20, 'email' => 'b@example.com', 'status' => 2, 'order_id' => 777, 'created_time' => '2026-10-21 10:00:00', 'last_modified' => '2026-10-21 10:30:00', 'total' => '90', 'currency' => 'EUR', 'items' => $promo_items, 'checkout_data' => '' ),
+	array( 'ID' => 19, 'email' => 'c@example.com', 'status' => 1, 'order_id' => 0, 'created_time' => '2026-10-20 10:00:00', 'last_modified' => '2026-10-20 10:30:00', 'total' => '50', 'currency' => 'EUR', 'items' => $plain_items, 'checkout_data' => '' ),
+	array( 'ID' => 18, 'email' => 'd@example.com', 'status' => 5, 'order_id' => 0, 'created_time' => '2026-10-23 08:00:00', 'last_modified' => '2026-10-23 08:01:00', 'total' => '60', 'currency' => 'EUR', 'items' => $promo_items, 'checkout_data' => '' ),
+);
+$ab = Cart_Sync::abandoned_rows( 30 );
+ok( 'abandoned_rows: само промо (c отпада), полетата са разбрани', 3 === count( $ab ) && 21 === $ab[0]['id'] && 'a@example.com' === $ab[0]['email'] && 'Ана 0888' === trim( $ab[0]['name'] . ' ' . $ab[0]['phone'] ) && 137.54 === $ab[0]['total'] && 'изоставена' === $ab[0]['status_label'] && 'възстановена' === $ab[1]['status_label'] && 777 === $ab[1]['order_id'] && 'l' === $ab[0]['meta']['box'], json_encode( array_map( function ( $r ) { return $r['email'] . ':' . $r['status_label']; }, $ab ) ) );
+ok( 'abandoned_rows: tagged = контактът носи тага (a да, d не)', true === $ab[0]['tagged'] && false === $ab[2]['tagged'] );
+ok( 'abandoned_rows: заявката е по created_time за 30 дни', false !== strpos( end( $wpdb->log ), 'INTERVAL 30 DAY' ) && false !== strpos( end( $wpdb->log ), 'ansa_promo' ) );
+$st = Cart_Sync::abandoned_stats( $ab );
+ok( 'abandoned_stats: 3 общо · 1 изоставена (€137.54) · 1 възстановена (€90) · 1 в чекаута · 1 с таг', 3 === $st['all'] && 1 === $st['abandoned'] && 137.54 === $st['sum_abandoned'] && 1 === $st['recovered'] && 90.0 === $st['sum_recovered'] && 1 === $st['open'] && 1 === $st['tagged'], json_encode( $st ) );
+
 if ( $fails ) { echo "FAIL:\n - " . implode( "\n - ", $fails ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
