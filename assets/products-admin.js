@@ -122,6 +122,8 @@
     else if (!p.wc.ok) out.push({ l: 'err', t: p.wc.note || 'проблем с WC реда', h: 'WooCommerce редът не става: ' + (p.wc.note || '') });
     else if (!p.wc.stock) out.push({ l: 'warn', t: 'изчерпан', h: 'Не е наличен в WooCommerce — показва се, но не може да се поръча' });
     if (p.sku && p.wc && p.wc.sku_found === false) out.push({ l: 'warn', t: 'SKU не е намерен', h: 'SKU „' + p.sku + '“ го няма в WooCommerce — ползва се WC ID' });
+    /* 1.26.2: SKU/ID към „3 кутии“ → редът е „1 кутия“ (Catalog::single_line); бележката казва откъде идва */
+    if (p.wc && p.wc.ok && p.wc.note) out.push({ l: 'warn', t: 'редът е „1 опаковка“', h: p.wc.note });
     return out;
   }
   function filterChips() {
@@ -283,8 +285,9 @@
   }
   function skuNote(p) {
     var wc = p.wc || {};
-    if (p.sku) return wc.sku_found ? '<span class="good">SKU „' + esc(p.sku) + '“ → WC #' + wc.pid + (wc.base ? ' · ' + esc(wc.base) : '') + (wc.vid ? ' · вариация #' + wc.vid : '') + '</span>' : '<span class="bad">SKU „' + esc(p.sku) + '“ не е намерен в WooCommerce' + (p.product_id ? ' — ползва се WC ID #' + p.product_id : '') + '.</span>';
-    return p.product_id ? 'Свързан по WC ID #' + p.product_id + '. По-сигурно е със SKU на вариацията „1 опаковка“ — не зависи от ID-то.' : '';
+    var note = wc.ok && wc.note ? ' <span class="warn">' + esc(wc.note) + '</span>' : ''; /* 1.26.2: SKU/ID към „3 кутии“ → редът е „1 кутия“ */
+    if (p.sku) return wc.sku_found ? '<span class="good">SKU „' + esc(p.sku) + '“ → WC #' + wc.pid + (wc.base ? ' · ' + esc(wc.base) : '') + (wc.vid ? ' · вариация #' + wc.vid : '') + '</span>' + note : '<span class="bad">SKU „' + esc(p.sku) + '“ не е намерен в WooCommerce' + (p.product_id ? ' — ползва се WC ID #' + p.product_id : '') + '.</span>';
+    return p.product_id ? 'Свързан по WC ID #' + p.product_id + '. По-сигурно е със SKU на вариацията „1 опаковка“ — не зависи от ID-то.' + note : '';
   }
   function bindClear(p) { var b = $('apWcClear'); if (b) b.onclick = function () { p.product_id = 0; p.sku = ''; markDirty(); refreshWc(p); }; }
   function renameKey(old, k) {
