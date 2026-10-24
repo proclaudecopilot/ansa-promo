@@ -6,10 +6,11 @@
  * Сценарии: (1) merge в празна количка → група с 5× A + книга, 5 билета; (2) чужд платен ред + merge с 5× B → същата група,
  * A5 + B5, една книга, 10 опаковки, билетите по tickets_for (tix_extra), чуждият ред остава и е на регулярна цена;
  * (3) двойно докосване (същият състав до 10 с) → идемпотентно; (4) add без merge (промо страницата) изчиства количката;
- * (5) малка кутия + merge 5 → голяма: старите редове минават на „l“/−40%, книгата се добавя; (6) таван max_packs.
+ * (5) малка кутия + merge 5 → голяма: старите редове минават на „l“/−40%, книгата се добавя; (6) таван max_packs;
+ * (8) 1.26.2: продуктът в конфига сочи към вариацията „3 кутии“ → редът е „1 кутия“ × 5 (Catalog::single_line / packs_of).
  */
 require __DIR__ . '/wpstub.php';
-use AnsaPromo\Cart; use AnsaPromo\Config;
+use AnsaPromo\Cart; use AnsaPromo\Config; use AnsaPromo\Catalog;
 
 /* ── WP/WC стъбове ── */
 function absint( $v ) { return abs( (int) $v ); } function is_admin() { return false; } function current_user_can( $c ) { return false; }
@@ -21,19 +22,30 @@ function wp_create_nonce( $a ) { return 'n'; } function get_transient( $k ) { re
 function wp_date( $f, $t = null ) { return date( $f, $t ?? time() ); } function get_post_status( $id ) { return 'publish'; }
 
 class FakeProduct {
-	public $id, $parent, $type, $reg, $price, $children, $name;
-	function __construct( $id, $reg, $type = 'simple', $parent = 0, $children = array(), $name = '' ) { $this->id = $id; $this->reg = $reg; $this->price = $reg; $this->type = $type; $this->parent = $parent; $this->children = $children; $this->name = $name ?: 'Product ' . $id; }
+	public $id, $parent, $type, $reg, $price, $children, $name, $attrs;
+	function __construct( $id, $reg, $type = 'simple', $parent = 0, $children = array(), $name = '', $attrs = null ) { $this->id = $id; $this->reg = $reg; $this->price = $reg; $this->type = $type; $this->parent = $parent; $this->children = $children; $this->name = $name ?: 'Product ' . $id; $this->attrs = $attrs; }
 	function get_id() { return $this->id; } function get_parent_id() { return $this->parent; } function is_type( $t ) { return $this->type === $t; }
 	function get_name() { return $this->name; } function get_status() { return 'publish'; } function get_children() { return $this->children; }
 	function get_regular_price() { return $this->reg; } function get_sale_price() { return ''; } function get_price() { return $this->price; } function set_price( $p ) { $this->price = $p; }
 	function is_in_stock() { return true; } function is_purchasable() { return true; } function has_enough_stock( $q ) { return true; }
 	function get_image_id() { return 0; } function get_short_description() { return 'Кратко описание.'; } function get_description() { return ''; }
-	function get_variation_attributes() { return $this->type === 'variation' ? array( 'attribute_pa_kolichestvo' => '1 кутия' ) : array(); } function get_attributes() { return array(); }
+	function get_variation_attributes() { if ( null !== $this->attrs ) { return $this->attrs; } return $this->type === 'variation' ? array( 'attribute_pa_kolichestvo' => '1 кутия' ) : array(); } function get_attributes() { return array(); }
 }
 $GLOBALS['products'] = array();
 function wc_get_product( $id ) { $id = (int) $id; if ( isset( $GLOBALS['products'][ $id ] ) ) { return clone $GLOBALS['products'][ $id ]; } return null; }
 function addp( $id, $reg, $name ) { /* variable родител + вариация „1 кутия“ */ $GLOBALS['products'][ $id ] = new FakeProduct( $id, $reg, 'variable', 0, array( $id + 1 ), $name ); $GLOBALS['products'][ $id + 1 ] = new FakeProduct( $id + 1, $reg, 'variation', $id, array(), $name . ' - 1 кутия' ); }
 addp( 100, 43.90, 'ansa Greens' ); addp( 200, 49.90, 'ansa Sakura' ); addp( 300, 39.90, 'ansa Omega' ); $GLOBALS['products'][900] = new FakeProduct( 900, 19.00, 'simple', 0, array(), 'Книга' ); $GLOBALS['products'][700] = new FakeProduct( 700, 25.00, 'simple', 0, array(), 'Чужд продукт' );
+/* 1.26.2: eyeFresh — родител 400 с вариации „1 / 3 / 5 кутии (3 и 2 подарък)“ (слъгове в атрибутите, както на сайта); в конфига продуктът сочи към „3 кутии“ (403) */
+$GLOBALS['products'][400] = new FakeProduct( 400, 18.00, 'variable', 0, array( 403, 401, 405 ), 'ansa™ – eyeFresh Хидрогелни Пачове за очи' );
+$GLOBALS['products'][401] = new FakeProduct( 401, 18.00, 'variation', 400, array(), 'ansa™ – eyeFresh Хидрогелни Пачове за очи - 1 кутия', array( 'attribute_pa_kolichestvo' => '1-kutiya' ) );
+$GLOBALS['products'][403] = new FakeProduct( 403, 53.92, 'variation', 400, array(), 'ansa™ – eyeFresh Хидрогелни Пачове за очи - 3 кутии', array( 'attribute_pa_kolichestvo' => '3-kutii' ) );
+$GLOBALS['products'][405] = new FakeProduct( 405, 90.00, 'variation', 400, array(), 'ansa™ – eyeFresh Хидрогелни Пачове за очи - 5 кутии (3 и 2 подарък)', array( 'attribute_pa_kolichestvo' => '%d0%ba%d1%83%d1%82%d0%b8%d0%b8-5-3-%d0%b8-2' ) );
+/* продукт само в „30 / 60 капсули“ (няма „1“): SKU към 60 остава 60, родителят → 30; и вариация без число в атрибута при име с цифра („Omega 3“) */
+$GLOBALS['products'][500] = new FakeProduct( 500, 30.00, 'variable', 0, array( 506, 503 ), 'ansa Omega 3' );
+$GLOBALS['products'][503] = new FakeProduct( 503, 30.00, 'variation', 500, array(), 'ansa Omega 3 - 30 капсули', array( 'attribute_pa_razmer' => '30 капсули' ) );
+$GLOBALS['products'][506] = new FakeProduct( 506, 50.00, 'variation', 500, array(), 'ansa Omega 3 - 60 капсули', array( 'attribute_pa_razmer' => '60 капсули' ) );
+$GLOBALS['products'][600] = new FakeProduct( 600, 20.00, 'variable', 0, array( 601 ), 'ansa Omega 3' );
+$GLOBALS['products'][601] = new FakeProduct( 601, 20.00, 'variation', 600, array(), 'ansa Omega 3 - ванилия', array( 'attribute_pa_vkus' => 'ванилия' ) );
 
 class FakeSession { private $d = array(); function get( $k, $d = null ) { return $this->d[ $k ] ?? $d; } function set( $k, $v ) { $this->d[ $k ] = $v; } }
 class FakeCart {
@@ -62,6 +74,7 @@ $def['products'] = array(
 	array( 'key' => 'greens', 'product_id' => 100, 'enabled' => true ),
 	array( 'key' => 'sakura', 'product_id' => 200, 'enabled' => true ),
 	array( 'key' => 'omega',  'product_id' => 300, 'enabled' => true ),
+	array( 'key' => 'eyefresh', 'product_id' => 403, 'enabled' => true ), /* 1.26.2: сочи към вариацията „3 кутии“ (както SKU-то на сайта) */
 );
 $def['rewards']['book']['product_id'] = 900;
 $def['season'] = array(); /* без седмичен сезон — процентите на кутиите са директни */
@@ -149,6 +162,23 @@ $r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ),
 $g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
 ok( ! empty( $r['ok'] ) && 50.0 === ( $pp[100] ?? 0 ) && 15 === (int) $g['sum'], '(7) същият продукт пак → количеството расте и процентът се вдига на 50: ' . json_encode( $pp ) );
 $meta = Cart::build_meta( true ); ok( $meta && 15 === (int) $meta['count'] && (int) $meta['tickets']['allowance'] === Config::tickets_for( $bl, 15 ), '(7) order meta при 15 опаковки' );
+
+/* (8) 1.26.2 (човекът: „в UI добавям 3 плюс 2 подарък, а в количката се добавят 5 пъти по 3 кутии“): продуктът в конфига сочи към
+   вариацията „3 кутии“ (SKU/ID) → редът е „1 кутия“ × 5 на −40% = €54,00, не 5 × „3 кутии“ (€161,75 за 15 кутии) */
+WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
+$wl = Catalog::wc_line( 403 );
+ok( $wl['ok'] && 401 === (int) $wl['variation_id'] && 400 === (int) $wl['product_id'] && 18.0 === (float) $wl['price'] && '' !== $wl['note'], '(8) wc_line(„3 кутии“) → вариацията „1 кутия“ с бележка: ' . json_encode( $wl, JSON_UNESCAPED_UNICODE ) );
+ok( 401 === (int) Catalog::wc_line( 400 )['variation_id'] && 401 === (int) Catalog::wc_line( 401 )['variation_id'] && '' === Catalog::wc_line( 401 )['note'], '(8) wc_line(родител) и wc_line(„1 кутия“) → 401 без бележка' );
+ok( 401 === (int) Catalog::wc_line( 405 )['variation_id'], '(8) wc_line(„5 кутии (3 и 2 подарък)“, url-кодиран слъг) → „1 кутия“' );
+ok( 1 === Catalog::packs_of( wc_get_product( 401 ) ) && 3 === Catalog::packs_of( wc_get_product( 403 ) ) && 5 === Catalog::packs_of( wc_get_product( 405 ) ) && 1 === Catalog::packs_of( wc_get_product( 900 ) ), '(8) packs_of: 1 / 3 / 5, прост продукт = 1' );
+ok( 506 === (int) Catalog::wc_line( 506 )['variation_id'] && '' === Catalog::wc_line( 506 )['note'] && 503 === (int) Catalog::wc_line( 500 )['variation_id'], '(8) „30/60 капсули“ без „1“: SKU към 60 остава 60, родителят → 30' );
+ok( 1 === Catalog::packs_of( wc_get_product( 601 ) ) && 601 === (int) Catalog::wc_line( 601 )['variation_id'], '(8) цифра в името на продукта („Omega 3“) не е брой опаковки' );
+$r = $merge( 400 );
+ok( ! empty( $r['ok'] ) && 5 === (int) $r['count'] && 'l' === $r['box'], '(8) merge 5× eyeFresh: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
+$g = grp(); $vids = array(); foreach ( $g['base'] as $it ) { $vids[] = (int) $it['variation_id'] . '×' . (int) $it['quantity']; }
+ok( $g && base_counts( $g ) === array( 400 => 5 ) && array( '401×5' ) === $vids, '(8) редът е вариация „1 кутия“ × 5, не „3 кутии“: ' . json_encode( $vids ) );
+WC()->cart->calculate_totals();
+ok( abs( WC()->cart->get_total() - 54.00 ) < 0.01, '(8) общо €54,00 (5 × 18 × 0,6 + книга €0), е ' . WC()->cart->get_total() );
 
 if ( $errors ) { echo "ГРЕШКИ:\n- " . implode( "\n- ", $errors ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

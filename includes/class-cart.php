@@ -100,7 +100,8 @@ final class Cart {
 		foreach ( Frontend::products( $cfg ) as $key => $p ) { $out[ (int) $p['id'] ] = $p; }
 		return $out;
 	}
-	private static function line_src( $p ) { return $p['vid'] ? wc_get_product( (int) $p['vid'] ) : wc_get_product( (int) $p['id'] ); }
+	/** v1.26.2: редът е винаги „1 опаковка“ (Catalog::single_line) — vid към „3 кутии“ (стар runtime, SKU) никога не влиза × packs. */
+	private static function line_src( $p ) { $src = $p['vid'] ? wc_get_product( (int) $p['vid'] ) : wc_get_product( (int) $p['id'] ); if ( $src ) { list( $src ) = Catalog::single_line( $src ); } return $src; }
 	/** Атрибутите за add_to_cart: вариация с „Any…“ атрибут (празна стойност) иначе бива отхвърлена — слагаме първата възможна стойност от родителя. */
 	private static function variation_attrs( $src ) {
 		if ( ! $src || ! $src->is_type( 'variation' ) ) { return array(); }
