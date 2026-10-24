@@ -333,10 +333,19 @@ final class Cart {
 			$extra = array_diff( array_keys( $item ), $std );
 			$auto  = (bool) preg_grep( '/fkcart|gift|reward|free/i', $extra );
 			/* v1.5.4: и без познат ключ — чужд ред на €0 (line_subtotal/line_total от сесията), чийто продукт има регулярна
-			   цена > 0, е подарък на някакъв плъгин. Книгата е наша (има META) и не минава оттук. */
-			if ( ! $auto && (float) ( $item['line_subtotal'] ?? 0 ) <= 0 && (float) ( $item['line_total'] ?? 0 ) <= 0 ) {
+			   цена > 0, е подарък на някакъв плъгин. Книгата е наша (има META) и не минава оттук.
+			   v1.26.3 (човекът: „добавяш 1 опаковка от eyeFresh, добавя ти се кутия Greens от промото“): ПРЕСНИЯТ ред (add_to_cart →
+			   woocommerce_add_to_cart → calculate_totals, преди WC_Cart_Totals да му сложи line_subtotal) НЕ е подарък — липсващите суми
+			   се четяха като €0 и всеки продукт, добавен при промо група в количката, се триеше; оставаше само кутията. Без суми →
+			   гледа се цената на продукта в момента (плъгин за подарък я е нулирал на по-ранен priority); със суми → както досега. */
+			if ( ! $auto ) {
 				$p = is_object( $item['data'] ?? null ) ? $item['data'] : wc_get_product( (int) ( $item['variation_id'] ?: $item['product_id'] ) );
-				if ( $p && (float) $p->get_regular_price() > 0 ) { $auto = true; }
+				if ( $p && (float) $p->get_regular_price() > 0 ) {
+					$zero = ( isset( $item['line_subtotal'] ) || isset( $item['line_total'] ) )
+						? ( (float) ( $item['line_subtotal'] ?? 0 ) <= 0 && (float) ( $item['line_total'] ?? 0 ) <= 0 )
+						: ( (float) $p->get_price() <= 0 );
+					if ( $zero ) { $auto = true; }
+				}
 			}
 			if ( apply_filters( 'ansa_promo_strip_foreign', $auto, $key, $item, $g ) ) { $remove[] = $key; }
 		}

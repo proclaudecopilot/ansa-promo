@@ -53,14 +53,21 @@ class FakeCart {
 	function add_to_cart( $pid, $q = 1, $vid = 0, $attrs = array(), $data = array() ) {
 		$src = wc_get_product( $vid ?: $pid ); if ( ! $src ) { return false; }
 		$key = md5( $pid . '|' . $vid . '|' . json_encode( $data ) );
-		if ( isset( $this->cart_contents[ $key ] ) ) { $this->cart_contents[ $key ]['quantity'] += $q; return $key; }
-		$this->cart_contents[ $key ] = array_merge( $data, array( 'key' => $key, 'product_id' => (int) $pid, 'variation_id' => (int) $vid, 'variation' => $attrs, 'quantity' => (int) $q, 'data' => $src, 'line_subtotal' => $src->get_price() * $q, 'line_total' => $src->get_price() * $q ) );
+		if ( isset( $this->cart_contents[ $key ] ) ) { $this->cart_contents[ $key ]['quantity'] += $q; }
+		/* 1.26.3: като WC — пресният ред е БЕЗ line_subtotal/line_total (слага ги WC_Cart_Totals), а woocommerce_add_to_cart → calculate_totals (priority 20) */
+		else { $this->cart_contents[ $key ] = array_merge( $data, array( 'key' => $key, 'product_id' => (int) $pid, 'variation_id' => (int) $vid, 'variation' => $attrs, 'quantity' => (int) $q, 'data' => $src ) ); }
+		$this->calculate_totals();
 		return $key;
 	}
 	function get_cart() { return $this->cart_contents; } function get_cart_item( $k ) { return $this->cart_contents[ $k ] ?? null; }
 	function remove_cart_item( $k ) { unset( $this->cart_contents[ $k ] ); return true; } function set_quantity( $k, $q, $refresh = true ) { if ( isset( $this->cart_contents[ $k ] ) ) { $this->cart_contents[ $k ]['quantity'] = (int) $q; } return true; }
 	function empty_cart() { $this->cart_contents = array(); }
-	function calculate_totals() { Cart::apply_pricing( $this ); foreach ( $this->cart_contents as $k => $it ) { $this->cart_contents[ $k ]['line_subtotal'] = $it['data']->get_price() * $it['quantity']; $this->cart_contents[ $k ]['line_total'] = $this->cart_contents[ $k ]['line_subtotal']; } }
+	/* като WC: before_calculate_totals → apply_pricing (95) + strip_foreign (PHP_INT_MAX) → WC_Cart_Totals (line_subtotal/line_total) → after_calculate_totals → strip_foreign */
+	function calculate_totals() {
+		Cart::apply_pricing( $this ); Cart::strip_foreign( $this );
+		foreach ( $this->cart_contents as $k => $it ) { $this->cart_contents[ $k ]['line_subtotal'] = $it['data']->get_price() * $it['quantity']; $this->cart_contents[ $k ]['line_total'] = $this->cart_contents[ $k ]['line_subtotal']; }
+		Cart::strip_foreign( $this );
+	}
 	function set_session() {} function get_total( $c = '' ) { $t = 0; foreach ( $this->cart_contents as $it ) { $t += $it['line_total']; } return round( $t, 2 ); } function get_cart_hash() { return md5( json_encode( array_keys( $this->cart_contents ) ) ); }
 }
 class FakeWC { public $cart; public $session; function __construct() { $this->cart = new FakeCart(); $this->session = new FakeSession(); } }
@@ -112,8 +119,21 @@ ok( 10 === (int) $g['sum'] && 10 === (int) $r['count'], '(2) 10 опаковки
 $books = 0; foreach ( WC()->cart->get_cart() as $it ) { if ( ! empty( $it[ Cart::META ] ) && 'book' === $it[ Cart::META ]['role'] ) { $books++; } } ok( 1 === $books, '(2) една книга, са ' . $books );
 $bl = Config::box( Config::get_published(), 'l' ); ok( (int) $r['tickets'] === Config::tickets_for( $bl, 10 ), '(2) билетите са по tickets_for (' . Config::tickets_for( $bl, 10 ) . ' при tix_extra ' . $bl['tix_extra'] . ')' );
 ok( in_array( $fk, foreign_keys(), true ), '(2) чуждият платен ред остава' );
+/* 1.26.3: продукт, добавен нормално при промо група в количката (eyeFresh „1 кутия“ при Greens „Малка кутия“), НЕ се трие като подарък —
+   пресният ред е без line_subtotal до WC_Cart_Totals; подарък на €0 (цената му е нулирана) си пада */
+$fk2 = WC()->cart->add_to_cart( 300, 1 );
+ok( in_array( $fk2, foreign_keys(), true ) && 39.90 == WC()->cart->get_cart_item( $fk2 )['line_subtotal'], '(2) пресен чужд ред при промо група остава, със сметната сума: ' . json_encode( WC()->cart->get_cart_item( $fk2 )['line_subtotal'] ?? null ) );
+WC()->cart->remove_cart_item( $fk2 );
+$gift = wc_get_product( 300 ); $gift->set_price( 0 ); $gk = 'gift_' . md5( 'g' );
+WC()->cart->cart_contents[ $gk ] = array( 'key' => $gk, 'product_id' => 300, 'variation_id' => 0, 'variation' => array(), 'quantity' => 1, 'data' => $gift, 'line_subtotal' => 0, 'line_total' => 0 );
 WC()->cart->calculate_totals();
-ok( WC()->cart->get_cart_item( $fk )['data']->get_price() == 25.00, '(2) чуждият ред е на регулярна цена' );
+ok( ! in_array( $gk, foreign_keys(), true ), '(2) чужд ред на €0 (подарък на друг плъгин) пада' );
+$gift2 = wc_get_product( 300 ); $gift2->set_price( 0 ); $gk2 = 'gift_' . md5( 'g2' );
+WC()->cart->cart_contents[ $gk2 ] = array( 'key' => $gk2, 'product_id' => 300, 'variation_id' => 0, 'variation' => array(), 'quantity' => 1, 'data' => $gift2 );
+WC()->cart->calculate_totals();
+ok( ! in_array( $gk2, foreign_keys(), true ), '(2) пресен чужд ред с нулирана цена (подарък) пада и без суми' );
+WC()->cart->calculate_totals();
+$fki = WC()->cart->get_cart_item( $fk ); ok( $fki && $fki['data']->get_price() == 25.00, '(2) чуждият ред е на регулярна цена' );
 ok( abs( WC()->cart->get_total() - ( 43.90 * 5 * 0.6 + 49.90 * 5 * 0.6 + 50 ) ) < 0.01, '(2) общо = двете кутии −40% + чуждия: ' . WC()->cart->get_total() );
 $ctx = Cart::ctx(); ok( 'x' === $ctx['utm'] && 's1' === $ctx['sid'], '(2) ctx пази utm/sid от първото добавяне' );
 $meta = Cart::build_meta( true ); ok( $meta && 10 === (int) $meta['count'] && 'l' === $meta['box'] && (int) $meta['tickets']['allowance'] === Config::tickets_for( $bl, 10 ) && $meta['book'] && $meta['cosm'] && 'reserved' === $meta['cosm']['status'], '(2) order meta: една кутия, сет веднъж, книга, билети: ' . json_encode( $meta ) );
