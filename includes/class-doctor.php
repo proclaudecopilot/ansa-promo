@@ -69,6 +69,7 @@ final class Doctor {
 		$add( 'FKA промо количка (1.25.0)', Cart_Sync::status( $draft ), Cart_Sync::enabled( $draft ) ? ( Cart_Sync::available() && wp_next_scheduled( Cart_Sync::HOOK ) ? 'ok' : 'warn' ) : 'info' );
 		$lps = Link_Proxy::status(); $add( 'SendGrid линкове (1.13.1)', $lps[0], $lps[1] );
 		$ips = Insights_Portal::status(); $add( 'Insights URL за рекламата (1.27.0)', $ips[0], $ips[1] );
+		$irs = Insights_Reports::status(); $add( 'Insights отчети и аларми (1.28.0)', $irs[0], $irs[1] );
 		$fvs = Favorite::status(); $fvl = Favorite::log_rows(); $add( 'Любим продукт {{ansa_promo_fav}} (1.20.0)', $fvs[0] . ( $fvl ? ' · последно извикване ' . $fvl[0]['at'] . ': ' . $fvl[0]['src'] . ' → ' . ( '' !== (string) $fvl[0]['result'] ? '„' . $fvl[0]['result'] . '“' : 'празно/fallback' ) . ' (данни: ' . $fvl[0]['data'] . ')' : ' · още не е извикван' ), $fvs[1] );
 		$add( 'WC checkout page', (int) wc_get_page_id( 'checkout' ) . ' · ' . wc_get_checkout_url(), 'info' );
 

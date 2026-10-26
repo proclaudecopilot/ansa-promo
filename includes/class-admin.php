@@ -49,13 +49,13 @@ final class Admin {
 			'editor'   => array( '✏️', 'Редактор',   'Текстовете на страницата върху живия канвас · ⚙️ Двигател' ),
 			'orders'   => array( '🎟️', 'Поръчки',    'Промо поръчките, билетите, FunnelKit таговете' ),
 			'tombola'  => array( '🎲', 'Томбола',    'Участници, билети, препоръки, теглене' ),
-			'insights' => array( '📈', 'Insights',   'Преглед по период · 🟢 На живо · 📜 История: докъде стигат и къде спират хората' ),
+			'insights' => array( '📈', 'Insights',   '📊 Преглед · 🟢 На живо · 🧾 Сесии · 🛒 Колички · 💸 Разход · 📌 Отчети' ),
 			'json'     => array( '{ }', 'JSON',      'Черновата като JSON — износ и внос' ),
 		);
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-insurl' => '📈 Insights URL', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-insurl' => '📈 Insights URL', 's-insrep' => '📬 Insights отчети', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
@@ -183,6 +183,7 @@ final class Admin {
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-sessions-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 				/* 1.21.0: от 📜 История идва период + филтърът на списъка (from/to/step/mode/box/ord/dev) — CSV на точно тези редове; от 📊 Преглед — days както досега */
 				$q = ! empty( $_POST['from'] ) || ! empty( $_POST['to'] ) ? array_map( 'sanitize_text_field', array_intersect_key( (array) wp_unslash( $_POST ), array_flip( array( 'from', 'to', 'step', 'mode', 'box', 'ord', 'dev' ) ) ) ) : null;
+				if ( is_array( $q ) ) { foreach ( Insights::FILTER_KEYS as $fk ) { if ( isset( $_POST[ $fk ] ) ) { $_GET[ $fk ] = sanitize_text_field( (string) wp_unslash( $_POST[ $fk ] ) ); } } $f = Insights::filters(); $q['internal'] = $f['internal']; $q['attr'] = $f['attr']; $q['filter'] = Insights::report_opts( $f )['filter']; } /* 1.28.0: филтрите на екрана */
 				echo Insights::csv_sessions( (int) ( $_POST['days'] ?? 30 ), $q ); exit;
 			case 'export_orders':
 				$rows = Tickets::orders( array( 'limit' => 2000 ) );
@@ -220,6 +221,20 @@ final class Admin {
 				$msg = $r ? sprintf( '⭐ %s → {{ansa_promo_fav}} = „%s“ (%s %s в %d поръчки от %d; последно %s) · всички: %s · {{ansa_promo_fav_url}} = %s', $em, $r['name'], Cart::fmt( $r['score'] ), 'spent' === $r['metric'] ? '€' : ( 'orders' === $r['metric'] ? 'поръчки' : ( 'qty' === $r['metric'] ? 'бр.' : 'опаковки' ) ), $r['orders'], $r['all_orders'], $r['last'] ? wp_date( 'd.m.Y', $r['last'] ) : '—', implode( ', ', array_map( function ( $k, $v ) { return $k . ' ' . Cart::fmt( $v ); }, array_keys( $r['breakdown'] ), $r['breakdown'] ) ), $r['url'] )
 					: sprintf( '⭐ %s → няма поръчки с продукт от картата (%d поръчки общо) → {{ansa_promo_fav}} = „%s“ (текстът „когато няма“ / fallback на тага).', $em, count( Favorite::orders_for( $em ) ), Favorite::settings()['fallback'] );
 				break;
+			case 'ins_spend_add': case 'ins_spend_del': case 'ins_snap_add': case 'ins_snap_del': /* 1.28.0: разход, замразени отчети */
+				$r = Insights::handle_action( substr( $do, 4 ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id' ) ) ) ) ) ); $msg = $r[1];
+				set_transient( 'ansa_promo_admin_msg_' . get_current_user_id(), $msg, 60 );
+				wp_safe_redirect( self::url( 'ins_snap_add' === $do && ! empty( $r[2] ) ? array( 'tab' => 'insights', 'view' => 'snap', 'snap' => $r[2] ) : array( 'tab' => 'insights', 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ) ) ) ); exit;
+			case 'export_breakdown': /* 1.28.0: CSV по UTM / кампания / дни / … */
+				$which = sanitize_key( (string) ( $_POST['which'] ?? 'utm' ) ); $_GET['attr'] = (string) ( $_POST['attr'] ?? '' ); $_GET['internal'] = (string) ( $_POST['internal'] ?? '' );
+				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-' . $which . '-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
+				echo Insights::csv_breakdown( $which, Insights::range( (string) ( $_POST['from'] ?? '' ), (string) ( $_POST['to'] ?? '' ) ) ); exit;
+			case 'insights_reports': /* 1.28.0: вътрешен трафик, седмичен отчет, аларми */
+				$msg = Insights_Reports::save( array_map( function ( $v ) { return is_string( $v ) ? wp_unslash( $v ) : $v; }, $_POST ) ); break;
+			case 'insights_report_send': $msg = Insights_Reports::send_weekly( ! empty( $_POST['to_me'] ) ? array( wp_get_current_user()->user_email ) : null ); break;
+			case 'insights_alerts_test': $al = Insights_Reports::alerts_evaluate(); $msg = 'Аларми сега: ' . ( $al ? implode( ' · ', array_column( $al, 1 ) ) : 'няма (трафикът и конверсията са в норма)' ); break;
+			case 'insights_api_token': $t = Insights_Reports::regenerate_api_token(); $msg = 'Нов API токен: ' . $t . ' — копирай го сега; старият вече не важи.'; break;
+			case 'insights_api_token_clear': Insights_Reports::clear_api_token(); $msg = 'API токенът е изтрит — JSON адресът не работи.'; break;
 			case 'insights_portal': /* 1.27.0: отделният адрес на Insights за екипа по реклами — отделна опция, без публикуване */
 				list( $ok, $txt ) = Insights_Portal::save( array( 'enabled' => ! empty( $_POST['ip_enabled'] ), 'slug' => (string) wp_unslash( $_POST['ip_slug'] ?? '' ), 'user' => (string) wp_unslash( $_POST['ip_user'] ?? '' ), 'ttl' => (int) ( $_POST['ip_ttl'] ?? 12 ), 'https_only' => ! empty( $_POST['ip_https'] ), 'password' => (string) wp_unslash( $_POST['ip_pw'] ?? '' ), 'password2' => (string) wp_unslash( $_POST['ip_pw2'] ?? '' ) ) );
 				$msg = ( $ok ? '' : 'Грешка: ' ) . $txt; break;
@@ -464,6 +479,26 @@ final class Admin {
 				</tbody></table>
 				<?php self::form_open( 'insights_portal_log_clear' ); ?><button class="button button-small" style="margin-top:6px">🧹 Изчисти дневника</button></form>
 				<?php else : ?><p class="description">Още никой не е опитвал да влезе.</p><?php endif; ?>
+				</div></section>
+				<section class="ap-sec" id="s-insrep"><div class="ap-sec__h"><span class="ap-sec__t">📬 Insights — вътрешен трафик · седмичен отчет · аларми · API</span></div><div class="ap-sec__b">
+				<?php $ir = Insights_Reports::settings(); $irs = Insights_Reports::status(); $dows = array( 'нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб' ); ?>
+				<p class="description">Състояние: <?php echo esc_html( $irs[0] ); ?></p>
+				<?php self::form_open( 'insights_reports', 'tools', ' style="display:block"' ); ?>
+					<p class="ap-fl"><b>Вътрешен трафик (не влиза в Insights)</b></p>
+					<p><label>IP адреси на екипа — по един на ред; „10.0.*“ или „2001:db8:“ за префикс, „1.2.3.0/24“ за мрежа:<br><textarea name="internal_ips" rows="3" class="code" style="width:min(100%,420px)"><?php echo esc_textarea( $ir['internal_ips'] ); ?></textarea></label></p>
+					<p><label>имейли на тестови поръчки (цял имейл или „@домейн“):<br><textarea name="internal_emails" rows="2" class="code" style="width:min(100%,420px)"><?php echo esc_textarea( $ir['internal_emails'] ); ?></textarea></label> <small>логнатите админи и Probe са вътрешни винаги; ботовете (UA bot/crawler/headless…) изобщо не правят сесия</small></p>
+					<p class="ap-fl"><b>Седмичен отчет по имейл</b></p>
+					<p><label><input type="checkbox" name="weekly_enabled" value="1"<?php checked( $ir['weekly']['enabled'] ); ?>> включен</label> &nbsp; <label>до: <input type="text" name="weekly_to" value="<?php echo esc_attr( $ir['weekly']['to'] ); ?>" class="regular-text" placeholder="reklama@ansa.bg, ivan@ansa.bg"></label>
+					&nbsp; <label>в <select name="weekly_dow" style="width:auto"><?php foreach ( $dows as $i => $dn ) : ?><option value="<?php echo (int) $i; ?>"<?php selected( $ir['weekly']['dow'], $i ); ?>><?php echo esc_html( $dn ); ?></option><?php endforeach; ?></select></label> <label>от <select name="weekly_hour" style="width:auto"><?php for ( $hh = 0; $hh < 24; $hh++ ) : ?><option value="<?php echo (int) $hh; ?>"<?php selected( $ir['weekly']['hour'], $hh ); ?>><?php echo (int) $hh; ?>:00</option><?php endfor; ?></select> ч</label> <small>KPI с Δ спрямо предишната седмица, фунията, топ 5 / дъно 5 кампании (≥ 30 сесии)</small></p>
+					<p class="ap-fl"><b>Аларми</b></p>
+					<p><label><input type="checkbox" name="alerts_enabled" value="1"<?php checked( $ir['alerts']['enabled'] ); ?>> включени</label> &nbsp; <label>имейл: <input type="text" name="alerts_to" value="<?php echo esc_attr( $ir['alerts']['to'] ); ?>" class="regular-text" placeholder="reklama@ansa.bg"></label> &nbsp; <label>Slack webhook: <input type="url" name="alerts_slack" value="<?php echo esc_attr( $ir['alerts']['slack'] ); ?>" class="regular-text code" placeholder="https://hooks.slack.com/services/…"></label></p>
+					<p><label>0 сесии за <input type="number" name="alerts_zero_hours" value="<?php echo (int) $ir['alerts']['zero_hours']; ?>" min="1" max="24" style="width:60px"> ч</label>, когато предишните 7 дни са давали средно ≥ <input type="number" name="alerts_zero_min" value="<?php echo (int) $ir['alerts']['zero_min']; ?>" min="1" style="width:60px"> сесии за толкова часа &nbsp;·&nbsp; <label>конверсията за 24 ч пада с ≥ <input type="number" name="alerts_drop_pct" value="<?php echo (int) $ir['alerts']['drop_pct']; ?>" min="5" max="95" style="width:60px"> %</label> спрямо предишните 7 дни при ≥ <input type="number" name="alerts_min_sessions" value="<?php echo (int) $ir['alerts']['min_sessions']; ?>" min="10" style="width:70px"> сесии <small>всеки тип аларма най-много веднъж на 6 ч; крон на час</small></p>
+					<p><button class="button button-primary">💾 Запази</button></p>
+				</form>
+				<p><?php self::form_open( 'insights_report_send' ); ?><button class="button">📧 Изпрати седмичния отчет сега</button></form> <?php self::form_open( 'insights_report_send' ); ?><input type="hidden" name="to_me" value="1"><button class="button">📧 Прати ми го на мен (тест)</button></form> <?php self::form_open( 'insights_alerts_test' ); ?><button class="button">🔔 Провери алармите сега</button></form></p>
+				<p class="ap-fl"><b>API за Looker Studio / Google Sheets</b></p>
+				<p class="description">GET <code><?php echo esc_html( Insights_Portal::url() ); ?>?json=1&amp;token=…&amp;from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code> връща JSON с KPI, фунията и разбивките по UTM / кампания / ден / кутия / устройство / час (или <code>Authorization: Bearer …</code>). Само четене, 60 заявки/мин/IP. <?php echo '' !== $ir['api_token'] ? 'Токен: <code style="user-select:all">' . esc_html( $ir['api_token'] ) . '</code>' : '<b>Няма токен — генерирай.</b>'; ?></p>
+				<p><?php self::form_open( 'insights_api_token', 'tools', ' onsubmit="return confirm(\'Нов токен? Старият спира да работи.\')"' ); ?><button class="button">🔑 <?php echo '' !== $ir['api_token'] ? 'Нов токен' : 'Генерирай токен'; ?></button></form> <?php if ( '' !== $ir['api_token'] ) : ?><?php self::form_open( 'insights_api_token_clear' ); ?><button class="button">✕ Изтрий токена</button></form><?php endif; ?></p>
 				</div></section>
 				<section class="ap-sec" id="s-favorite"><div class="ap-sec__h"><span class="ap-sec__t">⭐ Любим продукт за имейлите — {{ansa_promo_fav}}</span></div><div class="ap-sec__b">
 				<?php $fv = Favorite::settings(); $fvs = Favorite::status(); $fve = array(); $fvr = Favorite::parse_map( $fv['map'], $fve ); ?>

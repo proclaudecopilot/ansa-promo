@@ -248,6 +248,15 @@ final class Probe {
 		$t->ok( 'токен с друг браузър пада', ! Insights_Portal::verify( $tok, time(), 'ua-other' ) );
 		$t->ok( 'изтекъл токен пада', ! Insights_Portal::verify( $tok, time() + 2 * HOUR_IN_SECONDS, 'ua-probe' ) );
 		$t->ok( 'подправен токен пада', ! Insights_Portal::verify( substr( $tok, 0, -1 ) . ( 'a' === substr( $tok, -1 ) ? 'b' : 'a' ), time(), 'ua-probe' ) );
+		/* 1.28.0: отчетите — данните за 7 дни, API, седмичен отчет, аларми */
+		$q = Insights::quick_ranges(); $rg = Insights::range( $q['7'][0], $q['7'][1] );
+		try { $d = Insights::overview_data( $rg, Insights::filters() ); $t->ok( 'overview_data за 7 дни', isset( $d['r']['funnel'], $d['os']['n'], $d['pr'], $d['cohorts'] ), 'сесии ' . (int) $d['r']['sessions'] . ' · поръчки ' . (int) $d['os']['n'] . ' · без проследен път ' . (int) $d['os']['untracked']['n'] . ' · вътрешни ' . (int) $d['r']['internal_n'] ); } catch ( \Throwable $e ) { $t->ok( 'overview_data за 7 дни', false, $e->getMessage() ); }
+		try { $j = wp_json_encode( Insights::api_payload( $rg ) ); $t->ok( 'api_payload е валиден JSON', false !== $j, strlen( (string) $j ) . ' B' ); } catch ( \Throwable $e ) { $t->ok( 'api_payload', false, $e->getMessage() ); }
+		$tok2 = Insights_Reports::api_token();
+		if ( '' !== $tok2 ) { $r4 = wp_remote_get( add_query_arg( array( 'json' => 1, 'token' => $tok2, 'from' => $rg['from'], 'to' => $rg['to'] ), $url ), $a ); $b4 = is_wp_error( $r4 ) ? '' : (string) wp_remote_retrieve_body( $r4 ); $j4 = json_decode( $b4, true ); $t->ok( 'JSON API с токен → kpi + by_campaign', is_array( $j4 ) && isset( $j4['kpi'], $j4['by_campaign'] ), substr( $b4, 0, 80 ) ); $r5 = wp_remote_get( add_query_arg( array( 'json' => 1, 'token' => 'x' ), $url ), $a ); $t->ok( 'JSON API с грешен токен → 403', 403 === (int) wp_remote_retrieve_response_code( $r5 ) ); } else { $t->note( 'JSON API', 'няма токен — генерирай от 🧰 → 📬 Insights отчети' ); }
+		try { $wh = Insights_Reports::weekly_html(); $t->ok( 'седмичният отчет се строи', false !== strpos( $wh, 'седмичен отчет' ), strlen( $wh ) . ' B' ); } catch ( \Throwable $e ) { $t->ok( 'седмичният отчет се строи', false, $e->getMessage() ); }
+		try { $al = Insights_Reports::alerts_evaluate(); $t->ok( 'алармите се оценяват', is_array( $al ), $al ? implode( ' · ', array_column( $al, 1 ) ) : 'няма аларми сега' ); } catch ( \Throwable $e ) { $t->ok( 'алармите се оценяват', false, $e->getMessage() ); }
+		$st2 = Insights_Reports::status(); $t->ok( 'отчети/аларми: крон на час', 'ok' === $st2[1], $st2[0] );
 		return array( 'url' => $url, 'user' => $s['user'], 'ttl' => $s['ttl'] );
 	}
 

@@ -48,6 +48,7 @@ final class Plugin {
 		Tickets::register();
 		Insights::register();
 		Insights_Portal::register(); /* 1.27.0: отделният адрес на Insights за екипа по реклами (вход с парола, без wp-admin) */
+		Insights_Reports::register(); /* 1.28.0: вътрешен трафик, ботове, седмичен отчет, аларми, API */
 		Partner::register();
 		Tombola::register();
 		Book::register(); /* v1.9.0: книгата с рецепти — /kniga */
@@ -76,7 +77,7 @@ final class Plugin {
 		}
 	}
 
-	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); wp_clear_scheduled_hook( Cart_Sync::HOOK ); /* 1.25.0 */ }
+	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); wp_clear_scheduled_hook( Cart_Sync::HOOK ); /* 1.25.0 */ wp_clear_scheduled_hook( Insights_Reports::HOOK ); /* 1.28.0 */ }
 
 	/* ── Shrine (съжителство) ───────────────────────────────────── */
 

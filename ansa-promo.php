@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.27.3
+ * Version:     1.28.0
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,11 +15,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.27.3' );
+define( 'ANSA_PROMO_VER', '1.28.0' );
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
-define( 'ANSA_PROMO_DB_VER', '5' ); /* 2 = + ansa_promo_stats (1.3.0) · 3 = + ansa_promo_referrals, tickets.ref_code/bonus (1.6.0) · 4 = leads.contact_id/fka/fka_at (1.11.0) · 5 = + ansa_promo_sessions/_events — Insights 2 (1.17.0) */
+define( 'ANSA_PROMO_DB_VER', '6' ); /* 2 = + ansa_promo_stats (1.3.0) · 3 = + ansa_promo_referrals, tickets.ref_code/bonus (1.6.0) · 4 = leads.contact_id/fka/fka_at (1.11.0) · 5 = + ansa_promo_sessions/_events — Insights 2 (1.17.0) · 6 = sessions.utm_last/vid/internal (1.28.0) */
 define( 'ANSA_PROMO_FILE', __FILE__ );
 define( 'ANSA_PROMO_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ANSA_PROMO_URL', plugin_dir_url( __FILE__ ) );
