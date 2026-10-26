@@ -2281,3 +2281,35 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw.sx .sx .sx-stk small{display:block;font-size:10px;color:var(--sxm);margin-top:2px;font-weight:600}
 .ansa-promo .dc.hw.sx .sx .sx-stk .sx-btn{min-height:46px;padding:10px 16px;font-size:13px;gap:12px;flex:none;width:auto}
 }
+
+/* 49б · 1.31.2: цитатът на дерматолога, табличката „Преди / Сезонът на ansa“, бележката за гликацията */
+.ansa-promo .dc.hw.sx .sx .sx-quote{position:relative;margin:28px 0 0;padding:30px 32px 26px 40px;background:#fffdf8;border-radius:22px;border-left:4px solid var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-quote .qm{position:absolute;left:14px;top:4px;font-size:64px;line-height:1;color:var(--sxr);opacity:.35;font-style:normal;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-quote p{font-size:17px;line-height:1.75;color:#5a4c48;margin:0 0 12px;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-quote p:last-of-type{margin-bottom:0}
+.ansa-promo .dc.hw.sx .sx .sx-quote p b{color:var(--sxi);font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-quote footer{margin-top:16px;font-size:13px;font-weight:800;color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx small.sx-fact{display:block;margin-top:8px;padding:8px 12px;border-radius:10px;background:#fff;font-size:12.5px;line-height:1.55;color:var(--sxm);font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:900;color:var(--sxm);text-align:right;padding:0 0 10px;border-bottom:1px solid var(--sxl)}
+.ansa-promo .dc.hw.sx .sx .sx-tbl th:first-child{text-align:left}
+.ansa-promo .dc.hw.sx .sx .sx-tbl th.now{color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td{padding:12px 0;border-bottom:1px solid var(--sxl);vertical-align:middle;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td+td{text-align:right;white-space:nowrap;padding-left:12px;color:var(--sxm)}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td.now{color:var(--sxi);font-weight:900;font-size:16px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td small{display:block;color:var(--sxm);font-size:12px;margin-top:2px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td s{font-size:13px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-tbl .gift{color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-card .save{margin-top:14px}
+.ansa-promo .dc.hw.sx .sx .sx-five .sx-months{margin-bottom:6px}
+@media(max-width:650px){
+.ansa-promo .dc.hw.sx .sx .sx-quote{padding:22px 18px 20px 26px}.ansa-promo .dc.hw.sx .sx .sx-quote p{font-size:15.5px}.ansa-promo .dc.hw.sx .sx .sx-quote .qm{font-size:48px;left:8px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl{font-size:13px}.ansa-promo .dc.hw.sx .sx .sx-tbl td.now{font-size:15px}
+}
+/* 49в · 1.31.2: табличката не разширява колоната (min-width:0), „Общо“ държи ширина */
+.ansa-promo .dc.hw.sx .sx .sx-of-g>div,.ansa-promo .dc.hw.sx .sx .sx-2>div{min-width:0}
+.ansa-promo .dc.hw.sx .sx .sx-tbl{table-layout:fixed}
+.ansa-promo .dc.hw.sx .sx .sx-tbl th:first-child,.ansa-promo .dc.hw.sx .sx .sx-tbl td:first-child{width:50%}
+.ansa-promo .dc.hw.sx .sx .sx-tbl th:nth-child(2),.ansa-promo .dc.hw.sx .sx .sx-tbl td:nth-child(2){width:20%}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td+td{white-space:normal}
+@media(max-width:650px){.ansa-promo .dc.hw.sx .sx .sx-tbl td:first-child{width:46%}.ansa-promo .dc.hw.sx .sx .sx-tbl td:nth-child(2){width:22%}}

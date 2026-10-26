@@ -222,21 +222,22 @@ const { chromium } = require('playwright');
     const t = norm(await page.evaluate(() => document.body.innerText));
     const left = (t.match(/\{\{[^}]*\}\}/g) || []); if (left.length) errors.push(tag + ' sx: непопълнени плейсхолдъри ' + JSON.stringify(left.slice(0, 5)));
     if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' sx: undefined/NaN: ' + (t.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
-    for (const s of ['Знаем, че си дошла за козметиката', 'Ето какво вероятно пропускаш', 'Как го обясняват дерматолозите', 'Няма колаген вътре, нарочно', 'Защо пет, а не една', 'Три стъпки, едната е през януари', 'Правилно прочете, почивка на яхта', 'Екатерина и екипът на ansa']) if (t.indexOf(norm(s)) < 0) errors.push(tag + ' sx: липсва „' + s + '“');
+    for (const s of ['Знаем, че си дошла за козметиката', 'Ето какво вероятно пропускаш', 'Как го обясняват дерматолозите', 'Какво всъщност е Sakura SkinTonic', 'Няма колаген вътре, нарочно', 'Най-добрият момент да пробваш', 'Сезонът на ansa', 'Защо пет, а не една', 'Вземи 10 продукта на цената на 3', 'Правилно прочете, почивка на яхта', 'Екатерина и екипът на ansa']) if (t.indexOf(norm(s)) < 0) errors.push(tag + ' sx: липсва „' + s + '“');
     // цените от двигателя: Sakura × packs на Голямата (харнесът е в седмица 3 → процентът на седмицата), + комплектът за 1 €
     const ex = await page.evaluate(() => { const R = window.AnsaPromoRuntime, bl = R.boxes.filter(b => b.id === 'l')[0], sp = R.products.sakura, pct = Number((sp.pct || {}).l) || bl.pct, r2 = n => Math.round(n * 100) / 100, f = n => (Math.abs(n - Math.round(n)) < .005 ? String(Math.round(n)) : n.toFixed(2)).replace('.', ',');
       const full = r2(sp.price * bl.packs), pay = r2(full * (1 - pct / 100)), cp = Number(bl.cosm_pay) || 0, cv = Number(R.rewards.cosm.value), days = bl.packs * R.sx.days; return { full: f(full), pay: f(pay), total: f(r2(pay + cp)), value: f(r2(full + cv)), save: f(r2(full + cv - pay - cp)), day: f(r2(pay / days)), days: String(days) }; });
-    for (const k of ['full', 'pay', 'total', 'value', 'save', 'day']) if (t.indexOf(ex[k] + ' €') < 0) errors.push(tag + ' sx: липсва сумата ' + k + ' „' + ex[k] + ' €“');
-    if (t.indexOf(ex.days + ' дни') < 0) errors.push(tag + ' sx: липсва „' + ex.days + ' дни“');
+    for (const k of ['full', 'pay', 'total', 'value', 'save']) if (t.indexOf(ex[k] + ' €') < 0) errors.push(tag + ' sx: липсва сумата ' + k + ' „' + ex[k] + ' €“');
+    if (!(await page.$('#apS1 .sx-tbl + .tot strong'))) errors.push(tag + ' sx: табличката „Преди / Сезонът на ansa“ липсва');
+    if (!(await page.$('#apS1 .sx-quote'))) errors.push(tag + ' sx: цитатът на дерматолога липсва');
     if (/какво казват жените/.test(t)) errors.push(tag + ' sx: секцията с ревютата се показва без цитати');
     const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 [data-sx="go"]')).map(b => b.getAttribute('data-go') || ''));
-    if (btns.length < 6) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
+    if (btns.length < 4) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
     btns.forEach((u, i) => { if (!/utm_content=sakura/.test(u) || !/box=l/.test(u) || !/fill=sakura/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=sakura5/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' sx: бутон ' + i + ' води към ' + u); });
     if ((await page.$$('#apS1 .sx-faqs details')).length !== 10) errors.push(tag + ' sx: въпросите не са 10');
     if (!(await page.$('#apS1 .sx-stk .sx-btn'))) errors.push(tag + ' sx: няма залепен ред');
     if (await page.$('#apS1 .sx-left')) errors.push(tag + ' sx: броячът „Останаха“ се показва при 90 % останали');
     if (await page.$('#apS1 .ck-empty')) errors.push(tag + ' sx: „＋“ хотспот на живо (без редактор)');
-    { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec)); const want = ['hero', 'miss', 'derm', 'sol', 'offer', 'five', 'steps', 'get', 'yacht', 'faq', 'final']; if (JSON.stringify(o) !== JSON.stringify(want)) errors.push(tag + ' sx: секциите са ' + JSON.stringify(o)); }
+    { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec)); const want = ['hero', 'miss', 'derm', 'sol', 'offer', 'five', 'get', 'yacht', 'faq', 'final']; if (JSON.stringify(o) !== JSON.stringify(want)) errors.push(tag + ' sx: секциите са ' + JSON.stringify(o)); }
     const sw = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]); if (sw[0] > sw[1]) errors.push(tag + ' sx: хоризонтален скрол ' + sw.join('/'));
     if (!/sx\/hero\.webp$/.test(await page.evaluate(() => (document.querySelector('#apS1 .sx-hero-v > img') || {}).src || ''))) errors.push(tag + ' sx: hero снимката не е тази от assets/img/sx');
     if ((await page.$$('#apS1 .sx-prod.blur em')).length !== 2) errors.push(tag + ' sx: замъглените изненади с „?“ не са 2');
