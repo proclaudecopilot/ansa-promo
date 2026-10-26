@@ -8,6 +8,7 @@
  * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
  * {prefix}ansa_promo_sessions — Insights 2 (DB ver 5, 1.17.0): една сесия на посетител (sid от браузъра): кога, откъде (utm/src/med/camp/ref),
  *                               устройство, лийд (имейлът от попъпа), кутия, продуктите в кутията, най-далечната стъпка, поръчката.
+ *                               DB ver 6 (1.28.0): utm_last (последният UTM; utm = първият), vid (посетителска бисквитка, 30 дни), internal (вътрешен трафик/бот).
  * {prefix}ansa_promo_events   — Insights 2: всяко събитие на сесията (view, gate, box, item, full, order, add, created, paid, activated).
  * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
  *                               tickets получава ref_code + bonus).
@@ -109,11 +110,14 @@ final class Schema {
   started_at datetime NOT NULL,
   last_at datetime NOT NULL,
   utm varchar(64) NOT NULL DEFAULT '',
+  utm_last varchar(64) NOT NULL DEFAULT '',
   src varchar(64) NOT NULL DEFAULT '',
   med varchar(64) NOT NULL DEFAULT '',
   camp varchar(128) NOT NULL DEFAULT '',
   ref varchar(191) NOT NULL DEFAULT '',
   device varchar(8) NOT NULL DEFAULT '',
+  vid varchar(40) NOT NULL DEFAULT '',
+  internal tinyint(1) NOT NULL DEFAULT 0,
   lead_id bigint(20) unsigned NULL,
   box varchar(8) NOT NULL DEFAULT '',
   items text NULL,
@@ -125,7 +129,9 @@ final class Schema {
   KEY started_at (started_at),
   KEY last_at (last_at),
   KEY step (step),
-  KEY order_id (order_id)
+  KEY order_id (order_id),
+  KEY vid (vid),
+  KEY internal (internal)
 ) $collate;",
 			"CREATE TABLE {$t['events']} (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

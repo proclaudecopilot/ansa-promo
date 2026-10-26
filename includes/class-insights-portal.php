@@ -227,7 +227,7 @@ final class Insights_Portal {
 	}
 	public static function log_rows() { $r = get_option( self::OPT_LOG, array() ); return is_array( $r ) ? $r : array(); }
 	public static function log_clear() { delete_option( self::OPT_LOG ); }
-	const RES_LABELS = array( 'ok' => '✓ вход', 'bad' => '✕ грешни данни', 'locked' => '⛔ блокиран опит', 'csrf' => '⚠ невалидна форма (CSRF)', 'https' => '⚠ отказан по http', 'pwchange' => '🔑 нова парола', 'logout_all' => '🚪 изход от всички', 'unlock' => '🔓 отключени', 'logout' => '↩ изход' );
+	const RES_LABELS = array( 'api' => '⚠ невалиден API токен', 'ok' => '✓ вход', 'bad' => '✕ грешни данни', 'locked' => '⛔ блокиран опит', 'csrf' => '⚠ невалидна форма (CSRF)', 'https' => '⚠ отказан по http', 'pwchange' => '🔑 нова парола', 'logout_all' => '🚪 изход от всички', 'unlock' => '🔓 отключени', 'logout' => '↩ изход' );
 
 	/** Опит за вход. Връща [ok, code (ok|bad|locked|disabled|https), wait сек]. $ip (низ или списък) / $now — за тестовете; на живо: client_ips() (CF IP + REMOTE_ADDR). */
 	public static function attempt( $user, $pw, $ip = null, $now = null, $check_https = true ) {
@@ -341,6 +341,21 @@ final class Insights_Portal {
 			if ( $r['ok'] ) { self::login_cookie( self::settings()['user'] ); $v = sanitize_key( (string) ( $_POST['view'] ?? '' ) ); self::redirect_self( array( 'view' => isset( Insights::views()[ $v ] ) ? $v : 'overview' ) ); }
 			self::login_page( $r['code'], (int) $r['wait'] );
 		}
+		/* 1.28.0 (т. 30): JSON за Looker Studio / Sheets — отделен токен, само четене, без сесия; 60/мин/IP */
+		if ( isset( $_GET['json'] ) ) {
+			if ( Leads::rate_limited( 'ins_api', 60 ) ) { wp_send_json_error( array( 'code' => 'rate' ), 429 ); }
+			$tok = (string) ( $_GET['token'] ?? ( preg_match( '/^Bearer\s+(\S+)$/i', (string) ( $_SERVER['HTTP_AUTHORIZATION'] ?? '' ), $m ) ? $m[1] : '' ) );
+			if ( ! Insights_Reports::api_token_ok( $tok ) ) { Insights_Portal::log( 'api', 'token', Leads::ip() ); wp_send_json_error( array( 'code' => 'token' ), 403 ); }
+			Insights::$portal = true; $rg = Insights::range( (string) ( $_GET['from'] ?? '' ), (string) ( $_GET['to'] ?? '' ) ); if ( empty( $_GET['from'] ) && empty( $_GET['to'] ) ) { $q = Insights::quick_ranges(); $rg = Insights::range( $q['30'][0], $q['30'][1] ); }
+			wp_send_json( Insights::api_payload( $rg ) );
+		}
+		/* 1.28.0: действия от портала (разход, замразяване) — POST с CSRF на сесията */
+		if ( $post && isset( $_POST['ap_action'] ) ) {
+			if ( ! self::authed() || ! self::csrf_ok( (string) ( $_POST['csrf'] ?? '' ) ) ) { self::redirect_self( array( 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ) ) ); }
+			$r = Insights::handle_action( sanitize_key( (string) $_POST['ap_action'] ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id' ) ) ) ) ) );
+			$args = array( 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ), 'msg' => substr( (string) $r[1], 0, 160 ) ); if ( ! empty( $r[2] ) && 'snap_add' === $_POST['ap_action'] ) { $args = array( 'view' => 'snap', 'snap' => $r[2] ); }
+			self::redirect_self( $args );
+		}
 		if ( ! self::authed() ) { self::login_page( '' ); }
 		/* вътре: CSV · JSON фийд · екранът */
 		Insights::$portal = true;
@@ -357,8 +372,10 @@ final class Insights_Portal {
 	private static function csv( $which ) {
 		nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' );
 		if ( 'stats' === $which ) { header( 'Content-Disposition: attachment; filename="ansa-promo-insights-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo Insights::csv( (int) ( $_GET['days'] ?? 30 ) ); exit; }
+		if ( 'sessions' !== $which ) { header( 'Content-Disposition: attachment; filename="ansa-promo-' . preg_replace( '/[^a-z]/', '', $which ) . '-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo Insights::csv_breakdown( $which, Insights::range( (string) ( $_GET['from'] ?? '' ), (string) ( $_GET['to'] ?? '' ) ) ); exit; } /* 1.28.0: по разбивка */
 		header( 'Content-Disposition: attachment; filename="ansa-promo-sessions-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 		$q = ! empty( $_GET['from'] ) || ! empty( $_GET['to'] ) ? array_map( 'sanitize_text_field', array_intersect_key( (array) wp_unslash( $_GET ), array_flip( array( 'from', 'to', 'step', 'mode', 'box', 'ord', 'dev' ) ) ) ) : null;
+		if ( is_array( $q ) ) { $f = Insights::filters(); $q['internal'] = $f['internal']; $q['attr'] = $f['attr']; $q['filter'] = Insights::report_opts( $f )['filter']; } /* 1.28.0 */
 		echo Insights::csv_sessions( (int) ( $_GET['days'] ?? 30 ), $q ); exit;
 	}
 
@@ -409,7 +426,7 @@ final class Insights_Portal {
 		$h .= '</div><form method="post" action="' . esc_url( self::url() ) . '" class="ap-nav__foot ap-portal__logout"><input type="hidden" name="ap_logout" value="1"><input type="hidden" name="csrf" value="' . esc_attr( $csrf ) . '"><button type="submit">↩ Изход</button></form></aside>'
 			. '<div class="ap-page ap-page--insights"><div class="ap-top"><h1>📈 Insights<small>' . esc_html( (string) $pub['name'] ) . ' · фунията, кутиите, UTM-ите, поръчките — на живо</small></h1>'
 			. '<div class="ap-top__actions"><form method="post" action="' . esc_url( self::url() ) . '"><input type="hidden" name="ap_logout" value="1"><input type="hidden" name="csrf" value="' . esc_attr( $csrf ) . '"><button class="ap-btn ap-btn--secondary ap-btn--sm" type="submit">↩ Изход</button></form></div></div>'
-			. '<div class="ap-body"><div class="ap-body-inner ap-body-inner--wide">' . $inner . '</div></div></div></div></body></html>';
+			. '<div class="ap-body"><div class="ap-body-inner ap-body-inner--wide">' . ( ! empty( $_GET['msg'] ) ? '<div class="ap-msg">' . esc_html( sanitize_text_field( (string) wp_unslash( $_GET['msg'] ) ) ) . '</div>' : '' ) . $inner . '</div></div></div></div></body></html>';
 		return $h;
 	}
 }
