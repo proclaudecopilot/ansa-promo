@@ -463,7 +463,7 @@ var ANSA = {
   if(ANSA.left==null)document.querySelectorAll('.left-wrap').forEach(function(e){e.classList.add('hide')});
 
   /* адресите */
-  var u=ANSA.promoUrl+(ANSA.promoUrl.indexOf('?')>-1?'&':'?')+'utm_content='+encodeURIComponent(ANSA.utm)+'&box='+encodeURIComponent(ANSA.box);
+  var u=ANSA.promoUrl+(ANSA.promoUrl.indexOf('?')>-1?'&':'?')+'utm_content='+encodeURIComponent(ANSA.utm)+'&box='+encodeURIComponent(ANSA.box)+'&fill='+encodeURIComponent(ANSA.utm);
   try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u+='&'+k+'='+encodeURIComponent(v)})}catch(e){}
   document.querySelectorAll('[data-cta]').forEach(function(a){a.href=u});
   var L={sakura:ANSA.sakuraUrl,info:ANSA.infoUrl,rules:ANSA.rulesUrl};

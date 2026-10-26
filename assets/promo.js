@@ -445,7 +445,7 @@
   function sxVars(){var SX=A.sx||{},bl=boxOf('l')||bigBox(),pk=bl?Number(bl.packs)||5:5,key=SX.product||'sakura',sp=PROD[key]||null,price=sp?Number(sp.price)||0:0,pct=sp&&bl?ppct(sp,bl):(bl?Number(bl.pct)||0:0);
     var full=r2(price*pk),pay=r2(full*(1-pct/100)),cp=bl&&bl.cosm_pay!=null?Number(bl.cosm_pay)||0:0,pd=Number(SX.days)||30,days=pk*pd,total=r2(pay+cp),value=r2(full+COSM),save=r2(value-total),day=days?r2(pay/days):0;
     return {sx_price:sxFmt(price),sx_full:sxFmt(full),sx_pay:sxFmt(pay),sx_total:sxFmt(total),sx_value:sxFmt(value),sx_save:sxFmt(save),sx_days:String(days),sx_day:sxFmt(day),sx_packs:String(pk),sx_pack_days:String(pd),_pct:pct,_cp:cp,_prod:sp}}
-  function sxUrl(){var u=addQ(A.promo_url||'/',A.utm_param||'utm_content',(A.sx&&A.sx.product)||'sakura');u=addQ(u,'box','l');try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
+  function sxUrl(){var k=(A.sx&&A.sx.product)||'sakura',u=addQ(A.promo_url||'/',A.utm_param||'utm_content',k);u=addQ(u,'box','l');u=addQ(u,'fill',k); /* 1.31.0: кутията се пълни сама с 5× Sakura → „Честито“ */try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
   function sxPic(sec,asset,alt){var own=pageCfg('sx').images[sec],u=own||((A.sx&&A.sx.assets)||{})[asset]||'';return u?'<img src="'+esc(u)+'" alt="'+esc(alt||'')+'" loading="lazy" decoding="async">':''}
   function sxHtml(){
     var V=sxVars(),lf=liLeft(),lv=lf?{left:lf.left}:{left:''},SX=A.sx||{},AS=SX.assets||{},info_u=A.info_url||'',rules_u=A.tombola_url||info_u,prod_u=SX.product_url||info_u;
@@ -610,6 +610,10 @@
     if(isUndo)toast(T('ms.undone'),true);else if(prev!==S.box&&BOXES[prev])toast(T('ms.down',tgtVars(BOXES[prev])),true); /* v1.10.0: броят свали кутията */
     render();saveS()}
   function removeOne(k){var i=S.slots.lastIndexOf(k);if(i>=0)removeSlot(i)}
+  /* 1.31.0: кутията се пълни докрай с един продукт и излиза „Честито“ (кацане с ?fill=<продукт>) */
+  function fillBox(bi,k){var b=BOXES[bi];if(!b||!PROD[k])return chooseBox(bi);setTimeout(function(){beacon('box')},0);
+    S.chosen=bi;S.box=bi;S.core=k;if(!S.utm)S.utm=k;S.slots=[];for(var i=0;i<b.packs;i++)S.slots.push(k);
+    startTimer();saveS();if(S.screen===2){go(2);return}render();S._fillPending=false;setTimeout(celebrate,200)}
   function chooseBox(bi,keep){setTimeout(function(){beacon('box')},0);
     var b=BOXES[bi],down=keep&&S.box!==null&&!!BX()&&b.packs<BX().packs;
     S.chosen=bi;S.box=bi;
@@ -1241,9 +1245,13 @@
   refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');
   /* v1.8.0: кацане с ?box=s|m|l → кутията се избира сама; 1.24.12: попъпът за козметиката; 1.24.14: и двете идват от кампанията по UTM
      (campaigns[utm].box / .cosm_pop) — ?box= от адреса печели над конфига; попъпът за козметиката е веднъж на сесия и води към кутията сам */
-  try{var cpl=camp(),qB=new URLSearchParams(location.search).get('box');var boxId=(qB&&BI[qB]!=null)?qB:((cpl.box&&BI[cpl.box]!=null)?cpl.box:'');
+  /* 1.31.0 (човекът, страницата „Sakura ×5“): ?box=l&fill=sakura → Голямата кутия се пълни сама с 5× продукта (ключ или име без интервали) и излиза
+     „Честито“ направо, без пълненето; без познат продукт — както досега (кутията се избира, пълненето се отваря) */
+  try{var cpl=camp(),qsL=new URLSearchParams(location.search),qB=qsL.get('box'),qF=qsL.get('fill');var boxId=(qB&&BI[qB]!=null)?qB:((cpl.box&&BI[cpl.box]!=null)?cpl.box:'');
+    var fillK=qF?(PROD[qF]?qF:(utmProd(qF)||'')):'';if(qF&&!fillK&&S.core&&PROD[S.core])fillK=S.core;
     if(!A.editor&&S.box===null){var runL=null;
       if(cpl.cosm_pop&&!qB&&!restored&&!sessionStorage.getItem('ansa_promo_cosmpop'))runL=function(){if(S.box===null)cosmPopup()};
+      else if(boxId&&fillK)runL=function(){if(S.box===null)fillBox(BI[boxId],fillK)};
       else if(boxId)runL=function(){if(S.box===null)chooseBox(BI[boxId])};
       if(runL){if(S.emailDone||gateSeen())setTimeout(runL,320);else S._afterGate=runL}}
   }catch(e){}

@@ -231,7 +231,7 @@ const { chromium } = require('playwright');
     if (/какво казват жените/.test(t)) errors.push(tag + ' sx: секцията с ревютата се показва без цитати');
     const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 [data-sx="go"]')).map(b => b.getAttribute('data-go') || ''));
     if (btns.length < 6) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
-    btns.forEach((u, i) => { if (!/utm_content=sakura/.test(u) || !/box=l/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=sakura5/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' sx: бутон ' + i + ' води към ' + u); });
+    btns.forEach((u, i) => { if (!/utm_content=sakura/.test(u) || !/box=l/.test(u) || !/fill=sakura/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=sakura5/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' sx: бутон ' + i + ' води към ' + u); });
     if ((await page.$$('#apS1 .sx-faqs details')).length !== 10) errors.push(tag + ' sx: въпросите не са 10');
     if (!(await page.$('#apS1 .sx-stk .sx-btn'))) errors.push(tag + ' sx: няма залепен ред');
     if (await page.$('#apS1 .sx-left')) errors.push(tag + ' sx: броячът „Останаха“ се показва при 90 % останали');
@@ -248,6 +248,17 @@ const { chromium } = require('playwright');
     if ((t2.match(/останаха 3 500 от 10 000/g) || []).length < 3) errors.push(tag + ' sx: броячът при 35 % не е на 3 места: ' + (t2.match(/останаха[^\n]{0,30}/g) || []).join(' | '));
     if (!/gate\/yacht\.svg$/.test(await page.evaluate(() => (document.querySelector('#apS1 .sx-hero-v > img') || {}).src || ''))) errors.push(tag + ' sx: своята hero снимка не се показва');
     await page.screenshot({ path: S + '/shots/' + tag + '-sx-left.png', fullPage: false });
+    // кацане от бутона: ?utm_content=sakura&box=l&fill=sakura → Голямата кутия с 5× Sakura и „Честито“ направо (имейл-попъпът е минат)
+    const p2 = await ctx.newPage(); await p2.addInitScript(() => { try { sessionStorage.setItem('ansa_promo_gate', '1'); } catch (e) {} });
+    p2.on('pageerror', e => errors.push(tag + ' fill: ' + e.message));
+    await p2.goto('file://' + S + '/harness/index.html?utm_content=sakura&box=l&fill=sakura', { waitUntil: 'domcontentloaded' }); await p2.waitForTimeout(1200);
+    const st = await p2.evaluate(() => { const s = AnsaPromo.state(); return { box: s.box, slots: s.slots.slice(), celeb: !!document.querySelector('#apDc .celeb'), ovOff: document.getElementById('apOv').classList.contains('off') }; });
+    const bl = await p2.evaluate(() => window.AnsaPromoRuntime.boxes.findIndex(b => b.id === 'l'));
+    if (st.box !== bl || st.slots.length !== 5 || st.slots.some(k => k !== 'sakura') || !st.celeb || st.ovOff) errors.push(tag + ' fill: кутията не е 5× Sakura с „Честито“: ' + JSON.stringify(st));
+    const ct = await p2.evaluate(() => document.body.innerText.replace(/\u00a0/g, ' '));
+    if (!/5×[\s\S]{0,40}Sakura/.test(ct)) errors.push(tag + ' fill: в „Честито“ няма „5× Sakura“');
+    await p2.screenshot({ path: S + '/shots/' + tag + '-sx-fill.png', fullPage: false });
+    await p2.close();
     console.log(tag, 'sx ok');
     await ctx.close();
   }
