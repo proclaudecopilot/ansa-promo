@@ -568,7 +568,7 @@ final class Insights {
 		$z = array( 'n' => 0, 'total' => 0.0 ); $out = array( 'n' => 0, 'total' => 0.0, 'delivered' => $z, 'open' => $z, 'lost' => $z, 'by_status' => array(), 'avg' => 0.0, 'delivered_pct' => '—',
 			/* 1.24.26: stale = в път ≥ N дни (вероятно загубени), young = пресни (не влизат); decided = взети + загубени + stale; proj = взети ÷ decided */
 			'mature_days' => $mature, 'stale' => $z, 'young' => $z, 'decided' => 0, 'proj_raw' => null, 'proj_pct' => '—', 'proj_n' => 0, 'proj_total' => 0.0, 'proj_final_pct' => '—',
-			'by_id' => array(), 'by_day' => array(), 'untracked' => $z, 'phone' => $z );
+			'by_id' => array(), 'by_day' => array(), 'untracked' => $z, 'phone' => array( 'n' => 0, 'total' => 0.0, 'pct' => 0, 'gift' => 0 ) );
 		if ( ! function_exists( 'wc_get_order' ) ) { return $out; }
 		$ts = Schema::table( 'sessions' ); $w = array( 'order_id IS NOT NULL AND order_id > 0' ); if ( is_array( $rg ) ) { $w[] = self::where_range( 'started_at', $rg ); } $w = array_merge( $w, self::filter_where( $o ) );
 		$cfg = Config::get_published(); $seen = array();
@@ -579,7 +579,7 @@ final class Insights {
 			$st = (string) $ord->get_status(); $t = (float) $ord->get_total(); $day = substr( (string) $sr['started_at'], 0, 10 ); $tracked = ! self::is_order_sid( $sr['sid'] );
 			$grp = Tombola::delivered( $ord, $cfg ) ? 'delivered' : ( in_array( $st, self::LOST_STATUSES, true ) ? 'lost' : 'open' );
 			$out['n']++; $out['total'] += $t; $out[ $grp ]['n']++; $out[ $grp ]['total'] += $t;
-			if ( ! $tracked ) { $out['untracked']['n']++; $out['untracked']['total'] += $t; } if ( Phone_Orders::is_phone_sid( $sr['sid'] ) ) { $out['phone']['n']++; $out['phone']['total'] += $t; } /* 1.29.0 */
+			if ( ! $tracked ) { $out['untracked']['n']++; $out['untracked']['total'] += $t; } if ( Phone_Orders::is_phone_sid( $sr['sid'] ) ) { $out['phone']['n']++; $out['phone']['total'] += $t; $pb = (string) ( $m['phone_order']['bonus'] ?? '' ); if ( 'pct' === $pb ) { $out['phone']['pct']++; } elseif ( 'gift' === $pb ) { $out['phone']['gift']++; } } /* 1.29.0; 1.30.0: бонусите */
 			if ( ! isset( $out['by_status'][ $st ] ) ) { $out['by_status'][ $st ] = array( 'n' => 0, 'total' => 0.0, 'name' => wc_get_order_status_name( $st ), 'grp' => $grp, 'stale' => 0, 'young' => 0 ); }
 			$out['by_status'][ $st ]['n']++; $out['by_status'][ $st ]['total'] += $t;
 			if ( 'open' === $grp ) { $sub = self::status_age_days( $ord, $now ) >= $mature ? 'stale' : 'young'; $out[ $sub ]['n']++; $out[ $sub ]['total'] += $t; $out['by_status'][ $st ][ $sub ]++; }
@@ -656,7 +656,7 @@ final class Insights {
 			'tto'         => array( 'funnel', 'Време до поръчка', self::dur_fmt( (float) ( $r['tto_med'] ?? 0 ) ), 'медиана · средно <b data-k="tto_avg">' . esc_html( self::dur_fmt( (float) ( $r['tto_avg'] ?? 0 ) ) ) . '</b> · <b data-k="tto_n">' . (int) ( $r['tto_n'] ?? 0 ) . '</b> поръчки', '', false ),
 			'o_n'         => array( 'orders', 'Поръчки', (string) $os['n'], 'WooCommerce, по датата на сесията · <b data-k="o_total">' . esc_html( self::money( $os['total'] ) ) . '</b>', 'info', false ),
 			'o_untracked' => array( 'orders', 'Поръчки без проследен път', (string) $un['n'], 'не са във фунията · ' . esc_html( self::money( $un['total'] ) ) . ( $oo !== (int) $un['n'] ? ' · сесии order-№: <b data-k="oo">' . $oo . '</b>' : '' ), 'warn', false ),
-			'o_phone'     => array( 'orders', '📞 Поръчки по телефон', (string) ( $os['phone']['n'] ?? 0 ), 'от обаждане по изоставена количка/сесия · ' . esc_html( self::money( $os['phone']['total'] ?? 0 ) ) . ' · влизат в „без проследен път“', 'info', false ),
+			'o_phone'     => array( 'orders', '📞 Поръчки по телефон', (string) ( $os['phone']['n'] ?? 0 ), 'от обаждане · ' . esc_html( self::money( $os['phone']['total'] ?? 0 ) ) . ' · с −%: <b data-k="o_phone_pct">' . (int) ( $os['phone']['pct'] ?? 0 ) . '</b> · с подарък: <b data-k="o_phone_gift">' . (int) ( $os['phone']['gift'] ?? 0 ) . '</b>', 'info', false ),
 			'o_delivered' => array( 'orders', 'Взети (Delivered)', (string) $os['delivered']['n'], '<b data-k="o_delivered_pct">' . esc_html( $os['delivered_pct'] ) . '</b> от поръчките · ' . esc_html( self::money( $os['delivered']['total'] ) ), 'good', false ),
 			'o_open'      => array( 'orders', 'В път / чакат', (string) $os['open']['n'], 'още не са взети · ' . esc_html( self::money( $os['open']['total'] ) ) . ' · от тях ≥ ' . $md . ' дни: <b data-k="o_stale">' . (int) $st['n'] . '</b> · пресни: <b data-k="o_young">' . (int) $yg['n'] . '</b>', 'warn', false ),
 			'o_lost'      => array( 'orders', 'Отказани / неуспешни', (string) $os['lost']['n'], 'отказани, неуспешни, възстановени · ' . esc_html( self::money( $os['lost']['total'] ) ), 'bad', false ),

@@ -55,7 +55,7 @@ final class Admin {
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-insurl' => '📈 Insights URL', 's-insrep' => '📬 Insights отчети', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-insurl' => '📈 Insights URL', 's-insrep' => '📬 Insights отчети', 's-phone' => '📞 Обаждания', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
@@ -235,6 +235,7 @@ final class Admin {
 			case 'insights_alerts_test': $al = Insights_Reports::alerts_evaluate(); $msg = 'Аларми сега: ' . ( $al ? implode( ' · ', array_column( $al, 1 ) ) : 'няма (трафикът и конверсията са в норма)' ); break;
 			case 'insights_api_token': $t = Insights_Reports::regenerate_api_token(); $msg = 'Нов API токен: ' . $t . ' — копирай го сега; старият вече не важи.'; break;
 			case 'insights_api_token_clear': Insights_Reports::clear_api_token(); $msg = 'API токенът е изтрит — JSON адресът не работи.'; break;
+			case 'phone_orders': $msg = Phone_Orders::save( array( 'pct' => (string) wp_unslash( $_POST['ph_pct'] ?? '5' ), 'gift_sku' => (string) wp_unslash( $_POST['ph_gift_sku'] ?? '' ), 'gift_id' => (int) ( $_POST['ph_gift_id'] ?? 0 ) ) ); break; /* 1.30.0 */
 			case 'insights_portal': /* 1.27.0: отделният адрес на Insights за екипа по реклами — отделна опция, без публикуване */
 				list( $ok, $txt ) = Insights_Portal::save( array( 'enabled' => ! empty( $_POST['ip_enabled'] ), 'slug' => (string) wp_unslash( $_POST['ip_slug'] ?? '' ), 'user' => (string) wp_unslash( $_POST['ip_user'] ?? '' ), 'ttl' => (int) ( $_POST['ip_ttl'] ?? 12 ), 'https_only' => ! empty( $_POST['ip_https'] ), 'password' => (string) wp_unslash( $_POST['ip_pw'] ?? '' ), 'password2' => (string) wp_unslash( $_POST['ip_pw2'] ?? '' ) ) );
 				$msg = ( $ok ? '' : 'Грешка: ' ) . $txt; break;
@@ -499,6 +500,16 @@ final class Admin {
 				<p class="ap-fl"><b>API за Looker Studio / Google Sheets</b></p>
 				<p class="description">GET <code><?php echo esc_html( Insights_Portal::url() ); ?>?json=1&amp;token=…&amp;from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code> връща JSON с KPI, фунията и разбивките по UTM / кампания / ден / кутия / устройство / час (или <code>Authorization: Bearer …</code>). Само четене, 60 заявки/мин/IP. <?php echo '' !== $ir['api_token'] ? 'Токен: <code style="user-select:all">' . esc_html( $ir['api_token'] ) . '</code>' : '<b>Няма токен — генерирай.</b>'; ?></p>
 				<p><?php self::form_open( 'insights_api_token', 'tools', ' onsubmit="return confirm(\'Нов токен? Старият спира да работи.\')"' ); ?><button class="button">🔑 <?php echo '' !== $ir['api_token'] ? 'Нов токен' : 'Генерирай токен'; ?></button></form> <?php if ( '' !== $ir['api_token'] ) : ?><?php self::form_open( 'insights_api_token_clear' ); ?><button class="button">✕ Изтрий токена</button></form><?php endif; ?></p>
+				</div></section>
+				<section class="ap-sec" id="s-phone"><div class="ap-sec__h"><span class="ap-sec__t">📞 Обаждания — бонус по телефона</span></div><div class="ap-sec__b">
+				<?php $ph = Phone_Orders::settings(); $phg = Phone_Orders::gift_product(); ?>
+				<p>От Insights (🛒 Колички, 🧾 Сесии) операторът отваря количката на човека с „📞 Пресъздай“. В лентата „📞 Обаждане“ долу на страницата избира бонус за обаждането: <b>−X % на поръчката</b> (отрицателна такса „📞 Отстъпка по телефона“ в чекаута, върху промо редовете след отстъпката на кутията) или <b>🎁 продукт подарък</b> (ред на €0, заключен като книгата). Бонусът влиза в бележката на поръчката и в плочката „📞 Поръчки по телефон“.</p>
+				<?php self::form_open( 'phone_orders', 'tools', ' style="display:block"' ); ?>
+					<p><label>отстъпка по телефона: −<input type="text" inputmode="decimal" name="ph_pct" value="<?php echo esc_attr( Cart::fmt( $ph['pct'] ) ); ?>" style="width:60px;text-align:right"> %</label>
+					&nbsp; <label>подарък — SKU или име: <input type="text" name="ph_gift_sku" value="<?php echo esc_attr( $ph['gift_sku'] ); ?>" class="code" style="width:200px" placeholder="PATCH01"></label> <label>или WC продукт ID: <input type="number" name="ph_gift_id" value="<?php echo (int) $ph['gift_id']; ?>" style="width:90px" min="0"></label>
+					<span class="description"><?php echo $phg ? '→ <b>' . esc_html( $phg['name'] ) . '</b> (#' . (int) $phg['id'] . ' · ' . esc_html( Insights::money( $phg['price'] ) ) . ( $phg['stock'] ? '' : ' · <b style="color:#cf222e">НЕ Е НАЛИЧЕН</b>' ) . ')' : '<b style="color:#cf222e">продуктът не е намерен</b> — провери SKU / ID'; ?></span></p>
+					<p><button class="button button-primary">💾 Запази</button></p>
+				</form>
 				</div></section>
 				<section class="ap-sec" id="s-favorite"><div class="ap-sec__h"><span class="ap-sec__t">⭐ Любим продукт за имейлите — {{ansa_promo_fav}}</span></div><div class="ap-sec__b">
 				<?php $fv = Favorite::settings(); $fvs = Favorite::status(); $fve = array(); $fvr = Favorite::parse_map( $fv['map'], $fve ); ?>

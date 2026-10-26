@@ -232,7 +232,7 @@ $ok( 'админ · на живо: fetch-ът е към admin-ajax', false !== s
 $fp = Insights::feed_payload( 1, 5 ); $ok( 'feed_payload: feed · rows_html · at · kpi · kpi_sub', isset( $fp['feed'], $fp['rows_html'], $fp['at'], $fp['kpi'], $fp['kpi_sub'] ) && isset( $fp['kpi']['sessions'] ) );
 
 /* ── 1.28.0: 30-те подобрения — изчисленията ── */
-$R = '\AnsaPromo\Insights_Reports'; function esc_textarea( $s ) { return esc_html( $s ); }
+$R = '\AnsaPromo\Insights_Reports'; function esc_textarea( $s ) { return esc_html( $s ); } function wc_get_product_id_by_sku( $sku ) { return 0; }
 $rg2 = array( 'from' => '2026-10-16', 'to' => '2026-10-17' );
 /* т. 12: първи и последен UTM */
 $_SERVER['REMOTE_ADDR'] = '9.1.1.1'; $rgT = array( 'from' => $today, 'to' => $today ); $base = Insights::sessions_report( 0, $rgT ); $b0 = (int) $base['sessions']; $v0 = (int) $base['visitors']; $bb0 = (int) $base['bounce']; $bd0 = (int) $base['dur_n'];
@@ -341,6 +341,24 @@ $fd4 = Insights::feed( 60, array( 'from' => '2026-10-17', 'to' => '2026-10-17' )
 $ok( 'фийдът: „📞 поръчка по телефон“ на phone-40; „📞 Пресъздай“ за сесия с имейл и кутия без поръчка (D), не и за поръчалите (F)', $p40 && false !== strpos( Insights::feed_rows( array( $p40 ) ), '📞 поръчка по телефон' ) && false !== strpos( Insights::feed_rows( array_values( array_filter( Insights::feed( 60 ), function ( $s ) { return 'sessD0001' === $s['sid']; } ) ) ), '📞 Пресъздай' ) && false === strpos( Insights::feed_rows( array_values( array_filter( Insights::feed( 60 ), function ( $s ) { return 'sessF0001' === $s['sid']; } ) ) ), '📞 Пресъздай' ) );
 $_COOKIE[ $PO::COOKIE ] = '1'; $ok( 'операторът (бисквитка ansa_promo_op) е вътрешен трафик', $R::is_internal_request() ); unset( $_COOKIE[ $PO::COOKIE ] ); $ok( 'без бисквитката не е', ! $R::is_internal_request() );
 $ok( 'operator(): без вход — празно', '' === $PO::operator() );
+/* 1.30.0: бонусът за обаждането */
+$ps = $PO::settings(); $ok( 'phone: настройки по подразбиране — −5 %, подарък PATCH01', 5.0 === $ps['pct'] && 'PATCH01' === $ps['gift_sku'] && 0 === $ps['gift_id'] );
+$PO::save( array( 'pct' => '7,5', 'gift_sku' => ' PATCH01 EyeFresh BG ', 'gift_id' => '0' ) ); $ps = $PO::settings(); $ok( 'phone: save — 7,5 %, SKU изчистен; таван 50', 7.5 === $ps['pct'] && 'PATCH01 EyeFresh BG' === $ps['gift_sku'] && 50.0 === ( $PO::save( array( 'pct' => '99' ) ) ? $PO::settings()['pct'] : 0 ) );
+$PO::save( array( 'pct' => '5', 'gift_sku' => 'PATCH01' ) );
+$ok( 'phone: norm_bonus', 'pct' === $PO::norm_bonus( 'pct' ) && 'gift' === $PO::norm_bonus( 'gift' ) && '' === $PO::norm_bonus( 'x' ) );
+$ok( 'phone: без WooCommerce няма подарък; bonus_cfg носи процента', null === $PO::gift_product() && 5.0 === $PO::bonus_cfg()['pct'] && null === $PO::bonus_cfg()['gift'] );
+$ok( 'phone: bonus_label', '📞 Отстъпка по телефона −5 %' === $PO::bonus_label( 'pct' ) && false !== strpos( $PO::bonus_label( 'gift' ), '🎁' ) && '' === $PO::bonus_label( '' ) );
+$GLOBALS['orders'][41] = new FakeOrder( 41, array( 'sid' => '', 'box' => 'l', 'count' => 5, 'phone_order' => array( 'by' => 'Мария', 'src' => 'sess:1', 'label' => 'сесия', 'bonus' => 'pct', 'bonus_pct' => 5, 'bonus_amount' => 7.37 ) ), '2026-10-17 16:00:00', '', '9.9.9.9', 'processing', 140 );
+$GLOBALS['orders'][42] = new FakeOrder( 42, array( 'sid' => '', 'box' => 'm', 'count' => 3, 'phone_order' => array( 'by' => 'Мария', 'src' => 'cart:9', 'label' => 'количка', 'bonus' => 'gift', 'gift' => 'EyeFresh BG' ) ), '2026-10-17 16:10:00', '', '9.9.9.9', 'processing', 90 );
+Insights::on_order( $GLOBALS['orders'][41], $GLOBALS['orders'][41]->meta ); Insights::on_order( $GLOBALS['orders'][42], $GLOBALS['orders'][42]->meta );
+$os5 = Insights::orders_stats( $rg2 ); $ok( 'orders_stats: по телефон 3 (150 + 140 + 90), с −%: 1, с подарък: 1', 3 === $os5['phone']['n'] && abs( $os5['phone']['total'] - 380 ) < 0.01 && 1 === $os5['phone']['pct'] && 1 === $os5['phone']['gift'], json_encode( $os5['phone'] ) );
+$fl5 = Insights::dashboard_flat( Insights::dashboard_data( Insights::sessions_report( 0, $rg2 ), $os5 ) ); $ok( 'плочката: 3, sub с −% 1 и подарък 1', '3' === $fl5['kpi']['o_phone'] && false !== strpos( $fl5['kpi_sub']['o_phone'], 'data-k="o_phone_pct">1<' ) && false !== strpos( $fl5['kpi_sub']['o_phone'], 'data-k="o_phone_gift">1<' ) );
+/* бележката в поръчката */
+class NoteOrder extends FakeOrder { public $notes = array(); function add_order_note( $n ) { $this->notes[] = $n; } }
+$no = new NoteOrder( 43, array( 'phone_order' => array( 'by' => 'Мария', 'label' => 'количка #5', 'bonus' => 'pct', 'bonus_pct' => 5, 'bonus_amount' => 7.37 ) ) ); $PO::on_order( $no, $no->meta );
+$ok( 'бележката: оператор, източник, бонус −5 % (7,37 €)', 1 === count( $no->notes ) && false !== strpos( $no->notes[0], 'от „Мария“' ) && false !== strpos( $no->notes[0], 'количка #5' ) && false !== strpos( $no->notes[0], '−5 % (7,37 €)' ), json_encode( $no->notes, JSON_UNESCAPED_UNICODE ) );
+$no2 = new NoteOrder( 44, array( 'phone_order' => array( 'by' => 'Иван', 'bonus' => 'gift', 'gift' => 'EyeFresh BG' ) ) ); $PO::on_order( $no2, $no2->meta ); $ok( 'бележката: подарък EyeFresh BG', false !== strpos( $no2->notes[0], 'подарък EyeFresh BG' ) );
+$no3 = new NoteOrder( 45, array( 'box' => 'm' ) ); $PO::on_order( $no3, $no3->meta ); $ok( 'без phone_order няма бележка', array() === $no3->notes );
 
 $ok( 'без SQL грешки по пътя', ! $GLOBALS['sql_errors'], implode( ' | ', array_slice( $GLOBALS['sql_errors'], 0, 3 ) ) );
 

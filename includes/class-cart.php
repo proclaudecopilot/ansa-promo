@@ -86,9 +86,10 @@ final class Cart {
 			if ( null === $g ) { $g = array( 'group' => (string) $m['group'], 'box' => (string) $m['box'], 'promo' => (string) $m['promo'], 'pct' => (float) ( $m['pct'] ?? 0 ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'spct' => (float) ( $m['spct'] ?? 0 ), 'ship' => ! empty( $m['ship'] ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'base' => array(), 'book' => null, 'secret' => array(), 'sum' => 0 ); }
 			if ( 'base' === $m['role'] ) { $g['base'][ $key ] = $item; $g['sum'] += (int) $item['quantity']; }
 			elseif ( 'book' === $m['role'] ) { $g['book'] = $key; }
+			elseif ( 'gift' === $m['role'] ) { $g['gift'] = $key; } /* 1.30.0: 📞 подаръкът за обаждането */
 			elseif ( 'secret' === $m['role'] ) { $g['secret'][ $key ] = $item; }
 		}
-		if ( $g ) { $g['foreign'] = $foreign; }
+		if ( $g ) { $g['foreign'] = $foreign; $g += array( 'gift' => '' ); }
 		return $g;
 	}
 	/** v1.10.0: валидна = поне packs опаковки (повече са позволени — същата отстъпка). */
@@ -122,7 +123,7 @@ final class Cart {
 			'pay'    => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ), 'cosm' => ! isset( $_POST['cosm'] ) || '0' !== (string) $_POST['cosm'],
 			'utm'    => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'sid'    => Insights::request_sid( (string) ( $_POST['sid'] ?? '' ) ), /* 1.17.0: сесията на Insights; 1.17.1: или бисквитката */
-			'op'     => (string) wp_unslash( $_POST['op'] ?? '' ), /* 1.29.0: 📞 поръчка по телефон (токен от Insights) */
+			'op'     => (string) wp_unslash( $_POST['op'] ?? '' ), 'op_bonus' => sanitize_key( (string) ( $_POST['op_bonus'] ?? '' ) ), /* 1.29.0: 📞 поръчка по телефон (токен от Insights); 1.30.0: бонусът −X % / подарък */
 		) );
 		if ( empty( $r['ok'] ) ) { wp_send_json_error( $r ); }
 		wp_send_json_success( $r );
@@ -169,7 +170,7 @@ final class Cart {
 		$cosm  = ! isset( $a['cosm'] ) || (bool) $a['cosm'];
 		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
 		/* 1.29.0: 📞 поръчка по телефон — токенът от Insights носи кой звъни и откъде е количката; клиентът на WC се попълва (имейл, телефон, имена) */
-		if ( ! empty( $a['op'] ) ) { $op = Phone_Orders::ctx_for( (string) $a['op'] ); if ( $op ) { $ctx['op'] = $op; if ( '' === $ctx['email'] && '' !== $op['email'] ) { $ctx['email'] = $op['email']; } } }
+		if ( ! empty( $a['op'] ) ) { $op = Phone_Orders::ctx_for( (string) $a['op'], (string) ( $a['op_bonus'] ?? '' ) ); if ( $op ) { $ctx['op'] = $op; if ( '' === $ctx['email'] && '' !== $op['email'] ) { $ctx['email'] = $op['email']; } } }
 
 		/* v1.24.0 (Shrine 6.26.5, човекът: „да им се добавя в количката и да могат да добавят и други продукти, а може и промо, и чак
 		   след това чекаут; сетът веднъж, не два пъти, 5 билета, не 10, 1 книга“): merge = кутията се ДОБАВЯ към количката, нищо не
@@ -227,6 +228,7 @@ final class Cart {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
 			WC()->cart->add_to_cart( (int) $pid, 1, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'secret', 'key' => $p['key'] ) ) ) );
 		}
+		if ( ! empty( $ctx['op']['bonus'] ) && 'gift' === $ctx['op']['bonus'] ) { Phone_Orders::add_gift( $meta ); } /* 1.30.0: 📞 подаръкът за обаждането (role=gift, €0) */
 		/* нищо чуждо в промо количката (напр. подарък, инжектиран от друг плъгин); merge: само автоматичните подаръци (strip_foreign), платените чужди редове остават */
 		if ( ! $merge ) { foreach ( WC()->cart->get_cart() as $k => $it ) { if ( empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } } }
 		self::$mutating = false;
@@ -364,6 +366,11 @@ final class Cart {
 			if ( $valid && isset( $items[ $g['book'] ] ) ) { $items[ $g['book'] ]['data']->set_price( 0 ); }
 			elseif ( ! $valid ) { self::$mutating = true; $cart->remove_cart_item( $g['book'] ); self::$mutating = false; }
 		}
+		if ( ! empty( $g['gift'] ) ) { /* 1.30.0: подаръкът за обаждането — €0 при валидна кутия, пада при непълна */
+			$items = $cart->get_cart();
+			if ( $valid && isset( $items[ $g['gift'] ] ) ) { $items[ $g['gift'] ]['data']->set_price( 0 ); }
+			elseif ( ! $valid ) { self::$mutating = true; $cart->remove_cart_item( $g['gift'] ); self::$mutating = false; }
+		}
 		$ctx = self::ctx(); if ( isset( $ctx['group'] ) && ( $ctx['invalid'] ?? null ) !== ! $valid ) { $ctx['invalid'] = ! $valid; self::set_ctx( $ctx ); }
 	}
 
@@ -391,13 +398,13 @@ final class Cart {
 		if ( empty( $item[ self::META ] ) ) { return $name; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $item[ self::META ]['box'] ); $role = $item[ self::META ]['role'];
 		$v = array( 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( 'base' === $role ? self::item_pct( $item, $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) : ( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
-		$tag = self::copy( 'book' === $role ? 'co.tag.book' : ( 'secret' === $role ? 'co.tag.secret' : 'co.tag.base' ), $v );
+		$tag = self::copy( 'book' === $role ? 'co.tag.book' : ( 'gift' === $role ? 'co.tag.gift' : ( 'secret' === $role ? 'co.tag.secret' : 'co.tag.base' ) ), $v );
 		/* v1.5.3: .ansa-promo-lock маркира заключените редове (base/book) и за DOM-а на FunnelKit, който не минава през
 		   woocommerce_cart_item_quantity/remove_link — степерът и ✕ в обобщението му се крият с CSS по този клас */
 		return $name . '<br><small class="ansa-promo-tag' . ( 'secret' === $role ? '' : ' ansa-promo-lock' ) . '">' . wp_kses_post( $tag ) . '</small>';
 	}
 	public static function cart_price_html( $html, $item, $key ) {
-		if ( empty( $item[ self::META ] ) || 'book' !== $item[ self::META ]['role'] ) { return $html; }
+		if ( empty( $item[ self::META ] ) || ! in_array( $item[ self::META ]['role'], array( 'book', 'gift' ), true ) ) { return $html; }
 		return '<span class="ansa-promo-free">' . esc_html( self::copy( 'co.free' ) ) . '</span>';
 	}
 	public static function check_cart() {
@@ -505,7 +512,7 @@ final class Cart {
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
 			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 			'secret' => array_values( array_map( function ( $it ) { return (int) $it['product_id']; }, $g['secret'] ) ),
-			'phone_order' => ! empty( $ctx['op'] ) && is_array( $ctx['op'] ) ? array( 'by' => (string) ( $ctx['op']['by'] ?? '' ), 'src' => (string) ( $ctx['op']['src'] ?? '' ), 'label' => (string) ( $ctx['op']['label'] ?? '' ) ) : null, /* 1.29.0: 📞 */
+			'phone_order' => ! empty( $ctx['op'] ) && is_array( $ctx['op'] ) ? array( 'by' => (string) ( $ctx['op']['by'] ?? '' ), 'src' => (string) ( $ctx['op']['src'] ?? '' ), 'label' => (string) ( $ctx['op']['label'] ?? '' ), 'bonus' => (string) ( $ctx['op']['bonus'] ?? '' ), 'bonus_pct' => (float) ( $ctx['op']['bonus_pct'] ?? 0 ), 'bonus_amount' => 'pct' === (string) ( $ctx['op']['bonus'] ?? '' ) ? Phone_Orders::bonus_amount() : 0.0, 'gift' => 'gift' === (string) ( $ctx['op']['bonus'] ?? '' ) && ( $gp = Phone_Orders::gift_product() ) ? $gp['name'] : '' ) : null, /* 1.29.0: 📞; 1.30.0: бонусът */
 		);
 		return apply_filters( 'ansa_promo_order_meta', $meta, $g, $cfg );
 	}
@@ -533,7 +540,7 @@ final class Cart {
 		if ( empty( $values[ self::META ] ) ) { return; }
 		$item->add_meta_data( '_ansa_promo_role', $values[ self::META ]['role'], true );
 		$item->add_meta_data( '_ansa_promo_box', $values[ self::META ]['box'], true );
-		$item->add_meta_data( '_ansa_promo_pct', 'secret' === $values[ self::META ]['role'] ? $values[ self::META ]['spct'] : ( 'book' === $values[ self::META ]['role'] ? 100 : self::item_pct( $values, $values[ self::META ]['pct'] ) ), true );
+		$item->add_meta_data( '_ansa_promo_pct', 'secret' === $values[ self::META ]['role'] ? $values[ self::META ]['spct'] : ( in_array( $values[ self::META ]['role'], array( 'book', 'gift' ), true ) ? 100 : self::item_pct( $values, $values[ self::META ]['pct'] ) ), true );
 	}
 	/** След като поръчката има ID: lead → converted_order_id, бележка при непълна кутия. */
 	public static function order_created( $order ) {
