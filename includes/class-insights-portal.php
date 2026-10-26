@@ -298,6 +298,8 @@ final class Insights_Portal {
 		if ( ! $changed ) { return true; }
 		try { if ( class_exists( '\\FlyingPress\\Config' ) && is_callable( array( '\\FlyingPress\\Config', 'update_config' ) ) ) { \FlyingPress\Config::update_config( $cfg ); } else { update_option( self::FP_OPT, $cfg ); } }
 		catch ( \Throwable $e ) { update_option( self::FP_OPT, $cfg ); }
+		/* 1.27.3: на живо update_config записа URL-а, но не и бисквитката — ако нещо липсва, пише се направо в опцията (FlyingPress я чете оттам) */
+		if ( true !== self::cache_bypass_state() ) { $now = get_option( self::FP_OPT, null ); $now = is_array( $now ) ? $now : $cfg; foreach ( array( 'cache_bypass_urls' => self::cache_bypass_pattern(), 'cache_bypass_cookies' => self::COOKIE ) as $k => $v ) { $list = isset( $now[ $k ] ) && is_array( $now[ $k ] ) ? array_values( $now[ $k ] ) : array(); if ( ! in_array( $v, $list, true ) ) { $list[] = $v; } $now[ $k ] = $list; } update_option( self::FP_OPT, $now ); }
 		return true === self::cache_bypass_state();
 	}
 	/** Съвпада ли пътят (без наклонени черти в краищата) с портала. */
