@@ -2110,7 +2110,7 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw.sx .sx .sx-solv .circle{position:absolute;width:340px;height:340px;border:1px solid rgba(196,139,157,.42);border-radius:50%}
 .ansa-promo .dc.hw.sx .sx .sx-solv .circle:after{content:'';position:absolute;inset:-28px;border:1px solid rgba(196,139,157,.22);border-radius:50%}
 .ansa-promo .dc.hw.sx .sx .sx-solv .tag{position:absolute;left:24px;top:22px;font-size:10px;letter-spacing:.14em;color:var(--sxr);font-weight:900;text-transform:uppercase}
-.ansa-promo .dc.hw.sx .sx .sx-solv .how{position:absolute;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#6a4b55;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-solv .sx-how{position:absolute;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#6a4b55;font-weight:800}
 .ansa-promo .dc.hw.sx .sx .sx-uses{display:grid;gap:12px;margin-top:24px}
 .ansa-promo .dc.hw.sx .sx .sx-use{display:grid;grid-template-columns:52px 1fr;gap:14px;align-items:start;background:#f9f5ee;border-radius:16px;padding:16px 18px}
 .ansa-promo .dc.hw.sx .sx .sx-use em{font-style:normal;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:#fff}
@@ -2313,3 +2313,42 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw.sx .sx .sx-tbl th:nth-child(2),.ansa-promo .dc.hw.sx .sx .sx-tbl td:nth-child(2){width:20%}
 .ansa-promo .dc.hw.sx .sx .sx-tbl td+td{white-space:normal}
 @media(max-width:650px){.ansa-promo .dc.hw.sx .sx .sx-tbl td:first-child{width:46%}.ansa-promo .dc.hw.sx .sx .sx-tbl td:nth-child(2){width:22%}}
+
+/* 49г · 1.31.3 (човекът: „не са добре секциите масово на мобилно“; „sticky CTA и на десктоп, да скролва към офертата“):
+      залепеният ред е на всички екрани (крие се, докато офертата е на екрана; води към нея, не към кутията); табличката на телефон е
+      вертикална (етикети от data-l); продуктите 3+2; чиповете под кутията не се чупят; място за реда в дъното */
+.ansa-promo .dc.hw.inl.sx .sx .sx-stk{position:fixed;bottom:0;left:0;right:0;z-index:25;display:block;background:rgba(255,253,248,.97);border-top:1px solid var(--sxl);backdrop-filter:blur(15px);padding:10px 0 calc(10px + env(safe-area-inset-bottom));box-shadow:0 -5px 25px rgba(69,50,37,.06);transition:transform .25s}
+.ansa-promo .dc.hw.inl.sx .sx .sx-stk.hide{transform:translateY(110%)}
+.ansa-promo .dc.hw.sx .sx .sx-stk .sx-c{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ansa-promo .dc.hw.sx .sx .sx-stk .t{min-width:0}
+.ansa-promo .dc.hw.sx .sx .sx-stk strong{display:block;font-size:22px;line-height:1.2;letter-spacing:-.04em;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-stk strong s{font-size:13px;color:var(--sxm);font-weight:600;margin-left:8px}
+.ansa-promo .dc.hw.sx .sx .sx-stk small{display:block;font-size:12px;color:var(--sxm);margin-top:2px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-stk .sx-btn{min-height:48px;padding:10px 20px;font-size:14px;gap:14px;flex:none;width:auto}
+.ansa-promo.sx .foot{padding-bottom:96px}
+.ansa-promo .dc.hw.sx .sx .sx-fin .sx-c{padding-bottom:20px}
+.ansa-promo .dc.hw.sx .sx .sx-solv .sx-how{flex-wrap:wrap;justify-content:center;gap:6px}
+.ansa-promo .dc.hw.sx .sx .sx-solv .sx-how span{white-space:nowrap;background:rgba(255,253,248,.85);border-radius:999px;padding:5px 11px;font-size:12px}
+.ansa-promo .dc.hw.sx .sx .sx-bar a{white-space:nowrap}
+@media(max-width:650px){
+.ansa-promo .dc.hw.inl.sx .sx .sx-stk{padding:9px 0 calc(9px + env(safe-area-inset-bottom))}
+.ansa-promo .dc.hw.sx .sx .sx-stk strong{font-size:20px}.ansa-promo .dc.hw.sx .sx .sx-stk small{font-size:10.5px}.ansa-promo .dc.hw.sx .sx .sx-stk .sx-btn{min-height:44px;padding:9px 14px;font-size:13px;gap:10px}
+.ansa-promo .dc.hw.sx .sx .sx-fin .sx-c{padding-bottom:10px}
+/* табличката вертикално */
+.ansa-promo .dc.hw.sx .sx .sx-tbl,.ansa-promo .dc.hw.sx .sx .sx-tbl tbody,.ansa-promo .dc.hw.sx .sx .sx-tbl tr{display:block;width:100%}
+.ansa-promo .dc.hw.sx .sx .sx-tbl thead{display:none}
+.ansa-promo .dc.hw.sx .sx .sx-tbl tr{padding:12px 0;border-bottom:1px solid var(--sxl)}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td{display:block;width:auto!important;border:0;padding:0;font-size:14.5px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td small{font-size:12px;margin-top:2px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td+td{display:inline-block;width:49%!important;margin-top:8px;padding:0;text-align:left;vertical-align:top}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td+td::before{content:attr(data-l);display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:900;color:var(--sxm);margin-bottom:2px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td.now{text-align:right;font-size:17px}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td.now::before{color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-tbl td s{font-size:14px}
+/* продуктите 3 + 2 */
+.ansa-promo .dc.hw.sx .sx .sx-prods{grid-template-columns:repeat(6,minmax(0,1fr));gap:10px 8px}
+.ansa-promo .dc.hw.sx .sx .sx-prod{grid-column:span 2;padding:12px 8px 12px}
+.ansa-promo .dc.hw.sx .sx .sx-prod:nth-child(4){grid-column:2/span 2}.ansa-promo .dc.hw.sx .sx .sx-prod:nth-child(5){grid-column:4/span 2}
+.ansa-promo .dc.hw.sx .sx .sx-prod .v{height:110px}.ansa-promo .dc.hw.sx .sx .sx-prod small{font-size:11.5px}
+.ansa-promo .dc.hw.sx .sx .sx-solv{min-height:360px}.ansa-promo .dc.hw.sx .sx .sx-solv>img{width:62%}
+}

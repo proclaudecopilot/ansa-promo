@@ -465,7 +465,7 @@
     var dm='<section class="sx-sec sx-derm"><div class="sx-c sx-narrow">'+p('sx.derm.kick','p','sx-kick')+p('sx.derm.h','h2')+'<blockquote class="sx-quote"><i class="qm" aria-hidden="true">“</i>'+qs+(by!==''?'<footer'+ck('sx.derm.by')+'>'+by+'</footer>':(A.editor?emptyHs('sx.derm.by','footer'):''))+'</blockquote>'+xtra('sx.x.derm')+'</div></section>';
     /* 4 · какво всъщност е Sakura SkinTonic */
     var uses='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){uses+='<li class="sx-use"><em>'+x[0]+'</em><div>'+p('sx.sol.'+x[1]+'.t','b')+p('sx.sol.'+x[1]+'.d','span')+(x[1]===3?p('sx.sol.3.n','small','sx-fact'):'')+'</div></li>'});
-    var sl='<section class="sx-sec sx-sol"><div class="sx-c sx-2 sx-2r"><div class="sx-solv">'+sp('sx.sol.tag','tag')+'<i class="circle"></i>'+sxPic('sol','box','Sakura SkinTonic')+'<div class="how">'+sp('sx.sol.how1')+sp('sx.sol.how2')+sp('sx.sol.how3')+'</div></div><div class="sx-prose">'+p('sx.sol.kick','p','sx-kick')+p('sx.sol.h','h2')+p('sx.sol.p1')+'<ul class="sx-uses">'+uses+'</ul>'+p('sx.sol.nc','div','sx-nc')
+    var sl='<section class="sx-sec sx-sol"><div class="sx-c sx-2 sx-2r"><div class="sx-solv">'+sp('sx.sol.tag','tag')+'<i class="circle"></i>'+sxPic('sol','box','Sakura SkinTonic')+'<div class="sx-how">'+sp('sx.sol.how1')+sp('sx.sol.how2')+sp('sx.sol.how3')+'</div></div><div class="sx-prose">'+p('sx.sol.kick','p','sx-kick')+p('sx.sol.h','h2')+p('sx.sol.p1')+'<ul class="sx-uses">'+uses+'</ul>'+p('sx.sol.nc','div','sx-nc')
       +'<div class="sx-proof">'+p('sx.sol.proof.n','b')+'<span>'+p('sx.sol.proof','strong')+sp('sx.sol.proof.s')+'</span></div>'+p('sx.sol.p2')+xtra('sx.x.sol')+'</div></div></section>';
     /* 5 · ревюта — само картите с цитат; без нито един цитат секцията не се показва на живо */
     var rv='',nrv=0;[1,2,3].forEach(function(i){var q=T2('sx.rv.'+i+'.q');if(q===''){if(A.editor)rv+='<figure class="sx-rev ck-empty"'+ck('sx.rv.'+i+'.q')+'>＋ sx.rv.'+i+'.q</figure>';return}nrv++;rv+='<figure class="sx-rev'+(i===1?' first':'')+'"><div class="stars" aria-label="5 от 5">★★★★★</div>'+p('sx.rv.'+i+'.q')+'<figcaption>'+sp('sx.rv.'+i+'.n')+'</figcaption></figure>'});
@@ -473,10 +473,11 @@
     /* 6 · офертата — табличката „Преди / Сезонът на ansa“ (1.31.2, човекът) */
     var cnt=lf?'<span class="sx-left"'+ck('sx.left')+'>'+T2('sx.left')+'</span>':'';
     var cosmS=eur(String(COSM).replace('.',',')),cosmP=eur(sxFmt(V._cp));
+    var dl1=' data-l="'+esc(T2('sx.of.th1'))+'"',dl2=' data-l="'+esc(T2('sx.of.th2'))+'"';
     var tbl='<table class="sx-tbl"><thead><tr><th></th><th'+ck('sx.of.th1')+'>'+T2('sx.of.th1')+'</th><th class="now"'+ck('sx.of.th2')+'>'+T2('sx.of.th2')+'</th></tr></thead><tbody>'
-      +'<tr><td>'+sp('sx.of.r1')+p('sx.of.r1.s','small')+'</td><td><s>'+eur(V.sx_full)+'</s></td><td class="now"><b>'+eur(V.sx_pay)+'</b></td></tr>'
-      +'<tr><td>'+sp('sx.of.r2')+p('sx.of.r2.s','small')+'</td><td><s>'+cosmS+'</s></td><td class="now"><b class="gift">'+cosmP+'</b></td></tr>'
-      +'<tr><td>'+sp('sx.of.r3')+'</td><td>—</td><td class="now"><b class="gift">'+T2('sx.of.r3.v')+'</b></td></tr>'
+      +'<tr><td>'+sp('sx.of.r1')+p('sx.of.r1.s','small')+'</td><td'+dl1+'><s>'+eur(V.sx_full)+'</s></td><td class="now"'+dl2+'><b>'+eur(V.sx_pay)+'</b></td></tr>'
+      +'<tr><td>'+sp('sx.of.r2')+p('sx.of.r2.s','small')+'</td><td'+dl1+'><s>'+cosmS+'</s></td><td class="now"'+dl2+'><b class="gift">'+cosmP+'</b></td></tr>'
+      +'<tr><td>'+sp('sx.of.r3')+'</td><td'+dl1+'>—</td><td class="now"'+dl2+'><b class="gift">'+T2('sx.of.r3.v')+'</b></td></tr>'
       +'</tbody></table><div class="tot"><span>'+sp('sx.of.total')+'<br>'+sp('sx.of.total.s')+'</span><div><s>'+eur(V.sx_value)+'</s><strong>'+eur(V.sx_total)+'</strong></div></div>';
     var of='<section class="sx-sec sx-of"><div class="sx-c">'+p('sx.of.kick','p','sx-kick')+p('sx.of.h','h2')+'<div class="sx-of-g"><div>'+p('sx.of.p','p','sx-ofp')+p('sx.of.p2','p','sx-ofp')+'<div class="sx-scene" aria-hidden="true">'+sxPic('sol','box','').replace('<img ','<img class="box" ')+'<img class="s1" src="'+esc(AS.tonic||'')+'" alt=""><img class="s2" src="'+esc(AS.serum||'')+'" alt=""><img class="c1" src="'+esc(AS.tonic||'')+'" alt=""><img class="c2" src="'+esc(AS.cream||'')+'" alt=""><img class="c3" src="'+esc(AS.serum||'')+'" alt=""></div>'+xtra('sx.x.offer')+'</div>'
       +'<div class="sx-card">'+tbl+'<div class="save"><span'+ck('sx.of.save')+'>'+T2('sx.of.save')+'</span><span>'+eur(V.sx_save)+'</span></div>'+cta('sx.of.cta')+'<p class="sx-note">'+sp('sx.of.note')+(cnt?' · '+cnt:'')+'</p></div></div></div></section>';
@@ -499,7 +500,7 @@
     var fin='<section class="sx-sec sx-fin"><div class="sx-c"><div class="sx-2"><div>'+p('sx.fin.kick','p','sx-kick')+p('sx.fin.h','h2')+'<p class="sx-finp">'+sp('sx.fin.p')+(cnt?' · '+cnt:'')+'</p>'+xtra('sx.x.final')+'</div><div class="sx-fcard">'+sp('sx.fin.lbl','lbl')+'<strong>'+eur(V.sx_pay)+'</strong><s>'+eur(V.sx_full)+'</s>'+p('sx.fin.line','p','line')+cta('sx.fin.cta')+'</div></div>'+p('sx.legal','p','sx-legal')+'</div></section>';
     /* лентата горе + залепеният ред на телефона (не са секции) */
     var bar='<div class="sx-bar"><div class="sx-c">'+sp('sx.bar')+(cnt?' · '+cnt:'')+' · <a href="#sx-of" data-sx="bar"'+ck('sx.bar.link')+'>'+T2('sx.bar.link')+'</a></div></div>';
-    var stk='<div class="sx-stk"><div><strong>'+eur(V.sx_pay)+'<s>'+eur(V.sx_full)+'</s></strong>'+p('sx.stk.note','small')+'</div>'+cta('sx.stk.cta')+'</div>';
+    var stk='<div class="sx-stk"><div class="sx-c"><div class="t"><strong>'+eur(V.sx_pay)+'<s>'+eur(V.sx_full)+'</s></strong>'+p('sx.stk.note','small')+'</div><button class="sx-btn" type="button" data-sx="bar"'+ck('sx.stk.cta')+'><span>'+T2('sx.stk.cta')+'</span><i aria-hidden="true">↓</i></button></div></div>'; /* 1.31.3: към офертата, на всички екрани */
     return '<div class="sx">'+bar+secJoin('sx',{hero:h,miss:ms,derm:dm,sol:sl,reviews:rs,offer:of,five:fv,get:gt,yacht:y,faq:faq,'final':fin})+stk+'</div>';
   }
   /* бутоните: на живо (nav) → промо страницата с ?utm_content=sakura&box=l; в редактора (попъп) → Sakura като продукт и Голямата кутия на място */
@@ -509,7 +510,7 @@
     dc.querySelectorAll('[data-sx="bar"]').forEach(function(a){a.onclick=function(e){e.preventDefault();var t=dc.querySelector('.sx-of');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}});
     var ds=dc.querySelectorAll('.sx-faqs details');ds.forEach(function(d){d.addEventListener('toggle',function(){if(d.open)ds.forEach(function(o){if(o!==d)o.open=false})})});
     /* залепеният ред на телефона се крие, докато се вижда бутонът в офертата */
-    var bar=dc.querySelector('.sx-stk'),ob=dc.querySelector('.sx-of .sx-btn');if(nav&&bar&&ob&&'IntersectionObserver' in window){new IntersectionObserver(function(es){es.forEach(function(e){bar.classList.toggle('hide',e.isIntersecting)})},{threshold:0}).observe(ob)}
+    var bar=dc.querySelector('.sx-stk'),ob=dc.querySelector('.sx-of');if(nav&&bar&&ob&&'IntersectionObserver' in window){new IntersectionObserver(function(es){es.forEach(function(e){bar.classList.toggle('hide',e.isIntersecting)})},{threshold:.15}).observe(ob)} /* 1.31.3: крие се, докато офертата е на екрана */
   }
   function sxPopup(){
     var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0;
