@@ -751,6 +751,7 @@ final class Copy {
 				'co.tag.base'        => '{{box_ic}} {{box}} · −{{pct}}% · промо кутия',
 				'co.tag.book'        => '📖 подарък към кутията',
 				'co.tag.secret'      => '🌸 любимец · −{{secret_pct}}%',
+				'co.tag.gift'        => '🎁 подарък за обаждането',
 				'co.free'            => 'подарък',
 				'co.rewards.h'       => '🎁 Твоята кутия и твоите награди',
 				'co.cosm.ic'         => '🌸',

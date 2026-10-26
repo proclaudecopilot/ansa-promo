@@ -966,7 +966,7 @@
   /* ── ЕКРАН 5: поръчка (предаване към плащане) ── */
   function renderS5(){
     var el=$('apS5');if(S.box===null){el.innerHTML='';return}
-    var b=BX(),p=b.pct,st=secretTotal(),f=1-SECRET_PCT/100,tot=r2(pay()+st),h='';
+    var b=BX(),p=b.pct,st=secretTotal(),f=1-SECRET_PCT/100,tot=r2(pay()+st),h='';var opb=opBonus(tot);tot=r2(tot-opb.off); /* 1.30.0: бонусът за обаждането */
     h+='<div><button class="back" id="b5"'+ck('or.back')+'>'+T('or.back')+'</button><h2'+ck('or.h2')+'>'+T('or.h2')+'</h2><div class="card sum">';
     h+='<div class="row"><span>'+b.ic+' '+esc(b.name)+' · '+boxes()+' '+opk(boxes())+'<small'+ck('or.box.sub')+'>'+T('or.box.sub')+'</small></span><span></span></div>';
     var cnt={};S.slots.filter(Boolean).forEach(function(k){cnt[k]=(cnt[k]||0)+1});
@@ -974,7 +974,7 @@
     b.rw.forEach(function(r){var w=RW(r);h+='<div class="row"><span>'+w.ic+' '+w.t+'<small>'+w.s+'</small></span><span>'+(/^cosm/.test(r)?cosmPrice(r):(r==='book'?T('or.free'):T('or.incl')))+'</span></div>'});
     if(b.cosm_pay!=null)h+='<label class="row cosmrow consent"><span><input type="checkbox" id="cosmOk"'+(S.cosm?' checked':'')+'> <span'+ck('or.cosm')+'>'+T('or.cosm')+'</span><small'+ck('or.cosm.sub')+'>'+T('or.cosm.sub')+'</small></span><span>'+m(b.cosm_pay)+'<s>€ '+COSM+'</s></span></label>';
     SECRETLIST().forEach(function(k){if(S.secret[k])h+='<div class="row"><span>'+PROD[k].ph+' '+esc(PROD[k].name)+'<small'+ck('or.secret.sub')+'>'+T('or.secret.sub')+'</small></span><span>'+m(r2(PROD[k].price*f))+'</span></div>'});
-    h+='<div class="row"><span'+ck('or.ship')+'>'+T('or.ship')+'</span><span>'+(ship()?m(SHIP):T('or.ship.free'))+'</span></div><div class="row tot"><span'+ck('or.total')+'>'+T('or.total')+'</span><span>'+m(tot)+lv(tot)+'</span></div>'
+    h+=opb.row+'<div class="row"><span'+ck('or.ship')+'>'+T('or.ship')+'</span><span>'+(ship()?m(SHIP):T('or.ship.free'))+'</span></div><div class="row tot"><span'+ck('or.total')+'>'+T('or.total')+'</span><span>'+m(tot)+lv(tot)+'</span></div>'
       +'<div class="vline"><div class="vl pay"><em>'+T('pane.pay')+'</em><b>'+m(tot)+'</b></div><div class="vlarr">→</div><div class="vl get"><em>'+T('pane.get')+'</em><b>'+m0(r2(value()+st/f))+'</b><small>'+T('pane.save',{save:m0(r2(value()+st/f-tot))})+'</small></div></div>'
       +'<div class="guar"'+ck('boxes.guar')+'>'+T('boxes.guar')+'</div></div></div>';
     h+='<div><div class="card paycard"><div class="k2"'+ck('or.pay.h')+'>'+T('or.pay.h')+'</div><div class="pay">'
@@ -994,7 +994,7 @@
     if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
     var b=BX();beacon('order');sending=true;var html=btn?btn.innerHTML:'';if(btn){btn.disabled=true;btn.innerHTML=T('or.sending')}
     var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=label||html}};
-    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');if(S._op)fd.append('op',S._op); /* 1.29.0: 📞 поръчка по телефон — токенът от Insights */
+    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');if(S._op){fd.append('op',S._op);fd.append('op_bonus',S.opBonus||'')} /* 1.29.0: 📞 поръчка по телефон — токенът от Insights; 1.30.0: бонусът */
     fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
     /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
     var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
@@ -1037,11 +1037,21 @@
     var bi=BI[op.box];if(bi==null)bi=0;S.chosen=bi;S.box=bi;S.slots=(op.items||[]).filter(function(k){return !!PROD[k]});
     if(S.slots.length>maxFor(BX()))S.slots=S.slots.slice(0,maxFor(BX()));normSlots();syncBox();startTimer();saveS();
     go(2);render();
-    var who=(op.name?op.name+' · ':'')+(op.email||'')+(op.phone?' · '+op.phone:'');
-    var bar=document.getElementById('apOpBar');if(!bar){bar=document.createElement('div');bar.id='apOpBar';document.body.appendChild(bar)}
-    bar.innerHTML='<b>📞 Обаждане</b> · количката на <b>'+esc(who||'клиента')+'</b> ('+esc(op.label||'')+') · '+(op.note?'<b>'+esc(op.note)+'</b> · ':'')+'коригирай и натисни „Към плащане“ — чекаутът е с данните на клиента, остава офисът/адресът';
-    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#43302a;color:#fff;font:700 13px/1.4 Nunito,sans-serif;padding:10px 16px;text-align:center';
+    S.opBonus='';S.opBonusCfg=op.bonus||{pct:0,gift:null};opBar();
     toast('📞 Количката е заредена — коригирай и „Към плащане“',false);
+  }
+  /* 1.30.0: лентата на оператора — кой е клиентът + бонусът за обаждането (без · −X % · 🎁 подарък); виж се в „Поръчка“ и в чекаута */
+  function opBonus(tot){var c=S.opBonusCfg||{},b=S.opBonus||'';if(!S._op||!b)return {off:0,row:''};
+    if(b==='pct'&&c.pct>0){var off=r2(tot*c.pct/100);return {off:off,row:'<div class="row"><span>📞 Отстъпка по телефона −'+c.pct+' %<small>бонус за обаждането</small></span><span>− '+m(off)+'</span></div>'}}
+    if(b==='gift'&&c.gift)return {off:0,row:'<div class="row"><span>🎁 '+esc(c.gift.name)+'<small>подарък за обаждането</small></span><span>'+T('or.free')+'</span></div>'};
+    return {off:0,row:''}}
+  function opBar(){var op=S.opInfo||{},c=S.opBonusCfg||{},who=(op.name?op.name+' · ':'')+(op.email||'')+(op.phone?' · '+op.phone:'');
+    var bar=document.getElementById('apOpBar');if(!bar){bar=document.createElement('div');bar.id='apOpBar';document.body.appendChild(bar);bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#43302a;color:#fff;font:700 13px/1.5 Nunito,sans-serif;padding:9px 16px;text-align:center;box-shadow:0 -6px 20px rgba(0,0,0,.25)'}
+    var chip=function(v,l){return '<button type="button" data-ob="'+v+'" style="border:0;border-radius:999px;padding:4px 12px;margin:0 3px;font:800 12px Nunito,sans-serif;cursor:pointer;background:'+((S.opBonus||'')===v?'#f47a49':'rgba(255,255,255,.14)')+';color:#fff">'+l+'</button>'};
+    bar.innerHTML='<span><b>📞 Обаждане</b> · '+esc(who||'клиента')+' <small style="opacity:.75">('+esc(op.label||'')+')</small>'+(op.note?' · <b style="color:#f8a41d">'+esc(op.note)+'</b>':'')+'</span>'
+      +'<span style="display:inline-block;margin-left:14px">бонус за обаждането: '+chip('','без')+(c.pct>0?chip('pct','−'+c.pct+' % на поръчката'):'')+(c.gift?chip('gift','🎁 '+esc(c.gift.name)):'')+'</span>'
+      +'<span style="display:inline-block;margin-left:14px;opacity:.8">коригирай → „Продължи“ → „Завърши поръчката“ → чекаутът е с данните на клиента, остава офисът</span>';
+    bar.querySelectorAll('[data-ob]').forEach(function(b){b.onclick=function(){S.opBonus=b.getAttribute('data-ob');opBar();render();toast(S.opBonus==='pct'?'📞 −'+c.pct+' % ще се приложи в чекаута':S.opBonus==='gift'?'🎁 Подаръкът ще е в количката на €0':'Без бонус',false)}});
   }
   function refreshRuntime(){
     if(!A.ajax||A.editor||A.draft||!(A.refresh||S._op))return;

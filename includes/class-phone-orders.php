@@ -32,10 +32,53 @@ final class Phone_Orders {
 	const SID    = 'phone-';
 
 	public static function register() {
+		add_action( 'woocommerce_cart_calculate_fees', array( __CLASS__, 'fees' ), 30 ); /* 1.30.0: −X % по телефона като отрицателна такса */
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_go' ), 1 ); /* ⚡ Чекаут: ?ansa_op=…&go=1 на промо страницата */
 		add_action( 'ansa_promo_order_created', array( __CLASS__, 'on_order' ), 30, 2 );
 		add_filter( 'woocommerce_checkout_get_value', array( __CLASS__, 'checkout_value' ), 20, 2 );
 	}
+
+	/* ── 1.30.0: бонусът за обаждането (човекът: „5 % върху поръчката, ако се съгласят по телефона, или продукт подарък — PATCH01 EyeFresh BG“) ──
+	   Операторът избира на страницата: без · −X % на поръчката (отрицателна такса „📞 Отстъпка по телефона“ върху промо редовете, след
+	   промо цените) · 🎁 продукт подарък (ред с META role=gift на €0 — като книгата: заключен, не брои за опаковка, пада при непълна кутия). */
+	const OPT = 'ansa_promo_phone';
+	public static function defaults() { return array( 'pct' => 5, 'gift_sku' => 'PATCH01', 'gift_id' => 0 ); }
+	public static function settings() { $s = array_merge( self::defaults(), (array) get_option( self::OPT, array() ) ); $s['pct'] = (float) max( 0, min( 50, (float) $s['pct'] ) ); $s['gift_sku'] = trim( wp_strip_all_tags( (string) $s['gift_sku'] ) ); $s['gift_id'] = (int) $s['gift_id']; return $s; }
+	public static function save( $d ) {
+		$s = self::settings(); $s['pct'] = (float) max( 0, min( 50, (float) str_replace( ',', '.', (string) ( $d['pct'] ?? 5 ) ) ) ); $s['gift_sku'] = trim( wp_strip_all_tags( (string) ( $d['gift_sku'] ?? '' ) ) ); $s['gift_id'] = (int) ( $d['gift_id'] ?? 0 );
+		update_option( self::OPT, $s, false ); self::$gift = false; $g = self::gift_product();
+		return '📞 Обаждания: записано — отстъпка −' . Cart::fmt( $s['pct'] ) . ' %, подарък: ' . ( $g ? $g['name'] . ' (#' . $g['id'] . ')' : 'НЕ Е НАМЕРЕН продукт „' . ( $s['gift_sku'] ?: $s['gift_id'] ) . '“' ) . '.';
+	}
+	private static $gift = false;
+	/** Продуктът подарък: по ID, по SKU, по име (search). [id, name, price] или null. */
+	public static function gift_product() {
+		if ( false !== self::$gift ) { return self::$gift; } self::$gift = null; $s = self::settings(); if ( ! function_exists( 'wc_get_product' ) ) { return null; }
+		$id = (int) $s['gift_id']; if ( ! $id && '' !== $s['gift_sku'] ) { $id = Catalog::find_by_sku( $s['gift_sku'] ); }
+		if ( ! $id && '' !== $s['gift_sku'] ) { $r = Catalog::search( preg_replace( '/^[A-Z0-9]+\s+/', '', $s['gift_sku'] ) ?: $s['gift_sku'], 1 ); if ( $r ) { $id = (int) $r[0]['id']; } }
+		if ( $id ) { $p = wc_get_product( $id ); if ( $p && $p->is_purchasable() ) { self::$gift = array( 'id' => (int) $p->get_id(), 'name' => (string) $p->get_name(), 'price' => (float) $p->get_price(), 'stock' => (bool) $p->is_in_stock() ); } }
+		return self::$gift;
+	}
+	public static function norm_bonus( $v ) { $v = (string) $v; return in_array( $v, array( 'pct', 'gift' ), true ) ? $v : ''; }
+	/** За promo.js: какви бонуси може да предложи операторът. */
+	public static function bonus_cfg() { $s = self::settings(); $g = self::gift_product(); return array( 'pct' => (float) $s['pct'], 'gift' => $g && $g['stock'] ? array( 'id' => $g['id'], 'name' => $g['name'] ) : null ); }
+	public static function bonus_label( $bonus, $pct = null ) { $s = self::settings(); if ( 'pct' === $bonus ) { return '📞 Отстъпка по телефона −' . Cart::fmt( null === $pct ? $s['pct'] : $pct ) . ' %'; } if ( 'gift' === $bonus ) { $g = self::gift_product(); return '🎁 Подарък за обаждането' . ( $g ? ': ' . $g['name'] : '' ); } return ''; }
+	/** Редът подарък в количката (role=gift, €0 през Cart::apply_pricing). */
+	public static function add_gift( $meta ) {
+		$g = self::gift_product(); if ( ! $g || ! function_exists( 'WC' ) || ! WC()->cart ) { return false; }
+		foreach ( WC()->cart->get_cart() as $it ) { if ( ! empty( $it[ Cart::META ]['role'] ) && 'gift' === $it[ Cart::META ]['role'] ) { return true; } }
+		return (bool) WC()->cart->add_to_cart( (int) $g['id'], 1, 0, array(), array( Cart::META => array_merge( (array) $meta, array( 'role' => 'gift', 'key' => 'gift' ) ) ) );
+	}
+	/** −X % като отрицателна такса върху промо редовете (с ДДС), само при валидна кутия и бонус „pct“ в контекста на оператора. */
+	public static function fees( $cart ) {
+		if ( ! $cart instanceof \WC_Cart ) { return; } $ctx = Cart::ctx(); $op = isset( $ctx['op'] ) && is_array( $ctx['op'] ) ? $ctx['op'] : null;
+		if ( ! $op || 'pct' !== (string) ( $op['bonus'] ?? '' ) ) { return; } $pct = (float) ( $op['bonus_pct'] ?? self::settings()['pct'] ); if ( $pct <= 0 ) { return; }
+		$g = Cart::group( $cart ); if ( ! Cart::group_valid( $g ) ) { return; }
+		$base = 0.0; foreach ( $cart->get_cart() as $it ) { if ( ! empty( $it[ Cart::META ] ) ) { $base += (float) ( $it['line_total'] ?? 0 ) + (float) ( $it['line_tax'] ?? 0 ); } }
+		if ( $base <= 0 ) { return; } $amount = round( $base * $pct / 100, 2 );
+		$cart->add_fee( self::bonus_label( 'pct', $pct ), -$amount, false );
+	}
+	/** Сумата на бонуса за бележката/мета (след calculate_totals). */
+	public static function bonus_amount() { if ( ! function_exists( 'WC' ) || ! WC()->cart ) { return 0.0; } foreach ( WC()->cart->get_fees() as $f ) { if ( 0 === strpos( (string) $f->name, '📞' ) ) { return abs( (float) $f->amount ); } } return 0.0; }
 
 	/* ── токен ── */
 	private static function key() { return hash_hmac( 'sha256', 'ansa_promo_phone_orders', wp_salt( 'auth' ) ); }
@@ -109,7 +152,7 @@ final class Phone_Orders {
 	public static function runtime_payload( $tok ) {
 		$op = self::verify( $tok ); if ( ! $op ) { return array( 'ok' => false, 'note' => 'Линкът е изтекъл или невалиден — направи нов от Insights.' ); }
 		self::mark_operator(); $d = self::load( $op ); if ( ! $d ) { return array( 'ok' => false, 'note' => 'няма данни' ); }
-		return array( 'ok' => $d['ok'], 'box' => $d['box'], 'items' => $d['items'], 'email' => $d['email'], 'phone' => $d['phone'], 'name' => $d['name'], 'label' => $d['label'], 'pay' => $d['pay'], 'note' => $d['note'], 'by' => $d['by'] );
+		return array( 'ok' => $d['ok'], 'box' => $d['box'], 'items' => $d['items'], 'email' => $d['email'], 'phone' => $d['phone'], 'name' => $d['name'], 'label' => $d['label'], 'pay' => $d['pay'], 'note' => $d['note'], 'by' => $d['by'], 'bonus' => self::bonus_cfg() ); /* 1.30.0: −X % / подарък */
 	}
 	/** Попълва клиента на WooCommerce в сесията на оператора (чекаутът на FunnelKit чете оттам). */
 	public static function prefill_customer( $d ) {
@@ -130,10 +173,10 @@ final class Phone_Orders {
 		return isset( $map[ $input ] ) && ! empty( $op[ $map[ $input ] ] ) ? $op[ $map[ $input ] ] : $value;
 	}
 	/** Контекстът за Cart::perform_add при валиден токен: [by, src, email, phone, first, last] или null. Попълва и клиента. */
-	public static function ctx_for( $tok ) {
+	public static function ctx_for( $tok, $bonus = '' ) {
 		$op = self::verify( $tok ); if ( ! $op ) { return null; } $d = self::load( $op ); if ( ! $d || ! $d['ok'] ) { return null; }
-		self::mark_operator(); self::prefill_customer( $d );
-		return array( 'by' => $d['by'], 'src' => $d['src'], 'email' => $d['email'], 'phone' => $d['phone'], 'first' => $d['first'], 'last' => $d['last'], 'label' => $d['label'] );
+		self::mark_operator(); self::prefill_customer( $d ); $bonus = self::norm_bonus( $bonus ); if ( 'gift' === $bonus && ! self::gift_product() ) { $bonus = ''; }
+		return array( 'by' => $d['by'], 'src' => $d['src'], 'email' => $d['email'], 'phone' => $d['phone'], 'first' => $d['first'], 'last' => $d['last'], 'label' => $d['label'], 'bonus' => $bonus, 'bonus_pct' => (float) self::settings()['pct'] );
 	}
 	/** ⚡ Чекаут: ?ansa_op=<токен>&go=1 → количката се прави тук и браузърът отива в чекаута. */
 	public static function maybe_go() {
@@ -150,7 +193,8 @@ final class Phone_Orders {
 	/** Поръчката: бележка в WooCommerce. */
 	public static function on_order( $order, $m ) {
 		if ( empty( $m['phone_order'] ) || ! is_array( $m['phone_order'] ) ) { return; } $po = $m['phone_order'];
-		try { $order->add_order_note( '📞 Поръчка по телефон' . ( ! empty( $po['by'] ) ? ' от „' . $po['by'] . '“' : '' ) . ( ! empty( $po['label'] ) ? ' · от ' . $po['label'] : '' ) . ' (ansa™ Промо, Insights → Обаждания).' ); } catch ( \Throwable $e ) {}
+		$bn = (string) ( $po['bonus'] ?? '' ); $bt = 'pct' === $bn ? ' · бонус: −' . Cart::fmt( (float) ( $po['bonus_pct'] ?? 0 ) ) . ' %' . ( ! empty( $po['bonus_amount'] ) ? ' (' . Insights::money( $po['bonus_amount'] ) . ')' : '' ) : ( 'gift' === $bn ? ' · бонус: подарък ' . (string) ( $po['gift'] ?? '' ) : '' );
+		try { $order->add_order_note( '📞 Поръчка по телефон' . ( ! empty( $po['by'] ) ? ' от „' . $po['by'] . '“' : '' ) . ( ! empty( $po['label'] ) ? ' · от ' . $po['label'] : '' ) . $bt . ' (ansa™ Промо, Insights → Обаждания).' ); } catch ( \Throwable $e ) {}
 	}
 	public static function is_phone_sid( $sid ) { return 0 === strpos( (string) $sid, self::SID ); }
 	public static function sid_for( $order_id ) { return self::SID . (int) $order_id; }
