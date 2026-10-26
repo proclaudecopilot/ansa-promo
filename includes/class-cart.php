@@ -122,6 +122,7 @@ final class Cart {
 			'pay'    => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ), 'cosm' => ! isset( $_POST['cosm'] ) || '0' !== (string) $_POST['cosm'],
 			'utm'    => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'sid'    => Insights::request_sid( (string) ( $_POST['sid'] ?? '' ) ), /* 1.17.0: сесията на Insights; 1.17.1: или бисквитката */
+			'op'     => (string) wp_unslash( $_POST['op'] ?? '' ), /* 1.29.0: 📞 поръчка по телефон (токен от Insights) */
 		) );
 		if ( empty( $r['ok'] ) ) { wp_send_json_error( $r ); }
 		wp_send_json_success( $r );
@@ -167,6 +168,8 @@ final class Cart {
 		$email = sanitize_email( (string) ( $a['email'] ?? '' ) );
 		$cosm  = ! isset( $a['cosm'] ) || (bool) $a['cosm'];
 		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
+		/* 1.29.0: 📞 поръчка по телефон — токенът от Insights носи кой звъни и откъде е количката; клиентът на WC се попълва (имейл, телефон, имена) */
+		if ( ! empty( $a['op'] ) ) { $op = Phone_Orders::ctx_for( (string) $a['op'] ); if ( $op ) { $ctx['op'] = $op; if ( '' === $ctx['email'] && '' !== $op['email'] ) { $ctx['email'] = $op['email']; } } }
 
 		/* v1.24.0 (Shrine 6.26.5, човекът: „да им се добавя в количката и да могат да добавят и други продукти, а може и промо, и чак
 		   след това чекаут; сетът веднъж, не два пъти, 5 билета, не 10, 1 книга“): merge = кутията се ДОБАВЯ към количката, нищо не
@@ -502,6 +505,7 @@ final class Cart {
 			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
 			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 			'secret' => array_values( array_map( function ( $it ) { return (int) $it['product_id']; }, $g['secret'] ) ),
+			'phone_order' => ! empty( $ctx['op'] ) && is_array( $ctx['op'] ) ? array( 'by' => (string) ( $ctx['op']['by'] ?? '' ), 'src' => (string) ( $ctx['op']['src'] ?? '' ), 'label' => (string) ( $ctx['op']['label'] ?? '' ) ) : null, /* 1.29.0: 📞 */
 		);
 		return apply_filters( 'ansa_promo_order_meta', $meta, $g, $cfg );
 	}
