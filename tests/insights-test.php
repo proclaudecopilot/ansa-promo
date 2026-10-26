@@ -199,6 +199,38 @@ $h = $render( array( 'days' => '0' ) ); $ok( 'преглед: таблицата
 $fd = Insights::feed( 50 ); $shs = array_values( array_filter( $fd, function ( $s ) { return 'shrineS0001' === $s['sid']; } ) )[0] ?? null;
 $ok( 'фийдът: пътят на Shrine сесията с чиповете 3+2', $shs && count( $shs['timeline'] ) >= 4 && false !== strpos( wp_json_encode( $shs['timeline'] ), '3+2' ), $shs ? wp_json_encode( $shs['timeline'], JSON_UNESCAPED_UNICODE ) : 'няма' );
 
+/* ── 1.27.0: докъде са напълнили · UTM × кутия · кампании · referrer · часове (за екипа по реклами) ── */
+$wpdb->query( "UPDATE wp_ansa_promo_sessions SET src = 'facebook', med = 'cpc', camp = 'esen-2026', ref = 'https://l.facebook.com/l.php?u=x' WHERE sid IN ('sessA0001','sessB0001','sessC0001')" );
+$wpdb->query( "UPDATE wp_ansa_promo_sessions SET src = 'google', med = 'cpc', camp = 'brand', ref = 'https://www.google.com/' WHERE sid = 'sessD0001'" );
+$wpdb->query( "UPDATE wp_ansa_promo_sessions SET utm = 'dg' WHERE sid IN ('sessC0001','sessD0001','sessG0001')" );
+$wpdb->insert( 'wp_ansa_promo_events', array( 'sid' => 'sessE0001', 'at' => '2026-10-16 10:03:00', 'ev' => 'item', 'k' => 'vit', 'n' => 3 ) );
+$r = Insights::sessions_report( 0, array( 'from' => '2026-10-16', 'to' => '2026-10-17' ) );
+$fm = $r['fill']['m'] ?? null; $fl = $r['fill']['l'] ?? null;
+$ok( 'fill: средна кутия — избрали = напълнили + спрели, 2 спрели (C с 2 оп. от items, J с 0), средно 1,0 оп. = 33 %', $fm && 3 === $fm['packs'] && $fm['sessions'] === $fm['full'] + $fm['stopped'] && $fm['full'] >= 5 && $fm['ordered'] >= 2 && $fm['ordered'] <= $fm['full'] && 2 === $fm['stopped'] && array( 0 => 1, 2 => 1 ) === $fm['dist'] && 1.0 === $fm['avg'] && 33 === (int) round( $fm['avg_pct'] ), json_encode( $fm ) );
+$ok( 'fill: голяма кутия — G: 1 избрала, 1 напълнила, 1 поръчала, никой не е спрял', $fl && 5 === $fl['packs'] && 1 === $fl['sessions'] && 1 === $fl['full'] && 1 === $fl['ordered'] && 0 === $fl['stopped'] && array() === $fl['dist'], json_encode( $fl ) );
+$ok( 'fill: сесия без кутия (A, B) не влиза', ! isset( $r['fill'][''] ) && ! isset( $r['fill']['—'] ) );
+$ub = $r['by_utm_box']; $ok( 'by_utm_box: dg → голяма 1 (G), средна ≥ 2 (C, D), без кутия 0, сесии = кутии + без; „—“ → 2 без кутия (A, B)', isset( $ub['dg'] ) && 1 === $ub['dg']['boxes']['l'] && $ub['dg']['boxes']['m'] >= 2 && 0 === $ub['dg']['none'] && $ub['dg']['n'] === array_sum( $ub['dg']['boxes'] ) + $ub['dg']['none'] && 2 === $ub['—']['none'] && $ub['—']['n'] === array_sum( $ub['—']['boxes'] ) + 2, json_encode( $ub ) );
+$ok( 'by_camp: facebook / cpc · esen-2026 = 3 (попъп 2, кутия 1); google / cpc · brand = 1 пълна; има „без UTM“', 3 === $r['by_camp']['facebook / cpc · esen-2026']['n'] && 2 === $r['by_camp']['facebook / cpc · esen-2026']['gate'] && 1 === $r['by_camp']['facebook / cpc · esen-2026']['box'] && 1 === $r['by_camp']['google / cpc · brand']['full'] && isset( $r['by_camp']['без UTM'] ) && $r['by_camp']['без UTM']['n'] >= 5, json_encode( array_map( function ( $x ) { return $x['n']; }, $r['by_camp'] ) ) );
+$ok( 'by_camp: сесия само с UTM продукт, без utm_source → „само UTM продукт“ (G)', isset( $r['by_camp']['само UTM продукт'] ) && $r['by_camp']['само UTM продукт']['n'] >= 1 && $r['by_camp']['само UTM продукт']['paid'] >= 1, json_encode( array_keys( $r['by_camp'] ) ) );
+$ok( 'by_ref: l.facebook.com → facebook.com 3, www.google.com → google.com 1, останалите директно', 3 === $r['by_ref']['facebook.com']['n'] && 1 === $r['by_ref']['google.com']['n'] && $r['by_ref']['директно / без referrer']['n'] >= 6 && 3 === count( $r['by_ref'] ), json_encode( array_map( function ( $x ) { return $x['n']; }, $r['by_ref'] ) ) );
+$ok( 'by_hour: 10-те сесии от сценария са в 10:00 (с ≥ 3 поръчки), часовете са подредени', 10 === $r['by_hour']['10:00']['n'] && $r['by_hour']['10:00']['created'] >= 3 && array_keys( $r['by_hour'] ) === ( function ( $k ) { sort( $k ); return $k; } )( array_keys( $r['by_hour'] ) ), json_encode( $r['by_hour'] ) );
+$h = $render( array( 'days' => '0' ) );
+$ok( 'преглед: новите таблици са на екрана', false !== strpos( $h, 'Докъде са напълнили кутията' ) && false !== strpos( $h, 'Коя кутия избират по UTM' ) && false !== strpos( $h, 'По кампания (utm_source' ) && false !== strpos( $h, 'По referrer' ) && false !== strpos( $h, 'По час на влизане' ) && false !== strpos( $h, 'facebook / cpc · esen-2026' ) );
+$ok( 'преглед: редът на средната кутия — 2 оп. колоната и средното запълване', (bool) preg_match( '/🎁 Средна кутия.*?средно|33%/su', $h ) && false !== strpos( $h, '1,0 оп. · 33%' ) );
+$h = $render( array( 'view' => 'history', 'from' => '2026-10-16', 'to' => '2026-10-17' ) );
+$ok( 'история: новите таблици са и там', false !== strpos( $h, 'Докъде са напълнили кутията' ) && false !== strpos( $h, 'По кампания (utm_source' ) );
+/* режим портал: диагностиката и admin-post формите изчезват, линковете сочат към портала */
+function home_url( $p = '/' ) { return 'https://ansa.test' . $p; } function is_user_logged_in() { return false; } function wp_date( $f, $t = null ) { return gmdate( $f, $t ?? time() ); }
+Insights::$portal = true; $h = $render( array( 'days' => '0' ) );
+$ok( 'портал: без „Работи ли отчитането?“, без admin-post, линковете са към портала', false === strpos( $h, 'Работи ли отчитането' ) && false === strpos( $h, 'admin-post.php' ) && false !== strpos( $h, 'https://ansa.test/promo-insights/?view=live' ) && false !== strpos( $h, 'name="csv" value="sessions"' ) && false !== strpos( $h, 'Докъде са напълнили кутията' ) );
+$h = $render( array( 'view' => 'live' ) );
+$ok( 'портал · на живо: fetch-ът е към портала с action=…feed', false !== strpos( $h, 'var ajax="https:\\/\\/ansa.test\\/promo-insights\\/?"' ) && false !== strpos( $h, 'ajax+"action=ansa_promo_insights_feed' ) && false === strpos( $h, 'admin-ajax' ), substr( $h, strpos( $h, 'var ajax=' ), 80 ) );
+$h = $render( array( 'view' => 'history', 'from' => '2026-10-16', 'to' => '2026-10-17' ) );
+$ok( 'портал · история: формата от–до е към портала без page/tab', false !== strpos( $h, 'action="https://ansa.test/promo-insights/" class="ap-ins-range"><input type="hidden" name="view" value="history">' ) && false === strpos( $h, 'name="page"' ) );
+Insights::$portal = false; $h = $render( array( 'view' => 'live' ) );
+$ok( 'админ · на живо: fetch-ът е към admin-ajax', false !== strpos( $h, 'admin-ajax.php?"' ) && false !== strpos( $h, 'ajax+"action=ansa_promo_insights_feed' ) );
+$fp = Insights::feed_payload( 1, 5 ); $ok( 'feed_payload: feed · rows_html · at · kpi · kpi_sub', isset( $fp['feed'], $fp['rows_html'], $fp['at'], $fp['kpi'], $fp['kpi_sub'] ) && isset( $fp['kpi']['sessions'] ) );
+
 $ok( 'без SQL грешки по пътя', ! $GLOBALS['sql_errors'], implode( ' | ', array_slice( $GLOBALS['sql_errors'], 0, 3 ) ) );
 
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }

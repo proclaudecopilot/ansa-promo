@@ -55,7 +55,7 @@ final class Admin {
 	}
 	/** v1.16.0: секциите на Настройки за подменюто (id => име). */
 	public static function tool_sections() {
-		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
+		return array( 's-page' => 'Страница и игра', 's-season' => '📅 Седмици на сезона', 's-gate' => 'Имейл-попъп', 's-leads' => 'Лийдове → FunnelKit', 's-images' => 'Снимки на наградите', 's-cosm' => '💄 Козметичните продукти', 's-bgn' => 'Лева в поръчката', 's-preview' => 'Преглед с парола', 's-insurl' => '📈 Insights URL', 's-tickets' => 'Билети и награди', 's-info' => 'Как работи', 's-li' => '💄 Комплектът за 1 €', 's-tombola' => 'Томбола', 's-book' => 'Книга /kniga', 's-demo' => 'Демо данни', 's-theme' => 'Цял екран', 's-publish' => 'Публикуване', 's-linkproxy' => 'Линковете от SendGrid', 's-favorite' => '⭐ Любим продукт (имейли)', 's-products' => 'Продуктите в черновата' );
 	}
 
 	/** v1.19.0: 📅 Седмици на сезона — включване, старт, гратис, таблицата N × 3 с проценти (празно = процентът на кутията), „Запълни линейно“,
@@ -220,6 +220,12 @@ final class Admin {
 				$msg = $r ? sprintf( '⭐ %s → {{ansa_promo_fav}} = „%s“ (%s %s в %d поръчки от %d; последно %s) · всички: %s · {{ansa_promo_fav_url}} = %s', $em, $r['name'], Cart::fmt( $r['score'] ), 'spent' === $r['metric'] ? '€' : ( 'orders' === $r['metric'] ? 'поръчки' : ( 'qty' === $r['metric'] ? 'бр.' : 'опаковки' ) ), $r['orders'], $r['all_orders'], $r['last'] ? wp_date( 'd.m.Y', $r['last'] ) : '—', implode( ', ', array_map( function ( $k, $v ) { return $k . ' ' . Cart::fmt( $v ); }, array_keys( $r['breakdown'] ), $r['breakdown'] ) ), $r['url'] )
 					: sprintf( '⭐ %s → няма поръчки с продукт от картата (%d поръчки общо) → {{ansa_promo_fav}} = „%s“ (текстът „когато няма“ / fallback на тага).', $em, count( Favorite::orders_for( $em ) ), Favorite::settings()['fallback'] );
 				break;
+			case 'insights_portal': /* 1.27.0: отделният адрес на Insights за екипа по реклами — отделна опция, без публикуване */
+				list( $ok, $txt ) = Insights_Portal::save( array( 'enabled' => ! empty( $_POST['ip_enabled'] ), 'slug' => (string) wp_unslash( $_POST['ip_slug'] ?? '' ), 'user' => (string) wp_unslash( $_POST['ip_user'] ?? '' ), 'ttl' => (int) ( $_POST['ip_ttl'] ?? 12 ), 'https_only' => ! empty( $_POST['ip_https'] ), 'password' => (string) wp_unslash( $_POST['ip_pw'] ?? '' ), 'password2' => (string) wp_unslash( $_POST['ip_pw2'] ?? '' ) ) );
+				$msg = ( $ok ? '' : 'Грешка: ' ) . $txt; break;
+			case 'insights_portal_logout_all': Insights_Portal::logout_all(); $msg = 'Insights URL: всички сесии са излезли — екипът трябва да влезе отново.'; break;
+			case 'insights_portal_unlock': Insights_Portal::unlock_all(); $msg = 'Insights URL: блокираните IP адреси са отключени.'; break;
+			case 'insights_portal_log_clear': Insights_Portal::log_clear(); $msg = 'Insights URL: дневникът на опитите е изчистен.'; break;
 			case 'purge':
 				Catalog::purge_runtime(); $c = Config::get_published(); Config::purge_page( $c['page_id'] ); $msg = 'Кешът на runtime-а и страницата е изчистен.'; break;
 		}
@@ -433,6 +439,32 @@ final class Admin {
 					<p><button class="button button-primary">💾 Запази</button><?php if ( ! empty( $lp['const'] ) ) : ?> <small>домейнът е зададен с константата <code>ANSA_PROMO_LINK_PROXY_HOST</code> в wp-config.php</small><?php endif; ?></p>
 				</form>
 				</div></section>
+				<section class="ap-sec" id="s-insurl"><div class="ap-sec__h"><span class="ap-sec__t">📈 Insights URL — отделният адрес за екипа по реклами</span><?php if ( Insights_Portal::enabled() ) : ?><a class="ap-btn ap-btn--secondary ap-btn--sm" href="<?php echo esc_url( Insights_Portal::url() ); ?>" target="_blank" rel="noopener">отвори ↗</a><?php endif; ?></div><div class="ap-sec__b">
+				<?php $ip = Insights_Portal::settings(); $ips = Insights_Portal::status(); $ipl = Insights_Portal::locks(); $iplog = Insights_Portal::log_rows(); ?>
+				<p>Същият 📈 Insights (Преглед · На живо · История · Изоставени колички), но на <b>отделен адрес без wp-admin</b>: екипът по реклами влиза с <b>потребител и парола</b>, не с WP акаунт. Паролата се пази само като bcrypt хеш; сесията е подписана бисквитка (HttpOnly, SameSite=Strict, Secure) за <?php echo (int) $ip['ttl']; ?> ч, вързана към браузъра. Срещу brute force: 5 грешни опита от един IP за 15 мин → 15 мин блок (10 → 1 час, 20 → 24 часа); 25 грешни от всички IP за 15 мин → 15 мин блок за всички; всичко се записва в дневника долу. Съобщението за грешка е еднакво за грешно име и грешна парола. Смяна на паролата или „Изход от всички“ изхвърля всички сесии.</p>
+				<p class="description">Адрес: <?php echo Insights_Portal::enabled() ? '<a href="' . esc_url( Insights_Portal::url() ) . '" target="_blank" rel="noopener"><code>' . esc_html( Insights_Portal::url() ) . '</code></a>' : '<i>изключен</i>'; ?> · <?php echo esc_html( $ips[0] ); ?><?php if ( ! $ip['changed_at'] ) : ?> · <b style="color:#cf222e">Паролата е още началната — смени я тук.</b><?php endif; ?></p>
+				<?php self::form_open( 'insights_portal', 'tools', ' style="display:block" autocomplete="off"' ); ?>
+					<p><label><input type="checkbox" name="ip_enabled" value="1"<?php checked( $ip['enabled'] ); ?>> <b>Включен</b></label>
+					&nbsp; <label>адрес: <code><?php echo esc_html( home_url( '/' ) ); ?></code><input type="text" name="ip_slug" value="<?php echo esc_attr( $ip['slug'] ); ?>" class="code" style="width:200px" placeholder="promo-insights">/</label>
+					&nbsp; <label><input type="checkbox" name="ip_https" value="1"<?php checked( $ip['https_only'] ); ?>> само по HTTPS</label>
+					&nbsp; <label>сесията трае <select name="ip_ttl" style="width:auto"><?php foreach ( Insights_Portal::TTL_OPTIONS as $h ) : ?><option value="<?php echo (int) $h; ?>"<?php selected( $ip['ttl'], $h ); ?>><?php echo (int) $h; ?> ч</option><?php endforeach; ?></select></label></p>
+					<p><label>потребител: <input type="text" name="ip_user" value="<?php echo esc_attr( $ip['user'] ); ?>" class="code" style="width:200px" autocomplete="off" autocapitalize="none" spellcheck="false"></label> <small>малки латински букви, цифри, . _ - (3–32); смяната изхвърля сесиите</small></p>
+					<p><label>нова парола: <input type="password" name="ip_pw" value="" class="code" style="width:260px" autocomplete="new-password" placeholder="поне <?php echo (int) Insights_Portal::MIN_PW; ?> знака"></label> &nbsp; <label>още веднъж: <input type="password" name="ip_pw2" value="" class="code" style="width:260px" autocomplete="new-password"></label> <small>празно = без смяна</small></p>
+					<p><button class="button button-primary">💾 Запази</button></p>
+				</form>
+				<p class="ap-fl"><b>Сесии и блокове</b></p>
+				<p><?php self::form_open( 'insights_portal_logout_all', 'tools', ' onsubmit="return confirm(\'Да изхвърля ли всички влезли в Insights URL?\')"' ); ?><button class="button">🚪 Изход от всички устройства</button></form>
+				<?php self::form_open( 'insights_portal_unlock' ); ?><button class="button"<?php disabled( ! $ipl['ips'] && ! $ipl['all_until'] ); ?>>🔓 Отключи блокираните IP (<?php echo count( $ipl['ips'] ); ?>)</button></form>
+				<?php if ( $ipl['all_until'] ) : ?><span class="ap-pill ap-pill--bad">общ блок до <?php echo esc_html( wp_date( 'H:i', $ipl['all_until'] ) ); ?></span><?php endif; ?>
+				<?php foreach ( $ipl['ips'] as $bl ) : ?><span class="ap-pill ap-pill--warn" title="<?php echo (int) $bl['n']; ?> грешни опита"><?php echo esc_html( $bl['ip'] ); ?> до <?php echo esc_html( wp_date( 'd.m H:i', $bl['until'] ) ); ?></span> <?php endforeach; ?></p>
+				<h4 style="margin:14px 0 4px">🧾 Последни опити за вход (<?php echo count( $iplog ); ?>)</h4>
+				<?php if ( $iplog ) : ?>
+				<table class="widefat striped ap-table" style="font-size:12px"><thead><tr><th>кога (UTC)</th><th>резултат</th><th>потребител</th><th>IP</th><th>браузър</th></tr></thead><tbody>
+				<?php foreach ( array_slice( $iplog, 0, 30 ) as $lr ) : $bad = in_array( $lr['res'], array( 'bad', 'locked', 'csrf', 'https' ), true ); ?><tr<?php echo $bad ? ' style="color:#cf222e"' : ''; ?>><td><?php echo esc_html( $lr['at'] ); ?></td><td><?php echo esc_html( Insights_Portal::RES_LABELS[ $lr['res'] ] ?? $lr['res'] ); ?></td><td><code><?php echo esc_html( $lr['user'] ?: '—' ); ?></code></td><td><?php echo esc_html( $lr['ip'] ); ?></td><td><small><?php echo esc_html( $lr['ua'] ); ?></small></td></tr><?php endforeach; ?>
+				</tbody></table>
+				<?php self::form_open( 'insights_portal_log_clear' ); ?><button class="button button-small" style="margin-top:6px">🧹 Изчисти дневника</button></form>
+				<?php else : ?><p class="description">Още никой не е опитвал да влезе.</p><?php endif; ?>
+				</div></section>
 				<section class="ap-sec" id="s-favorite"><div class="ap-sec__h"><span class="ap-sec__t">⭐ Любим продукт за имейлите — {{ansa_promo_fav}}</span></div><div class="ap-sec__b">
 				<?php $fv = Favorite::settings(); $fvs = Favorite::status(); $fve = array(); $fvr = Favorite::parse_map( $fv['map'], $fve ); ?>
 				<p>„Здравей, Мария — твоят любим продукт <b>Daily Greens</b> е вече наличен.“ Merge тагът <code>{{ansa_promo_fav}}</code> (FunnelKit Automations → Merge tags → Order) намира <b>най-купувания продукт на човека</b> по всичките му поръчки с този имейл и го изписва с <b>краткото име</b> от картата по-долу, не с името на WooCommerce продукта. Продукти, които не са в картата, не участват. <code>{{ansa_promo_fav_url}}</code> е линкът към продуктовата му страница. Във FKA: <code>{{ansa_promo_fav fallback="любимата ти добавка"}}</code>. Същото като шорткод: <code>[ansa_promo_fav]</code>.</p>
@@ -527,6 +559,7 @@ final class Admin {
 				<?php if ( ! $ent ) : ?><tr><td colspan="12">Още няма получени промо поръчки с билет (статуси: <?php echo esc_html( implode( ', ', (array) $pub['tombola']['statuses'] ) ); ?>).</td></tr><?php endif; ?>
 				</tbody></table></div></div>
 			<?php elseif ( 'insights' === $tab ) : ?>
+				<?php if ( Insights_Portal::enabled() ) : /* 1.27.0 */ ?><p class="description" style="margin:0 0 10px">📈 Отделният адрес за екипа по реклами (вход с парола, без wp-admin): <a href="<?php echo esc_url( Insights_Portal::url() ); ?>" target="_blank" rel="noopener"><code><?php echo esc_html( Insights_Portal::url() ); ?></code></a> · настройки в <a href="<?php echo esc_url( self::url( array( 'tab' => 'tools' ) ) ); ?>#s-insurl">🧰 → 📈 Insights URL</a></p><?php endif; ?>
 				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); /* 1.17.0: Insights 2 — сесии, фуния; 1.21.0: ?view=overview|live|history (📊 Преглед · 🟢 На живо · 📜 История); рендира своите карти */ ?>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">{ } Черновата като JSON</span></div><div class="ap-sec__b">
