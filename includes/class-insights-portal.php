@@ -105,7 +105,7 @@ final class Insights_Portal {
 		return true;
 	}
 	/** „Изход от всички устройства“ — поколението се вдига, всяка издадена бисквитка пада. */
-	public static function logout_all() { $s = self::settings(); $s['gen']++; self::write( $s ); self::log( 'logout_all', $s['user'], Leads::ip() ); }
+	public static function logout_all() { $s = self::settings(); $s['gen']++; self::write( $s ); delete_option( self::OPT_REVOKED ); self::log( 'logout_all', $s['user'], Leads::ip() ); }
 	public static function enabled() { return self::settings()['enabled']; }
 	public static function path() { return self::settings()['slug']; }
 	public static function url( $args = array() ) { $u = self::url_for( self::path() ); unset( $args['tab'], $args['page'] ); $args = array_filter( (array) $args, function ( $v ) { return null !== $v && '' !== (string) $v; } ); return $args ? add_query_arg( array_map( 'rawurlencode', array_map( 'strval', $args ) ), $u ) : $u; }
@@ -133,7 +133,18 @@ final class Insights_Portal {
 		$p = self::b64e( wp_json_encode( array( 'u' => (string) $user, 'iat' => (int) $now, 'exp' => (int) $now + (int) $ttl * HOUR_IN_SECONDS, 'g' => (int) $s['gen'], 'ua' => self::ua_hash( $ua ) ) ) );
 		return $p . '.' . hash_hmac( 'sha256', $p, self::key( $s ) );
 	}
-	/** Проверява токена: подпис, срок, поколение, потребител, браузър. Връща payload-а или null. */
+	/** 1.27.2: изходът анулира токена и на сървъра (не само трие бисквитката) — option с хешовете на анулираните до изтичането им. */
+	const OPT_REVOKED = 'ansa_promo_ins_portal_revoked';
+	public static function revoke( $tok, $now = null ) {
+		$now = $now ?: time(); $tok = (string) $tok; if ( '' === $tok ) { return; }
+		$r = get_option( self::OPT_REVOKED, array() ); $r = is_array( $r ) ? $r : array();
+		foreach ( $r as $h => $exp ) { if ( (int) $exp <= $now ) { unset( $r[ $h ] ); } }
+		$d = json_decode( self::b64d( (string) strtok( $tok, '.' ) ), true ); $exp = is_array( $d ) ? (int) ( $d['exp'] ?? 0 ) : 0;
+		$r[ hash( 'sha256', $tok ) ] = $exp > $now ? $exp : $now + DAY_IN_SECONDS;
+		update_option( self::OPT_REVOKED, $r, false );
+	}
+	public static function revoked( $tok, $now = null ) { $now = $now ?: time(); $r = get_option( self::OPT_REVOKED, array() ); $h = hash( 'sha256', (string) $tok ); return is_array( $r ) && isset( $r[ $h ] ) && (int) $r[ $h ] > $now; }
+	/** Проверява токена: подпис, срок, поколение, потребител, браузър, не е анулиран. Връща payload-а или null. */
 	public static function verify( $tok, $now = null, $ua = null, $s = null ) {
 		$s = $s ?: self::settings(); $now = $now ?: time(); $tok = (string) $tok;
 		if ( '' === $tok || strlen( $tok ) > 600 || 1 !== substr_count( $tok, '.' ) ) { return null; }
@@ -143,6 +154,7 @@ final class Insights_Portal {
 		if ( (int) ( $d['exp'] ?? 0 ) <= $now || (int) ( $d['iat'] ?? 0 ) > $now + MINUTE_IN_SECONDS ) { return null; }
 		if ( (int) ( $d['g'] ?? 0 ) !== (int) $s['gen'] || (string) ( $d['u'] ?? '' ) !== (string) $s['user'] ) { return null; }
 		if ( ! hash_equals( self::ua_hash( $ua ), (string) ( $d['ua'] ?? '' ) ) ) { return null; }
+		if ( self::revoked( $tok, $now ) ) { return null; } /* 1.27.2 */
 		return $d;
 	}
 	/** Кой е вътре сега: [via => admin|session, name, exp] или null. */
@@ -166,7 +178,7 @@ final class Insights_Portal {
 		if ( '' === $value ) { unset( $_COOKIE[ $name ] ); } else { $_COOKIE[ $name ] = $value; }
 	}
 	private static function login_cookie( $user ) { $s = self::settings(); self::set_cookie( self::COOKIE, self::token( $user, null, null, null, $s ), time() + $s['ttl'] * HOUR_IN_SECONDS ); self::set_cookie( self::CSRF_COOKIE, '', time() - DAY_IN_SECONDS ); self::$cur_done = false; }
-	private static function logout_cookie() { self::set_cookie( self::COOKIE, '', time() - DAY_IN_SECONDS ); self::$cur_done = false; }
+	private static function logout_cookie() { self::revoke( (string) ( $_COOKIE[ self::COOKIE ] ?? '' ) ); self::set_cookie( self::COOKIE, '', time() - DAY_IN_SECONDS ); self::$cur_done = false; }
 
 	/* ── лимитите срещу brute force ── */
 	private static function fails() { $f = get_option( self::OPT_FAIL, array() ); $f = is_array( $f ) ? $f : array(); $f += array( 'ip' => array(), 'all' => array( 'n' => 0, 'first' => 0, 'until' => 0 ) ); $f['ip'] = is_array( $f['ip'] ) ? $f['ip'] : array(); return $f; }
@@ -241,7 +253,8 @@ final class Insights_Portal {
 		$l = self::locks(); $log = self::log_rows(); $last = ''; foreach ( $log as $r ) { if ( 'ok' === $r['res'] ) { $last = $r['at'] . ' от ' . $r['ip']; break; } }
 		$txt = self::url() . ' · потребител „' . $s['user'] . '“ · ' . ( $s['changed_at'] ? 'паролата е сменена ' . wp_date( 'd.m.Y', $s['changed_at'] ) : 'НАЧАЛНАТА парола — смени я' ) . ' · сесия ' . $s['ttl'] . ' ч · ' . ( $s['https_only'] ? 'само HTTPS' : 'и по HTTP (⚠)' )
 			. ( $l['ips'] ? ' · блокирани IP: ' . count( $l['ips'] ) : '' ) . ( $l['all_until'] ? ' · ОБЩ БЛОК до ' . wp_date( 'H:i', $l['all_until'] ) : '' ) . ( $last ? ' · последен вход ' . $last : ' · още никой не е влизал' );
-		return array( $txt, ! $s['changed_at'] || ! $s['https_only'] ? 'warn' : 'ok' );
+		$fp = self::cache_bypass_state(); if ( null !== $fp ) { $txt .= $fp ? ' · FlyingPress: изключен от кеша' : ' · ⚠ FlyingPress НЕ го изключва от кеша — отвори 🧰 → 📈 Insights URL → 💾 Запази (вписва се сам) или добави „' . self::cache_bypass_pattern() . '“ в Exclude pages'; }
+		return array( $txt, ! $s['changed_at'] || ! $s['https_only'] || false === $fp ? 'warn' : 'ok' );
 	}
 
 	/* ── маршрут ── */
@@ -260,10 +273,32 @@ final class Insights_Portal {
 	}
 	/** 1.27.1: чисти URL-а на портала от кеша на страниците (FlyingPress + hook за другите) — при нова версия, при запис на настройките, от Probe. */
 	public static function purge() {
-		$url = self::url_for( self::settings()['slug'] );
+		$url = self::url_for( self::settings()['slug'] ); try { self::ensure_cache_bypass(); } catch ( \Throwable $e ) {} /* 1.27.2 */
 		if ( class_exists( '\\FlyingPress\\Purge' ) ) { try { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_url' ) ) ) { \FlyingPress\Purge::purge_url( $url ); } elseif ( is_callable( array( '\\FlyingPress\\Purge', 'purge_urls' ) ) ) { \FlyingPress\Purge::purge_urls( array( $url ) ); } } catch ( \Throwable $e ) {} }
 		do_action( 'ansa_promo_purge_url', $url, 0 );
 		return $url;
+	}
+	/** 1.27.2: FlyingPress не гледа DONOTCACHEPAGE — кешира по своя списък. Порталът се вписва сам в неговите „Exclude pages“ (cache_bypass_urls)
+	 *  и „Bypass cookies“ (cache_bypass_cookies: сесийната бисквитка), през FlyingPress\Config::update_config, ако го има, иначе в опцията. Връща
+	 *  null = няма FlyingPress, true = вписан (или вече беше), false = не успя. */
+	const FP_OPT = 'flying_press_config';
+	public static function cache_bypass_state() {
+		$cfg = get_option( self::FP_OPT, null ); if ( ! is_array( $cfg ) ) { return null; }
+		$u = isset( $cfg['cache_bypass_urls'] ) && is_array( $cfg['cache_bypass_urls'] ) ? $cfg['cache_bypass_urls'] : array(); $c = isset( $cfg['cache_bypass_cookies'] ) && is_array( $cfg['cache_bypass_cookies'] ) ? $cfg['cache_bypass_cookies'] : array();
+		return in_array( self::cache_bypass_pattern(), $u, true ) && in_array( self::COOKIE, $c, true );
+	}
+	public static function cache_bypass_pattern( $slug = null ) { return '/' . trim( (string) ( null === $slug ? self::path() : $slug ), '/' ) . '*'; }
+	public static function ensure_cache_bypass() {
+		$cfg = get_option( self::FP_OPT, null ); if ( ! is_array( $cfg ) ) { return null; }
+		$changed = false;
+		foreach ( array( 'cache_bypass_urls' => self::cache_bypass_pattern(), 'cache_bypass_cookies' => self::COOKIE ) as $k => $v ) {
+			$list = isset( $cfg[ $k ] ) && is_array( $cfg[ $k ] ) ? array_values( $cfg[ $k ] ) : array();
+			if ( ! in_array( $v, $list, true ) ) { $list[] = $v; $cfg[ $k ] = $list; $changed = true; }
+		}
+		if ( ! $changed ) { return true; }
+		try { if ( class_exists( '\\FlyingPress\\Config' ) && is_callable( array( '\\FlyingPress\\Config', 'update_config' ) ) ) { \FlyingPress\Config::update_config( $cfg ); } else { update_option( self::FP_OPT, $cfg ); } }
+		catch ( \Throwable $e ) { update_option( self::FP_OPT, $cfg ); }
+		return true === self::cache_bypass_state();
 	}
 	/** Съвпада ли пътят (без наклонени черти в краищата) с портала. */
 	public static function matches( $req, $slug = null ) { $slug = null === $slug ? self::path() : $slug; return strtolower( trim( (string) $req, '/' ) ) === strtolower( trim( (string) $slug, '/' ) ); }

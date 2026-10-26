@@ -125,6 +125,18 @@ $ok( 'токен: боклук → не', null === Insights_Portal::verify( '', 
 $ok( 'токен: издаден „в бъдещето“ → не', null === Insights_Portal::verify( Insights_Portal::token( $USER, $T + HOUR_IN_SECONDS, null, 'Mozilla/5.0 (test)', $s ), $T, 'Mozilla/5.0 (test)', $s ) );
 Insights_Portal::logout_all(); $s2 = Insights_Portal::settings();
 $ok( 'logout_all: gen +1 → старият токен пада, новият минава', $s2['gen'] === $s['gen'] + 1 && null === Insights_Portal::verify( $tok, $T + 10, 'Mozilla/5.0 (test)', $s2 ) && is_array( Insights_Portal::verify( Insights_Portal::token( $USER, $T, null, 'Mozilla/5.0 (test)', $s2 ), $T + 10, 'Mozilla/5.0 (test)', $s2 ) ) );
+/* 1.27.2: изходът анулира токена на сървъра */
+$tk = Insights_Portal::token( $USER, $T, null, 'Mozilla/5.0 (test)', $s2 ); $ok( 'revoke: преди — минава', is_array( Insights_Portal::verify( $tk, $T + 10, 'Mozilla/5.0 (test)', $s2 ) ) );
+Insights_Portal::revoke( $tk, $T + 10 ); $ok( 'revoke: след изход токенът не минава, друг токен минава', null === Insights_Portal::verify( $tk, $T + 11, 'Mozilla/5.0 (test)', $s2 ) && is_array( Insights_Portal::verify( Insights_Portal::token( $USER, $T + 1, null, 'Mozilla/5.0 (test)', $s2 ), $T + 11, 'Mozilla/5.0 (test)', $s2 ) ) );
+$ok( 'revoke: записът изтича със срока на токена', ( $T + 4 * HOUR_IN_SECONDS ) === (int) array_values( get_option( Insights_Portal::OPT_REVOKED ) )[0] );
+Insights_Portal::revoke( 'junk-token', $T + 5 * HOUR_IN_SECONDS ); $ok( 'revoke: изтеклите записи се чистят', 1 === count( get_option( Insights_Portal::OPT_REVOKED ) ) );
+/* 1.27.2: FlyingPress — порталът се вписва сам в Exclude pages + Bypass cookies */
+$ok( 'FlyingPress: без плъгина → null', null === Insights_Portal::cache_bypass_state() && null === Insights_Portal::ensure_cache_bypass() );
+update_option( 'flying_press_config', array( 'cache_bypass_urls' => array( '/wp-admin/*', '/cart*' ), 'cache_bypass_cookies' => array( 'affwp_ref' ), 'cache_mobile' => true ) );
+$ok( 'FlyingPress: не е вписан → false', false === Insights_Portal::cache_bypass_state() && false !== strpos( Insights_Portal::status()[0], 'НЕ го изключва' ) );
+$ok( 'FlyingPress: ensure_cache_bypass вписва /reklama-stats* и бисквитката, другото остава', true === Insights_Portal::ensure_cache_bypass() && array( '/wp-admin/*', '/cart*', '/reklama-stats*' ) === get_option( 'flying_press_config' )['cache_bypass_urls'] && array( 'affwp_ref', 'ansa_promo_ins' ) === get_option( 'flying_press_config' )['cache_bypass_cookies'] && true === get_option( 'flying_press_config' )['cache_mobile'], json_encode( get_option( 'flying_press_config' ) ) );
+$ok( 'FlyingPress: втори път не дублира', true === Insights_Portal::ensure_cache_bypass() && 3 === count( get_option( 'flying_press_config' )['cache_bypass_urls'] ) && false !== strpos( Insights_Portal::status()[0], 'изключен от кеша' ) );
+$ok( 'purge() връща адреса и не гърми без FlyingPress клас', 'https://ansa.test/reklama-stats/' === Insights_Portal::purge() );
 $tok2 = Insights_Portal::token( $USER, $T, null, 'Mozilla/5.0 (test)' );
 Insights_Portal::save( array( 'enabled' => 1, 'slug' => 'reklama-stats', 'user' => $USER, 'https_only' => 1, 'ttl' => 4, 'password' => 'Another-Good-Pass-77', 'password2' => 'Another-Good-Pass-77' ) );
 $ok( 'смяна на паролата → токенът пада (ключът и gen са други)', null === Insights_Portal::verify( $tok2, $T + 10, 'Mozilla/5.0 (test)' ) );
