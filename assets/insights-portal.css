@@ -1,0 +1,39 @@
+/**
+ * ansa™ Промо 1.27.0 — Insights URL: отделният адрес на 📈 Insights за екипа по реклами (Insights_Portal).
+ * Страницата е самостоятелна (без темата и без wp-admin): тук са само стиловете за body, формата за вход и дребните разлики
+ * спрямо рамката на админа (admin-app.css се зарежда същият).
+ */
+html, body { margin: 0; padding: 0; background: #fdebe9; }
+body.ap-portal-body, body.ap-portal-login { font-family: 'Nunito', -apple-system, 'Segoe UI', Roboto, sans-serif; color: #43302a; -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.5; }
+body.ap-portal-body { min-height: 100dvh; }
+#ansa-promo-app.ap-portal .ap-nav__foot { background: transparent; }
+#ansa-promo-app.ap-portal .ap-portal__logout button { border: 0; background: transparent; color: inherit; font: inherit; font-weight: 800; cursor: pointer; padding: 0; }
+#ansa-promo-app.ap-portal .ap-portal__logout button:hover { color: #e0602c; }
+#ansa-promo-app.ap-portal .ap-top__actions form { display: inline; margin: 0; }
+#ansa-promo-app.ap-portal .ap-sec table a[href*="wp-admin"] { pointer-events: none; color: inherit; text-decoration: none; } /* линковете към wp-admin не вършат работа без WP акаунт */
+/* в портала „Прегледът“ започва с плочките — чиповете за период стоят на един ред с CSV бутоните */
+#ansa-promo-app.ap-portal .ap-actions { padding-left: 0; padding-right: 0; }
+
+/* ── вход ── */
+body.ap-portal-login { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: max(24px, env(safe-area-inset-top)) 16px 40px; box-sizing: border-box;
+  background: radial-gradient(1200px 600px at 10% -10%, #fde4d9 0%, transparent 60%), radial-gradient(900px 500px at 110% 110%, #fdeecd 0%, transparent 55%), #fdebe9; }
+.ap-login { width: 100%; max-width: 400px; }
+.ap-login__card { background: #fff; border-radius: 20px; box-shadow: 0 8px 24px rgba(224, 96, 44, .09), 0 24px 60px rgba(67, 48, 42, .08); padding: 26px 26px 20px; }
+.ap-login__card .ap-brand { padding: 0 0 14px; font-size: 19px; font-weight: 800; color: #e0602c; }
+.ap-login__card .ap-brand .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #f47a49; margin-right: 9px; box-shadow: 0 0 0 4px #fde4d9; }
+.ap-login__card .ap-brand small { display: block; color: #a08579; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin: 3px 0 0 21px; }
+.ap-login__card h1 { margin: 0 0 14px; font-size: 22px; font-weight: 900; color: #43302a; }
+.ap-login__card form { display: grid; gap: 12px; }
+.ap-login__card label { display: grid; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #a08579; }
+.ap-login__card input[type=text], .ap-login__card input[type=password] { font: inherit; font-size: 15px; font-weight: 700; color: #43302a; background: #fdebe9; border: 2px solid transparent; border-radius: 999px; padding: 11px 16px; outline: none; transition: .15s; width: 100%; box-sizing: border-box; letter-spacing: 0; text-transform: none; }
+.ap-login__card input:focus { border-color: #f47a49; background: #fff; }
+.ap-login__card input:disabled { opacity: .5; }
+.ap-login__card .ap-btn { justify-content: center; font-size: 14px; padding: 12px 18px; margin-top: 4px; }
+.ap-login__card .ap-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ap-login__card form.is-off { opacity: .85; }
+.ap-login__err { background: #fadddd; color: #d64545; font-weight: 800; font-size: 13px; border-radius: 14px; padding: 10px 14px; margin: 0 0 14px; }
+.ap-login__foot { margin: 16px 0 0; font-size: 11.5px; font-weight: 700; color: #a08579; text-align: center; }
+
+@media (max-width: 900px) {
+  body.ap-portal-body #ansa-promo-app { position: static; height: auto; min-height: 100dvh; }
+}

@@ -26,6 +26,7 @@ final class Probe {
 		$s[] = array( 'id' => 'promo-cart', 'label' => 'ansa™ Промо · количка и чекаут · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-cart', 'auto' => false,     'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_cart' ) );
 		$s[] = array( 'id' => 'promo-tickets', 'label' => 'ansa™ Промо · билети · QR · портал · имейли · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-tickets', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tickets' ) );
 		$s[] = array( 'id' => 'promo-insights', 'label' => 'ansa™ Промо · Insights · ansa Partner мост · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-insights', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights' ) );
+		$s[] = array( 'id' => 'promo-insights-url', 'label' => 'ansa™ Промо · Insights URL за рекламата (адрес · форма за вход · заглавия · грешен вход · блок)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_insights_url' ) ); /* 1.27.0 */
 		$s[] = array( 'id' => 'promo-tombola', 'label' => 'ansa™ Промо · томбола (страница · проверка · препоръка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_tombola' ) );
 		$s[] = array( 'id' => 'promo-leads', 'label' => 'ansa™ Промо · лийдовете от попъпа → FunnelKit (контакт · лист · таг · падане при поръчка) · ПРАВИ ПОРЪЧКИ — само ръчно ?suite=promo-leads', 'auto' => false, 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_leads' ) );
 		$s[] = array( 'id' => 'promo-book', 'label' => 'ansa™ Промо · книгата /kniga (страница · PDF · проверка · бисквитка)', 'plugin' => 'ansa-promo', 'callback' => array( __CLASS__, 'suite_book' ) );
@@ -209,6 +210,43 @@ final class Probe {
 		$pub = Config::get_published(); $draft = Config::get_draft();
 		$env['ansa_promo'] = array( 'version' => ANSA_PROMO_VER, 'db_ver' => get_option( Schema::OPT_DB_VER ), 'config_version' => Config::version(), 'has_draft' => Config::has_draft(), 'published' => Config::has_published(), 'live' => Config::is_live( $pub ), 'enabled' => ! empty( $pub['enabled'] ), 'deadline' => $pub['deadline'], 'page_id' => (int) $pub['page_id'], 'page_url' => $pub['page_id'] ? get_permalink( (int) $pub['page_id'] ) : '', 'preview_pw' => ! empty( $draft['preview']['enabled'] ), 'products' => count( $pub['products'] ), 'live_products' => count( Frontend::products( $pub ) ), 'gateways' => $pub['checkout'], 'shrine' => Plugin::shrine_version(), 'shrine_promo_loaded' => Plugin::shrine_promo_module_loaded() );
 		return $env;
+	}
+
+	/* ── 1.27.0: Insights URL — отделният адрес за екипа по реклами. Без поръчки. Прави ЕДИН грешен вход от IP-то на сървъра и после го чисти (clear_ip),
+	   за да не остане брояч; НЕ опитва истинската парола (не я знае). ── */
+	public static function suite_insights_url( $t, $params ) {
+		$s = Insights_Portal::settings(); $st = Insights_Portal::status(); $t->note( 'състояние', $st[0] );
+		if ( ! $s['enabled'] ) { $t->note( 'изключен', 'включи го от 🧰 Настройки → 📈 Insights URL' ); return array( 'enabled' => false ); }
+		$url = Insights_Portal::url(); $t->note( 'url', $url );
+		$t->ok( 'паролата не е началната', (bool) $s['changed_at'], $s['changed_at'] ? 'сменена ' . wp_date( 'd.m.Y', $s['changed_at'] ) : 'смени я от 🧰 Настройки → 📈 Insights URL' );
+		$t->ok( 'само HTTPS', (bool) $s['https_only'] );
+		$t->ok( 'хешът е bcrypt', 0 === strpos( (string) $s['hash'], '$2y$' ), substr( (string) $s['hash'], 0, 7 ) );
+		$a = array( 'timeout' => 30, 'redirection' => 0, 'sslverify' => false, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (ansa™ Probe) Chrome', 'Cache-Control' => 'no-cache' ) );
+		$r = wp_remote_get( $url, $a ); if ( is_wp_error( $r ) ) { $t->ok( 'страницата отговаря', false, $r->get_error_message() ); return null; }
+		$code = (int) wp_remote_retrieve_response_code( $r ); $body = (string) wp_remote_retrieve_body( $r ); $h = wp_remote_retrieve_headers( $r );
+		$t->ok( 'анонимен → формата за вход (HTTP 200)', 200 === $code && false !== strpos( $body, 'ap-portal-login' ) && false !== strpos( $body, 'name="pw"' ), 'HTTP ' . $code );
+		$t->ok( 'без данни от Insights преди вход', false === strpos( $body, 'ap-dash' ) && false === strpos( $body, 'apInsFeed' ) );
+		$hv = function ( $k ) use ( $h ) { $v = isset( $h[ $k ] ) ? $h[ $k ] : ''; return is_array( $v ) ? implode( ',', $v ) : (string) $v; };
+		$t->ok( 'X-Robots-Tag noindex', false !== stripos( $hv( 'x-robots-tag' ), 'noindex' ), $hv( 'x-robots-tag' ) );
+		$t->ok( 'X-Frame-Options DENY', false !== stripos( $hv( 'x-frame-options' ), 'deny' ), $hv( 'x-frame-options' ) );
+		$t->ok( 'Content-Security-Policy', false !== stripos( $hv( 'content-security-policy' ), 'frame-ancestors' ), substr( $hv( 'content-security-policy' ), 0, 60 ) );
+		$t->ok( 'Cache-Control no-store/no-cache', (bool) preg_match( '/no-(store|cache)/i', $hv( 'cache-control' ) ), $hv( 'cache-control' ) );
+		$t->ok( 'CSRF бисквитка на формата', false !== stripos( $hv( 'set-cookie' ), Insights_Portal::CSRF_COOKIE ), substr( $hv( 'set-cookie' ), 0, 80 ) );
+		/* грешен вход от сървъра (без CSRF бисквитка → формата се отказва, без да брои) и с CSRF → „Грешно потребителско име или парола“ */
+		$csrf = ''; if ( preg_match( '/' . Insights_Portal::CSRF_COOKIE . '=([a-f0-9]{32})/', $hv( 'set-cookie' ), $m ) ) { $csrf = $m[1]; }
+		$p = $a; $p['headers']['Cookie'] = Insights_Portal::CSRF_COOKIE . '=' . $csrf; $p['headers']['Origin'] = home_url(); $p['body'] = array( 'ap_login' => '1', 'csrf' => $csrf, 'user' => 'probe', 'pw' => 'probe-wrong-password' );
+		$r2 = wp_remote_post( $url, $p ); $c2 = is_wp_error( $r2 ) ? 0 : (int) wp_remote_retrieve_response_code( $r2 ); $b2 = is_wp_error( $r2 ) ? '' : (string) wp_remote_retrieve_body( $r2 );
+		$t->ok( 'грешен вход → 401/429 + същата форма, без Insights', in_array( $c2, array( 401, 429 ), true ) && false !== strpos( $b2, 'ap-login__err' ) && false === strpos( $b2, 'ap-dash' ), 'HTTP ' . $c2 );
+		$log = Insights_Portal::log_rows(); $t->ok( 'опитът е в дневника', (bool) array_filter( $log, function ( $x ) { return 'probe' === $x['user'] && in_array( $x['res'], array( 'bad', 'locked' ), true ); } ), $log ? $log[0]['res'] . ' · ' . $log[0]['ip'] : 'празен' );
+		if ( $log && 'probe' === $log[0]['user'] ) { Insights_Portal::clear_ip( array( $log[0]['ip'], (string) ( $_SERVER['SERVER_ADDR'] ?? '' ), '127.0.0.1', '::1' ) ); } /* да не остане брояч от Probe (CF IP + адресът, с който сървърът вика сам себе си) */
+		$p['body']['csrf'] = 'deadbeef'; $r3 = wp_remote_post( $url, $p ); $b3 = is_wp_error( $r3 ) ? '' : (string) wp_remote_retrieve_body( $r3 );
+		$t->ok( 'грешен CSRF → формата се отказва („изтекла“)', false !== strpos( $b3, 'Формата е изтекла' ) );
+		/* офлайн логика: токен · срок · поколение */
+		$tok = Insights_Portal::token( $s['user'], time(), 1, 'ua-probe' ); $t->ok( 'токенът се проверява', (bool) Insights_Portal::verify( $tok, time(), 'ua-probe' ) );
+		$t->ok( 'токен с друг браузър пада', ! Insights_Portal::verify( $tok, time(), 'ua-other' ) );
+		$t->ok( 'изтекъл токен пада', ! Insights_Portal::verify( $tok, time() + 2 * HOUR_IN_SECONDS, 'ua-probe' ) );
+		$t->ok( 'подправен токен пада', ! Insights_Portal::verify( substr( $tok, 0, -1 ) . ( 'a' === substr( $tok, -1 ) ? 'b' : 'a' ), time(), 'ua-probe' ) );
+		return array( 'url' => $url, 'user' => $s['user'], 'ttl' => $s['ttl'] );
 	}
 
 	/* ── env: редовете на Doctor като проверки ── */

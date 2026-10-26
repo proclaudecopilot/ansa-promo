@@ -47,6 +47,7 @@ final class Plugin {
 		Cart::register();
 		Tickets::register();
 		Insights::register();
+		Insights_Portal::register(); /* 1.27.0: отделният адрес на Insights за екипа по реклами (вход с парола, без wp-admin) */
 		Partner::register();
 		Tombola::register();
 		Book::register(); /* v1.9.0: книгата с рецепти — /kniga */
