@@ -150,5 +150,30 @@ $g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['produ
 ok( ! empty( $r['ok'] ) && 50.0 === ( $pp[100] ?? 0 ) && 15 === (int) $g['sum'], '(7) същият продукт пак → количеството расте и процентът се вдига на 50: ' . json_encode( $pp ) );
 $meta = Cart::build_meta( true ); ok( $meta && 15 === (int) $meta['count'] && (int) $meta['tickets']['allowance'] === Config::tickets_for( $bl, 15 ), '(7) order meta при 15 опаковки' );
 
+/* (8) 1.28.1: по-малко опаковки от кутията → кутията се смалява, не блокира (голяма 5 → 3 = средна −30%; → 1 = малка −15%, книгата пада) */
+WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
+$r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ), 'pay' => 'card', 'merge' => true, 'ppct' => 45 ) );
+$g = grp(); $bk = key( $g['base'] );
+WC()->cart->set_quantity( $bk, 3 ); WC()->cart->calculate_totals();
+$g = grp(); ok( Cart::group_valid( $g ) && 'm' === $g['box'] && 3 === (int) $g['sum'] && 3 === (int) $g['packs'], '(8) 3 опаковки → средна кутия, валидна: ' . json_encode( array( $g['box'], $g['sum'], $g['packs'] ) ) );
+ok( abs( WC()->cart->get_cart_item( $bk )['data']->get_price() - round( 43.90 * 0.7, 2 ) ) < 0.01, '(8) цената е −30% (ppct 45 на голямата не се пренася): ' . WC()->cart->get_cart_item( $bk )['data']->get_price() );
+ok( $g['book'] && WC()->cart->get_cart_item( $g['book'] )['data']->get_price() == 0, '(8) средната има книга → остава, €0' );
+$ctx = Cart::ctx(); ok( ! empty( $ctx['shrunk'] ) && 'm' === $ctx['shrunk']['box'] && 3 === (int) $ctx['shrunk']['qty'] && 'm' === $ctx['box'], '(8) ctx.shrunk за бележката: ' . json_encode( $ctx['shrunk'] ?? null, JSON_UNESCAPED_UNICODE ) );
+WC()->cart->set_quantity( $bk, 1 ); WC()->cart->calculate_totals();
+$g = grp(); ok( Cart::group_valid( $g ) && 's' === $g['box'] && ! $g['book'], '(8) 1 опаковка → малка кутия, книгата пада: ' . json_encode( array( $g['box'], $g['book'] ) ) );
+ok( abs( WC()->cart->get_cart_item( $bk )['data']->get_price() - round( 43.90 * 0.85, 2 ) ) < 0.01, '(8) цената е −15%' );
+WC()->cart->set_quantity( $bk, 0 ); WC()->cart->remove_cart_item( $bk ); WC()->cart->calculate_totals();
+ok( null === grp() || ! Cart::group_valid( grp() ), '(8) без базови редове → няма валидна група (co.broken както досега)' );
+/* (9) 1.28.1: етикетът на реда — „- 1 брой“ пада, броят влиза в тага */
+WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
+Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ), 'pay' => 'card', 'merge' => true ) );
+$g = grp(); $bk = key( $g['base'] ); $it = WC()->cart->get_cart_item( $bk );
+$lbl = Cart::cart_label( 'ansa™ – Оригиналният ДихидроБерберин - AMPK активатор - №1 в БГ - 1 брой', $it, $bk );
+ok( false === strpos( $lbl, '1 брой' ) && 0 === strpos( $lbl, 'ansa™ – Оригиналният ДихидроБерберин - AMPK активатор - №1 в БГ<br>' ), '(9) „- 1 брой“ пада от името: ' . $lbl );
+ok( false !== strpos( $lbl, '5 опаковки' ) && false !== strpos( $lbl, '−40%' ), '(9) тагът носи 5 опаковки · −40%: ' . $lbl );
+$lbl2 = Cart::cart_label( '<a href="#">ansa™ Greens - 1 кутия</a>', $it, $bk );
+ok( 0 === strpos( $lbl2, '<a href="#">ansa™ Greens</a><br>' ), '(9) и в линк: ' . $lbl2 );
+ok( 0 === strpos( Cart::cart_label( 'ansa™ Greens', $it, $bk ), 'ansa™ Greens<br>' ), '(9) име без суфикс остава' );
+
 if ( $errors ) { echo "ГРЕШКИ:\n- " . implode( "\n- ", $errors ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
