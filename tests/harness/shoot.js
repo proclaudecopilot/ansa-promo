@@ -231,10 +231,12 @@ const { chromium } = require('playwright');
     if (!(await page.$('#apS1 .sx-quote'))) errors.push(tag + ' sx: цитатът на дерматолога липсва');
     if (/какво казват жените/.test(t)) errors.push(tag + ' sx: секцията с ревютата се показва без цитати');
     const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 [data-sx="go"]')).map(b => b.getAttribute('data-go') || ''));
-    if (btns.length < 4) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
+    if (btns.length < 3) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
     btns.forEach((u, i) => { if (!/utm_content=sakura/.test(u) || !/box=l/.test(u) || !/fill=sakura/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=sakura5/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' sx: бутон ' + i + ' води към ' + u); });
     if ((await page.$$('#apS1 .sx-faqs details')).length !== 10) errors.push(tag + ' sx: въпросите не са 10');
-    if (!(await page.$('#apS1 .sx-stk .sx-btn'))) errors.push(tag + ' sx: няма залепен ред');
+    if (!(await page.$('#apS1 .sx-stk .sx-btn[data-sx="bar"]'))) errors.push(tag + ' sx: няма залепен ред към офертата');
+    if (await page.$('#apS1 .sx-stk [data-go]')) errors.push(tag + ' sx: залепеният ред води към кутията вместо към офертата');
+    { const vis = await page.evaluate(() => { const b = document.querySelector('#apS1 .sx-stk'); const r = b.getBoundingClientRect(); return getComputedStyle(b).position === 'fixed' && r.bottom <= innerHeight + 2 && r.width > 200; }); if (!vis) errors.push(tag + ' sx: залепеният ред не е fixed в дъното'); }
     if (await page.$('#apS1 .sx-left')) errors.push(tag + ' sx: броячът „Останаха“ се показва при 90 % останали');
     if (await page.$('#apS1 .ck-empty')) errors.push(tag + ' sx: „＋“ хотспот на живо (без редактор)');
     { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec)); const want = ['hero', 'miss', 'derm', 'sol', 'offer', 'five', 'get', 'yacht', 'faq', 'final']; if (JSON.stringify(o) !== JSON.stringify(want)) errors.push(tag + ' sx: секциите са ' + JSON.stringify(o)); }
