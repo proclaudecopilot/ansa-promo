@@ -12,6 +12,7 @@ $prods=[]; foreach($cfg['products'] as $p){ $prods[]=['key'=>$p['key'],'name'=>$
 $canvas=$argv[1]??'';
 echo json_encode(['ajax'=>'','nonce'=>'x','ver'=>ANSA_PROMO_VER,'page'=>$canvas,'page_url'=>'https://ansa.bg/sezonut-na-ansa/','admin'=>'#','products_tab'=>'#',
  'registry'=>['groups'=>Copy::groups(),'keys'=>$keys,'vars'=>Copy::vars(),'screens'=>Editor::group_screens()],
- 'cfg'=>$cfg,'state'=>['version'=>1,'published_at'=>time(),'has_draft'=>false,'draft_at'=>0,'history'=>[],'checks'=>[],'live'=>true,'published_copy_utm'=>(object)[],'published_copy'=>(object)[],'pages_images'=>(object)['how'=>(object)[],'li'=>(object)[]],'li_items'=>array_map(function($it){return ['img'=>'','blur'=>!empty($it['blur'])];},$cfg['li']['items'])],
+ 'cfg'=>$cfg,'state'=>['version'=>1,'published_at'=>time(),'has_draft'=>false,'draft_at'=>0,'history'=>[],'checks'=>[],'live'=>true,'published_copy_utm'=>(object)[],'published_copy'=>(object)[],'pages_images'=>(object)['how'=>(object)[],'li'=>(object)[],'sx'=>(object)[]],'li_items'=>array_map(function($it){return ['img'=>'','blur'=>!empty($it['blur'])];},$cfg['li']['items'])],
  'gateways'=>[],'products'=>$prods,'rewards'=>['tix'=>'Билет','tix3'=>'3 билета','tix5'=>'5 билета','ship'=>'Безплатна доставка','book'=>'Книга','cosm50'=>'Сет −50%','cosm1'=>'Сетът за €1'],
- 'pages'=>Config::page_sections(),'gate_images'=>$gate,'gate_slots'=>Config::gate_image_slots()],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+ 'pages'=>Config::page_sections(),'gate_images'=>$gate,'gate_slots'=>Config::gate_image_slots(),
+ 'sx_assets'=>(function(){ $o=[]; foreach(['hero'=>'hero.webp','box'=>'sakura-box.webp','tonic'=>'tonic.webp','cream'=>'day-cream.webp','serum'=>'night-serum.webp'] as $k=>$f){ $o[$k]='file://'.ANSA_PROMO_PATH.'assets/img/sx/'.$f; } return $o; })(),'sx_url'=>'https://ansa.bg/kozmetichen-set-promo/'],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);

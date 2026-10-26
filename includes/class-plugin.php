@@ -55,6 +55,7 @@ final class Plugin {
 		Book::register(); /* v1.9.0: книгата с рецепти — /kniga */
 		Info::register(); /* v1.8.0: {промо}/info */
 		Listicle::register(); /* 1.24.20: {промо}/kozmetika — страницата „Комплектът за 1 €“ */
+		Sakura_Page::register(); /* 1.31.0: {сайт}/kozmetichen-set-promo — адверториалът „Sakura ×5“ */
 		Merge::register(); /* v1.8.2: merge tags за имейлите (FunnelKit Automations + шорткодове) */
 		Probe::register();
 		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }

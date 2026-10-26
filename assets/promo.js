@@ -273,7 +273,7 @@
      (A.pages[pg].order — редакторът 📄 Страници), скритите (off) не се рендират на живо (в редактора стоят избледнели, за да се редактират текстовете им),
      снимката на секция е своята (A.pages[pg].images[id]) или тази от имейл-попъпа (gate.images). Всяка секция носи data-sec; в редактора — и лента
      ↑ ↓ 👁 🖼, която праща {ansaPromo:'sec', page, id, act} на родителя. Залепеният бутон не е секция (винаги последен). */
-  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq']}; /* 1.24.22: prods */
+  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq'],sx:['hero','miss','derm','sol','reviews','offer','five','steps','get','yacht','faq','final']}; /* 1.24.22: prods; 1.31.0: sx */
   function pageCfg(pg){var P=(A.pages&&A.pages[pg])||{},def=PAGE_SECS[pg]||[],order=[];(P.order||[]).forEach(function(id){if(def.indexOf(id)>-1&&order.indexOf(id)<0)order.push(id)});def.forEach(function(id){if(order.indexOf(id)<0)order.push(id)});
     return {order:order,off:P.off||[],images:P.images||{},labels:P.labels||{},img:P.img||{}}}
   function secPic(pg,id,gk,emo){var GI=(A.gate&&A.gate.images)||{},u=pageCfg(pg).images[id]||GI[gk];return u?'<img src="'+esc(u)+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'}
@@ -437,8 +437,92 @@
     renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
     var s1=$('apS1');s1.innerHTML='<div class="dc hw inl li"><div class="ib">'+liHtml()+'</div></div>';s1.classList.add('on');liBind(s1.firstChild,true);
   }
+  /* ── 1.31.0 (човекът): адверториалът „Sakura ×5“ — {сайт}/kozmetichen-set-promo (runtime.mode = sx). Същият модел като /kozmetika: секции по реда
+     от конфига (pages.sx), празно = скрит текст, „＋ допълнителен текст“, ВСЕКИ бутон → промо страницата с ?utm_content=sakura&box=l (+ utm_* от
+     адреса). Цените идват от двигателя (sxVars): products[sakura].price × packs на Голямата кутия с −pct; комплектът за cosm_pay. Снимките: своята
+     от 📄 Страници (pages.sx.images), иначе assets/img/sx/ (runtime.sx.assets); петте козметични продукта — li_items (💄 Козметичните продукти). ── */
+  function sxFmt(n){n=Number(n)||0;var s=Math.abs(n-Math.round(n))<.005?String(Math.round(n)):n.toFixed(2);return s.replace('.',',')}
+  function sxVars(){var SX=A.sx||{},bl=boxOf('l')||bigBox(),pk=bl?Number(bl.packs)||5:5,key=SX.product||'sakura',sp=PROD[key]||null,price=sp?Number(sp.price)||0:0,pct=sp&&bl?ppct(sp,bl):(bl?Number(bl.pct)||0:0);
+    var full=r2(price*pk),pay=r2(full*(1-pct/100)),cp=bl&&bl.cosm_pay!=null?Number(bl.cosm_pay)||0:0,pd=Number(SX.days)||30,days=pk*pd,total=r2(pay+cp),value=r2(full+COSM),save=r2(value-total),day=days?r2(pay/days):0;
+    return {sx_price:sxFmt(price),sx_full:sxFmt(full),sx_pay:sxFmt(pay),sx_total:sxFmt(total),sx_value:sxFmt(value),sx_save:sxFmt(save),sx_days:String(days),sx_day:sxFmt(day),sx_packs:String(pk),sx_pack_days:String(pd),_pct:pct,_cp:cp,_prod:sp}}
+  function sxUrl(){var u=addQ(A.promo_url||'/',A.utm_param||'utm_content',(A.sx&&A.sx.product)||'sakura');u=addQ(u,'box','l');try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
+  function sxPic(sec,asset,alt){var own=pageCfg('sx').images[sec],u=own||((A.sx&&A.sx.assets)||{})[asset]||'';return u?'<img src="'+esc(u)+'" alt="'+esc(alt||'')+'" loading="lazy" decoding="async">':''}
+  function sxHtml(){
+    var V=sxVars(),lf=liLeft(),lv=lf?{left:lf.left}:{left:''},SX=A.sx||{},AS=SX.assets||{},info_u=A.info_url||'',rules_u=A.tombola_url||info_u,prod_u=SX.product_url||info_u;
+    function T2(k,v){return T(k,Object.assign({},V,lv,v||{}))}
+    function p(k,tag,cls,v){tag=tag||'p';var t=T2(k,v);if(t==='')return emptyHs(k,tag,cls);return '<'+tag+(cls?' class="'+cls+'"':'')+ck(k)+'>'+t+'</'+tag+'>'}
+    function sp(k,cls,v){var t=T2(k,v);if(t==='')return A.editor?emptyHs(k,'span',cls):'';return '<span'+(cls?' class="'+cls+'"':'')+ck(k)+'>'+t+'</span>'}
+    function cta(k,cls){var t=T2(k);if(t==='')return emptyHs(k,'button','sx-btn');return '<button class="sx-btn'+(cls?' '+cls:'')+'" type="button" data-sx="go"'+ck(k)+'><span>'+t+'</span><i aria-hidden="true">↗</i></button>'}
+    var eur=function(s){return s+' €'};
+    /* 1 · писмото */
+    var h='<section class="sx-sec sx-hero"><div class="sx-c sx-hero-g"><div class="sx-hero-tx">'+p('sx.hero.kick','p','sx-kick')+p('sx.hero.h','h1')+p('sx.hero.p1','p','sx-lead')+p('sx.hero.p2')+p('sx.hero.p3')+p('sx.hero.p4')+xtra('sx.x.hero')
+      +'<div class="sx-sign"><b>a.</b>'+sp('sx.hero.sign')+'</div></div><div class="sx-hero-v">'+sxPic('hero','hero','')+sp('sx.hero.label','sx-plabel')+'<div class="sx-pack">'+sxPic('sol','box','')+'</div><div class="sx-seal">'+sp('sx.hero.seal','s1')+'<strong>'+eur(sxFmt(V._cp))+'</strong><s>'+eur(String(COSM).replace('.',','))+'</s>'+sp('sx.hero.seal.s','s2')+'</div></div></div></section>';
+    /* 2 · ето какво пропускаш */
+    var layers='';[1,2,3].forEach(function(i){layers+='<div class="sx-layer l'+i+'"><span>'+p('sx.miss.l'+i+'.t','b')+p('sx.miss.l'+i+'.d','small')+'</span>'+sp('sx.miss.l'+i+'.w','who')+'</div>'});
+    var ms='<section class="sx-sec sx-miss"><div class="sx-c sx-2"><div class="sx-prose">'+p('sx.miss.kick','p','sx-kick')+p('sx.miss.h','h2')+p('sx.miss.p1')+p('sx.miss.p2')+p('sx.miss.p3')+p('sx.miss.p4')+xtra('sx.x.miss')+'</div><div class="sx-skin">'+p('sx.miss.lk','p','sx-kick')+'<div class="sx-layers">'+layers+'</div>'+p('sx.miss.foot','p','sx-foot')+'</div></div></section>';
+    /* 3 · дерматолозите */
+    var three='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){three+='<div><em>'+x[0]+'</em>'+p('sx.derm.'+x[1]+'.t','b')+p('sx.derm.'+x[1]+'.d')+'</div>'});
+    var dm='<section class="sx-sec sx-derm"><div class="sx-c"><div class="sx-narrow sx-prose">'+p('sx.derm.kick','p','sx-kick')+p('sx.derm.h','h2')+p('sx.derm.p')+'</div><div class="sx-three">'+three+'</div><div class="sx-proof">'+p('sx.derm.proof.n','b')+'<span>'+p('sx.derm.proof','strong')+sp('sx.derm.proof.s')+'</span></div>'+xtra('sx.x.derm')+'</div></section>';
+    /* 4 · решението */
+    var uses='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){uses+='<li class="sx-use"><em>'+x[0]+'</em><div>'+p('sx.sol.'+x[1]+'.t','b')+p('sx.sol.'+x[1]+'.d','span')+'</div></li>'});
+    var sl='<section class="sx-sec sx-sol"><div class="sx-c sx-2 sx-2r"><div class="sx-solv">'+sp('sx.sol.tag','tag')+'<i class="circle"></i>'+sxPic('sol','box','Sakura SkinTonic')+'<div class="how">'+sp('sx.sol.how1')+sp('sx.sol.how2')+sp('sx.sol.how3')+'</div></div><div class="sx-prose">'+p('sx.sol.kick','p','sx-kick')+p('sx.sol.h','h2')+p('sx.sol.p1')+'<ul class="sx-uses">'+uses+'</ul>'+p('sx.sol.nc','div','sx-nc')+p('sx.sol.p2')+xtra('sx.x.sol')+'</div></div></section>';
+    /* 5 · ревюта — само картите с цитат; без нито един цитат секцията не се показва на живо */
+    var rv='',nrv=0;[1,2,3].forEach(function(i){var q=T2('sx.rv.'+i+'.q');if(q===''){if(A.editor)rv+='<figure class="sx-rev ck-empty"'+ck('sx.rv.'+i+'.q')+'>＋ sx.rv.'+i+'.q</figure>';return}nrv++;rv+='<figure class="sx-rev'+(i===1?' first':'')+'"><div class="stars" aria-label="5 от 5">★★★★★</div>'+p('sx.rv.'+i+'.q')+'<figcaption>'+sp('sx.rv.'+i+'.n')+'</figcaption></figure>'});
+    var rs=(nrv||A.editor)?'<section class="sx-sec sx-rv"><div class="sx-c">'+p('sx.rv.kick','p','sx-kick')+p('sx.rv.h','h2')+'<div class="sx-revs">'+rv+'</div>'+(prod_u?'<a class="sx-more" href="'+esc(prod_u)+'" target="_blank" rel="noopener"'+ck('sx.rv.more')+'>'+T2('sx.rv.more')+'</a>':'')+xtra('sx.x.reviews')+'</div></section>':'';
+    /* 6 · офертата */
+    var cnt=lf?'<span class="sx-left"'+ck('sx.left')+'>'+T2('sx.left')+'</span>':'';
+    var of='<section class="sx-sec sx-of"><div class="sx-c">'+p('sx.of.kick','p','sx-kick')+p('sx.of.h','h2')+'<div class="sx-of-g"><div>'+p('sx.of.p','p','sx-ofp')+'<div class="sx-scene" aria-hidden="true">'+sxPic('sol','box','').replace('<img ','<img class="box" ')+'<img class="s1" src="'+esc(AS.tonic||'')+'" alt=""><img class="s2" src="'+esc(AS.serum||'')+'" alt=""><img class="c1" src="'+esc(AS.tonic||'')+'" alt=""><img class="c2" src="'+esc(AS.cream||'')+'" alt=""><img class="c3" src="'+esc(AS.serum||'')+'" alt=""></div>'+xtra('sx.x.offer')+'</div>'
+      +'<div class="sx-card"><div class="row"><span>'+sp('sx.of.r1')+p('sx.of.r1.s','small')+'</span><b><s>'+eur(V.sx_full)+'</s>'+eur(V.sx_pay)+'</b></div><div class="row"><span>'+sp('sx.of.r2')+p('sx.of.r2.s','small')+'</span><b><s>'+eur(String(COSM).replace('.',','))+'</s><i class="gift">'+eur(sxFmt(V._cp))+'</i></b></div><div class="row"><span>'+sp('sx.of.r3')+'</span><b class="gift">'+T2('sx.of.r3.v')+'</b></div>'
+      +'<div class="tot"><span>'+sp('sx.of.total')+'<br>'+sp('sx.of.total.s')+'</span><div><s>'+eur(V.sx_value)+'</s><strong>'+eur(V.sx_total)+'</strong></div></div><div class="save"><span'+ck('sx.of.save')+'>'+T2('sx.of.save')+'</span><span>'+eur(V.sx_save)+'</span></div>'+cta('sx.of.cta')+'<p class="sx-note">'+sp('sx.of.note')+(cnt?' · '+cnt:'')+'</p></div></div></div></section>';
+    /* 7 · защо пет */
+    var months='';[1,2,3,4,5].forEach(function(i){months+='<span class="'+(i===3?'jan':'')+'"><b>'+i+'</b>'+T2('sx.five.m'+i)+'</span>'});
+    var fv='<section class="sx-sec sx-five"><div class="sx-c sx-2"><div class="sx-prose">'+p('sx.five.kick','p','sx-kick')+p('sx.five.h','h2')+p('sx.five.p1')+'<div class="sx-months"'+ck('sx.five.m1')+'>'+months+'</div>'+p('sx.five.p2')+p('sx.five.p3')+xtra('sx.x.five')+'</div>'
+      +'<div class="sx-rcpt">'+p('sx.five.rh','h3')+'<div class="row"><span>'+sp('sx.five.rr1')+p('sx.five.rr1.s','small')+'</span><b>'+eur(V.sx_full)+'</b></div><div class="row"><span>'+sp('sx.five.rr2')+p('sx.five.rr2.s','small')+'</span><b>'+eur(V.sx_pay)+'</b></div><div class="row"><span>'+sp('sx.five.rr3')+p('sx.five.rr3.s','small')+'</span><b><s>'+eur(String(COSM).replace('.',','))+'</s><i>'+eur(sxFmt(V._cp))+'</i></b></div>'
+      +'<div class="tot"><span'+ck('sx.five.tot')+'>'+T2('sx.five.tot')+'</span><div><s'+ck('sx.five.tot.s')+'>'+T2('sx.five.tot.s')+'</s><strong>'+eur(V.sx_total)+'</strong></div></div><div class="day"><b>'+eur(V.sx_day)+'</b>'+sp('sx.five.day')+'</div>'+cta('sx.five.cta')+'</div></div></section>';
+    /* 8 · три стъпки */
+    var steps='';[1,2,3].forEach(function(i){steps+='<div class="sx-step"><span class="n">'+i+'</span>'+p('sx.st.'+i+'.t','h3')+p('sx.st.'+i+'.d')+sp('sx.st.'+i+'.w','when'+(i===3?' jan':''))+'</div>'});
+    var st='<section class="sx-sec sx-st"><div class="sx-c">'+p('sx.st.kick','p','sx-kick')+p('sx.st.h','h2')+'<div class="sx-steps">'+steps+'</div>'+p('sx.st.note','p','sx-note')+xtra('sx.x.steps')+'<div class="sx-ctab">'+cta('sx.st.cta')+'</div></div></section>';
+    /* 9 · какво получаваш — петте козметични продукта са li_items (снимка/blur от 💄 Козметичните продукти), резерва assets/img/sx */
+    var LI=A.li_items||[],defs=[AS.tonic,AS.cream,AS.serum,AS.tonic,AS.serum],prods='';
+    for(var q=1;q<=5;q++){var it=LI[q-1]||{},blur=it.blur!==undefined?!!it.blur:q>3,src=it.img||defs[q-1]||'';prods+='<div class="sx-prod'+(blur?' blur':'')+'"><div class="v">'+(src?'<img src="'+esc(src)+'" alt="" loading="lazy">':'<span>🧴</span>')+(blur?'<em>?</em>':'')+'</div>'+p('sx.get.pr'+q,'small')+'</div>'}
+    var gl='<li><span><em>🌸</em>'+sp('sx.get.1')+'</span><span><s>'+eur(V.sx_full)+'</s>'+eur(V.sx_pay)+'</span></li><li><span><em>✨</em>'+sp('sx.get.2')+'</span><span><s>'+eur(String(COSM).replace('.',','))+'</s>'+eur(sxFmt(V._cp))+'</span></li>'
+      +[[3,'⚓'],[4,'📖'],[5,'🚚']].map(function(x){return '<li><span><em>'+x[1]+'</em>'+sp('sx.get.'+x[0])+'</span>'+sp('sx.get.'+x[0]+'.v')+'</li>'}).join('');
+    var gt='<section class="sx-sec sx-get"><div class="sx-c sx-2"><div>'+p('sx.get.kick','p','sx-kick')+p('sx.get.h','h2')+'<ul class="sx-getl">'+gl+'</ul><div class="sx-prose">'+p('sx.get.p')+'</div>'+xtra('sx.x.get')+'<div class="sx-ctab">'+cta('sx.get.cta')+p('sx.get.note','p','sx-note')+'</div></div><div><div class="sx-prods">'+prods+'</div>'+p('sx.get.cap','p','sx-cap')+'</div></div></section>';
+    /* 10 · яхтата */
+    var y='<section class="sx-sec sx-y"><div class="sx-c sx-prose">'+p('sx.y.kick','p','sx-kick')+p('sx.y.h','h2')+p('sx.y.p1')+p('sx.y.p2')+(info_u?'<p><a class="sx-more" href="'+esc(info_u)+'" target="_blank" rel="noopener"'+ck('sx.y.link')+'>'+T2('sx.y.link')+'</a></p>':'')+xtra('sx.x.yacht')+'</div></section>';
+    /* 11 · въпроси */
+    var fq='';for(var j=1;j<=10;j++){var qk='sx.faq.'+j+'.q',qt=T2(qk);if(qt===''){if(A.editor)fq+='<details class="ck-empty"'+ck(qk)+'><summary>＋ '+qk+'</summary></details>';continue}fq+='<details'+(j===1?' open':'')+'><summary'+ck(qk)+'>'+qt+'</summary>'+p('sx.faq.'+j+'.a')+'</details>'}
+    var links=info_u?'<p class="sx-faqm">'+sp('sx.faq.note')+' <a href="'+esc(info_u)+'" target="_blank" rel="noopener"'+ck('sx.faq.l1')+'>'+T2('sx.faq.l1')+'</a> · <a href="'+esc(rules_u)+'" target="_blank" rel="noopener"'+ck('sx.faq.l2')+'>'+T2('sx.faq.l2')+'</a></p>':'';
+    var faq='<section class="sx-sec sx-faq"><div class="sx-c sx-2 sx-faqg"><div>'+p('sx.faq.kick','p','sx-kick')+p('sx.faq.h','h2')+'</div><div><div class="sx-faqs">'+fq+'</div>'+links+xtra('sx.x.faq')+'</div></div></section>';
+    /* 12 · финал + правен ред */
+    var fin='<section class="sx-sec sx-fin"><div class="sx-c"><div class="sx-2"><div>'+p('sx.fin.kick','p','sx-kick')+p('sx.fin.h','h2')+'<p class="sx-finp">'+sp('sx.fin.p')+(cnt?' · '+cnt:'')+'</p>'+xtra('sx.x.final')+'</div><div class="sx-fcard">'+sp('sx.fin.lbl','lbl')+'<strong>'+eur(V.sx_pay)+'</strong><s>'+eur(V.sx_full)+'</s>'+p('sx.fin.line','p','line')+cta('sx.fin.cta')+'</div></div>'+p('sx.legal','p','sx-legal')+'</div></section>';
+    /* лентата горе + залепеният ред на телефона (не са секции) */
+    var bar='<div class="sx-bar"><div class="sx-c">'+sp('sx.bar')+(cnt?' · '+cnt:'')+' · <a href="#sx-of" data-sx="bar"'+ck('sx.bar.link')+'>'+T2('sx.bar.link')+'</a></div></div>';
+    var stk='<div class="sx-stk"><div><strong>'+eur(V.sx_pay)+'<s>'+eur(V.sx_full)+'</s></strong>'+p('sx.stk.note','small')+'</div>'+cta('sx.stk.cta')+'</div>';
+    return '<div class="sx">'+bar+secJoin('sx',{hero:h,miss:ms,derm:dm,sol:sl,reviews:rs,offer:of,five:fv,steps:st,get:gt,yacht:y,faq:faq,'final':fin})+stk+'</div>';
+  }
+  /* бутоните: на живо (nav) → промо страницата с ?utm_content=sakura&box=l; в редактора (попъп) → Sakura като продукт и Голямата кутия на място */
+  function sxBind(dc,nav){
+    var u=sxUrl();dc.querySelectorAll('[data-sx="go"]').forEach(function(b){if(nav){b.setAttribute('data-go',u);b.onclick=function(){location.href=u};return}
+      b.onclick=function(){closeInfo();var k=(A.sx&&A.sx.product)||'sakura';if(PROD[k]){S.utm=k;S.core=k;A.utm=k}go(1);if(BI.l!=null)chooseBox(BI.l)}});
+    dc.querySelectorAll('[data-sx="bar"]').forEach(function(a){a.onclick=function(e){e.preventDefault();var t=dc.querySelector('.sx-of');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}});
+    var ds=dc.querySelectorAll('.sx-faqs details');ds.forEach(function(d){d.addEventListener('toggle',function(){if(d.open)ds.forEach(function(o){if(o!==d)o.open=false})})});
+    /* залепеният ред на телефона се крие, докато се вижда бутонът в офертата */
+    var bar=dc.querySelector('.sx-stk'),ob=dc.querySelector('.sx-of .sx-btn');if(nav&&bar&&ob&&'IntersectionObserver' in window){new IntersectionObserver(function(es){es.forEach(function(e){bar.classList.toggle('hide',e.isIntersecting)})},{threshold:0}).observe(ob)}
+  }
+  function sxPopup(){
+    var dc=$('apDc'),keepY=dc.classList.contains('hw')&&dc.querySelector('.ib')?dc.querySelector('.ib').scrollTop:0;
+    info('',sxHtml(),true);
+    dc.classList.add('hw');dc.classList.add('sx');if(keepY)dc.querySelector('.ib').scrollTop=keepY;$('apOv').classList.add('ovhw');if(MOBF())lockBody();S._last=sxPopup;
+    sxBind(dc,false);
+  }
+  function renderSx(){
+    var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');br.onclick=function(){location.href=sxUrl()};br.style.cursor='pointer';
+    renderTimer();var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note');
+    var s1=$('apS1');s1.innerHTML='<div class="dc hw inl sx"><div class="ib">'+sxHtml()+'</div></div>';s1.classList.add('on');sxBind(s1.firstChild,true);
+  }
   /* 1.8.10: бутонът „ℹ️ Как работи играта?“ в хедъра — връзката към попъпа беше изпусната при 1.8.0 (разделянето howPopup → howHtml/howBind); на /info хедърът няма този бутон */
-  if(A.mode!=='info'&&A.mode!=='li')$('apHow').onclick=howPopup;
+  if(A.mode!=='info'&&A.mode!=='li'&&A.mode!=='sx')$('apHow').onclick=howPopup;
   function rewardPopup(k){var r=RW(k);var ik=/^tix/.test(k)?'rw.info.tix':/^cosm/.test(k)?'rw.info.cosm':k==='book'?'rw.info.book':'rw.info.ship';info(r.ic+' '+r.t,'<p'+ck('rw.'+k+'.s')+'>'+r.s+'</p><div'+ck(ik)+'>'+T(ik)+'</div>')}
   function packTxt(pr){return pr.pack?esc(pr.pack):T('prod.pack')}
   function prodBody(k){var pr=PROD[k];return '<p><b>'+esc(pr.ds)+'</b></p><p>'+esc(pr.desc)+'</p><p'+ck('prod.pack')+'>'+packTxt(pr)+'</p><div class="il"><span'+ck('prod.price')+'>'+T('prod.price')+'</span><b>'+m(disc(pr))+' <s class="was">'+m(pr.price)+'</s></b></div>'}
@@ -1026,7 +1110,7 @@
     tick();cdT=setInterval(tick,1000);
     cdEl.querySelector('.apcdb').onclick=function(){howPopup();var l=$('hwLadder');if(l)setTimeout(function(){l.scrollIntoView({block:'start',behavior:'smooth'})},50)};
   }
-  function render(){if(A.mode==='info'){renderInfo();return}if(A.mode==='li'){renderLi();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
+  function render(){if(A.mode==='info'){renderInfo();return}if(A.mode==='li'){renderLi();return}if(A.mode==='sx'){renderSx();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
   /* 1.29.0: 📞 обаждане — операторът отваря промо страницата с ?ansa_op=<токен>: кутията и продуктите на клиента се зареждат на екрана за
@@ -1075,7 +1159,7 @@
       if(Object.keys(PROD).length!==Object.keys(d.products).length)changed=true;
       if(changed){A.products=d.products;A.order=d.order||Object.keys(d.products);bind();S.slots=S.slots.map(function(k){return k&&PROD[k]?k:null});render();if(fresh&&!$('apOv').classList.contains('off')&&S._last)S._last()} /* 1.22.1: отвореният попъп („Как работи“) също се прерисува с новото копи */
       /* 1.8.9: броячът „Първите N са резервирани“ идва свеж (кешираната страница носи 0 до rewards.cosm.bar_from); на /info се рендира наново */
-      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo();else if(A.mode==='li')renderLi()}
+      if(d.cosm_reserved!==undefined&&Number(d.cosm_reserved)!==Number(A.cosm_reserved)){A.cosm_reserved=Number(d.cosm_reserved)||0;if(A.mode==='info')renderInfo();else if(A.mode==='li')renderLi();else if(A.mode==='sx')renderSx()}
     }).catch(function(){});
   }
 
@@ -1122,6 +1206,7 @@
     else if(sc==='how'){go(1);howPopup()}
     else if(sc==='cosm'){go(1);cosmPopup()} /* 1.24.12 */
     else if(sc==='li'){go(1);liPopup()} /* 1.24.20 */
+    else if(sc==='sx'){go(1);sxPopup()} /* 1.31.0 */
   }
   window.AnsaPromo={scenario:scenario,state:function(){return S},render:render,T:T};
   if(A.editor){
@@ -1138,10 +1223,11 @@
       else if(d.ansaPromo==='sec'&&d.id){var se=document.querySelector('[data-sec="'+d.id+'"]');if(se){se.classList.add('sec-on');try{se.scrollIntoView({block:'center',behavior:'smooth'})}catch(x){}setTimeout(function(){se.classList.remove('sec-on')},1400)}} /* 1.24.21: покажи секцията след местене */
     });
   }
-  window.addEventListener('resize',function(){if(A.mode==='info'||A.mode==='li')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
+  window.addEventListener('resize',function(){if(A.mode==='info'||A.mode==='li'||A.mode==='sx')return;if(S.screen===2){$('apSticky').style.display=window.innerWidth<1000?'block':'none'}render()});
 
   /* ── старт ── */
   if(A.mode==='li'){root.classList.add('info');root.classList.add('li');S.emailDone=true;A.editorNoGate=true;renderLi();refreshRuntime();return} /* 1.24.20: /kozmetika — като /info */
+  if(A.mode==='sx'){root.classList.add('info');root.classList.add('sx');S.emailDone=true;A.editorNoGate=true;renderSx();refreshRuntime();return} /* 1.31.0: /kozmetichen-set-promo — като /kozmetika */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
   try{var qq=new URLSearchParams(location.search),qop=qq.get('ansa_op');if(qop){S._op=qop;S._opBonusPre=qq.get('ansa_bonus')||'';try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){} /* 1.29.0: 📞 обаждане — чисто състояние, количката идва от сървъра; 1.30.1: &ansa_bonus=pct|gift — изборът от Insights */

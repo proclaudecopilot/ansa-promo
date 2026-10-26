@@ -19,6 +19,9 @@ open(out + '/harness/info.html', 'w', encoding='utf-8').write(html.replace('<scr
 # 1.24.20: страницата „Комплектът за 1 €“ (runtime.mode = li) → harness/kozmetika.html
 rt3 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', '', '', 'li']).decode()
 open(out + '/harness/kozmetika.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt3 + ';</script>'))
+# 1.31.0: страницата „Sakura ×5“ (runtime.mode = sx) → harness/sx.html
+rt5 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', '', '', 'sx']).decode()
+open(out + '/harness/sx.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt5 + ';</script>'))
 # 1.24.21: редакторът — harness/editor.html (editor.css/js + window.AnsaPromoEditor от editor-boot.php) с канвас harness/canvas.html (runtime editor=1, data-editor на root)
 rt4 = subprocess.check_output(['php', root + '/tests/harness/runtime.php', 'sakura', '1']).decode()
 open(out + '/harness/canvas.html', 'w', encoding='utf-8').write(html.replace('<script>window.AnsaPromoRuntime=' + rt + ';</script>', '<script>window.AnsaPromoRuntime=' + rt4 + ';</script>').replace('id="ansaPromo"', 'id="ansaPromo" data-editor="1"', 1))
@@ -28,4 +31,4 @@ ed = ('<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="vi
       '<div class="ap-ed-top" id="apEdTop"></div><div class="ap-ed-body"><aside class="ap-ed-rail" id="apEdRail"></aside><main class="ap-ed-canvas" id="apEdCanvas"></main><aside class="ap-ed-insp" id="apEdInsp"></aside></div><div class="ap-ed-toast" id="apEdToast" hidden></div></div></div>'
       '<script>window.AnsaPromoEditor=' + boot + ';</script><script src="file://' + root + '/assets/editor.js"></script></body></html>')
 open(out + '/harness/editor.html', 'w', encoding='utf-8').write(ed)
-print('harness →', out + '/harness/index.html', '+ info.html + kozmetika.html')
+print('harness →', out + '/harness/index.html', '+ info.html + kozmetika.html + sx.html')
