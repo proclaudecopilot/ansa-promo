@@ -108,6 +108,7 @@
     log('чака съгласие', C.consent);
     var started = false, start = function () { if (!started && consent()) { started = true; run(); } };
     document.addEventListener('ansa-meta:consent', start);
+    document.addEventListener('cmplz_fire_categories', start); document.addEventListener('cmplz_status_change', start); /* Complianz */
     var tries = 0, iv = setInterval(function () { start(); if (started || ++tries > 300) clearInterval(iv); }, 1000);
   }
 })();

@@ -21,6 +21,8 @@ final class Frontend {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 20 );
 		add_filter( 'script_loader_tag', array( __CLASS__, 'tag' ), 10, 2 );
 		add_filter( 'woocommerce_add_to_cart_fragments', array( __CLASS__, 'fragments' ) );
+		/* ansa™ Промо ≥ 1.31.4: страниците без wp_head/wp_footer (/kozmetichen-set-promo, /info, listicle, /tombola, /kniga) */
+		add_filter( 'ansa_promo_standalone_footer', array( __CLASS__, 'standalone_footer' ), 10, 3 );
 	}
 
 	public static function active() {
@@ -42,8 +44,8 @@ final class Frontend {
 		return str_replace( '<script ', '<script data-no-optimize="1" data-no-defer="1" data-no-delay="1" data-no-minify="1" data-cfasync="false" nowprocket ', $tag );
 	}
 
-	public static function config() {
-		$events = self::page_events();
+	public static function config( $events = null ) {
+		if ( null === $events ) $events = self::page_events();
 		$cfg = array(
 			'pixel'    => Settings::pixel_id(),
 			'browser'  => (bool) Settings::get( 'browser' ),
@@ -77,6 +79,8 @@ final class Frontend {
 				$ev[] = array( 'name' => 'ViewCategory', 'data' => Catalog::category_data( get_queried_object() ) );
 			} elseif ( is_search() && Settings::event_on( 'Search' ) ) {
 				$ev[] = array( 'name' => 'Search', 'data' => Catalog::search_data( get_search_query() ) );
+			} elseif ( Settings::event_on( 'ViewContent' ) && ( $pd = self::promo_page_data() ) ) {
+				$ev[] = array( 'name' => 'ViewContent', 'data' => $pd ); // страницата на играта (/sezonut-na-ansa): всички промо продукти, без UTM-специфика (кешира се)
 			}
 			$order = self::thankyou_order();
 			if ( $order ) {
@@ -93,6 +97,63 @@ final class Frontend {
 		} catch ( \Throwable $e ) {}
 		if ( null === $adv && $personal ) $adv = Identity::pixel_am( Identity::current() );
 		return array( 'events' => $ev, 'adv' => $adv ?: new \stdClass(), 'checkout' => $checkout, 'cart' => $cart );
+	}
+
+	/* ───────── ansa™ Промо ───────── */
+	/** Страницата с [ansa_promo] (кеширана → без лични данни и без UTM-специфика): ViewContent с всички продукти на играта. */
+	public static function promo_page_data() {
+		if ( ! class_exists( '\\AnsaPromo\\Config' ) || ! is_page() ) return array();
+		try { $cfg = \AnsaPromo\Config::get_published(); } catch ( \Throwable $e ) { return array(); }
+		if ( empty( $cfg['page_id'] ) || (int) $cfg['page_id'] !== (int) get_queried_object_id() ) return array();
+		return self::promo_products_data( $cfg, 'ansa promo', array_keys( self::promo_products( $cfg ) ) );
+	}
+
+	/** Продуктите на играта: key → WC_Product (вариацията „1 опаковка“ или самият продукт). */
+	public static function promo_products( $cfg ) {
+		$out = array();
+		foreach ( (array) ( $cfg['products'] ?? array() ) as $p ) {
+			$key = (string) ( $p['key'] ?? '' ); $id = (int) ( $p['variation_id'] ?? 0 ) ?: (int) ( $p['product_id'] ?? 0 );
+			if ( '' === $key || ! $id || ( isset( $p['enabled'] ) && empty( $p['enabled'] ) ) ) continue; // изрично изключен продукт не влиза
+			$prod = wc_get_product( $id ); if ( $prod ) $out[ $key ] = $prod;
+		}
+		return $out;
+	}
+
+	/** ViewContent за избрани продукти на промото (всички с value = сума на цените); $name = content_name по подразбиране. */
+	public static function promo_products_data( $cfg, $name, array $keys ) {
+		$all = self::promo_products( $cfg ); $ids = array(); $contents = array(); $value = 0.0; $names = array();
+		foreach ( $keys as $k ) {
+			if ( empty( $all[ $k ] ) ) continue;
+			$d = Catalog::product_data( $all[ $k ] ); if ( ! $d ) continue;
+			$ids[] = $d['content_ids'][0]; $contents[] = $d['contents'][0]; $value += (float) $d['value']; $names[] = $d['content_name'];
+		}
+		$out = array( 'content_name' => 1 === count( $names ) ? $names[0] : $name, 'content_category' => 'ansa promo', 'content_type' => 'product', 'currency' => Catalog::currency() );
+		if ( $ids ) { $out['content_ids'] = array_slice( $ids, 0, 20 ); $out['contents'] = array_slice( $contents, 0, 20 ); $out['value'] = round( $value, 2 ); }
+		return $out;
+	}
+
+	/** Самостоятелните страници на промото (без wp_footer): конфигурацията + meta.js направо в HTML-а. Страниците се кешират → без лични данни. */
+	public static function standalone_footer( $html, $mode, $cfg ) {
+		if ( ! self::active() ) return $html;
+		$ev = array();
+		if ( Settings::event_on( 'PageView' ) ) $ev[] = array( 'name' => 'PageView', 'data' => new \stdClass() );
+		if ( Settings::event_on( 'ViewContent' ) ) {
+			try {
+				if ( 'sx' === $mode ) {
+					$key = class_exists( '\\AnsaPromo\\Sakura_Page' ) ? (string) \AnsaPromo\Sakura_Page::PRODUCT : 'sakura';
+					$ev[] = array( 'name' => 'ViewContent', 'data' => self::promo_products_data( $cfg, 'Sakura ×5', array( $key ) ) );
+				} elseif ( 'li' === $mode ) {
+					$cosm = is_array( $cfg['cosm'] ?? null ) ? $cfg['cosm'] : ( is_array( $cfg['gifts']['cosm'] ?? null ) ? $cfg['gifts']['cosm'] : array() );
+					$prod = ! empty( $cosm['product_id'] ) ? wc_get_product( (int) $cosm['product_id'] ) : null;
+					$d = $prod ? Catalog::product_data( $prod ) : array( 'content_name' => 'Комплектът за 1 €', 'content_type' => 'product', 'currency' => Catalog::currency(), 'value' => round( (float) ( $cosm['value'] ?? 0 ), 2 ) );
+					$d['content_category'] = 'ansa promo'; $ev[] = array( 'name' => 'ViewContent', 'data' => $d );
+				}
+			} catch ( \Throwable $e ) {}
+		}
+		$cfgjs = self::config( array( 'events' => $ev, 'adv' => new \stdClass(), 'checkout' => false, 'cart' => null ) );
+		$cfgjs['flash'] = array(); $cfgjs['nonce'] = ''; $cfgjs['mode'] = (string) $mode;
+		return $html . '<script>window.ansaMeta = ' . wp_json_encode( $cfgjs, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE ) . ';</script>'
+			. '<script src="' . esc_url( ANSA_META_URL . 'assets/meta.js?ver=' . ANSA_META_VER ) . '" data-no-optimize="1" data-no-defer="1" data-no-delay="1" data-cfasync="false" nowprocket></script>';
 	}
 
 	public static function is_checkout_page() {

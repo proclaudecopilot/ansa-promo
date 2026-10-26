@@ -9,7 +9,7 @@ WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API*
 | Събитие | Откъде | Данни |
 |---|---|---|
 | `PageView` | браузър → REST → сървър | url, всички идентификатори |
-| `ViewContent` | продуктова страница | content_ids, content_name, content_category, value, currency, contents, product_group_id |
+| `ViewContent` | продуктова страница; страницата на играта (всички продукти); `/kozmetichen-set-promo` (Sakura) и listicle (комплектът) | content_ids, content_name, content_category, value, currency, contents, product_group_id |
 | `ViewCategory` (custom) | страница на категория | content_category, content_ids на първите 10 продукта |
 | `Search` | търсене | search_string, content_ids на резултатите |
 | `AddToCart` | сървър (`woocommerce_add_to_cart`) + браузър (флаш/фрагменти); **кутията на промото = едно събитие** (`ansa_promo_added`) | contents на цялата количка, value, num_items, promo_box |
@@ -22,6 +22,8 @@ WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API*
 **Данни за съвпадение (user_data) при всяко събитие** — каквото е налично: `em`, `ph` (с код 359), `fn`, `ln`, `ct`, `zp`, `country`, `st` (само САЩ), `external_id` (клиент `u<id>` / наш visitor id / имейл), `client_ip_address` (Cloudflare/X-Forwarded-For), `client_user_agent`, `fbp`, `fbc` (от бисквитката или от `?fbclid`). Хешове SHA-256 след нормализацията на Meta (вж. `class-identity.php`). Източници по приоритет: поръчката → логнатият потребител → WC клиентът в сесията → попълненото в чекаута → имейлът от попъпа.
 
 **Бисквитки от сървъра.** REST отговорите подновяват `_fbp`, `_fbc` (90 дни) и `ansa_meta_vid` (2 години) като first-party HTTP бисквитки — Safari реже на 7 дни само бисквитки, сложени от JavaScript. Ако Pixel-ът е блокиран, `meta.js` сам слага `_fbp`, така че сървърните събития пак носят идентификатор.
+
+**Самостоятелните страници на промото** (`/kozmetichen-set-promo`, `/info`, listicle, `/tombola`, `/kniga`) се рендират без wp_head/wp_footer и до 1.31.3 нямаха никакъв Pixel. ansa™ Промо ≥ 1.31.4 пуска `ansa_promo_standalone_footer( '', $mode, $cfg )` преди `</body>`; ansa™ Meta слага там конфигурацията и `meta.js` → PageView + ViewContent (Sakura ×5 на `sx`, комплектът на `li`). Самата страница на играта (`/sezonut-na-ansa`, с wp_footer) праща PageView + ViewContent с всички продукти на играта; кутията → AddToCart от сървъра; попъпът → Lead. Страниците са кеширани, затова в HTML-а няма лични данни — те идват от сървъра през REST.
 
 **Purchase е веднъж на поръчка.** `event_id` и контекстът на браузъра (fbp, fbc, IP, UA, vid, URL) се записват в поръчката още при създаването ѝ (`_ansa_meta_event_id`, `_ansa_meta_ctx`); тръгва при `checkout_order_processed` (наложен платеж/офлайн gateway веднага; карта — веднага при „при създаване“ или след `payment_complete` при „при плащане“), резервно при смяна на статус към processing/completed/on-hold и на „Благодаря“; `_ansa_meta_purchase_sent` пази от второ пращане. Браузърът на „Благодаря“ праща същия `event_id` (и FunnelKit thank-you страници — по `?key=wc_order_…`), веднъж (`_ansa_meta_thankyou`). Поръчки на `probe@example.com` (ansa™ Probe) не се броят; операторските (📞) заявки на промото — също.
 
@@ -38,9 +40,10 @@ WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API*
 1. **Zip**: от release-а на `ansa-promo` свали `ansa-meta-X.Y.Z.zip` (или направи zip на папката `meta/ansa-meta/` → `ansa-meta/` вътре) → Plugins → Add New → Upload → активирай. Нататък се обновява сам.
 2. **Events Manager** (business.facebook.com/events_manager): Data sources → Pixel-ът на ansa.bg → копирай **Dataset/Pixel ID** → Settings → секция **Conversions API** → **Generate access token** (или System User token с `ads_management`). Включи и **Automatic advanced matching** (всички полета) — Pixel-ът сам чете попълнените форми.
 3. **ansa™ Meta → ⚙️ Настройки**: Pixel ID, token (или константи `ANSA_META_PIXEL_ID` / `ANSA_META_TOKEN` в `wp-config.php`), Запази. Останалото може да остане по подразбиране.
-4. **Изключи Meta Pixel-а в Pixel Manager** (Pixel Manager → Facebook → Pixel ID празно / изключен); GA4 там остава. Същото за „Facebook for WooCommerce“/PixelYourSite/GTM, ако някога се появят. 🩺 Състояние предупреждава, ако засече такъв плъгин. Два Pixel-а = двойни събития.
+4. **Изключи Facebook Pixel-а във FunnelKit** — на ansa.bg (проверено с Probe, 26.10) Pixel 1734259157105331 се зарежда от FunnelKit Funnel Builder: PageView на всички страници, AddToCart/ViewContent глобално, InitiateCheckout, AddPaymentInfo, Purchase с CAPI, **без Advanced Matching** и без изчакване на съгласие. FunnelKit → Settings → Tracking → Facebook Pixel → изтрий Pixel ID-то (TikTok и Google там остават). Pixel Manager има празен Facebook Pixel ID (само Google Ads) — нищо за правене там. 🩺 Състояние предупреждава, докато FunnelKit-ът още праща. Два Pixel-а с различни event_id = двойни събития.
 5. **FlyingPress** (или друг „Delay JavaScript“): добави `ansa-meta`, `fbevents`, `connect.facebook.net` в изключенията от отлагане — иначе PageView чака първото докосване на екрана. Скриптът носи и `data-no-delay`/`nowprocket` атрибути за оптимизаторите, които ги четат.
-6. **🧪 Тест**: Events Manager → Test events → кодът `TEST…` → „Изпрати“ → PageView + Purchase се появяват като Server събития с пълни данни. После отвори продукт/чекаут в обикновен браузър и гледай Events Manager → Overview: всяко събитие „Browser · Server · Deduplicated“, **Event Match Quality** на Purchase 8+.
+6. **Complianz**: сайтът е в opt-in режим за ЕС. Празна consent бисквитка = Pixel + CAPI за всички (както FunnelKit сега); `cmplz_marketing` съдържа `allow` = чакаме приемането на банера (meta.js тръгва веднага след него). Решението е на човека; 🩺 Състояние го показва.
+7. **🧪 Тест**: Events Manager → Test events → кодът `TEST…` → „Изпрати“ → PageView + Purchase се появяват като Server събития с пълни данни. После отвори продукт/чекаут в обикновен браузър и гледай Events Manager → Overview: всяко събитие „Browser · Server · Deduplicated“, **Event Match Quality** на Purchase 8+.
 
 ### Настройки (⚙️)
 
