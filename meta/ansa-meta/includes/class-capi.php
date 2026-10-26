@@ -64,7 +64,7 @@ final class Capi {
 			} elseif ( 'content_ids' === $k ) {
 				$ids = array(); foreach ( (array) $v as $id ) { $id = trim( (string) $id ); if ( '' !== $id ) $ids[] = mb_substr( $id, 0, 100 ); }
 				if ( $ids ) $out[ $k ] = array_slice( array_values( array_unique( $ids ) ), 0, 100 );
-			} elseif ( in_array( $k, array( 'value', 'shipping', 'item_price' ), true ) ) {
+			} elseif ( in_array( $k, array( 'value', 'shipping', 'item_price', 'predicted_ltv' ), true ) ) {
 				$out[ $k ] = round( (float) $v, 2 );
 			} elseif ( 'num_items' === $k ) {
 				$out[ $k ] = (int) $v;
@@ -156,7 +156,9 @@ final class Capi {
 		if ( '' === $pixel || '' === $token ) return array_merge( $base, array( 'error' => 'няма Pixel ID или access token' ) );
 		if ( ! $events ) return array_merge( $base, array( 'ok' => true ) );
 		$body = array( 'data' => array_values( $events ), 'access_token' => $token, 'partner_agent' => 'ansa-meta-' . ANSA_META_VER );
-		$test = trim( (string) $test ); if ( '' !== $test ) $body['test_event_code'] = $test;
+		$test = trim( (string) $test );
+		if ( '' === $test && Settings::get( 'test_mode' ) && '' !== (string) Settings::get( 'test_code', '' ) ) $test = (string) Settings::get( 'test_code' ); // тестов режим: всичко към Test events
+		if ( '' !== $test ) $body['test_event_code'] = $test;
 		$url = sprintf( 'https://graph.facebook.com/%s/%s/events', Settings::api_version(), $pixel );
 		$timeout = ( self::$finished || ( defined( 'DOING_CRON' ) && DOING_CRON ) || is_admin() ) ? 10 : 4; // ако браузърът още чака — кратко; повторението е от опашката
 		$t0 = microtime( true );

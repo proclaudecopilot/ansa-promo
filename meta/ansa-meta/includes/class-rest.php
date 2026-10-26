@@ -29,6 +29,7 @@ final class Rest {
 	public static function event( \WP_REST_Request $r ) {
 		$res = function ( $ok, $extra = array(), $status = 202 ) { $o = new \WP_REST_Response( array_merge( array( 'ok' => $ok ), $extra ), $status ); $o->header( 'Cache-Control', 'no-store' ); return $o; };
 		if ( ! Plugin::enabled() ) return $res( false, array( 'skip' => 'disabled' ), 200 );
+		if ( strlen( (string) $r->get_body() ) > 20000 ) return $res( false, array( 'skip' => 'size' ), 413 );
 		$in = $r->get_json_params(); if ( ! is_array( $in ) ) $in = (array) $r->get_body_params();
 		$name = (string) preg_replace( '/[^A-Za-z0-9_]/', '', (string) ( $in['name'] ?? '' ) );
 		$allowed = (array) apply_filters( 'ansa_meta_rest_events', self::ALLOWED );

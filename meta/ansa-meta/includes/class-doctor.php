@@ -17,6 +17,7 @@ final class Doctor {
 		$add( 'Pixel ID', '' !== $pixel ? $pixel . ( Settings::pixel_from_constant() ? ' (константа)' : '' ) : 'ЛИПСВА', '' !== $pixel ? 'ok' : 'bad' );
 		$add( 'Access token', '' !== $tok ? 'има (…' . substr( $tok, -4 ) . ', ' . strlen( $tok ) . ' знака)' . ( Settings::token_from_constant() ? ' (константа)' : '' ) : 'ЛИПСВА', '' !== $tok ? 'ok' : 'bad' );
 		$add( 'Включено', Plugin::enabled() ? 'да — праща' : ( defined( 'ANSA_META_DISABLED' ) && ANSA_META_DISABLED ? 'НЕ — ANSA_META_DISABLED' : ( Settings::get( 'enabled' ) ? 'не — няма Pixel ID/token' : 'НЕ — изключено от настройките' ) ), Plugin::enabled() ? 'ok' : 'bad' );
+		if ( Settings::get( 'test_mode' ) ) $add( 'ТЕСТОВ РЕЖИМ', 'включен — всички сървърни събития носят test_event_code ' . esc_html( (string) Settings::get( 'test_code', '' ) ) . ' и НЕ влизат в отчетите/оптимизацията. Изключи го след проверката.', 'bad' );
 		$add( 'Pixel в браузъра', Settings::get( 'browser' ) ? 'ansa™ Meta зарежда fbq (дедупликация по event_id)' : 'ИЗКЛЮЧЕН — само сървър; чужд Pixel ще дублира', Settings::get( 'browser' ) ? 'ok' : 'warn' );
 		$add( 'Purchase', ( 'order' === Settings::get( 'purchase_on' ) ? 'при създаване на поръчката' : 'при плащане (наложен платеж веднага)' ) . ' · content_ids = ' . Settings::get( 'id_format' ), 'info' );
 		$off = array(); foreach ( Settings::events_list() as $k => $l ) { if ( ! Settings::event_on( $k ) ) $off[] = $k; }
@@ -48,7 +49,8 @@ final class Doctor {
 		$cache = array(); if ( defined( 'FLYING_PRESS_VERSION' ) ) $cache[] = 'FlyingPress'; if ( defined( 'WP_ROCKET_VERSION' ) ) $cache[] = 'WP Rocket'; if ( defined( 'LSCWP_V' ) ) $cache[] = 'LiteSpeed Cache'; if ( defined( 'PERFMATTERS_VERSION' ) ) $cache[] = 'Perfmatters';
 		$add( 'Кеш / оптимизатор', $cache ? implode( ', ', $cache ) . ' — ако „Delay JavaScript“ е включено, добави <code>ansa-meta</code> и <code>fbevents</code>/<code>connect.facebook.net</code> в изключенията, иначе PageView чака първото докосване' : 'не е засечен', $cache ? 'warn' : 'info' );
 		$add( 'Не се броят', 'роли: ' . ( implode( ', ', (array) Settings::get( 'exclude_roles', array() ) ) ?: '—' ) . ' · вътрешни IP: ' . ( trim( str_replace( "\n", ', ', (string) Settings::get( 'internal_ips', '' ) ) ) ?: '—' ) . ' · ботове: ' . ( Settings::get( 'bot_filter' ) ? 'да' : 'не' ) . ' · съгласие: ' . ( Settings::get( 'consent_cookie' ) ?: 'без проверка' ), 'info' );
-		$add( 'REST', rest_url( Rest::NS . '/event' ), 'info' );
+		$ping = wp_remote_get( rest_url( Rest::NS . '/ping' ), array( 'timeout' => 6, 'sslverify' => false ) ); $pb = is_wp_error( $ping ) ? null : json_decode( (string) wp_remote_retrieve_body( $ping ), true );
+		$add( 'REST', esc_html( rest_url( Rest::NS . '/event' ) ) . ' — ' . ( is_array( $pb ) && ! empty( $pb['ok'] ) ? 'отговаря' : 'НЕ ОТГОВАРЯ: ' . ( is_wp_error( $ping ) ? esc_html( $ping->get_error_message() ) : 'HTTP ' . (int) wp_remote_retrieve_response_code( $ping ) ) . ' (защитна стена/кеш пред /wp-json?)' ), is_array( $pb ) && ! empty( $pb['ok'] ) ? 'ok' : 'bad' );
 		if ( defined( 'ANSA_PROMO_VER' ) ) $add( 'ansa™ Промо', ANSA_PROMO_VER . ' — кутията → AddToCart (ansa_promo_added), попъпът → Lead (ansa_promo_lead_captured)', 'ok' );
 		return $r;
 	}

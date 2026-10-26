@@ -2,7 +2,7 @@
 
 WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API** с максимално пълни данни за Meta. Всяко събитие тръгва и от браузъра (Pixel), и от сървъра (CAPI) с **един и същ `event_id`**, така че Meta ги дедуплицира и брои веднъж, но вижда и тези, които браузърът губи (iOS без проследяване, ad blocker, Safari, затворена страница „Благодаря“). Самостоятелен плъгин — не зависи от ansa™ Промо, но го ползва, когато е активен.
 
-Живее в repo-то `ansa-promo` под `meta/ansa-meta/` (по модела на `probe/ansa-probe/`). Release-ът на промото носи и `ansa-meta-X.Y.Z.zip`; на сайта плъгинът се обновява през proclaudecopilot GitHub Updater (header `GitHub Release Asset: ansa-meta`). Първата инсталация е ръчна (zip).
+Свое repo: **`proclaudecopilot/ansa-meta`** (header `GitHub Plugin URI`). При push в `main` workflow-ът (`.github/workflows/release.yml`) прави lint + офлайн тестове, `ansa-meta.zip`, таг `vX.Y.Z` и Release; сайтът се обновява през proclaudecopilot GitHub Updater (mu-plugin, вече е на ansa.bg). Първата инсталация е ръчна (zip).
 
 ## Какво праща
 
@@ -15,8 +15,8 @@ WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API*
 | `AddToCart` | сървър (`woocommerce_add_to_cart`) + браузър (флаш/фрагменти); **кутията на промото = едно събитие** (`ansa_promo_added`) | contents на цялата количка, value, num_items, promo_box |
 | `InitiateCheckout` | чекаут (вкл. FunnelKit) | количката от сървъра |
 | `AddPaymentInfo` | избор на плащане / „Поръчай“ | количката + **попълнените billing полета** (имейл, телефон, имена, град, пощенски код) → хешират се на сървъра |
-| `Purchase` | **сървър при създаване на поръчката** (или при плащане — настройка) + браузър на „Благодаря“ | contents, value = total, currency, order_id, num_items, coupon, payment_method, shipping, delivery_category |
-| `Lead` | попъпът на промото (`ansa_promo_lead_captured`) | имейлът; помни се в сесията за следващите събития |
+| `Purchase` | **сървър при създаване на поръчката** (или при плащане — настройка) + браузър на „Благодаря“ | contents, value = total, currency, order_id, num_items, coupon, payment_method, shipping, delivery_category, **predicted_ltv** (връщащ се клиент: сумата на поръчките му) |
+| `Lead` | попъпът на промото (`ansa_promo_lead_captured`); WPForms (`wpforms_process_complete`, полета email/phone/name) | имейл, телефон, имена; имейлът се помни в сесията за следващите събития |
 | `CompleteRegistration` | нова клиентска регистрация | — |
 
 **Данни за съвпадение (user_data) при всяко събитие** — каквото е налично: `em`, `ph` (с код 359), `fn`, `ln`, `ct`, `zp`, `country`, `st` (само САЩ), `external_id` (клиент `u<id>` / наш visitor id / имейл), `client_ip_address` (Cloudflare/X-Forwarded-For), `client_user_agent`, `fbp`, `fbc` (от бисквитката или от `?fbclid`). Хешове SHA-256 след нормализацията на Meta (вж. `class-identity.php`). Източници по приоритет: поръчката → логнатият потребител → WC клиентът в сесията → попълненото в чекаута → имейлът от попъпа.
@@ -34,6 +34,15 @@ WordPress/WooCommerce плъгин за ansa.bg: **Meta Pixel + Conversions API*
 - Дневник `wp_ansa_meta_log` (последните N реда): събитие, откъде, ok/HTTP, ms, отговорът на Meta (`events_received`, `fbtrace_id` или грешката), резюме — кои user_data ключове носи, стойност, id-та, URL; при Debug — целият payload (хеширан).
 - Кеш: продуктовите/категорийните страници са кеширани (FlyingPress) → `event_id` се прави в браузъра, сървърната половина минава през `POST /wp-json/ansa-meta/v1/event` (не се кешира; лимит 600 заявки / 5 мин на IP). Лични данни в HTML-а има само на некеширани страници (логнат, чекаут, „Благодаря“, акаунт).
 - Не се броят: роли (по подразбиране administrator, shop_manager), вътрешни IP/CIDR, ботове, посетители без съгласие (ако е зададена consent бисквитка; при даване meta.js тръгва сам — слуша бисквитката и събитие `ansa-meta:consent`).
+
+## Какво има в админа
+
+- **⚙️ Настройки** — връзката с Meta, как се праща, кого не броим, дневник, тестов режим. Отгоре блок **FunnelKit**: „1. Вземи Pixel ID, token и test code от FunnelKit“ и „2. Изключи Pixel-а във FunnelKit“ (пази копие; „Върни“ го връща).
+- **🩺 Състояние** — всичко, което може да е счупено: Pixel/token, таблици, крон, опашка, REST (самопроверка), FunnelKit/други Pixel плъгини, Complianz, кеш, последните 24 ч, % параметри за съвпадение в Purchase.
+- **📜 Дневник** — всяко изпратено събитие с отговора на Meta.
+- **🧪 Тест** — PageView + Purchase към Test events.
+- **В поръчката** (WooCommerce → Orders → поръчка, meta box „ansa™ Meta · Purchase“): изпратен ли е, кога, защо, event_id, контекстът и user_data ключовете; бутон „Изпрати Purchase пак“ (същият event_id → Meta не го брои втори път).
+- **Тестов режим** (Настройки): всички сървърни събития с test_event_code → само за първата проверка; червено известие в админа, докато е включен.
 
 ## Инсталация и настройка
 
@@ -74,15 +83,22 @@ includes/class-capi.php    event() · track() → буфер → flush на shut
 includes/class-queue.php   опашката: push, process (крон / „Изпрати сега“), backoff, отпадане
 includes/class-frontend.php meta.js + конфигурацията за страницата (събития, Advanced Matching, флаш от сесията, „Благодаря“ по order key), фрагменти
 includes/class-rest.php    POST ansa-meta/v1/event (сървърната половина на браузърните събития), GET ansa-meta/v1/ping
-includes/class-woo.php     AddToCart, Purchase (stamp при създаване, веднъж на поръчка), Lead/AddToCart от промото, CompleteRegistration
-includes/class-admin.php   менюто ansa™ Meta: ⚙️ Настройки · 🩺 Състояние · 📜 Дневник · 🧪 Тест
+includes/class-woo.php     AddToCart, Purchase (stamp при създаване, веднъж на поръчка, predicted_ltv), Lead/AddToCart от промото, Lead от WPForms, CompleteRegistration, GDPR изтриване на контекста
+includes/class-admin.php   менюто ansa™ Meta: ⚙️ Настройки (+ блок FunnelKit: вземи/изключи/върни) · 🩺 Състояние · 📜 Дневник · 🧪 Тест; meta box в поръчката + „Изпрати Purchase пак“
 includes/class-doctor.php  редовете на Състояние (и за Probe)
 includes/class-probe.php   suite meta-env за ansa™ Probe
 assets/meta.js             Pixel snippet + fbq с eventID, REST огледало (fetch keepalive), fbclid → _fbc, vid, AddPaymentInfo + billing полета, added_to_cart, consent
-tests/                     офлайн: php tests/identity-test.php (73) · php tests/capi-test.php (104)
+tests/                     офлайн: php tests/identity-test.php (73) · php tests/capi-test.php (124)
+.github/workflows/release.yml lint + тестове + zip + таг + Release + ping на сайта при push в main
 uninstall.php              трие option-ите, таблиците, крона (order meta остава)
 ```
 
-## Нова версия
+## Repo-то в GitHub (еднократно)
 
-Вдигни `Version:` и `ANSA_META_VER` в `ansa-meta.php`, push в `main` на `ansa-promo`. Workflow-ът на промото прави `ansa-meta-X.Y.Z.zip` и го закача към release-а на текущата версия на промото (нов или вече съществуващ) → сайтът вижда новата версия през updater-а (сравнява по версията в името на файла).
+1. Нов repo **`proclaudecopilot/ansa-meta`** (private е ок). Качи съдържанието на тази папка (всичко: `ansa-meta.php`, `includes/`, `assets/`, `tests/`, `.github/`, `README.md`, `.gitignore`, `uninstall.php`) в `main` — от `ansa-meta-repo.zip` или с `git init && git add -A && git commit -m "ansa™ Meta 1.0.0" && git remote add origin git@github.com:proclaudecopilot/ansa-meta.git && git push -u origin main`.
+2. Push-ът пуска workflow-а: lint + тестове → `ansa-meta.zip` → таг `v1.0.0` → Release. (Същата версия като качения на сайта zip → няма update, докато не вдигнеш версията.)
+3. Secrets на repo-то (Settings → Secrets → Actions): `PCC_HOOK_URL` и `PCC_HOOK_SECRET` — същите като в `ansa-promo` (от Settings → GitHub ъпдейти на сайта). Без тях сайтът вижда новите версии до 6 ч.
+4. Ако repo-то е private: token-ът в Settings → GitHub ъпдейти на сайта трябва да има достъп и до `ansa-meta` (fine-grained token → „Only select repositories“ → добави го).
+5. Следващи версии: вдигни `Version:` и `ANSA_META_VER` в `ansa-meta.php`, push в `main`. Нищо друго.
+
+Копието в `ansa-promo/meta/ansa-meta/` беше за предаването и се трие, след като repo-то съществува.

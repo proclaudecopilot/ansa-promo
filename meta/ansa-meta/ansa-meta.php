@@ -4,8 +4,7 @@
  * Plugin URI:  https://ansa.bg
  * Description: Meta Pixel + Conversions API за ansa.bg — всяко събитие и от браузъра, и от сървъра (общ event_id за дедупликация), с максимално пълни данни за съвпадение: имейл, телефон, имена, град, пощенски код, държава, external_id, fbp/fbc, IP, user agent. Purchase тръгва от сървъра при създаването на поръчката, независимо дали браузърът е заредил Pixel-а.
  * Version:     1.0.0
- * GitHub Plugin URI: proclaudecopilot/ansa-promo
- * GitHub Release Asset: ansa-meta
+ * GitHub Plugin URI: proclaudecopilot/ansa-meta
  * Author:      ansa.bg
  * Text Domain: ansa-meta
  * Requires at least: 5.8

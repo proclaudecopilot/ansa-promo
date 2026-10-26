@@ -37,6 +37,32 @@ final class Woo {
 		add_action( 'wp_ajax_ansa_promo_lead', array( __CLASS__, 'ajax_cookies' ), 0 );
 		add_action( 'wp_ajax_nopriv_ansa_promo_lead', array( __CLASS__, 'ajax_cookies' ), 0 );
 		add_action( 'woocommerce_checkout_process', array( __CLASS__, 'ajax_cookies' ), 0 );
+		/* WPForms: контактна форма с имейл/телефон → Lead */
+		add_action( 'wpforms_process_complete', array( __CLASS__, 'wpforms' ), 10, 4 );
+		/* GDPR: при изтриване на лични данни на поръчка (WooCommerce → Privacy) пада и нашият контекст (IP, UA, fbp/fbc) */
+		add_filter( 'woocommerce_privacy_remove_order_personal_data_meta', function ( $meta ) { $meta[ self::META_CTX ] = 'text'; return $meta; } );
+	}
+
+	/** WPForms → Lead с полетата email / phone / name; имейлът се помни в сесията. */
+	public static function wpforms( $fields, $entry, $form_data, $entry_id ) {
+		if ( ! Plugin::enabled() || Identity::excluded() ) return;
+		$plain = Identity::current();
+		foreach ( (array) $fields as $f ) {
+			if ( ! is_array( $f ) ) continue;
+			$t = (string) ( $f['type'] ?? '' ); $v = $f['value'] ?? '';
+			if ( 'email' === $t && is_string( $v ) && '' !== trim( $v ) ) { $plain['em'] = trim( $v ); }
+			elseif ( 'phone' === $t && is_string( $v ) && '' !== trim( $v ) ) { $plain['ph'] = trim( $v ); }
+			elseif ( 'name' === $t ) {
+				if ( ! empty( $f['first'] ) ) $plain['fn'] = (string) $f['first'];
+				if ( ! empty( $f['last'] ) ) $plain['ln'] = (string) $f['last'];
+				if ( empty( $f['first'] ) && is_string( $v ) && '' !== trim( $v ) ) { $parts = preg_split( '/\s+/', trim( $v ), 2 ); $plain['fn'] = $parts[0]; if ( isset( $parts[1] ) ) $plain['ln'] = $parts[1]; }
+			}
+		}
+		if ( empty( $plain['em'] ) && empty( $plain['ph'] ) ) return;
+		if ( ! empty( $plain['em'] ) ) Identity::session_set( Identity::SESSION_EMAIL, Identity::norm_email( $plain['em'] ) );
+		$data = array( 'content_name' => (string) ( $form_data['settings']['form_title'] ?? 'WPForms' ), 'content_category' => 'form' );
+		$id = Capi::track( 'Lead', $data, $plain, array( 'source' => 'server' ) );
+		if ( '' !== $id ) Frontend::push_flash( 'Lead', $id, $data );
 	}
 
 	public static function ajax_cookies() { Identity::allow_cookies( true ); }
@@ -115,16 +141,17 @@ final class Woo {
 	}
 
 	/** Веднъж на поръчка (order meta _ansa_meta_purchase_sent), с event_id-то на поръчката; времето = създаването ѝ. */
-	public static function purchase( $order, $why = '' ) {
+	public static function purchase( $order, $why = '', $force = false ) {
 		if ( ! Plugin::enabled() || ! is_object( $order ) ) return '';
-		if ( $order->get_meta( self::META_SENT ) ) return '';
+		if ( ! $force && $order->get_meta( self::META_SENT ) ) return '';
 		if ( (bool) apply_filters( 'ansa_meta_skip_order', 'probe@example.com' === strtolower( (string) $order->get_billing_email() ), $order ) ) return '';
 		self::stamp( $order, false );
 		$plain = Identity::from_order( $order );
 		$data  = Catalog::order_data( $order );
+		$ltv = Catalog::ltv( $order ); if ( $ltv > (float) ( $data['value'] ?? 0 ) ) $data['predicted_ltv'] = $ltv; // връщащ се клиент → стойност за value optimization
 		$ctx   = json_decode( (string) $order->get_meta( self::META_CTX ), true ); if ( ! is_array( $ctx ) ) $ctx = array();
 		$created = $order->get_date_created(); $time = $created ? (int) $created->getTimestamp() : time();
-		$opts = array( 'event_id' => (string) $order->get_meta( self::META_EVENT ), 'time' => $time, 'url' => (string) ( $ctx['url'] ?? wc_get_checkout_url() ), 'source' => 'server' );
+		$opts = array( 'event_id' => (string) $order->get_meta( self::META_EVENT ), 'time' => $time, 'url' => (string) ( $ctx['url'] ?? wc_get_checkout_url() ), 'source' => $force ? 'manual' : 'server', 'now' => (bool) $force );
 		$id = Capi::track( 'Purchase', $data, $plain, $opts );
 		if ( '' !== $id ) { $order->update_meta_data( self::META_SENT, time() . '|' . $why ); $order->save(); }
 		return $id;

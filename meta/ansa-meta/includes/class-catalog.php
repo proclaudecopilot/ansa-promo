@@ -103,6 +103,19 @@ final class Catalog {
 		return apply_filters( 'ansa_meta_cart_data', $d, $cart );
 	}
 
+	/** predicted_ltv: сумата на поръчките на този имейл (без отказани/върнати/неуспешни) + тази; 0 при първа поръчка. */
+	public static function ltv( $order ) {
+		if ( ! is_object( $order ) || ! function_exists( 'wc_get_orders' ) ) return 0.0;
+		$email = strtolower( trim( (string) $order->get_billing_email() ) ); if ( '' === $email ) return 0.0;
+		$skip = array( 'wc-cancelled', 'wc-refunded', 'wc-failed', 'wc-pending', 'wc-trash', 'wc-checkout-draft', 'wc-draft', 'wc-auto-draft' );
+		$all = function_exists( 'wc_get_order_statuses' ) ? array_keys( (array) wc_get_order_statuses() ) : array( 'wc-processing', 'wc-completed', 'wc-on-hold' );
+		$statuses = array_values( array_diff( $all, $skip ) );
+		try { $orders = wc_get_orders( array( 'limit' => 100, 'billing_email' => $email, 'status' => $statuses, 'return' => 'objects', 'exclude' => array( (int) $order->get_id() ) ) ); } catch ( \Throwable $e ) { return 0.0; }
+		$sum = 0.0; $n = 0;
+		foreach ( (array) $orders as $o ) { if ( is_object( $o ) && (int) $o->get_id() !== (int) $order->get_id() ) { $sum += (float) $o->get_total(); $n++; } }
+		return $n ? round( $sum + (float) $order->get_total(), 2 ) : 0.0;
+	}
+
 	/** Поръчката — за Purchase (сървър + браузър, едни и същи числа). */
 	public static function order_data( $order ) {
 		if ( ! is_object( $order ) ) return array();

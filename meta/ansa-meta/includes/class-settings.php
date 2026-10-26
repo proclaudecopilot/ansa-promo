@@ -38,6 +38,7 @@ final class Settings {
 			'ldu'             => 0,
 			'log_keep'        => 500,
 			'debug'           => 0,
+			'test_mode'       => 0,        // всички сървърни събития с test_event_code (само за проверка в Test events!)
 		);
 	}
 
@@ -118,6 +119,7 @@ final class Settings {
 		$o['ldu']             = empty( $in['ldu'] ) ? 0 : 1;
 		$o['log_keep']        = max( 50, min( 20000, (int) ( $in['log_keep'] ?? $d['log_keep'] ) ) );
 		$o['debug']           = empty( $in['debug'] ) ? 0 : 1;
+		$o['test_mode']       = empty( $in['test_mode'] ) ? 0 : 1;
 		return $o;
 	}
 

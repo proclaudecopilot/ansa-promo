@@ -106,6 +106,42 @@ $o3 = new FakeOrder(); $o3->status = 'pending'; $o3->pm = 'fkwcs_stripe'; Woo::o
 /* probe поръчки не се броят */
 $o4 = new FakeOrder(); $o4->email = 'probe@example.com'; eq( Woo::purchase( $o4, 'x' ), '', 'probe@example.com → пропуска се' );
 
+/* ── predicted_ltv: връщащ се клиент → сума на предишните + тази; първа поръчка → без ключ ── */
+function wc_get_order_statuses() { return array( 'wc-pending' => 'P', 'wc-processing' => 'Pr', 'wc-completed' => 'C', 'wc-cancelled' => 'X', 'wc-refunded' => 'R', 'wc-failed' => 'F', 'wc-delivered' => 'D' ); }
+function wc_get_orders( $a ) { $GLOBALS['ltv_q'] = $a; return $GLOBALS['ltv_orders'] ?? array(); }
+$o5 = new FakeOrder(); $o5->status = 'pending'; $o5->pm = 'cod';
+$GLOBALS['ltv_orders'] = array(); eq( Catalog::ltv( $o5 ), 0.0, 'ltv: първа поръчка = 0' );
+$prev1 = new FakeOrder(); $prev2 = new FakeOrder(); $GLOBALS['ltv_orders'] = array( $prev1, $prev2 ); /* всяка по 61.5, но get_id() = 1001 като текущата → изключват се */
+eq( Catalog::ltv( $o5 ), 0.0, 'ltv: същото id се пропуска' );
+class FakeOrderOld extends FakeOrder { function get_id() { return 900; } function get_total() { return 40.0; } }
+$GLOBALS['ltv_orders'] = array( new FakeOrderOld(), new FakeOrderOld() ); eq( Catalog::ltv( $o5 ), 141.5, 'ltv: 40 + 40 + 61.5' );
+ok( ! in_array( 'wc-cancelled', $GLOBALS['ltv_q']['status'], true ) && in_array( 'wc-delivered', $GLOBALS['ltv_q']['status'], true ), 'ltv: статусите без отказани, с custom (delivered)' );
+$GLOBALS['http'] = array(); Woo::order_processed( 1005, array(), $o5 ); Capi::flush();
+$pb5 = json_decode( $GLOBALS['http'][0]['args']['body'], true )['data'][0]; eq( $pb5['custom_data']['predicted_ltv'], 141.5, 'Purchase носи predicted_ltv' );
+$GLOBALS['ltv_orders'] = array();
+
+/* ── „Изпрати пак“ (force): същият event_id, веднага, source manual ── */
+$GLOBALS['http'] = array(); $id5 = Woo::purchase( $o5, 'manual', true );
+eq( $id5, $o5->get_meta( Woo::META_EVENT ), 'force: същият event_id' ); eq( count( $GLOBALS['http'] ), 1, 'force: праща веднага' );
+$last = end( $wpdb->log ); eq( $last['source'], 'manual', 'force: source=manual' ); ok( false !== strpos( $o5->get_meta( Woo::META_SENT ), '|manual' ), 'force: причината е manual' );
+eq( Woo::purchase( $o5, 'again' ), '', 'без force → не праща втори път' );
+
+/* ── тестов режим: всички сървърни събития с test_event_code ── */
+$GLOBALS['opts']['ansa_meta']['test_mode'] = 1; $GLOBALS['opts']['ansa_meta']['test_code'] = 'TEST2170'; $reset(); $GLOBALS['http'] = array();
+Capi::track( 'PageView', array(), array(), array() ); Capi::flush();
+eq( json_decode( $GLOBALS['http'][0]['args']['body'], true )['test_event_code'], 'TEST2170', 'test_mode → test_event_code в тялото' );
+$GLOBALS['opts']['ansa_meta']['test_mode'] = 0; $reset(); $GLOBALS['http'] = array(); Capi::track( 'PageView', array(), array(), array() ); Capi::flush();
+ok( ! isset( json_decode( $GLOBALS['http'][0]['args']['body'], true )['test_event_code'] ), 'без test_mode → без код' );
+
+/* ── WPForms → Lead ── */
+$GLOBALS['http'] = array();
+Woo::wpforms( array( array( 'type' => 'name', 'value' => 'Мария Иванова', 'first' => '', 'last' => '' ), array( 'type' => 'email', 'value' => 'Maria@Example.com' ), array( 'type' => 'phone', 'value' => '0888 123 456' ), array( 'type' => 'textarea', 'value' => 'здравей' ) ), array(), array( 'settings' => array( 'form_title' => 'Контакт' ) ), 7 );
+Capi::flush(); $lead = json_decode( $GLOBALS['http'][0]['args']['body'], true )['data'][0];
+eq( $lead['event_name'], 'Lead', 'WPForms → Lead' ); eq( $lead['custom_data']['content_name'], 'Контакт', 'Lead: името на формата' );
+eq( $lead['user_data']['em'], array( hash( 'sha256', 'maria@example.com' ) ), 'Lead: em от формата' ); eq( $lead['user_data']['ph'], array( hash( 'sha256', '359888123456' ) ), 'Lead: ph от формата' );
+eq( $lead['user_data']['fn'], array( hash( 'sha256', 'мария' ) ), 'Lead: fn от „Име Фамилия“' ); eq( $lead['user_data']['ln'], array( hash( 'sha256', 'иванова' ) ), 'Lead: ln' );
+$GLOBALS['http'] = array(); Woo::wpforms( array( array( 'type' => 'textarea', 'value' => 'само текст' ) ), array(), array(), 8 ); Capi::flush(); eq( count( $GLOBALS['http'] ), 0, 'форма без имейл/телефон → не е Lead' );
+
 /* ── Catalog::content_id по формат ── */
 class FakeProduct { public $id, $sku, $parent, $price, $name; function __construct( $id, $sku = '', $parent = 0, $price = 9.9, $name = 'P' ) { $this->id = $id; $this->sku = $sku; $this->parent = $parent; $this->price = $price; $this->name = $name; }
 	function get_id() { return $this->id; } function get_sku() { return $this->sku; } function get_parent_id() { return $this->parent; } function get_price() { return $this->price; } function get_name() { return $this->name; } }
