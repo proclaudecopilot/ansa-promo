@@ -218,6 +218,7 @@ final class Probe {
 		$s = Insights_Portal::settings(); $st = Insights_Portal::status(); $t->note( 'състояние', $st[0] );
 		if ( ! $s['enabled'] ) { $t->note( 'изключен', 'включи го от 🧰 Настройки → 📈 Insights URL' ); return array( 'enabled' => false ); }
 		$url = Insights_Portal::url(); $t->note( 'url', $url ); Insights_Portal::purge(); $t->note( 'кеш', 'FlyingPress purge на ' . $url ); /* 1.27.1 */
+		$fp = Insights_Portal::cache_bypass_state(); if ( null !== $fp ) { $t->ok( 'FlyingPress: порталът е в Exclude pages + Bypass cookies', true === $fp, Insights_Portal::cache_bypass_pattern() . ' · ' . Insights_Portal::COOKIE ); } /* 1.27.2 */
 		$t->ok( 'паролата не е началната', (bool) $s['changed_at'], $s['changed_at'] ? 'сменена ' . wp_date( 'd.m.Y', $s['changed_at'] ) : 'смени я от 🧰 Настройки → 📈 Insights URL' );
 		$t->ok( 'само HTTPS', (bool) $s['https_only'] );
 		$t->ok( 'хешът е bcrypt', 0 === strpos( (string) $s['hash'], '$2y$' ), substr( (string) $s['hash'], 0, 7 ) );
