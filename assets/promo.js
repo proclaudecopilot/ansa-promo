@@ -273,7 +273,7 @@
      (A.pages[pg].order — редакторът 📄 Страници), скритите (off) не се рендират на живо (в редактора стоят избледнели, за да се редактират текстовете им),
      снимката на секция е своята (A.pages[pg].images[id]) или тази от имейл-попъпа (gate.images). Всяка секция носи data-sec; в редактора — и лента
      ↑ ↓ 👁 🖼, която праща {ansaPromo:'sec', page, id, act} на родителя. Залепеният бутон не е секция (винаги последен). */
-  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq'],sx:['hero','miss','derm','sol','reviews','offer','five','steps','get','yacht','faq','final']}; /* 1.24.22: prods; 1.31.0: sx */
+  var PAGE_SECS={how:['hero','boxes','ladder','steps','yacht','cosm','prods','why','reviews','faq','rules'],li:['hero','catch','set','prods','in','steps','box','yacht','faq'],sx:['hero','miss','derm','sol','reviews','offer','five','get','yacht','faq','final']}; /* 1.24.22: prods; 1.31.0: sx */
   function pageCfg(pg){var P=(A.pages&&A.pages[pg])||{},def=PAGE_SECS[pg]||[],order=[];(P.order||[]).forEach(function(id){if(def.indexOf(id)>-1&&order.indexOf(id)<0)order.push(id)});def.forEach(function(id){if(order.indexOf(id)<0)order.push(id)});
     return {order:order,off:P.off||[],images:P.images||{},labels:P.labels||{},img:P.img||{}}}
   function secPic(pg,id,gk,emo){var GI=(A.gate&&A.gate.images)||{},u=pageCfg(pg).images[id]||GI[gk];return u?'<img src="'+esc(u)+'" alt="" loading="lazy" decoding="async">':'<span>'+emo+'</span>'}
@@ -460,28 +460,29 @@
     /* 2 · ето какво пропускаш */
     var layers='';[1,2,3].forEach(function(i){layers+='<div class="sx-layer l'+i+'"><span>'+p('sx.miss.l'+i+'.t','b')+p('sx.miss.l'+i+'.d','small')+'</span>'+sp('sx.miss.l'+i+'.w','who')+'</div>'});
     var ms='<section class="sx-sec sx-miss"><div class="sx-c sx-2"><div class="sx-prose">'+p('sx.miss.kick','p','sx-kick')+p('sx.miss.h','h2')+p('sx.miss.p1')+p('sx.miss.p2')+p('sx.miss.p3')+p('sx.miss.p4')+xtra('sx.x.miss')+'</div><div class="sx-skin">'+p('sx.miss.lk','p','sx-kick')+'<div class="sx-layers">'+layers+'</div>'+p('sx.miss.foot','p','sx-foot')+'</div></div></section>';
-    /* 3 · дерматолозите */
-    var three='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){three+='<div><em>'+x[0]+'</em>'+p('sx.derm.'+x[1]+'.t','b')+p('sx.derm.'+x[1]+'.d')+'</div>'});
-    var dm='<section class="sx-sec sx-derm"><div class="sx-c"><div class="sx-narrow sx-prose">'+p('sx.derm.kick','p','sx-kick')+p('sx.derm.h','h2')+p('sx.derm.p')+'</div><div class="sx-three">'+three+'</div><div class="sx-proof">'+p('sx.derm.proof.n','b')+'<span>'+p('sx.derm.proof','strong')+sp('sx.derm.proof.s')+'</span></div>'+xtra('sx.x.derm')+'</div></section>';
-    /* 4 · решението */
-    var uses='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){uses+='<li class="sx-use"><em>'+x[0]+'</em><div>'+p('sx.sol.'+x[1]+'.t','b')+p('sx.sol.'+x[1]+'.d','span')+'</div></li>'});
-    var sl='<section class="sx-sec sx-sol"><div class="sx-c sx-2 sx-2r"><div class="sx-solv">'+sp('sx.sol.tag','tag')+'<i class="circle"></i>'+sxPic('sol','box','Sakura SkinTonic')+'<div class="how">'+sp('sx.sol.how1')+sp('sx.sol.how2')+sp('sx.sol.how3')+'</div></div><div class="sx-prose">'+p('sx.sol.kick','p','sx-kick')+p('sx.sol.h','h2')+p('sx.sol.p1')+'<ul class="sx-uses">'+uses+'</ul>'+p('sx.sol.nc','div','sx-nc')+p('sx.sol.p2')+xtra('sx.x.sol')+'</div></div></section>';
+    /* 3 · дерматолозите — цитатът на дерматолога (1.31.2) */
+    var qs='';[1,2,3,4,5,6,7].forEach(function(i){qs+=p('sx.derm.q'+i)});var by=T2('sx.derm.by');
+    var dm='<section class="sx-sec sx-derm"><div class="sx-c sx-narrow">'+p('sx.derm.kick','p','sx-kick')+p('sx.derm.h','h2')+'<blockquote class="sx-quote"><i class="qm" aria-hidden="true">“</i>'+qs+(by!==''?'<footer'+ck('sx.derm.by')+'>'+by+'</footer>':(A.editor?emptyHs('sx.derm.by','footer'):''))+'</blockquote>'+xtra('sx.x.derm')+'</div></section>';
+    /* 4 · какво всъщност е Sakura SkinTonic */
+    var uses='';[['💧',1],['🧬',2],['🛡',3]].forEach(function(x){uses+='<li class="sx-use"><em>'+x[0]+'</em><div>'+p('sx.sol.'+x[1]+'.t','b')+p('sx.sol.'+x[1]+'.d','span')+(x[1]===3?p('sx.sol.3.n','small','sx-fact'):'')+'</div></li>'});
+    var sl='<section class="sx-sec sx-sol"><div class="sx-c sx-2 sx-2r"><div class="sx-solv">'+sp('sx.sol.tag','tag')+'<i class="circle"></i>'+sxPic('sol','box','Sakura SkinTonic')+'<div class="how">'+sp('sx.sol.how1')+sp('sx.sol.how2')+sp('sx.sol.how3')+'</div></div><div class="sx-prose">'+p('sx.sol.kick','p','sx-kick')+p('sx.sol.h','h2')+p('sx.sol.p1')+'<ul class="sx-uses">'+uses+'</ul>'+p('sx.sol.nc','div','sx-nc')
+      +'<div class="sx-proof">'+p('sx.sol.proof.n','b')+'<span>'+p('sx.sol.proof','strong')+sp('sx.sol.proof.s')+'</span></div>'+p('sx.sol.p2')+xtra('sx.x.sol')+'</div></div></section>';
     /* 5 · ревюта — само картите с цитат; без нито един цитат секцията не се показва на живо */
     var rv='',nrv=0;[1,2,3].forEach(function(i){var q=T2('sx.rv.'+i+'.q');if(q===''){if(A.editor)rv+='<figure class="sx-rev ck-empty"'+ck('sx.rv.'+i+'.q')+'>＋ sx.rv.'+i+'.q</figure>';return}nrv++;rv+='<figure class="sx-rev'+(i===1?' first':'')+'"><div class="stars" aria-label="5 от 5">★★★★★</div>'+p('sx.rv.'+i+'.q')+'<figcaption>'+sp('sx.rv.'+i+'.n')+'</figcaption></figure>'});
     var rs=(nrv||A.editor)?'<section class="sx-sec sx-rv"><div class="sx-c">'+p('sx.rv.kick','p','sx-kick')+p('sx.rv.h','h2')+'<div class="sx-revs">'+rv+'</div>'+(prod_u?'<a class="sx-more" href="'+esc(prod_u)+'" target="_blank" rel="noopener"'+ck('sx.rv.more')+'>'+T2('sx.rv.more')+'</a>':'')+xtra('sx.x.reviews')+'</div></section>':'';
-    /* 6 · офертата */
+    /* 6 · офертата — табличката „Преди / Сезонът на ansa“ (1.31.2, човекът) */
     var cnt=lf?'<span class="sx-left"'+ck('sx.left')+'>'+T2('sx.left')+'</span>':'';
-    var of='<section class="sx-sec sx-of"><div class="sx-c">'+p('sx.of.kick','p','sx-kick')+p('sx.of.h','h2')+'<div class="sx-of-g"><div>'+p('sx.of.p','p','sx-ofp')+'<div class="sx-scene" aria-hidden="true">'+sxPic('sol','box','').replace('<img ','<img class="box" ')+'<img class="s1" src="'+esc(AS.tonic||'')+'" alt=""><img class="s2" src="'+esc(AS.serum||'')+'" alt=""><img class="c1" src="'+esc(AS.tonic||'')+'" alt=""><img class="c2" src="'+esc(AS.cream||'')+'" alt=""><img class="c3" src="'+esc(AS.serum||'')+'" alt=""></div>'+xtra('sx.x.offer')+'</div>'
-      +'<div class="sx-card"><div class="row"><span>'+sp('sx.of.r1')+p('sx.of.r1.s','small')+'</span><b><s>'+eur(V.sx_full)+'</s>'+eur(V.sx_pay)+'</b></div><div class="row"><span>'+sp('sx.of.r2')+p('sx.of.r2.s','small')+'</span><b><s>'+eur(String(COSM).replace('.',','))+'</s><i class="gift">'+eur(sxFmt(V._cp))+'</i></b></div><div class="row"><span>'+sp('sx.of.r3')+'</span><b class="gift">'+T2('sx.of.r3.v')+'</b></div>'
-      +'<div class="tot"><span>'+sp('sx.of.total')+'<br>'+sp('sx.of.total.s')+'</span><div><s>'+eur(V.sx_value)+'</s><strong>'+eur(V.sx_total)+'</strong></div></div><div class="save"><span'+ck('sx.of.save')+'>'+T2('sx.of.save')+'</span><span>'+eur(V.sx_save)+'</span></div>'+cta('sx.of.cta')+'<p class="sx-note">'+sp('sx.of.note')+(cnt?' · '+cnt:'')+'</p></div></div></div></section>';
+    var cosmS=eur(String(COSM).replace('.',',')),cosmP=eur(sxFmt(V._cp));
+    var tbl='<table class="sx-tbl"><thead><tr><th></th><th'+ck('sx.of.th1')+'>'+T2('sx.of.th1')+'</th><th class="now"'+ck('sx.of.th2')+'>'+T2('sx.of.th2')+'</th></tr></thead><tbody>'
+      +'<tr><td>'+sp('sx.of.r1')+p('sx.of.r1.s','small')+'</td><td><s>'+eur(V.sx_full)+'</s></td><td class="now"><b>'+eur(V.sx_pay)+'</b></td></tr>'
+      +'<tr><td>'+sp('sx.of.r2')+p('sx.of.r2.s','small')+'</td><td><s>'+cosmS+'</s></td><td class="now"><b class="gift">'+cosmP+'</b></td></tr>'
+      +'<tr><td>'+sp('sx.of.r3')+'</td><td>—</td><td class="now"><b class="gift">'+T2('sx.of.r3.v')+'</b></td></tr>'
+      +'</tbody></table><div class="tot"><span>'+sp('sx.of.total')+'<br>'+sp('sx.of.total.s')+'</span><div><s>'+eur(V.sx_value)+'</s><strong>'+eur(V.sx_total)+'</strong></div></div>';
+    var of='<section class="sx-sec sx-of"><div class="sx-c">'+p('sx.of.kick','p','sx-kick')+p('sx.of.h','h2')+'<div class="sx-of-g"><div>'+p('sx.of.p','p','sx-ofp')+p('sx.of.p2','p','sx-ofp')+'<div class="sx-scene" aria-hidden="true">'+sxPic('sol','box','').replace('<img ','<img class="box" ')+'<img class="s1" src="'+esc(AS.tonic||'')+'" alt=""><img class="s2" src="'+esc(AS.serum||'')+'" alt=""><img class="c1" src="'+esc(AS.tonic||'')+'" alt=""><img class="c2" src="'+esc(AS.cream||'')+'" alt=""><img class="c3" src="'+esc(AS.serum||'')+'" alt=""></div>'+xtra('sx.x.offer')+'</div>'
+      +'<div class="sx-card">'+tbl+'<div class="save"><span'+ck('sx.of.save')+'>'+T2('sx.of.save')+'</span><span>'+eur(V.sx_save)+'</span></div>'+cta('sx.of.cta')+'<p class="sx-note">'+sp('sx.of.note')+(cnt?' · '+cnt:'')+'</p></div></div></div></section>';
     /* 7 · защо пет */
     var months='';[1,2,3,4,5].forEach(function(i){months+='<span class="'+(i===3?'jan':'')+'"><b>'+i+'</b>'+T2('sx.five.m'+i)+'</span>'});
-    var fv='<section class="sx-sec sx-five"><div class="sx-c sx-2"><div class="sx-prose">'+p('sx.five.kick','p','sx-kick')+p('sx.five.h','h2')+p('sx.five.p1')+'<div class="sx-months"'+ck('sx.five.m1')+'>'+months+'</div>'+p('sx.five.p2')+p('sx.five.p3')+xtra('sx.x.five')+'</div>'
-      +'<div class="sx-rcpt">'+p('sx.five.rh','h3')+'<div class="row"><span>'+sp('sx.five.rr1')+p('sx.five.rr1.s','small')+'</span><b>'+eur(V.sx_full)+'</b></div><div class="row"><span>'+sp('sx.five.rr2')+p('sx.five.rr2.s','small')+'</span><b>'+eur(V.sx_pay)+'</b></div><div class="row"><span>'+sp('sx.five.rr3')+p('sx.five.rr3.s','small')+'</span><b><s>'+eur(String(COSM).replace('.',','))+'</s><i>'+eur(sxFmt(V._cp))+'</i></b></div>'
-      +'<div class="tot"><span'+ck('sx.five.tot')+'>'+T2('sx.five.tot')+'</span><div><s'+ck('sx.five.tot.s')+'>'+T2('sx.five.tot.s')+'</s><strong>'+eur(V.sx_total)+'</strong></div></div><div class="day"><b>'+eur(V.sx_day)+'</b>'+sp('sx.five.day')+'</div>'+cta('sx.five.cta')+'</div></div></section>';
-    /* 8 · три стъпки */
-    var steps='';[1,2,3].forEach(function(i){steps+='<div class="sx-step"><span class="n">'+i+'</span>'+p('sx.st.'+i+'.t','h3')+p('sx.st.'+i+'.d')+sp('sx.st.'+i+'.w','when'+(i===3?' jan':''))+'</div>'});
-    var st='<section class="sx-sec sx-st"><div class="sx-c">'+p('sx.st.kick','p','sx-kick')+p('sx.st.h','h2')+'<div class="sx-steps">'+steps+'</div>'+p('sx.st.note','p','sx-note')+xtra('sx.x.steps')+'<div class="sx-ctab">'+cta('sx.st.cta')+'</div></div></section>';
+    var fv='<section class="sx-sec sx-five"><div class="sx-c sx-narrow sx-prose">'+p('sx.five.kick','p','sx-kick')+p('sx.five.h','h2')+p('sx.five.p1')+'<div class="sx-months"'+ck('sx.five.m1')+'>'+months+'</div>'+p('sx.five.p2')+xtra('sx.x.five')+'</div></section>';
     /* 9 · какво получаваш — петте козметични продукта са li_items (снимка/blur от 💄 Козметичните продукти), резерва assets/img/sx */
     var LI=A.li_items||[],defs=[AS.tonic,AS.cream,AS.serum,AS.tonic,AS.serum],prods='';
     for(var q=1;q<=5;q++){var it=LI[q-1]||{},blur=it.blur!==undefined?!!it.blur:q>3,src=it.img||defs[q-1]||'';prods+='<div class="sx-prod'+(blur?' blur':'')+'"><div class="v">'+(src?'<img src="'+esc(src)+'" alt="" loading="lazy">':'<span>🧴</span>')+(blur?'<em>?</em>':'')+'</div>'+p('sx.get.pr'+q,'small')+'</div>'}
@@ -499,7 +500,7 @@
     /* лентата горе + залепеният ред на телефона (не са секции) */
     var bar='<div class="sx-bar"><div class="sx-c">'+sp('sx.bar')+(cnt?' · '+cnt:'')+' · <a href="#sx-of" data-sx="bar"'+ck('sx.bar.link')+'>'+T2('sx.bar.link')+'</a></div></div>';
     var stk='<div class="sx-stk"><div><strong>'+eur(V.sx_pay)+'<s>'+eur(V.sx_full)+'</s></strong>'+p('sx.stk.note','small')+'</div>'+cta('sx.stk.cta')+'</div>';
-    return '<div class="sx">'+bar+secJoin('sx',{hero:h,miss:ms,derm:dm,sol:sl,reviews:rs,offer:of,five:fv,steps:st,get:gt,yacht:y,faq:faq,'final':fin})+stk+'</div>';
+    return '<div class="sx">'+bar+secJoin('sx',{hero:h,miss:ms,derm:dm,sol:sl,reviews:rs,offer:of,five:fv,get:gt,yacht:y,faq:faq,'final':fin})+stk+'</div>';
   }
   /* бутоните: на живо (nav) → промо страницата с ?utm_content=sakura&box=l; в редактора (попъп) → Sakura като продукт и Голямата кутия на място */
   function sxBind(dc,nav){
