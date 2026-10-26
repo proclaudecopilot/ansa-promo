@@ -564,7 +564,9 @@
     var b=BX();if(!b)return;var conf='';for(var ci=0;ci<18;ci++)conf+='<i style="left:'+(ci*5.5+2)+'%;animation-delay:'+(ci*.11)+'s;background:'+['#e8722a','#f59e0b','#16a34a','#6366f1','#e0507a'][ci%5]+'"></i>';
     var dc=$('apDc');dc.className='dc wide';dc.scrollTop=0;
     /* наградите — всяка с пълното си име; яхтата и сетът са героите */
-    var rows=b.rw.map(function(r){var k=RW(r);var cls=r==='cosm1'?'gold':r==='cosm50'?'violet':/^tix/.test(r)?'pink':'plain';var ic=/^tix/.test(r)?'🛥️':k.ic;return '<div class="hero '+cls+'">'+rimg(r,ic)+'<div><b'+ck('rw.'+r+'.t')+'>'+k.t+'</b><small'+ck('rw.'+r+'.s')+'>'+k.s+'</small>'+(/^tix/.test(r)&&tixOf(b,boxes())>tixOf(b)?'<small class="tixx"'+ck('cb.tix.extra')+'>'+T('cb.tix.extra',tixVars(b,boxes()))+'</small>':'')+cosmPrice(r,true)+'</div><em class="hchk">✓</em></div>'}).join('');
+    /* 1.31.1 (човекът: „Козметичния сет да идва преди яхтата“): редът на наградите в „Честито“ е сетът → билетите → останалото (по реда на кутията) */
+    var rwo=b.rw.map(function(r,i){return {r:r,i:i,w:/^cosm/.test(r)?0:/^tix/.test(r)?1:2}}).sort(function(x,y){return x.w-y.w||x.i-y.i}).map(function(x){return x.r});
+    var rows=rwo.map(function(r){var k=RW(r);var cls=r==='cosm1'?'gold':r==='cosm50'?'violet':/^tix/.test(r)?'pink':'plain';var ic=/^tix/.test(r)?'🛥️':k.ic;return '<div class="hero '+cls+'">'+rimg(r,ic)+'<div><b'+ck('rw.'+r+'.t')+'>'+k.t+'</b><small'+ck('rw.'+r+'.s')+'>'+k.s+'</small>'+(/^tix/.test(r)&&tixOf(b,boxes())>tixOf(b)?'<small class="tixx"'+ck('cb.tix.extra')+'>'+T('cb.tix.extra',tixVars(b,boxes()))+'</small>':'')+cosmPrice(r,true)+'</div><em class="hchk">✓</em></div>'}).join('');
     /* при по-малка кутия — предложение за следващата (v1.10.0: броят я вдига сам — „още 2 опаковки“ е от реалния брой); от малката има и пряк път към Голямата */
     var tgt=nextAbove(b),big=boxOf('l'),up='';
     if(tgt){var tv=tgtVars(tgt);var news=tgt.rw.filter(function(r){return b.rw.indexOf(r)<0});
