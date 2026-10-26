@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.27.0
+ * Version:     1.27.1
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.27.0' );
+define( 'ANSA_PROMO_VER', '1.27.1' );
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
@@ -51,6 +51,7 @@ add_action( 'admin_init', function () {
 	}
 	/* 1.17.1: и кешът на промо страницата (FlyingPress) — иначе сервира HTML със старото promo.js до следващото публикуване */
 	try { $pub = \AnsaPromo\Config::get_published(); if ( ! empty( $pub['page_id'] ) ) { \AnsaPromo\Config::purge_page( (int) $pub['page_id'] ); } } catch ( \Throwable $e ) {}
+	try { \AnsaPromo\Insights_Portal::purge(); } catch ( \Throwable $e ) {} /* 1.27.1: и адресът на Insights за рекламата */
 	update_option( 'ansa_promo_ver_seen', ANSA_PROMO_VER, false );
 }, 1 );
 

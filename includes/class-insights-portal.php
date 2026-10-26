@@ -4,7 +4,8 @@
  * ни да следят всички метрики по фунията … dedicated, скрит с парола … max secure, да не може да се bruteforce-не“).
  *
  *  - Адрес: {сайт}/promo-insights/ (слъгът се сменя от 🧰 Настройки → 📈 Insights URL). Самостоятелна страница без темата и без wp-admin —
- *    екипът няма WP акаунт. Разпознава се в parse_request по пътя (както /kniga); НЕ се кешира (DONOTCACHEPAGE + nocache), noindex.
+ *    екипът няма WP акаунт. Разпознава се в parse_request по пътя (както /kniga); НЕ се кешира (DONOTCACHEPAGE още на plugins_loaded + nocache;
+ *    дашбордът е винаги на адрес с ?view=…, голият адрес носи само формата за вход — 1.27.1), noindex.
  *  - Вход: потребител + парола (начално adminpromo / паролата, дадена от човека — в кода стои САМО bcrypt хешът ѝ, DEFAULT_HASH). Сменят се от
  *    настройките; option ansa_promo_ins_portal е ИЗВЪН draft/published (не влиза в JSON износа, не се публикува). Паролата се пази като
  *    password_hash (bcrypt, cost 12), проверява се с password_verify; потребителят — с hash_equals; при грешно име паролата пак се проверява
@@ -54,6 +55,9 @@ final class Insights_Portal {
 	private static $cur = null; private static $cur_done = false;
 
 	public static function register() {
+		/* 1.27.1: FlyingPress кешира страницата, щом DONOTCACHEPAGE се появи чак на template_redirect (кешира формата за вход със стар CSRF токен и без
+		   бисквитка → „Формата е изтекла“). Затова константата се дефинира ТУК — на plugins_loaded, по пътя на заявката, преди който и да е кеш да реши. */
+		if ( self::request_matches() ) { if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } if ( ! defined( 'DONOTCACHEOBJECT' ) ) { define( 'DONOTCACHEOBJECT', true ); } }
 		add_action( 'parse_request', array( __CLASS__, 'route' ) );
 		add_filter( 'pre_handle_404', array( __CLASS__, 'no_404' ), 10, 2 );
 		add_action( 'template_redirect', array( __CLASS__, 'render_route' ), 0 );
@@ -88,7 +92,7 @@ final class Insights_Portal {
 			$s['hash'] = password_hash( $pw, PASSWORD_BCRYPT, array( 'cost' => 12 ) ); $s['gen']++; $s['changed_at'] = time(); $msg[] = 'паролата е сменена (всички сесии са излезли)';
 			self::log( 'pwchange', $s['user'], Leads::ip() );
 		}
-		self::write( $s );
+		$old_slug = self::settings()['slug']; self::write( $s ); self::purge(); if ( $old_slug !== $s['slug'] ) { try { if ( class_exists( '\\FlyingPress\\Purge' ) && is_callable( array( '\\FlyingPress\\Purge', 'purge_url' ) ) ) { \FlyingPress\Purge::purge_url( self::url_for( $old_slug ) ); } } catch ( \Throwable $e ) {} }
 		return array( true, 'Insights URL: записано' . ( $msg ? ' — ' . implode( '; ', $msg ) : '' ) . '.' );
 	}
 	/** Политиката за паролата: ≥ 12 знака, не е потребителското име, двете полета съвпадат. true или текст на грешката. */
@@ -157,7 +161,8 @@ final class Insights_Portal {
 	private static function set_cookie( $name, $value, $exp ) {
 		if ( headers_sent() ) { return; }
 		$secure = self::settings()['https_only'] || self::is_https();
-		@setcookie( $name, $value, array( 'expires' => $exp, 'path' => self::cookie_path(), 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict' ) );
+		/* 1.27.1: CSRF бисквитката е без HttpOnly — скриптът на формата я чете (или я създава, ако страницата е дошла от кеш без Set-Cookie) и попълва скритото поле */
+		@setcookie( $name, $value, array( 'expires' => $exp, 'path' => self::cookie_path(), 'secure' => $secure, 'httponly' => self::CSRF_COOKIE !== $name, 'samesite' => 'Strict' ) );
 		if ( '' === $value ) { unset( $_COOKIE[ $name ] ); } else { $_COOKIE[ $name ] = $value; }
 	}
 	private static function login_cookie( $user ) { $s = self::settings(); self::set_cookie( self::COOKIE, self::token( $user, null, null, null, $s ), time() + $s['ttl'] * HOUR_IN_SECONDS ); self::set_cookie( self::CSRF_COOKIE, '', time() - DAY_IN_SECONDS ); self::$cur_done = false; }
@@ -246,6 +251,20 @@ final class Insights_Portal {
 		if ( '' === $req ) { $uri = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ); $home = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ); if ( $home && 0 === strpos( $uri, $home ) ) { $uri = substr( $uri, strlen( $home ) ); } $req = trim( (string) $uri, '/' ); }
 		if ( self::matches( $req ) ) { $wp->query_vars = array( self::QV => '1' ); }
 	}
+	/** Пътят на текущата заявка (REQUEST_URI без домейна/поддиректорията на WP) съвпада ли с портала — без WP (plugins_loaded). */
+	public static function request_matches( $uri = null ) {
+		if ( ! self::enabled() ) { return false; }
+		$uri = (string) wp_parse_url( null === $uri ? (string) ( $_SERVER['REQUEST_URI'] ?? '' ) : (string) $uri, PHP_URL_PATH );
+		$home = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ); if ( $home && '/' !== $home && 0 === strpos( $uri, $home ) ) { $uri = substr( $uri, strlen( $home ) ); }
+		return self::matches( $uri );
+	}
+	/** 1.27.1: чисти URL-а на портала от кеша на страниците (FlyingPress + hook за другите) — при нова версия, при запис на настройките, от Probe. */
+	public static function purge() {
+		$url = self::url_for( self::settings()['slug'] );
+		if ( class_exists( '\\FlyingPress\\Purge' ) ) { try { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_url' ) ) ) { \FlyingPress\Purge::purge_url( $url ); } elseif ( is_callable( array( '\\FlyingPress\\Purge', 'purge_urls' ) ) ) { \FlyingPress\Purge::purge_urls( array( $url ) ); } } catch ( \Throwable $e ) {} }
+		do_action( 'ansa_promo_purge_url', $url, 0 );
+		return $url;
+	}
 	/** Съвпада ли пътят (без наклонени черти в краищата) с портала. */
 	public static function matches( $req, $slug = null ) { $slug = null === $slug ? self::path() : $slug; return strtolower( trim( (string) $req, '/' ) ) === strtolower( trim( (string) $slug, '/' ) ); }
 	public static function is_route() { global $wp; return ! empty( $wp->query_vars[ self::QV ] ); }
@@ -256,7 +275,7 @@ final class Insights_Portal {
 		nocache_headers();
 		header( 'X-Robots-Tag: noindex, nofollow, noarchive' ); header( 'X-Frame-Options: DENY' ); header( 'X-Content-Type-Options: nosniff' ); header( 'Referrer-Policy: same-origin' );
 		header( "Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'" );
-		header( 'Cross-Origin-Opener-Policy: same-origin' );
+		header( 'Cross-Origin-Opener-Policy: same-origin' ); header( 'Vary: Cookie' );
 	}
 	private static function same_origin() {
 		$home = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
@@ -282,12 +301,14 @@ final class Insights_Portal {
 			$cc = (string) ( $_COOKIE[ self::CSRF_COOKIE ] ?? '' ); $cf = (string) ( $_POST['csrf'] ?? '' );
 			if ( ! self::same_origin() || '' === $cc || '' === $cf || ! preg_match( '/^[a-f0-9]{32}$/', $cc ) || ! hash_equals( $cc, $cf ) ) { self::log( 'csrf', (string) ( $_POST['user'] ?? '' ), Leads::ip() ); self::login_page( 'csrf' ); }
 			$r = self::attempt( (string) wp_unslash( $_POST['user'] ?? '' ), (string) wp_unslash( $_POST['pw'] ?? '' ) );
-			if ( $r['ok'] ) { self::login_cookie( self::settings()['user'] ); self::redirect_self( array( 'view' => sanitize_key( (string) ( $_POST['view'] ?? '' ) ) ) ); }
+			if ( $r['ok'] ) { self::login_cookie( self::settings()['user'] ); $v = sanitize_key( (string) ( $_POST['view'] ?? '' ) ); self::redirect_self( array( 'view' => isset( Insights::views()[ $v ] ) ? $v : 'overview' ) ); }
 			self::login_page( $r['code'], (int) $r['wait'] );
 		}
 		if ( ! self::authed() ) { self::login_page( '' ); }
 		/* вътре: CSV · JSON фийд · екранът */
 		Insights::$portal = true;
+		/* 1.27.1: дашбордът никога не се сервира на голия адрес — винаги с ?view=… (адрес с query string не се кешира от FlyingPress/CDN дори ако DONOTCACHEPAGE бъде подминат); голият адрес носи само формата за вход */
+		if ( ! isset( $_GET['csv'] ) && ! isset( $_GET['action'] ) && ! isset( $_GET['view'] ) ) { self::redirect_self( array( 'view' => 'overview' ) ); }
 		if ( isset( $_GET['csv'] ) ) { self::csv( (string) $_GET['csv'] ); }
 		if ( isset( $_GET['action'] ) && 'ansa_promo_insights_feed' === $_GET['action'] ) {
 			if ( ! self::csrf_ok( (string) ( $_GET['nonce'] ?? '' ) ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
@@ -330,7 +351,11 @@ final class Insights_Portal {
 			. '<label>Потребител<input type="text" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="64"' . ( $https && ! $wait ? '' : ' disabled' ) . '></label>'
 			. '<label>Парола<input type="password" name="pw" autocomplete="current-password" required maxlength="256"' . ( $https && ! $wait ? '' : ' disabled' ) . '></label>'
 			. '<button class="ap-btn ap-btn--primary" type="submit"' . ( $https && ! $wait ? '' : ' disabled' ) . '>Влез →</button>'
-			. '</form><p class="ap-login__foot">Само за екипа на ansa™. Всеки опит за вход се записва.</p></div></main></body></html>';
+			. '</form><p class="ap-login__foot">Само за екипа на ansa™. Всеки опит за вход се записва.</p></div></main>'
+			/* 1.27.1: ако страницата е дошла от кеш (стар токен, без Set-Cookie) — скриптът взема бисквитката или прави нова и попълва скритото поле; така и кеширана форма влиза */
+			. '<script>(function(){var n=' . wp_json_encode( self::CSRF_COOKIE ) . ',p=' . wp_json_encode( self::cookie_path() ) . ',f=document.querySelector("input[name=csrf]"),m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([a-f0-9]{32})")),v=m?m[1]:"";'
+			. 'if(!v){try{var a=new Uint8Array(16);crypto.getRandomValues(a);v=Array.prototype.map.call(a,function(b){return("0"+b.toString(16)).slice(-2)}).join("")}catch(e){v=""}if(v)document.cookie=n+"="+v+"; path="+p+"; max-age=3600; secure; samesite=strict"}'
+			. 'if(f&&v)f.value=v})();</script></body></html>';
 		exit;
 	}
 	/** Екранът: рамката на приложението (меню + топ бар) с Insights::render() вътре. */
