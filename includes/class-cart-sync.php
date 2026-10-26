@@ -199,7 +199,7 @@ final class Cart_Sync {
 	/** checkout_data на FKA (JSON) → име, телефон, consent. */
 	public static function parse_checkout( $json ) {
 		$d = json_decode( (string) $json, true ); $f = is_array( $d['fields'] ?? null ) ? $d['fields'] : array();
-		return array( 'name' => trim( (string) ( $f['billing_first_name'] ?? '' ) . ' ' . (string) ( $f['billing_last_name'] ?? '' ) ), 'phone' => (string) ( $f['billing_phone'] ?? '' ), 'consent' => ! empty( $f['bwfan_user_consent'] ), 'page_id' => (int) ( $d['current_page_id'] ?? 0 ) );
+		return array( 'name' => trim( (string) ( $f['billing_first_name'] ?? '' ) . ' ' . (string) ( $f['billing_last_name'] ?? '' ) ), 'first' => trim( (string) ( $f['billing_first_name'] ?? '' ) ), 'last' => trim( (string) ( $f['billing_last_name'] ?? '' ) ), 'phone' => (string) ( $f['billing_phone'] ?? '' ), 'consent' => ! empty( $f['bwfan_user_consent'] ), 'page_id' => (int) ( $d['current_page_id'] ?? 0 ) );
 	}
 	/**
 	 * Промо количките от таблицата на FKA за период (0 = всички), последни първи. Всеки ред: id, email, status, status_label,
@@ -218,6 +218,13 @@ final class Cart_Sync {
 			$out[] = array( 'id' => (int) $r['ID'], 'email' => $email, 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'currency' => (string) ( $r['currency'] ?? '' ), 'name' => $c['name'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'], 'tagged' => $tid > 0 && self::available() && Merge::contact_has( $email, 'tags', $tid ) );
 		}
 		return $out;
+	}
+	/** 1.29.0: една количка по ID на FKA — същия ред като abandoned_rows() (+ first/last). null = няма / не е промо. */
+	public static function cart_by_id( $id ) {
+		global $wpdb; $t = self::table(); $id = (int) $id; if ( $id <= 0 || $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
+		$r = $wpdb->get_row( $wpdb->prepare( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} WHERE ID = %d", $id ), ARRAY_A ); if ( ! $r ) { return null; }
+		$p = self::parse_items( $r['items'] ); if ( ! $p['promo'] ) { return null; } $c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
+		return array( 'id' => (int) $r['ID'], 'email' => strtolower( (string) $r['email'] ), 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'name' => $c['name'], 'first' => $c['first'], 'last' => $c['last'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'] );
 	}
 	/** Обобщение за плочките: брой по състояние, сума на изоставените, с таг. */
 	public static function abandoned_stats( $rows ) {

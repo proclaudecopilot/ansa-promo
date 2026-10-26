@@ -93,6 +93,7 @@ final class Insights_Reports {
 	public static function is_internal_email( $email ) { $e = strtolower( trim( (string) $email ) ); if ( '' === $e ) { return false; } foreach ( preg_split( '/[\r\n,;\s]+/', self::settings()['internal_emails'] ) as $x ) { $x = strtolower( trim( $x ) ); if ( '' === $x ) { continue; } if ( $x === $e || ( '@' === $x[0] && substr( $e, -strlen( $x ) ) === $x ) ) { return true; } } return false; }
 	/** Текущата заявка е вътрешна: IP от списъка, логнат админ на играта, или UA на Probe/проверка. */
 	public static function is_internal_request() {
+		if ( ! empty( $_COOKIE[ Phone_Orders::COOKIE ] ) ) { return true; } /* 1.29.0: операторът, който пресъздава количка по телефон */
 		if ( self::is_internal_ip( Leads::ip() ) ) { return true; }
 		if ( function_exists( 'is_user_logged_in' ) && is_user_logged_in() && current_user_can( Plugin::CAP ) ) { return true; }
 		$ua = (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ); return false !== strpos( $ua, 'ansa™ Probe' ) || false !== strpos( $ua, 'ansa-check' );

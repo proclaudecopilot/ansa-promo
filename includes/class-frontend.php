@@ -362,6 +362,7 @@ final class Frontend {
 		$cfg = Config::at( Config::get_published() );
 		$r = self::runtime( $cfg, false );
 		unset( $r['registry'] );
+		if ( ! empty( $_GET['op'] ) ) { $r['op'] = Phone_Orders::runtime_payload( (string) wp_unslash( $_GET['op'] ) ); } /* 1.29.0: 📞 количката на клиента за оператора */
 		wp_send_json_success( $r );
 	}
 

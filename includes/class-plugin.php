@@ -49,6 +49,7 @@ final class Plugin {
 		Insights::register();
 		Insights_Portal::register(); /* 1.27.0: отделният адрес на Insights за екипа по реклами (вход с парола, без wp-admin) */
 		Insights_Reports::register(); /* 1.28.0: вътрешен трафик, ботове, седмичен отчет, аларми, API */
+		Phone_Orders::register(); /* 1.29.0: 📞 поръчки по телефон от изоставени колички/сесии */
 		Partner::register();
 		Tombola::register();
 		Book::register(); /* v1.9.0: книгата с рецепти — /kniga */

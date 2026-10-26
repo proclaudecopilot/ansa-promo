@@ -209,7 +209,7 @@
   function beacon(step,k){
     if(!A.ajax||A.editor||A.draft)return;var key='ansa_promo_bc_'+A.id+'_'+step+(k?'_'+k:'')+(step==='box'?'_'+(S.box!==null&&BX()?BX().id:''):'');try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1')}catch(e){}
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);
-    if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);
+    if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);if(S._op)fd.append('op','1'); /* 1.29.0: операторът по телефона е вътрешен трафик */
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(S.slots.filter(Boolean)));
     if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop')}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
@@ -994,7 +994,7 @@
     if(!A.cart||A.editor){toast(T('ms.preview'),true);return}
     var b=BX();beacon('order');sending=true;var html=btn?btn.innerHTML:'';if(btn){btn.disabled=true;btn.innerHTML=T('or.sending')}
     var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=label||html}};
-    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');
+    var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce);fd.append('box',b.id);fd.append('pay',S.pay||'card');fd.append('cosm',S.cosm?'1':'0');fd.append('email',S.email||'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');if(S._op)fd.append('op',S._op); /* 1.29.0: 📞 поръчка по телефон — токенът от Insights */
     fd.append('items',JSON.stringify(S.slots.filter(Boolean).map(function(k){return PROD[k].id})));fd.append('secret',JSON.stringify(Object.keys(S.secret).filter(function(k){return PROD[k]}).map(function(k){return PROD[k].id})));
     /* v1.1.0: изтекъл nonce (кеширана страница) → взема свеж от runtime-а и опитва още веднъж, без човекът да разбере */
     var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
@@ -1029,10 +1029,25 @@
   function render(){if(A.mode==='info'){renderInfo();return}if(A.mode==='li'){renderLi();return}renderS1();renderS2();renderS4();renderS5();renderTimer();renderYfab();renderCd();var br=$('apHdr').querySelector('.brand');br.querySelector('b').innerHTML=T('head.brand');br.querySelector('span').innerHTML=T('head.title');$('apHow').innerHTML=T('head.how');var f=root.querySelector('.foot');if(f)f.innerHTML=T('foot.note')}
 
   /* ── runtime refresh (кеширана страница → цените се сверяват със сървъра) ── */
+  /* 1.29.0: 📞 обаждане — операторът отваря промо страницата с ?ansa_op=<токен>: кутията и продуктите на клиента се зареждат на екрана за
+     редакция, имейлът е попълнен, попъп няма; „Към плащане“ носи токена → чекаутът е с имейл, телефон и имена на клиента */
+  function applyOp(op){
+    if(!op||!op.ok){toast((op&&op.note)||'Линкът за обаждане е невалиден',true);return}
+    S.email=op.email||'';S.emailDone=true;gateMark();S.opInfo=op;if(op.pay&&(op.pay!=='cod'||(A.checkout&&A.checkout.cod)))S.pay=op.pay;
+    var bi=BI[op.box];if(bi==null)bi=0;S.chosen=bi;S.box=bi;S.slots=(op.items||[]).filter(function(k){return !!PROD[k]});
+    if(S.slots.length>maxFor(BX()))S.slots=S.slots.slice(0,maxFor(BX()));normSlots();syncBox();startTimer();saveS();
+    go(2);render();
+    var who=(op.name?op.name+' · ':'')+(op.email||'')+(op.phone?' · '+op.phone:'');
+    var bar=document.getElementById('apOpBar');if(!bar){bar=document.createElement('div');bar.id='apOpBar';document.body.appendChild(bar)}
+    bar.innerHTML='<b>📞 Обаждане</b> · количката на <b>'+esc(who||'клиента')+'</b> ('+esc(op.label||'')+') · '+(op.note?'<b>'+esc(op.note)+'</b> · ':'')+'коригирай и натисни „Към плащане“ — чекаутът е с данните на клиента, остава офисът/адресът';
+    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#43302a;color:#fff;font:700 13px/1.4 Nunito,sans-serif;padding:10px 16px;text-align:center';
+    toast('📞 Количката е заредена — коригирай и „Към плащане“',false);
+  }
   function refreshRuntime(){
-    if(!A.ajax||A.editor||A.draft||!A.refresh)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
-      if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce; /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
+    if(!A.ajax||A.editor||A.draft||!(A.refresh||S._op))return;
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+      if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce;
+      if(d.op&&S._op&&!S._opDone){S._opDone=true;applyOp(d.op)} /* 1.29.0: количката на клиента за оператора */ /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       /* v1.18.2 (човекът: „натиснах изключи на попъпа и пак се появява“): кешираната страница носи стария gate.enabled — свежият решава;
          ако попъпът е изключен и вече е отворен, затваря се веднага и продължава каквото е чакало след него */
       if(d.campaigns)A.campaigns=d.campaigns; /* 1.24.14 */
@@ -1119,7 +1134,8 @@
   if(A.mode==='li'){root.classList.add('info');root.classList.add('li');S.emailDone=true;A.editorNoGate=true;renderLi();refreshRuntime();return} /* 1.24.20: /kozmetika — като /info */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
-  var restored=restoreS();
+  try{var qop=new URLSearchParams(location.search).get('ansa_op');if(qop){S._op=qop;try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){} /* 1.29.0: 📞 обаждане — чисто състояние, количката идва от сървъра */
+  var restored=S._op?false:restoreS();
   /* v1.18.2: кацане от имейл (utm_medium=email / utm_source с mail, sendgrid, newsletter, fka) или ?gate=0 → без имейл-попъп (имейлът вече е известен) */
   try{var qg=new URLSearchParams(location.search),gm=(qg.get('utm_medium')||'').toLowerCase(),gs=(qg.get('utm_source')||'').toLowerCase();if(qg.get('gate')==='0'||gm==='email'||gm==='e-mail'||/mail|sendgrid|newsletter|fka/.test(gs)){S.emailDone=true;gateMark()}}catch(e){}
   /* 1.24.14: имейл-попъпът по кампания — off: без попъп за този UTM; on: с попъп и при изключен глобално (runtime refresh не го връща) */
