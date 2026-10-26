@@ -329,6 +329,7 @@ final class Frontend {
 			'gate'      => array_merge( $cfg['gate'], array( 'images' => self::gate_images( $cfg ) ) ),
 			'pages'     => self::pages_runtime( $cfg ), /* 1.24.21: редът/скритите/снимките на секциите на /info и /kozmetika */
 			'li_items'  => self::li_items( $cfg ), /* 1.24.22: петте козметични продукта (снимка, замъглена) */
+			'sx'        => Sakura_Page::runtime_part( $cfg ), /* 1.31.0: /kozmetichen-set-promo — дни в опаковка, продуктът, снимките по подразбиране */
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'gv'        => $gv, /* 1.24.7 */

@@ -10,7 +10,7 @@
   var REG=D.registry,KEYS=REG.keys,GROUPS=REG.groups,SCREENS=REG.screens;
   var cfg=D.cfg,state=D.state,dirty=false,savedAt=state.draft_at?new Date(state.draft_at*1000):null,sel=null,region=Object.keys(GROUPS)[0],mode='copy',device='desk',search='',onlyChanged=false,invalid={},lastSaveJSON=JSON.stringify(cfg);
   var scen={utm:'',box:'',screen:'boxes',full:false}; /* 1.24.13: тръгва от „Кутиите“ без избрана кутия — стъпката нагласява кутията */
-  var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта',li:'Страница „Комплектът за 1 €“ (/kozmetika)'};
+  var SCREEN_LABELS={gate:'1 · Имейл-попъп',cosm:'1b · Попъп „Козметиката за €1“ (само UTM Козметика)',boxes:'2 · Кутиите (всички кутии)',fill:'3 · Напълни кутията',celeb:'4 · Честито (кутията е пълна)',order:'5 · Поръчка',builder:'Таблото (резервен екран)',picker:'Селектор на продукт',product:'Попъп на продукт',sure:'„Сигурна ли си?“',switch:'Смяна на кутия',secret:'Любимци',how:'Как работи играта',li:'Страница „Комплектът за 1 €“ (/kozmetika)',sx:'Страница „Sakura ×5“ (/kozmetichen-set-promo)'};
   var frame=null,frameReady=false,liveT=null,autosaveT=null;
   var secPage='how',picked={}; /* 1.24.21: 📄 Страници — коя страница е в инспектора; attachment id → URL на току-що избраните снимки (до записа) */
 
@@ -25,7 +25,7 @@
   function ovrCount(u){var m=utmMap(u);return m?Object.keys(m).filter(function(k){return m[k]!==''}).length:0}
   function ovrTotal(){var n=0;Object.keys(cfg.copy_utm||{}).forEach(function(u){n+=ovrCount(u)});return n}
   /* 1.24.23 (човекът: „не мога да изтрия заглавието“): на страниците /info и /kozmetika (групи how/li) празно = скрит текст (override ''), не дефолтът */
-  function canEmpty(k){return /^(how|li)\./.test(k)}
+  function canEmpty(k){return /^(how|li|sx)\./.test(k)}
   function isHidden(k){return canEmpty(k)&&!!cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)&&cfg.copy[k]===''&&KEYS[k].d!==''}
   function cget(m,k){return m&&Object.prototype.hasOwnProperty.call(m,k)?m[k]:null}
   function copyValGlobal(k){return cfg.copy&&Object.prototype.hasOwnProperty.call(cfg.copy,k)?cfg.copy[k]:KEYS[k].d}
@@ -131,7 +131,7 @@
   function stepLabel(k){return stepInfo(k).l}
   /* 1.24.13: кампаниите и стъпките на лентата; стъпката нагласява кутията/„пълна“ сама */
   var CAMPAIGNS=[{v:'cosm',l:'💄 Козметика'},{v:'yacht',l:'⛵ Яхта'},{v:'general',l:'🎁 Общ'}];
-  var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how','li']}];
+  var STEP_GROUPS=[{l:'Пътят на клиента',s:['gate','cosm','boxes','fill','celeb','order']},{l:'Други екрани',s:['builder','picker','product','sure','switch','secret','how','li','sx']}];
   function stepDefaults(keep){var cp=campGet(campKey()),ok=[];stepList().forEach(function(g){g.s.forEach(function(x){if(!x.off)ok.push(x.k)})});if(!keep&&ok.indexOf(scen.screen)<0)scen.screen=ok[0];
     var sc=scen.screen;if(sc==='gate'||sc==='cosm'||sc==='boxes'){scen.box='';scen.full=false}else if(sc==='fill'){scen.box=cp.box||scen.box||'l';scen.full=false}else{scen.box=cp.box||scen.box||'l';scen.full=true}}
   function utmLabel(){if(!scen.utm)return 'без UTM (общ сезон)';var c=CAMPAIGNS.filter(function(x){return x.v===scen.utm})[0];if(c)return c.l+' (utm_content='+scen.utm+')';var p=D.products.filter(function(x){return x.key===scen.utm})[0];return (p?p.name:scen.utm)+' (utm_content='+scen.utm+')'}
@@ -151,7 +151,7 @@
       out+='<button class="rg'+(mode==='copy'&&region===g?' on':'')+'" data-g="'+g+'">'+esc(GROUPS[g])+'<span class="n">'+ks.length+(ch-ov?' · <b>'+(ch-ov)+'</b>':'')+(ov?' · <b style="color:#c2410c">✎'+ov+'</b>':'')+'</span></button>';
       if(mode==='copy'&&region===g||search||onlyChanged){out+='<div class="keys">'+vis.map(function(k){return '<button class="k'+(sel===k?' on':'')+(chm[k]?' ch':'')+(chm[k]===2?' ov':'')+(invalid[k]?' bad':'')+'" data-k="'+k+'" title="'+esc(copyVal(k))+'">'+(chm[k]===2?'✎ ':'')+esc(k)+'</button>'}).join('')+'</div>'}});
     /* 1.24.21: 📄 Страници — редът на секциите, скритите и снимките на /info и /kozmetika */
-    out+='<h4>📄 Страници · секции и снимки</h4>';Object.keys(D.pages||{}).forEach(function(pg){var P=pageEd(pg),ni=Object.keys(P.images).length;out+='<button class="rg'+(mode==='sections'&&secPage===pg?' on':'')+'" data-secpg="'+pg+'">'+(pg==='how'?'ℹ️ ':'🌸 ')+esc(D.pages[pg].label)+'<span class="n">'+P.order.length+(P.off.length?' · <b>'+P.off.length+' скрити</b>':'')+(ni?' · 🖼'+ni:'')+'</span></button>'});
+    out+='<h4>📄 Страници · секции и снимки</h4>';Object.keys(D.pages||{}).forEach(function(pg){var P=pageEd(pg),ni=Object.keys(P.images).length;out+='<button class="rg'+(mode==='sections'&&secPage===pg?' on':'')+'" data-secpg="'+pg+'">'+(pg==='how'?'ℹ️ ':pg==='sx'?'🌺 ':'🌸 ')+esc(D.pages[pg].label)+'<span class="n">'+P.order.length+(P.off.length?' · <b>'+P.off.length+' скрити</b>':'')+(ni?' · 🖼'+ni:'')+'</span></button>'});
     out+='<h4>⚙️ Двигател</h4>';[['game','🎮 Играта'],['boxes','📦 Кутиите'],['rewards','🎁 Наградите'],['checkout','💳 Плащане'],['tickets','🎟️ Билети'],['fit','🔗 FIT · проблеми']].forEach(function(x){out+='<button class="rg'+(mode===x[0]?' on':'')+'" data-mode="'+x[0]+'">'+esc(x[1])+'</button>'});
     out+='<a class="rg" href="'+esc(D.products_tab)+'" target="_blank">📦 Продукти ↗</a>';
     out+='<h4>🧰 Инструменти</h4><button class="rg" data-mode="doctor">🩺 Doctor'+(state.checks.some(function(c){return c.level==='bad'})?' <span class="n"><b>⛔</b></span>':'')+'</button><button class="rg" data-mode="history">🕘 История <span class="n">'+state.history.length+'</span></button><button class="rg" data-mode="json">{ } JSON</button><a class="rg" href="'+esc(D.admin)+'">← Инструменти (стария екран)</a>';
@@ -222,7 +222,7 @@
     Object.keys(P.images).forEach(function(id){if(!M.sections[id]||!M.sections[id].img||P.images[id]==='')delete P.images[id]});return P}
   /* своята снимка на секцията като URL: URL → както е; attachment id → току-що избраната (picked) или от сървъра след записа (state.pages_images); '' = няма/още не е резолвнат */
   function ownUrl(pg,id){var v=pageEd(pg).images[id];if(!v)return '';v=String(v);if(!/^\d+$/.test(v))return v;return picked[v]||(((state.pages_images||{})[pg]||{})[id])||''}
-  function secUrl(pg,id){return ownUrl(pg,id)||(D.gate_images||{})[D.pages[pg].sections[id].img]||''}
+  function secUrl(pg,id){var sl=D.pages[pg].sections[id].img;return ownUrl(pg,id)||(/^sx_/.test(sl)?((D.sx_assets||{})[sl.slice(3)]||''):((D.gate_images||{})[sl]||''))} /* 1.31.0: слотовете sx_* са снимките по подразбиране на /kozmetichen-set-promo */
   function pagesRuntime(){var o={};Object.keys(D.pages||{}).forEach(function(pg){var M=D.pages[pg],P=pageEd(pg),im={},lb={},ig={};Object.keys(M.sections).forEach(function(id){lb[id]=M.sections[id].l;ig[id]=M.sections[id].img;var u=ownUrl(pg,id);if(u)im[id]=u});o[pg]={order:P.order.slice(),off:P.off.slice(),images:im,labels:lb,img:ig}});return o}
   /* 1.24.22: петте козметични продукта (cfg.li.items — снимка id/URL + blur); URL-ите на записаните идват от state.li_items, на току-що избраните — от picked */
   function liItems(){if(!cfg.li||typeof cfg.li!=='object')cfg.li={};var a=Array.isArray(cfg.li.items)?cfg.li.items:[];while(a.length<5)a.push({img:'',blur:a.length>=3});a.length=5;a.forEach(function(it,i){if(!it||typeof it!=='object')a[i]={img:'',blur:i>=3}});cfg.li.items=a;return a}
@@ -275,7 +275,7 @@
       out+='<li class="sec'+(off?' off':'')+'" draggable="true" data-id="'+id+'"><span class="drag" title="влачи, за да преместиш">⋮⋮</span><span class="i">'+(i+1)+'</span><span class="l">'+esc(s.l)+(off?' <em>скрита на живо</em>':'')+'</span><span class="bt"><button class="sm" data-mv="-1" data-id="'+id+'" title="нагоре"'+(i?'':' disabled')+'>↑</button><button class="sm" data-mv="1" data-id="'+id+'" title="надолу"'+(i<P.order.length-1?'':' disabled')+'>↓</button><button class="sm" data-off="'+id+'" title="'+(off?'покажи на живо':'скрий на живо')+'">'+(off?'👁 покажи':'👁‍🗨 скрий')+'</button></span>'
         +secTextsHtml(pg,id,secKeys(pg,id))
         +(pg==='li'&&id==='prods'?liItemsHtml():'')
-        +(s.img?'<div class="pic"><img src="'+esc(secUrl(pg,id))+'" alt=""><div class="pt"><div class="hint">'+(own?(ownUrl(pg,id)?'<b style="color:#c2410c">своя снимка</b>':'<b style="color:#c2410c">своя снимка</b> (attachment '+esc(P.images[id])+' — вижда се след „Запази“)'):'снимката от имейл-попъпа („'+esc(GL[s.img]||s.img)+'“)')+'</div><div class="row"><button class="sm" data-pick="'+id+'">🖼 Избери от библиотеката</button>'+(own?'<button class="sm" data-clr="'+id+'">⟲ като в попъпа</button>':'')+'</div><input type="text" data-iurl="'+id+'" placeholder="или URL на снимка / attachment ID" value="'+esc(P.images[id]||'')+'"></div></div>':'')+'</li>'});
+        +(s.img?'<div class="pic"><img src="'+esc(secUrl(pg,id))+'" alt=""><div class="pt"><div class="hint">'+(own?(ownUrl(pg,id)?'<b style="color:#c2410c">своя снимка</b>':'<b style="color:#c2410c">своя снимка</b> (attachment '+esc(P.images[id])+' — вижда се след „Запази“)'):(/^sx_/.test(s.img)?'снимката по подразбиране на страницата':'снимката от имейл-попъпа („'+esc(GL[s.img]||s.img)+'“)'))+'</div><div class="row"><button class="sm" data-pick="'+id+'">🖼 Избери от библиотеката</button>'+(own?'<button class="sm" data-clr="'+id+'">'+(/^sx_/.test(s.img)?'⟲ по подразбиране':'⟲ като в попъпа')+'</button>':'')+'</div><input type="text" data-iurl="'+id+'" placeholder="или URL на снимка / attachment ID" value="'+esc(P.images[id]||'')+'"></div></div>':'')+'</li>'});
     var oth=secOther(pg);if(oth.length)out+='<li class="sec other" data-id="_other"><span class="drag" style="opacity:.3">⋮⋮</span><span class="i">·</span><span class="l">Други текстове <em>(заглавие/описание на страницата, залепеният бутон, седмични)</em></span><span class="bt"></span>'+secTextsHtml(pg,'_other',oth)+'</li>';
     out+='</ol><div class="row"><button class="sm" id="apSecReset">⟲ Ред по подразбиране · всички видими</button><span class="sp" style="flex:1"></span><button class="sm" id="apSecGo">👁 покажи в канваса</button></div></div>';p.innerHTML=out;
     bindTexts(p); /* 1.24.23 */

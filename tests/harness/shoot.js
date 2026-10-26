@@ -203,6 +203,65 @@ const { chromium } = require('playwright');
     console.log(tag, 'li ok');
     await ctx.close();
   }
+  // 1.31.0: адверториалът /kozmetichen-set-promo (runtime.mode = sx): без грешки/плейсхолдъри, всеки бутон води към промо страницата с
+  // ?utm_content=sakura&box=l (+ utm_* от адреса), цените от двигателя (Sakura 44,90 × 5 = 224,50 → −40 % = 134,70; + 1 € = 135,70; стойност 353,50),
+  // 10 въпроса, ревютата са скрити без цитат, залепеният ред на телефона, броячът „Останаха“ при ≤ 40 %
+  async function runSx(w, h, tag) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, isMobile: w < 500, hasTouch: w < 500 });
+    const page = await ctx.newPage();
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    page.on('pageerror', e => errors.push(tag + ': ' + e.message));
+    page.on('console', m => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+    await page.goto('file://' + S + '/harness/sx.html?utm_source=fb&utm_medium=paid&utm_campaign=sakura5', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(600);
+    await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 700) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 40)); } window.scrollTo(0, 0); });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: S + '/shots/' + tag + '-sx.png', fullPage: true });
+    // innerText носи text-transform (кикърите са главни) и NBSP (ths) — сравняваме с малки букви и обикновени интервали
+    const norm = x => String(x).replace(/\u00a0/g, ' ').toLowerCase();
+    const t = norm(await page.evaluate(() => document.body.innerText));
+    const left = (t.match(/\{\{[^}]*\}\}/g) || []); if (left.length) errors.push(tag + ' sx: непопълнени плейсхолдъри ' + JSON.stringify(left.slice(0, 5)));
+    if (/undefined|NaN|\[object/.test(t)) errors.push(tag + ' sx: undefined/NaN: ' + (t.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
+    for (const s of ['Знаем, че си дошла за козметиката', 'Ето какво вероятно пропускаш', 'Как го обясняват дерматолозите', 'Няма колаген вътре, нарочно', 'Защо пет, а не една', 'Три стъпки, едната е през януари', 'Правилно прочете, почивка на яхта', 'Екатерина и екипът на ansa']) if (t.indexOf(norm(s)) < 0) errors.push(tag + ' sx: липсва „' + s + '“');
+    // цените от двигателя: Sakura × packs на Голямата (харнесът е в седмица 3 → процентът на седмицата), + комплектът за 1 €
+    const ex = await page.evaluate(() => { const R = window.AnsaPromoRuntime, bl = R.boxes.filter(b => b.id === 'l')[0], sp = R.products.sakura, pct = Number((sp.pct || {}).l) || bl.pct, r2 = n => Math.round(n * 100) / 100, f = n => (Math.abs(n - Math.round(n)) < .005 ? String(Math.round(n)) : n.toFixed(2)).replace('.', ',');
+      const full = r2(sp.price * bl.packs), pay = r2(full * (1 - pct / 100)), cp = Number(bl.cosm_pay) || 0, cv = Number(R.rewards.cosm.value), days = bl.packs * R.sx.days; return { full: f(full), pay: f(pay), total: f(r2(pay + cp)), value: f(r2(full + cv)), save: f(r2(full + cv - pay - cp)), day: f(r2(pay / days)), days: String(days) }; });
+    for (const k of ['full', 'pay', 'total', 'value', 'save', 'day']) if (t.indexOf(ex[k] + ' €') < 0) errors.push(tag + ' sx: липсва сумата ' + k + ' „' + ex[k] + ' €“');
+    if (t.indexOf(ex.days + ' дни') < 0) errors.push(tag + ' sx: липсва „' + ex.days + ' дни“');
+    if (/какво казват жените/.test(t)) errors.push(tag + ' sx: секцията с ревютата се показва без цитати');
+    const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 [data-sx="go"]')).map(b => b.getAttribute('data-go') || ''));
+    if (btns.length < 6) errors.push(tag + ' sx: само ' + btns.length + ' бутона');
+    btns.forEach((u, i) => { if (!/utm_content=sakura/.test(u) || !/box=l/.test(u) || !/fill=sakura/.test(u) || !/utm_source=fb/.test(u) || !/utm_campaign=sakura5/.test(u) || !/^https:\/\/ansa\.bg\/sezonut-na-ansa\/\?/.test(u)) errors.push(tag + ' sx: бутон ' + i + ' води към ' + u); });
+    if ((await page.$$('#apS1 .sx-faqs details')).length !== 10) errors.push(tag + ' sx: въпросите не са 10');
+    if (!(await page.$('#apS1 .sx-stk .sx-btn'))) errors.push(tag + ' sx: няма залепен ред');
+    if (await page.$('#apS1 .sx-left')) errors.push(tag + ' sx: броячът „Останаха“ се показва при 90 % останали');
+    if (await page.$('#apS1 .ck-empty')) errors.push(tag + ' sx: „＋“ хотспот на живо (без редактор)');
+    { const o = await page.evaluate(() => Array.from(document.querySelectorAll('#apS1 section[data-sec]')).map(s => s.dataset.sec)); const want = ['hero', 'miss', 'derm', 'sol', 'offer', 'five', 'steps', 'get', 'yacht', 'faq', 'final']; if (JSON.stringify(o) !== JSON.stringify(want)) errors.push(tag + ' sx: секциите са ' + JSON.stringify(o)); }
+    const sw = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]); if (sw[0] > sw[1]) errors.push(tag + ' sx: хоризонтален скрол ' + sw.join('/'));
+    if (!/sx\/hero\.webp$/.test(await page.evaluate(() => (document.querySelector('#apS1 .sx-hero-v > img') || {}).src || ''))) errors.push(tag + ' sx: hero снимката не е тази от assets/img/sx');
+    if ((await page.$$('#apS1 .sx-prod.blur em')).length !== 2) errors.push(tag + ' sx: замъглените изненади с „?“ не са 2');
+    // ревю с цитат → секцията се показва с 1 карта; празен h2 = скрит; броячът при 35 % → в лентата, офертата и финала; своя hero снимка
+    await page.evaluate(() => { const c = window.AnsaPromoRuntime.copy; c['sx.rv.1.q'] = '„Кожата ми е друга.“'; c['sx.rv.1.n'] = 'Мария, 44'; c['sx.miss.h'] = ''; window.AnsaPromoRuntime.cosm_reserved = 6500; window.AnsaPromoRuntime.pages.sx.images = { hero: window.AnsaPromoRuntime.gate.images.yacht }; AnsaPromo.render(); }); await page.waitForTimeout(300);
+    const t2 = norm(await page.evaluate(() => document.body.innerText));
+    if (!/какво казват жените/.test(t2) || (await page.$$('#apS1 .sx-rev')).length !== 1) errors.push(tag + ' sx: ревюто с цитат не се показва като 1 карта');
+    if (/ето какво вероятно пропускаш/.test(t2)) errors.push(tag + ' sx: скритото заглавие още се показва');
+    if ((t2.match(/останаха 3 500 от 10 000/g) || []).length < 3) errors.push(tag + ' sx: броячът при 35 % не е на 3 места: ' + (t2.match(/останаха[^\n]{0,30}/g) || []).join(' | '));
+    if (!/gate\/yacht\.svg$/.test(await page.evaluate(() => (document.querySelector('#apS1 .sx-hero-v > img') || {}).src || ''))) errors.push(tag + ' sx: своята hero снимка не се показва');
+    await page.screenshot({ path: S + '/shots/' + tag + '-sx-left.png', fullPage: false });
+    // кацане от бутона: ?utm_content=sakura&box=l&fill=sakura → Голямата кутия с 5× Sakura и „Честито“ направо (имейл-попъпът е минат)
+    const p2 = await ctx.newPage(); await p2.addInitScript(() => { try { sessionStorage.setItem('ansa_promo_gate', '1'); } catch (e) {} });
+    p2.on('pageerror', e => errors.push(tag + ' fill: ' + e.message));
+    await p2.goto('file://' + S + '/harness/index.html?utm_content=sakura&box=l&fill=sakura', { waitUntil: 'domcontentloaded' }); await p2.waitForTimeout(1200);
+    const st = await p2.evaluate(() => { const s = AnsaPromo.state(); return { box: s.box, slots: s.slots.slice(), celeb: !!document.querySelector('#apDc .celeb'), ovOff: document.getElementById('apOv').classList.contains('off') }; });
+    const bl = await p2.evaluate(() => window.AnsaPromoRuntime.boxes.findIndex(b => b.id === 'l'));
+    if (st.box !== bl || st.slots.length !== 5 || st.slots.some(k => k !== 'sakura') || !st.celeb || st.ovOff) errors.push(tag + ' fill: кутията не е 5× Sakura с „Честито“: ' + JSON.stringify(st));
+    const ct = await p2.evaluate(() => document.body.innerText.replace(/\u00a0/g, ' '));
+    if (!/5×[\s\S]{0,40}Sakura/.test(ct)) errors.push(tag + ' fill: в „Честито“ няма „5× Sakura“');
+    await p2.screenshot({ path: S + '/shots/' + tag + '-sx-fill.png', fullPage: false });
+    await p2.close();
+    console.log(tag, 'sx ok');
+    await ctx.close();
+  }
   // 1.24.21: секциите на /info и /kozmetika — по реда от runtime.pages, скритите (off) не се рендират, снимката на секция е своята (images) или тази от попъпа
   async function runPages(w, h, tag) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, isMobile: w < 500, hasTouch: w < 500 });
@@ -306,6 +365,8 @@ const { chromium } = require('playwright');
   await run(1280, 900, 'd1280');
   await runLi(390, 780, 'm390');
   await runLi(1280, 900, 'd1280');
+  await runSx(390, 780, 'm390');
+  await runSx(1280, 900, 'd1280');
   await runPages(390, 780, 'm390');
   await runPages(1280, 900, 'd1280');
   await runEditor('editor');

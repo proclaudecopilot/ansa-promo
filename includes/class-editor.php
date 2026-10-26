@@ -56,12 +56,13 @@ final class Editor {
 			'cfg' => self::out( $draft ), 'state' => self::state(), 'gateways' => $gw, 'products' => $prods,
 			/* 1.24.21: 📄 Страници — секциите на /info и /kozmetika (етикети, снимков слот), снимките от имейл-попъпа като URL (снимката по подразбиране на секцията) */
 			'pages' => Config::page_sections(), 'gate_images' => Frontend::gate_images( $draft ), 'gate_slots' => Config::gate_image_slots(),
+			'sx_assets' => Sakura_Page::assets(), 'sx_url' => Sakura_Page::url( $draft ), /* 1.31.0: снимките по подразбиране на /kozmetichen-set-promo (слотове sx_hero/sx_box) */
 			'rewards' => array( 'tix' => 'Билет', 'tix3' => '3 билета', 'tix5' => '5 билета', 'ship' => 'Безплатна доставка', 'book' => 'Книга', 'cosm50' => 'Сет −50%', 'cosm1' => 'Сетът за €1' ),
 		);
 	}
 	/** Коя група къде се вижда на канваса (сценарий); '' = извън канваса (чекаут/имейл). */
 	public static function group_screens() {
-		return array( 'gate' => array( 'gate' ), 'cosm' => array( 'cosm' ), 'li' => array( 'li' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
+		return array( 'gate' => array( 'gate' ), 'cosm' => array( 'cosm' ), 'li' => array( 'li' ), 'sx' => array( 'sx' ), 'head' => array( 'boxes' ), 'how' => array( 'how' ), 'boxes' => array( 'boxes' ), 'fill' => array( 'fill' ), 'celeb' => array( 'celeb' ), 'builder' => array( 'builder' ), 'picker' => array( 'picker', 'product' ), 'sure' => array( 'sure', 'switch' ), 'rewards' => array( 'boxes', 'celeb', 'how' ), 'secret' => array( 'secret' ), 'order' => array(), 'checkout' => array(), 'msgs' => array( 'builder' ), 'emails' => array() );
 	}
 	/** Празни асоциативни масиви (copy, fit) стават {} в JSON, не [] — иначе JS ги вижда като Array и губи ключовете. */
 	public static function out( $cfg ) { foreach ( (array) ( $cfg['pages'] ?? array() ) as $pg => $p ) { $cfg['pages'][ $pg ]['images'] = (object) ( $p['images'] ?? array() ); } /* 1.24.21 */ $cfg['copy'] = (object) ( $cfg['copy'] ?? array() ); $cfg['fit'] = (object) ( $cfg['fit'] ?? array() ); $cfg['campaigns'] = (object) ( $cfg['campaigns'] ?? array() ); /* 1.24.14 */ $cfg['copy_utm'] = (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ); /* 1.24.19 */ $cfg['gate']['images'] = (object) ( $cfg['gate']['images'] ?? array() ); $cfg['rewards']['icons'] = (object) ( $cfg['rewards']['icons'] ?? array() ); return $cfg; }

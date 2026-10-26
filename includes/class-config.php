@@ -77,6 +77,8 @@ final class Config {
 			/* 1.24.20: страницата „Комплектът за 1 €“ (listicle за рекламата); 1.24.22 items: петте козметични продукта в секцията „Какво се крие в кутията“ —
 			   снимка (attachment id или URL; празно = емоджи) и blur (замъглена — изненадите 4 и 5). Текстовете им са li.pr.N.t/.d в регистъра. */
 			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika', 'items' => self::li_item_defaults() ),
+			/* 1.31.0: страницата „Sakura ×5“ (адверториалът за рекламата за комплекта) — на корена на сайта: {сайт}/{slug}; days = дни в една опаковка Sakura ({{sx_days}} = packs × days) */
+			'sx'        => array( 'enabled' => true, 'slug' => 'kozmetichen-set-promo', 'days' => 30 ),
 			/* 1.24.21: страниците /info (how) и /kozmetika (li) — редът на секциите (order), скритите (off) и снимка по секция (images: attachment id или URL;
 			   празно = снимката от имейл-попъпа, gate.images). Местят се от редактора (📄 Страници / лентата над секцията в канваса). */
 			'pages'     => self::pages_defaults(),
@@ -294,6 +296,21 @@ final class Config {
 				'yacht' => array( 'l' => 'Почивка на яхта', 'img' => 'yacht', 'keys' => array( 'li.y.', 'li.legal.y' ) ),
 				'faq'   => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'li.faq.' ) ),
 			) ),
+			/* 1.31.0: адверториалът „Sakura ×5“ — {сайт}/kozmetichen-set-promo; img = слотът по подразбиране (promo.js пада на assets/img/sx/, не на попъпа) */
+			'sx' => array( 'label' => '„Sakura ×5“ — /kozmetichen-set-promo', 'sections' => array(
+				'hero'    => array( 'l' => 'Писмото „Знаем, че си дошла за козметиката“', 'img' => 'sx_hero', 'keys' => array( 'sx.hero.', 'sx.bar' ) ),
+				'miss'    => array( 'l' => 'Ето какво вероятно пропускаш', 'img' => '', 'keys' => array( 'sx.miss.' ) ),
+				'derm'    => array( 'l' => 'Как го обясняват дерматолозите', 'img' => '', 'keys' => array( 'sx.derm.' ) ),
+				'sol'     => array( 'l' => 'Решението не е още един крем (Sakura)', 'img' => 'sx_box', 'keys' => array( 'sx.sol.' ) ),
+				'reviews' => array( 'l' => 'Какво казват жените', 'img' => '', 'keys' => array( 'sx.rv.' ) ),
+				'offer'   => array( 'l' => 'Офертата (цената)', 'img' => '', 'keys' => array( 'sx.of.', 'sx.left' ) ),
+				'five'    => array( 'l' => 'Защо пет, а не една', 'img' => '', 'keys' => array( 'sx.five.' ) ),
+				'steps'   => array( 'l' => 'Три стъпки, едната е през януари', 'img' => '', 'keys' => array( 'sx.st.' ) ),
+				'get'     => array( 'l' => 'Какво получаваш', 'img' => '', 'keys' => array( 'sx.get.' ) ),
+				'yacht'   => array( 'l' => 'Правилно прочете, почивка на яхта', 'img' => '', 'keys' => array( 'sx.y.' ) ),
+				'faq'     => array( 'l' => 'Въпроси', 'img' => '', 'keys' => array( 'sx.faq.' ) ),
+				'final'   => array( 'l' => 'Финал + правен ред', 'img' => '', 'keys' => array( 'sx.fin.', 'sx.legal' ) ),
+			) ),
 		);
 	}
 	/** 1.24.22: петте козметични продукта на /kozmetika — снимка (attachment id или URL) и blur; 4 и 5 са изненади (замъглени). */
@@ -423,7 +440,8 @@ final class Config {
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
 		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
 		$out['li']['enabled'] = ! empty( $out['li']['enabled'] ); $out['li']['slug'] = sanitize_title( (string) ( $out['li']['slug'] ?? 'kozmetika' ) ) ?: 'kozmetika'; /* 1.24.20 */
-		$out['pages'] = self::normalize_pages( $out['pages'] ?? null ); /* 1.24.21: секциите на /info и /kozmetika */
+		$sx = is_array( $out['sx'] ?? null ) ? $out['sx'] : array(); $out['sx'] = array( 'enabled' => ! empty( $sx['enabled'] ), 'slug' => sanitize_title( (string) ( $sx['slug'] ?? 'kozmetichen-set-promo' ) ) ?: 'kozmetichen-set-promo', 'days' => max( 1, min( 365, (int) ( $sx['days'] ?? 30 ) ?: 30 ) ) ); /* 1.31.0 */
+		$out['pages'] = self::normalize_pages( $out['pages'] ?? null ); /* 1.24.21: секциите на /info и /kozmetika; 1.31.0: и /kozmetichen-set-promo (sx) */
 		$out['li']['items'] = self::normalize_li_items( $out['li']['items'] ?? null ); /* 1.24.22 */
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
 		$sts = is_array( $out['tombola']['statuses'] ) ? $out['tombola']['statuses'] : preg_split( '/[\s,]+/', (string) $out['tombola']['statuses'] );

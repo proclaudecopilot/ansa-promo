@@ -2027,3 +2027,257 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
       затова картата е с пълни ъгли и горен кант; при избор (.on) зеленият кант си е от 1618 ── */
 .ansa-promo .dc.fpw .fp3 .f3item.nocat .fcat.drow.r3{border-radius:16px!important;border-top-color:rgba(232,114,42,.22)}
 .ansa-promo .dc.fpw .fp3 .f3item.nocat .fcat.drow.r3.on{border-top-color:var(--g)}
+
+/* ── 49 · 1.31.0 (човекът): адверториалът „Sakura ×5“ — {сайт}/kozmetichen-set-promo (.dc.hw.sx): страница в стила на landing-а
+      (кремав фон, Nunito, розово/оранжево), секции с редуващи се фонове, касова бележка, залепен ред на телефона. Рамката е тази на /info
+      (секция 43); типографията на .dc.hw се презаписва под .sx. Същото и в попъпа на редактора (екран „Страница „Sakura ×5““). ── */
+.ansa-promo.sx .wrap{max-width:1240px}
+.ansa-promo .dc.hw.sx{background:#f9f5ee;--sxi:#332b2b;--sxm:#746660;--sxo:#db4b2e;--sxod:#bd3c23;--sxr:#8e4056;--sxl:#ded5ca;--sxg:#4f6140;--sxgb:#e9eedf}
+.ansa-promo .dc.hw.sx>.ib{padding:0;font-size:16px;line-height:1.7;color:var(--sxi)}
+.ansa-promo .dc.hw.sx .sx{color:var(--sxi)}
+.ansa-promo .dc.hw.sx .sx *,.ansa-promo .dc.hw.sx .sx *::before,.ansa-promo .dc.hw.sx .sx *::after{box-sizing:border-box}
+.ansa-promo .dc.hw.sx .sx p,.ansa-promo .dc.hw.sx .sx h1,.ansa-promo .dc.hw.sx .sx h2,.ansa-promo .dc.hw.sx .sx h3,.ansa-promo .dc.hw.sx .sx ul,.ansa-promo .dc.hw.sx .sx figure{margin:0;padding:0}
+.ansa-promo .dc.hw.sx .sx ul{list-style:none}
+.ansa-promo .dc.hw.sx .sx h1,.ansa-promo .dc.hw.sx .sx h2,.ansa-promo .dc.hw.sx .sx h3{font-weight:900;letter-spacing:-.03em;line-height:1.1;color:var(--sxi)}
+.ansa-promo .dc.hw.sx .sx h1{font-size:clamp(38px,4.4vw,60px);margin:14px 0 18px;letter-spacing:-.04em}
+.ansa-promo .dc.hw.sx .sx h2{font-size:clamp(30px,3.4vw,46px);margin:12px 0 0;letter-spacing:-.035em}
+.ansa-promo .dc.hw.sx .sx h3{font-size:19px}
+.ansa-promo .dc.hw.sx .sx img{max-width:100%;display:block;height:auto}
+.ansa-promo .dc.hw.sx .sx a{color:var(--sxi);font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-c{width:min(1180px,calc(100% - 96px));margin-inline:auto}
+.ansa-promo .dc.hw.sx .sx .sx-narrow{width:min(760px,100%);margin-inline:auto}
+.ansa-promo .dc.hw.sx .sx .sx-kick{font-size:11px;letter-spacing:.16em;font-weight:900;text-transform:uppercase;color:var(--sxr);margin:0}
+.ansa-promo .dc.hw.sx .sx .sx-sec{padding:76px 0}
+.ansa-promo .dc.hw.sx .sx .sx-2{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
+.ansa-promo .dc.hw.sx .sx .sx-2r{grid-template-columns:.85fr 1.15fr}
+.ansa-promo .dc.hw.sx .sx .sx-prose p:not(.sx-kick):not(.sx-note):not(.sx-faqm){font-size:17px;line-height:1.8;color:#5a4c48;margin-top:16px;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-prose p b,.ansa-promo .dc.hw.sx .sx .sx-prose p strong{color:var(--sxi);font-weight:800}
+.ansa-promo .dc.hw.sx .sx p.sx-note{color:var(--sxm);font-size:12.5px;line-height:1.6;margin-top:12px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-btn{display:inline-flex;min-height:58px;align-items:center;justify-content:space-between;gap:22px;padding:14px 22px;border:0;border-radius:12px;background:var(--sxo);color:#fff;font-size:15px;font-weight:800;text-decoration:none;line-height:1.3;box-shadow:0 12px 30px rgba(219,75,46,.2);cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:background .2s,transform .2s}
+.ansa-promo .dc.hw.sx .sx .sx-btn:hover{background:var(--sxod);transform:translateY(-2px)}
+.ansa-promo .dc.hw.sx .sx .sx-btn i{font-style:normal;font-size:20px;line-height:1}
+.ansa-promo .dc.hw.sx .sx .sx-ctab{margin-top:30px;max-width:560px}
+.ansa-promo .dc.hw.sx .sx .sx-more{display:inline-block;margin-top:22px;font-weight:900;text-decoration:none;border-bottom:2px solid var(--sxo);padding-bottom:2px}
+.ansa-promo .dc.hw.sx .sx .hw-x{margin-top:18px}
+/* лентата горе */
+.ansa-promo .dc.hw.sx .sx .sx-bar{padding:10px 20px;text-align:center;color:#fff;background:var(--sxo);font-size:12px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-bar a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.5)}
+/* 1 · писмото */
+.ansa-promo .dc.hw.sx .sx .sx-hero{padding:54px 0 60px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-g{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
+.ansa-promo .dc.hw.sx .sx .sx-hero-tx p:not(.sx-kick){font-size:16.5px;line-height:1.8;color:#5a4c48;font-weight:500}
+.ansa-promo #apS1 .dc.hw.sx .sx h1{font-size:clamp(38px,4.4vw,60px);margin:14px 0 18px} /* над .ansa-promo #apS1 h1 (ID) */
+.ansa-promo .dc.hw.sx .sx .sx-hero-tx p+p{margin-top:16px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-tx p.sx-lead{font-size:18px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-tx p b{color:var(--sxi);font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-sign{display:flex;align-items:center;gap:12px;margin-top:26px;font-size:14px;font-weight:800;color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-sign>b{width:42px;height:42px;border-radius:50%;background:var(--sxo);color:#fff;display:grid;place-items:center;font-size:20px;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-hero-v{position:relative;min-height:600px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-v>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 40%;border-radius:160px 160px 18px 18px}
+.ansa-promo .dc.hw.sx .sx .sx-plabel{position:absolute;top:24px;left:50%;transform:translateX(-50%);background:rgba(255,253,248,.92);border-radius:999px;font-size:10px;padding:8px 14px;letter-spacing:.12em;white-space:nowrap;text-transform:uppercase;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-pack{position:absolute;width:44%;bottom:14px;left:-30px;filter:drop-shadow(0 20px 18px rgba(40,20,14,.16));transform:rotate(-6deg)}
+.ansa-promo .dc.hw.sx .sx .sx-seal{position:absolute;right:-16px;bottom:44px;display:flex;width:156px;height:156px;border-radius:50%;background:var(--sxr);color:#fff8f2;align-items:center;justify-content:center;flex-direction:column;text-align:center;box-shadow:0 0 0 7px #f9f5ee;transform:rotate(6deg)}
+.ansa-promo .dc.hw.sx .sx .sx-seal span{font-size:10px;line-height:1.35;letter-spacing:.08em;text-transform:uppercase;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-seal strong{font-size:44px;line-height:1.05;font-weight:900;letter-spacing:-.04em;margin:2px 0}
+.ansa-promo .dc.hw.sx .sx .sx-seal s{font-size:13px;opacity:.85}
+/* 2 · пропускаш */
+.ansa-promo .dc.hw.sx .sx .sx-miss{background:#f3dfe1}
+.ansa-promo .dc.hw.sx .sx .sx-miss .sx-2{align-items:start}
+.ansa-promo .dc.hw.sx .sx .sx-skin{background:#fffdf8;border-radius:22px;padding:28px;position:sticky;top:100px}
+.ansa-promo .dc.hw.sx .sx .sx-layers{display:grid;gap:10px;margin-top:16px}
+.ansa-promo .dc.hw.sx .sx .sx-layer{border-radius:14px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.ansa-promo .dc.hw.sx .sx .sx-layer b{display:block;font-size:15px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-layer small{display:block;color:var(--sxm);font-size:12px;margin-top:3px;line-height:1.5}
+.ansa-promo .dc.hw.sx .sx .sx-layer .who{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:900;padding:6px 10px;border-radius:999px;white-space:nowrap}
+.ansa-promo .dc.hw.sx .sx .sx-layer.l1{background:#fbeeea}.ansa-promo .dc.hw.sx .sx .sx-layer.l1 .who{background:#f7d9d0;color:#8a4a3a}
+.ansa-promo .dc.hw.sx .sx .sx-layer.l2{background:#f6e3e8}.ansa-promo .dc.hw.sx .sx .sx-layer.l2 .who{background:var(--sxr);color:#fff}
+.ansa-promo .dc.hw.sx .sx .sx-layer.l3{background:#f1e9df}.ansa-promo .dc.hw.sx .sx .sx-layer.l3 .who{background:#e5d6c3;color:#6a5440}
+.ansa-promo .dc.hw.sx .sx p.sx-foot{margin-top:16px;font-size:13px;color:var(--sxm);line-height:1.6;font-weight:600}
+/* 3 · дерматолозите */
+.ansa-promo .dc.hw.sx .sx .sx-three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+.ansa-promo .dc.hw.sx .sx .sx-three>div{background:#fffdf8;border:1px solid var(--sxl);border-radius:18px;padding:24px}
+.ansa-promo .dc.hw.sx .sx .sx-three b{display:block;font-size:17px;margin-bottom:8px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-three p{font-size:14px;color:var(--sxm);line-height:1.7;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-three em{font-style:normal;font-size:26px;display:block;margin-bottom:10px}
+.ansa-promo .dc.hw.sx .sx .sx-proof{display:flex;align-items:center;gap:18px;margin-top:34px;background:#fffdf8;border-radius:18px;padding:20px 24px;border:1px solid var(--sxl)}
+.ansa-promo .dc.hw.sx .sx .sx-proof>b{font-size:34px;letter-spacing:-.04em;font-weight:900;line-height:1}
+.ansa-promo .dc.hw.sx .sx .sx-proof>span{font-size:14px;color:var(--sxm);line-height:1.5;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-proof>span strong{display:block;color:var(--sxi);font-size:16px;font-weight:800}
+/* 4 · решението */
+.ansa-promo .dc.hw.sx .sx .sx-sol{background:#fffdf8}
+.ansa-promo .dc.hw.sx .sx .sx-solv{position:relative;background:#f3dfe1;border-radius:22px;min-height:520px;display:grid;place-items:center;overflow:hidden}
+.ansa-promo .dc.hw.sx .sx .sx-solv>img{width:70%;filter:drop-shadow(0 22px 20px rgba(76,35,50,.13));transform:rotate(-7deg);position:relative}
+.ansa-promo .dc.hw.sx .sx .sx-solv .circle{position:absolute;width:340px;height:340px;border:1px solid rgba(196,139,157,.42);border-radius:50%}
+.ansa-promo .dc.hw.sx .sx .sx-solv .circle:after{content:'';position:absolute;inset:-28px;border:1px solid rgba(196,139,157,.22);border-radius:50%}
+.ansa-promo .dc.hw.sx .sx .sx-solv .tag{position:absolute;left:24px;top:22px;font-size:10px;letter-spacing:.14em;color:var(--sxr);font-weight:900;text-transform:uppercase}
+.ansa-promo .dc.hw.sx .sx .sx-solv .how{position:absolute;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#6a4b55;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-uses{display:grid;gap:12px;margin-top:24px}
+.ansa-promo .dc.hw.sx .sx .sx-use{display:grid;grid-template-columns:52px 1fr;gap:14px;align-items:start;background:#f9f5ee;border-radius:16px;padding:16px 18px}
+.ansa-promo .dc.hw.sx .sx .sx-use em{font-style:normal;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:#fff}
+.ansa-promo .dc.hw.sx .sx .sx-use b{display:block;font-size:15px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-use span{display:block;font-size:14px;color:var(--sxm);line-height:1.6;margin-top:3px;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-nc{margin-top:22px;padding:18px 22px;border:1px dashed #c9a9b3;border-radius:16px;font-size:14.5px;line-height:1.7;color:#5a4c48;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-nc b{color:var(--sxi);font-weight:800}
+/* 5 · ревюта */
+.ansa-promo .dc.hw.sx .sx .sx-rv{background:#f1e9df}
+.ansa-promo .dc.hw.sx .sx .sx-revs{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;margin-top:34px}
+.ansa-promo .dc.hw.sx .sx .sx-rev{background:#fffdf8;border-radius:20px;padding:26px}
+.ansa-promo .dc.hw.sx .sx .sx-rev .stars{color:var(--sxo);letter-spacing:2px;font-size:14px}
+.ansa-promo .dc.hw.sx .sx .sx-rev p{font-size:17px;line-height:1.55;margin:14px 0 16px;font-weight:700;letter-spacing:-.01em}
+.ansa-promo .dc.hw.sx .sx .sx-rev.first p{font-size:20px}
+.ansa-promo .dc.hw.sx .sx .sx-rev figcaption{font-size:13px;color:var(--sxm);font-weight:700}
+/* 6 · офертата */
+.ansa-promo .dc.hw.sx .sx .sx-of{background:var(--sxi);color:#fff8f2;padding:84px 0}
+.ansa-promo .dc.hw.sx .sx .sx-of .sx-kick{color:#efc7d1}
+.ansa-promo .dc.hw.sx .sx .sx-of h2{color:#fff8f2;max-width:900px;font-size:clamp(28px,3.2vw,44px);margin-top:14px}
+.ansa-promo .dc.hw.sx .sx .sx-of h2 i{font-style:normal;color:#f7c7b8}
+.ansa-promo .dc.hw.sx .sx .sx-of h2 s{opacity:.6;font-weight:700}
+.ansa-promo .dc.hw.sx .sx .sx-of-g{display:grid;grid-template-columns:1.15fr .85fr;gap:50px;align-items:center;margin-top:34px}
+.ansa-promo .dc.hw.sx .sx p.sx-ofp{color:#d9c9c4;font-size:16.5px;line-height:1.8;font-weight:500}
+.ansa-promo .dc.hw.sx .sx p.sx-ofp b{color:#fff8f2;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-of .hw-x,.ansa-promo .dc.hw.sx .sx .sx-of .hw-x p,.ansa-promo .dc.hw.sx .sx .sx-of .hw-x h4{color:#e9dcd6}
+.ansa-promo .dc.hw.sx .sx .sx-scene{position:relative;height:300px;margin-top:10px}
+.ansa-promo .dc.hw.sx .sx .sx-scene img{position:absolute;object-fit:contain;filter:drop-shadow(0 12px 12px rgba(0,0,0,.33))}
+.ansa-promo .dc.hw.sx .sx .sx-scene .box{width:46%;left:0;bottom:16px;z-index:4;transform:rotate(-5deg)}
+.ansa-promo .dc.hw.sx .sx .sx-scene .c1{height:230px;left:36%;bottom:12px;z-index:3}
+.ansa-promo .dc.hw.sx .sx .sx-scene .c2{height:205px;left:54%;bottom:10px;z-index:2}
+.ansa-promo .dc.hw.sx .sx .sx-scene .c3{height:170px;right:6%;bottom:8px;z-index:3}
+.ansa-promo .dc.hw.sx .sx .sx-scene .s1{height:190px;right:22%;bottom:30px;filter:blur(8px);opacity:.5}
+.ansa-promo .dc.hw.sx .sx .sx-scene .s2{height:180px;right:0;bottom:34px;filter:blur(8px);opacity:.45}
+.ansa-promo .dc.hw.sx .sx .sx-card{background:#fffdf8;color:var(--sxi);border-radius:22px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
+.ansa-promo .dc.hw.sx .sx .sx-card .row,.ansa-promo .dc.hw.sx .sx .sx-rcpt .row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--sxl);font-size:14px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-card .row:first-child{padding-top:0}
+.ansa-promo .dc.hw.sx .sx .sx-card .row b,.ansa-promo .dc.hw.sx .sx .sx-rcpt .row b{font-size:17px;font-weight:900;white-space:nowrap}
+.ansa-promo .dc.hw.sx .sx .sx-card .row s,.ansa-promo .dc.hw.sx .sx .sx-rcpt .row s{color:var(--sxm);font-size:13px;margin-right:6px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-card .row small,.ansa-promo .dc.hw.sx .sx .sx-rcpt .row small{display:block;color:var(--sxm);font-size:12px;margin-top:2px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-card .row i,.ansa-promo .dc.hw.sx .sx .sx-rcpt .row i{font-style:normal;color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-card .row b.gift{color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-card .tot,.ansa-promo .dc.hw.sx .sx .sx-rcpt .tot{display:flex;justify-content:space-between;align-items:flex-end;padding-top:18px}
+.ansa-promo .dc.hw.sx .sx .sx-card .tot>span,.ansa-promo .dc.hw.sx .sx .sx-rcpt .tot>span{font-size:12px;color:var(--sxm);line-height:1.5;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-card .tot strong,.ansa-promo .dc.hw.sx .sx .sx-rcpt .tot strong{display:block;font-size:46px;letter-spacing:-.05em;font-weight:900;line-height:1}
+.ansa-promo .dc.hw.sx .sx .sx-card .tot s,.ansa-promo .dc.hw.sx .sx .sx-rcpt .tot s{display:block;font-size:14px;color:var(--sxm);text-align:right;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-card .save{margin-top:14px;background:var(--sxgb);color:var(--sxg);border-radius:10px;padding:10px 14px;font-weight:900;font-size:14px;display:flex;justify-content:space-between}
+.ansa-promo .dc.hw.sx .sx .sx-card .sx-btn{margin-top:16px}
+.ansa-promo .dc.hw.sx .sx .sx-card p.sx-note{color:var(--sxm)}
+.ansa-promo .dc.hw.sx .sx .sx-left{display:inline-block;padding:3px 10px;border-radius:999px;background:#fff;border:1.5px solid #e9b32a;color:#b45309;font-size:12px;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-bar .sx-left{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5);color:#fff}
+/* 7 · защо пет */
+.ansa-promo .dc.hw.sx .sx .sx-five .sx-2{align-items:start}
+.ansa-promo .dc.hw.sx .sx .sx-months{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:26px}
+.ansa-promo .dc.hw.sx .sx .sx-months span{background:#fffdf8;border:1px solid var(--sxl);border-radius:12px;padding:12px 8px;text-align:center;font-size:12px;font-weight:800;line-height:1.3}
+.ansa-promo .dc.hw.sx .sx .sx-months span b{display:block;font-size:22px;letter-spacing:-.03em;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-months span.jan{background:var(--sxr);color:#fff;border-color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt{background:#fffdf8;border:1px solid var(--sxl);border-radius:22px;padding:28px 30px;box-shadow:0 18px 55px rgba(69,50,37,.09)}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt h3{font-size:20px;margin-bottom:12px}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt .day{margin-top:14px;display:flex;gap:12px;align-items:center;background:var(--sxgb);color:var(--sxg);border-radius:12px;padding:12px 16px;font-weight:900;font-size:14px}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt .day b{font-size:24px;letter-spacing:-.04em}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt .sx-btn{margin-top:16px}
+/* 8 · три стъпки */
+.ansa-promo .dc.hw.sx .sx .sx-st{background:#f3dfe1}
+.ansa-promo .dc.hw.sx .sx .sx-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:40px}
+.ansa-promo .dc.hw.sx .sx .sx-step{background:#fffdf8;border-radius:20px;padding:26px}
+.ansa-promo .dc.hw.sx .sx .sx-step .n{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--sxi);color:#fff;font-weight:900;font-size:15px}
+.ansa-promo .dc.hw.sx .sx .sx-step h3{margin:16px 0 10px}
+.ansa-promo .dc.hw.sx .sx .sx-step p{font-size:14.5px;color:var(--sxm);line-height:1.75;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-step p b{color:var(--sxi);font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-step .when{display:inline-block;margin-top:14px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:900;padding:6px 10px;border-radius:999px;background:#eef1e6;color:#647159}
+.ansa-promo .dc.hw.sx .sx .sx-step .when.jan{background:#f6e3e8;color:var(--sxr)}
+/* 9 · какво получаваш */
+.ansa-promo .dc.hw.sx .sx .sx-get{background:#f5e9e2}
+.ansa-promo .dc.hw.sx .sx .sx-getl{display:grid;gap:10px;margin-top:26px}
+.ansa-promo .dc.hw.sx .sx .sx-getl li{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#fffdf8;border-radius:14px;padding:16px 18px;font-size:15px;font-weight:800}
+.ansa-promo .dc.hw.sx .sx .sx-getl li>span:last-child{white-space:nowrap;color:var(--sxr);font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-getl li s{color:var(--sxm);font-weight:600;font-size:13px;margin-right:6px}
+.ansa-promo .dc.hw.sx .sx .sx-getl em{font-style:normal;margin-right:10px}
+.ansa-promo .dc.hw.sx .sx .sx-prods{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.ansa-promo .dc.hw.sx .sx .sx-prod{background:#fffdf8;border-radius:14px;padding:10px 8px 12px;text-align:center}
+.ansa-promo .dc.hw.sx .sx .sx-prod .v{height:120px;position:relative;display:grid;place-items:center}
+.ansa-promo .dc.hw.sx .sx .sx-prod .v img{width:100%;height:100%;object-fit:contain}
+.ansa-promo .dc.hw.sx .sx .sx-prod .v span{font-size:48px}
+.ansa-promo .dc.hw.sx .sx .sx-prod small{display:block;font-size:11px;font-weight:800;line-height:1.3;margin-top:8px}
+.ansa-promo .dc.hw.sx .sx .sx-prod.blur .v img{filter:blur(8px);opacity:.6;transform:scale(.9)}
+.ansa-promo .dc.hw.sx .sx .sx-prod .v em{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:rgba(255,248,241,.85);font-size:20px;color:var(--sxr);font-weight:900;font-style:normal}
+.ansa-promo .dc.hw.sx .sx p.sx-cap{font-size:12px;color:var(--sxm);margin-top:10px;text-align:center;font-weight:600}
+/* 10 · яхтата */
+.ansa-promo .dc.hw.sx .sx .sx-y{background:#e7edf2}
+/* 11 · въпроси */
+.ansa-promo .dc.hw.sx .sx .sx-faqg{grid-template-columns:.7fr 1.3fr;gap:80px;align-items:start}
+.ansa-promo .dc.hw.sx .sx .sx-faqs details{border-bottom:1px solid var(--sxl)}
+.ansa-promo .dc.hw.sx .sx .sx-faqs details:first-child{border-top:1px solid var(--sxl)}
+.ansa-promo .dc.hw.sx .sx .sx-faqs summary{list-style:none;padding:20px 34px 20px 0;cursor:pointer;font-size:16px;font-weight:900;position:relative;letter-spacing:-.01em}
+.ansa-promo .dc.hw.sx .sx .sx-faqs summary::-webkit-details-marker{display:none}
+.ansa-promo .dc.hw.sx .sx .sx-faqs summary:after{content:'+';position:absolute;right:2px;top:14px;font-size:26px;font-weight:400;color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-faqs details[open] summary:after{content:'−'}
+.ansa-promo .dc.hw.sx .sx .sx-faqs details p{font-size:15px;color:var(--sxm);padding:0 34px 22px 0;line-height:1.8;font-weight:500}
+.ansa-promo .dc.hw.sx .sx p.sx-faqm{margin-top:22px;font-size:14px;color:var(--sxm);font-weight:600}
+.ansa-promo .dc.hw.sx .sx p.sx-faqm a{font-weight:900;text-decoration:underline;text-underline-offset:3px}
+/* 12 · финал */
+.ansa-promo .dc.hw.sx .sx .sx-fin{background:var(--sxi);color:#fff8f2;padding:76px 0}
+.ansa-promo .dc.hw.sx .sx .sx-fin .sx-kick{color:#efc7d1}
+.ansa-promo .dc.hw.sx .sx .sx-fin h2{color:#fff8f2}
+.ansa-promo .dc.hw.sx .sx p.sx-finp{color:#d9c9c4;margin-top:16px;font-size:15.5px;line-height:1.8;font-weight:500}
+.ansa-promo .dc.hw.sx .sx .sx-fin .hw-x,.ansa-promo .dc.hw.sx .sx .sx-fin .hw-x p,.ansa-promo .dc.hw.sx .sx .sx-fin .hw-x h4{color:#e9dcd6}
+.ansa-promo .dc.hw.sx .sx .sx-fcard{background:#fffdf8;color:var(--sxi);border-radius:22px;padding:28px}
+.ansa-promo .dc.hw.sx .sx .sx-fcard .lbl{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:var(--sxr)}
+.ansa-promo .dc.hw.sx .sx .sx-fcard strong{display:block;font-size:52px;letter-spacing:-.05em;font-weight:900;line-height:1;margin:8px 0 6px}
+.ansa-promo .dc.hw.sx .sx .sx-fcard s{color:var(--sxm);font-size:17px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-fcard p.line{font-size:14px;color:var(--sxm);margin:8px 0 16px;line-height:1.6;font-weight:600}
+.ansa-promo .dc.hw.sx .sx p.sx-legal{font-size:12px;color:#a99790;line-height:1.7;margin-top:28px;max-width:900px;font-weight:500}
+/* залепеният ред на телефона */
+.ansa-promo .dc.hw.sx .sx .sx-stk{display:none}
+/* рамката инлайн: без закръгления и сянка отгоре на картата, лентата е първа */
+.ansa-promo .dc.hw.inl.sx{overflow:hidden}
+.ansa-promo .dc.hw.sx .sx .sec-off{opacity:.45}
+@media(max-width:1100px){
+.ansa-promo .dc.hw.sx .sx .sx-c{width:calc(100% - 64px)}
+.ansa-promo .dc.hw.sx .sx .sx-hero-g,.ansa-promo .dc.hw.sx .sx .sx-2,.ansa-promo .dc.hw.sx .sx .sx-of-g{gap:34px}
+.ansa-promo .dc.hw.sx .sx .sx-faqg{gap:46px}
+.ansa-promo .dc.hw.sx .sx .sx-seal{right:-8px;width:134px;height:134px}.ansa-promo .dc.hw.sx .sx .sx-seal strong{font-size:38px}
+}
+@media(max-width:850px){
+.ansa-promo .dc.hw.sx .sx .sx-hero{padding-top:34px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-g,.ansa-promo .dc.hw.sx .sx .sx-2,.ansa-promo .dc.hw.sx .sx .sx-of-g,.ansa-promo .dc.hw.sx .sx .sx-faqg{grid-template-columns:1fr;gap:26px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-v{min-height:520px}
+.ansa-promo .dc.hw.sx .sx .sx-skin{position:static}
+.ansa-promo .dc.hw.sx .sx .sx-three,.ansa-promo .dc.hw.sx .sx .sx-revs,.ansa-promo .dc.hw.sx .sx .sx-steps{grid-template-columns:1fr}
+.ansa-promo .dc.hw.sx .sx .sx-solv{min-height:400px}
+.ansa-promo .dc.hw.sx .sx .sx-sec{padding:62px 0}
+}
+@media(max-width:650px){
+.ansa-promo .dc.hw.sx .sx .sx-c{width:calc(100% - 40px)}
+.ansa-promo .dc.hw.sx .sx .sx-bar{font-size:11px;padding:9px 12px;line-height:1.5}
+.ansa-promo .dc.hw.sx .sx .sx-hero{padding:24px 0 36px}.ansa-promo .dc.hw.sx .sx .sx-hero-g{gap:22px}
+.ansa-promo .dc.hw.sx .sx h1,.ansa-promo #apS1 .dc.hw.sx .sx h1{font-size:36px;margin:12px 0 16px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-tx p:not(.sx-kick){font-size:15px}.ansa-promo .dc.hw.sx .sx .sx-hero-tx p.sx-lead{font-size:16px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-v{min-height:0;height:420px;margin-inline:6px}
+.ansa-promo .dc.hw.sx .sx .sx-hero-v>img{border-radius:130px 130px 14px 14px}
+.ansa-promo .dc.hw.sx .sx .sx-pack{width:46%;left:-6px;bottom:8px}
+.ansa-promo .dc.hw.sx .sx .sx-seal{right:0;bottom:26px;width:112px;height:112px;box-shadow:0 0 0 5px #f9f5ee}.ansa-promo .dc.hw.sx .sx .sx-seal strong{font-size:32px}
+.ansa-promo .dc.hw.sx .sx .sx-plabel{font-size:9px;top:20px;padding:6px 12px}
+.ansa-promo .dc.hw.sx .sx .sx-sec{padding:50px 0}
+.ansa-promo .dc.hw.sx .sx h2{font-size:30px}
+.ansa-promo .dc.hw.sx .sx .sx-prose p:not(.sx-kick):not(.sx-note):not(.sx-faqm){font-size:15.5px;margin-top:14px}
+.ansa-promo .dc.hw.sx .sx .sx-skin{padding:18px}.ansa-promo .dc.hw.sx .sx .sx-layer{padding:12px 14px}.ansa-promo .dc.hw.sx .sx .sx-layer b{font-size:14px}.ansa-promo .dc.hw.sx .sx .sx-layer .who{font-size:8px;padding:5px 8px}
+.ansa-promo .dc.hw.sx .sx .sx-three{gap:10px;margin-top:22px}.ansa-promo .dc.hw.sx .sx .sx-three>div{padding:18px}
+.ansa-promo .dc.hw.sx .sx .sx-proof{flex-direction:column;align-items:flex-start;gap:8px;padding:18px}.ansa-promo .dc.hw.sx .sx .sx-proof>b{font-size:30px}
+.ansa-promo .dc.hw.sx .sx .sx-solv{min-height:330px}.ansa-promo .dc.hw.sx .sx .sx-solv .circle{width:230px;height:230px}
+.ansa-promo .dc.hw.sx .sx .sx-use{grid-template-columns:44px 1fr;padding:14px}.ansa-promo .dc.hw.sx .sx .sx-use em{width:44px;height:44px;font-size:20px}.ansa-promo .dc.hw.sx .sx .sx-use b{font-size:14px}.ansa-promo .dc.hw.sx .sx .sx-use span{font-size:13px}
+.ansa-promo .dc.hw.sx .sx .sx-nc{font-size:14px;padding:14px 16px}
+.ansa-promo .dc.hw.sx .sx .sx-rev{padding:20px}.ansa-promo .dc.hw.sx .sx .sx-rev p,.ansa-promo .dc.hw.sx .sx .sx-rev.first p{font-size:16px}
+.ansa-promo .dc.hw.sx .sx .sx-of{padding:54px 0}.ansa-promo .dc.hw.sx .sx .sx-of h2{font-size:27px}.ansa-promo .dc.hw.sx .sx p.sx-ofp{font-size:15px}
+.ansa-promo .dc.hw.sx .sx .sx-card{padding:20px}.ansa-promo .dc.hw.sx .sx .sx-card .tot strong,.ansa-promo .dc.hw.sx .sx .sx-rcpt .tot strong{font-size:40px}
+.ansa-promo .dc.hw.sx .sx .sx-scene{height:230px}.ansa-promo .dc.hw.sx .sx .sx-scene .c1{height:175px}.ansa-promo .dc.hw.sx .sx .sx-scene .c2{height:155px}.ansa-promo .dc.hw.sx .sx .sx-scene .c3{height:130px}.ansa-promo .dc.hw.sx .sx .sx-scene .s1,.ansa-promo .dc.hw.sx .sx .sx-scene .s2{height:140px}
+.ansa-promo .dc.hw.sx .sx .sx-rcpt{padding:20px 18px}.ansa-promo .dc.hw.sx .sx .sx-rcpt .row{font-size:14px}
+.ansa-promo .dc.hw.sx .sx .sx-months{gap:6px}.ansa-promo .dc.hw.sx .sx .sx-months span{padding:10px 4px;font-size:10px}.ansa-promo .dc.hw.sx .sx .sx-months span b{font-size:18px}
+.ansa-promo .dc.hw.sx .sx .sx-steps{gap:12px;margin-top:24px}.ansa-promo .dc.hw.sx .sx .sx-step{padding:20px}.ansa-promo .dc.hw.sx .sx .sx-step h3{font-size:17px}
+.ansa-promo .dc.hw.sx .sx .sx-getl li{font-size:14px;padding:14px}.ansa-promo .dc.hw.sx .sx .sx-prod .v{height:80px}.ansa-promo .dc.hw.sx .sx .sx-prod small{font-size:9.5px}
+.ansa-promo .dc.hw.sx .sx .sx-faqs summary{font-size:15px;padding-block:17px}.ansa-promo .dc.hw.sx .sx .sx-faqs details p{font-size:14px}
+.ansa-promo .dc.hw.sx .sx .sx-fin{padding:50px 0}.ansa-promo .dc.hw.sx .sx .sx-fcard{padding:22px}.ansa-promo .dc.hw.sx .sx .sx-fcard strong{font-size:44px}
+.ansa-promo .dc.hw.sx .sx .sx-fin .sx-c{padding-bottom:70px}
+.ansa-promo .dc.hw.inl.sx .sx .sx-stk{position:fixed;bottom:0;left:0;right:0;z-index:25;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,253,248,.97);border-top:1px solid var(--sxl);backdrop-filter:blur(15px);padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -5px 25px rgba(69,50,37,.04);transition:transform .25s}
+.ansa-promo .dc.hw.inl.sx .sx .sx-stk.hide{transform:translateY(110%)}
+.ansa-promo .dc.hw.sx .sx .sx-stk strong{display:block;font-size:21px;line-height:1.2;letter-spacing:-.04em;font-weight:900}
+.ansa-promo .dc.hw.sx .sx .sx-stk strong s{font-size:12px;color:var(--sxm);font-weight:600;margin-left:6px}
+.ansa-promo .dc.hw.sx .sx .sx-stk small{display:block;font-size:10px;color:var(--sxm);margin-top:2px;font-weight:600}
+.ansa-promo .dc.hw.sx .sx .sx-stk .sx-btn{min-height:46px;padding:10px 16px;font-size:13px;gap:12px;flex:none;width:auto}
+}
