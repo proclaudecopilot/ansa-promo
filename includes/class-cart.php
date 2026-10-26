@@ -357,6 +357,7 @@ final class Cart {
 		self::strip_foreign( $cart );
 		$g = self::group( $cart ); if ( ! $g ) { return; }
 		self::maybe_reprice( $cart, $g ); /* v1.19.0 */
+		if ( ! self::group_valid( $g ) ) { $g = self::maybe_shrink( $cart, $g ); } /* 1.30.2 */
 		$valid = self::group_valid( $g );
 		$pct = $valid ? $g['pct'] : 0; $spct = $valid ? $g['spct'] : 0;
 		foreach ( $g['base'] as $key => $item ) { $item['data']->set_price( round( self::reg_price( $item['data'] ) * ( 1 - ( $valid ? self::item_pct( $item, $pct ) : 0 ) / 100 ), 2 ) ); }
@@ -391,13 +392,41 @@ final class Cart {
 		$g = self::group( $cart ); $ctx = self::ctx(); $ctx['repriced'] = array( 'from' => $old, 'to' => $new ); self::set_ctx( $ctx );
 	}
 
+	/** 1.30.2 (Shrine линкове, човекът: „при някои хора излиза „Кутията ти не е пълна — върни се и я допълни““): група с по-малко
+	 *  опаковки от кутията не блокира чекаута — кутията се смалява до най-голямата кутия с packs ≤ броя (голяма → средна → малка),
+	 *  редовете минават на нейния процент (ppct = override-ът на продукта за новата кутия или процентът ѝ), книгата пада, ако новата
+	 *  кутия я няма; клиентът вижда бележка (co.shrunk). 0 опаковки или никоя кутия не пасва → както досега (co.broken). */
+	private static function maybe_shrink( $cart, $g ) {
+		if ( ! $g || empty( $g['base'] ) || (int) $g['sum'] <= 0 ) { return $g; }
+		$cfg = self::cfg(); $cur = Config::box( $cfg, $g['box'] );
+		$eff = Config::box_for_count( $cfg, (int) $g['sum'] );
+		if ( ! $eff || (int) $eff['packs'] > (int) $g['sum'] || ( $cur && (string) $eff['id'] === (string) $cur['id'] ) ) { return $g; }
+		$allowed = self::allowed( $cfg ); $box_id = (string) $eff['id']; $group = (string) $g['group'];
+		self::$mutating = true;
+		foreach ( $cart->cart_contents as $key => $item ) {
+			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) || (string) $item[ self::META ]['group'] !== $group ) { continue; }
+			$m = $item[ self::META ];
+			if ( 'book' === ( $m['role'] ?? '' ) && ! in_array( 'book', (array) $eff['rw'], true ) ) { $cart->remove_cart_item( $key ); continue; }
+			$m['box'] = $box_id; $m['pct'] = (float) $eff['pct']; $m['packs'] = (int) $eff['packs']; $m['ship'] = in_array( 'ship', (array) $eff['rw'], true );
+			if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $m['ppct'] = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : 0; }
+			$cart->cart_contents[ $key ][ self::META ] = $m;
+		}
+		self::$mutating = false;
+		$ctx = self::ctx(); $ctx['box'] = $box_id; $ctx['shrunk'] = array( 'from' => $cur ? (string) $cur['name'] : '', 'box' => $box_id, 'qty' => (int) $g['sum'] ); self::set_ctx( $ctx );
+		return self::group( $cart );
+	}
+
 	/* ═══ ЗАКЛЮЧВАНЕ ═══ */
 	public static function lock_qty( $html, $key, $item ) { if ( ! empty( $item[ self::META ] ) && 'secret' !== $item[ self::META ]['role'] ) { return '<span class="ansa-promo-qty">' . (int) $item['quantity'] . '</span>'; } return $html; }
 	public static function lock_remove( $html, $key ) { $item = ( function_exists( 'WC' ) && WC()->cart ) ? WC()->cart->get_cart_item( $key ) : null; if ( $item && ! empty( $item[ self::META ] ) && 'secret' !== $item[ self::META ]['role'] ) { return ''; } return $html; }
 	public static function cart_label( $name, $item, $key ) {
 		if ( empty( $item[ self::META ] ) ) { return $name; }
 		$cfg = self::cfg(); $box = Config::box( $cfg, $item[ self::META ]['box'] ); $role = $item[ self::META ]['role'];
-		$v = array( 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( 'base' === $role ? self::item_pct( $item, $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) : ( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
+		$qty = (int) ( $item['quantity'] ?? 1 );
+		/* 1.30.2 (човекът: „пише 5 опаковки - 1 брой, което е объркващо“): редът е вариацията „1 брой/1 кутия“ × N — суфиксът „- 1 брой“
+		   пада от името, а броят влиза в етикета ({{qty}} {{opk}}) */
+		if ( 'base' === $role ) { $name = preg_replace( '/\s*(?:[-–—,·|]|&ndash;|&mdash;)\s*(?:1|една|един)\s*(?:бр\.?|брой|опаковка|кутия|кутийка|pc\.?|pcs\.?|db|buc\.?)(\s*<\/a>)?\s*$/iu', '$1', (string) $name ); }
+		$v = array( 'qty' => $qty, 'opk' => 1 === $qty ? 'опаковка' : 'опаковки', 'box_ic' => $box ? $box['ic'] : '', 'box' => $box ? $box['name'] : '', 'pct' => self::fmt( 'base' === $role ? self::item_pct( $item, $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) : ( $item[ self::META ]['pct'] ?? ( $box ? $box['pct'] : 0 ) ) ), 'secret_pct' => self::fmt( $item[ self::META ]['spct'] ?? $cfg['secret']['pct'] ) );
 		$tag = self::copy( 'book' === $role ? 'co.tag.book' : ( 'gift' === $role ? 'co.tag.gift' : ( 'secret' === $role ? 'co.tag.secret' : 'co.tag.base' ) ), $v );
 		/* v1.5.3: .ansa-promo-lock маркира заключените редове (base/book) и за DOM-а на FunnelKit, който не минава през
 		   woocommerce_cart_item_quantity/remove_link — степерът и ✕ в обобщението му се крият с CSS по този клас */
@@ -411,6 +440,12 @@ final class Cart {
 		$g = self::group(); if ( ! $g ) { return; }
 		$cfg = self::cfg();
 		if ( ! self::group_valid( $g ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.broken', array( 'url' => esc_url( self::promo_url( $cfg ) ) ) ) ), 'error' ); }
+		$sc = self::ctx(); /* 1.30.2: кутията е смалена до броя опаковки (maybe_shrink) → бележка веднъж */
+		if ( ! empty( $sc['shrunk'] ) && is_array( $sc['shrunk'] ) ) {
+			$sb = Config::box( $cfg, (string) $sc['shrunk']['box'] ); $sq = (int) $sc['shrunk']['qty'];
+			if ( $sb ) { wc_add_notice( wp_kses_post( self::copy( 'co.shrunk', array( 'box' => $sb['name'], 'box_l' => mb_strtolower( $sb['name'] ), 'box_ic' => $sb['ic'], 'from' => (string) $sc['shrunk']['from'], 'from_l' => mb_strtolower( (string) $sc['shrunk']['from'] ), 'qty' => $sq, 'opk' => 1 === $sq ? 'опаковка' : 'опаковки', 'pct' => self::fmt( $sb['pct'] ), 'url' => esc_url( self::promo_url( $cfg ) ) ) ) ), 'notice' ); }
+			unset( $sc['shrunk'] ); self::set_ctx( $sc );
+		}
 		if ( ! $g['draft'] && ! current_user_can( Plugin::CAP ) && ! Config::is_live( $cfg ) ) { wc_add_notice( esc_html( self::copy( 'co.expired' ) ), 'error' ); }
 		$ctx = self::ctx(); if ( ! empty( $ctx['repriced'] ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.reprice', array( 'pct' => self::fmt( $ctx['repriced']['to'] ), 'pct_old' => self::fmt( $ctx['repriced']['from'] ) ) ) ), 'notice' ); unset( $ctx['repriced'] ); self::set_ctx( $ctx ); } /* v1.19.0 */
 	}
