@@ -260,6 +260,7 @@ final class Probe {
 		/* 1.29.0: 📞 поръчки по телефон — токен, данните на последната изоставена количка, runtime ajax с токена, ⚡ чекаут (303) */
 		$ptk = Phone_Orders::issue( 'sess', 1, 'probe' ); $t->ok( 'phone: токенът се издава и проверява', (bool) Phone_Orders::verify( $ptk ) && ! Phone_Orders::verify( $ptk . 'x' ) );
 		$pu = Phone_Orders::promo_url(); $t->ok( 'phone: промо страницата за линковете', '' !== $pu, $pu );
+		$pb = Phone_Orders::buttons( 'sess', 1, 'probe' ); $pcc = Phone_Orders::chooser_cfg(); $t->ok( 'phone: бутоните „✏️ Редактирай поръчка“ / „✅ Завърши поръчка“ + изборът (1.30.1)', false !== strpos( $pb, '✏️ Редактирай поръчка' ) && false !== strpos( $pb, '✅ Завърши поръчка' ) && false !== strpos( $pb, 'data-op="go"' ) && 'Нищо' === $pcc['none'] && false !== strpos( Phone_Orders::checkout_url( $ptk, 'gift' ), 'bonus=gift' ), ( $pcc['pct'] ?: 'без %' ) . ' · ' . ( $pcc['gift'] ?: 'без подарък' ) );
 		$carts = Cart_Sync::abandoned_rows( 30, 50 ); $cart = null; foreach ( (array) $carts as $c ) { if ( $c['order_id'] <= 0 && $c['lines'] ) { $cart = $c; break; } }
 		if ( $cart ) {
 			$ld = Phone_Orders::load( array( 't' => 'cart', 'id' => $cart['id'], 'by' => 'probe' ) );
@@ -268,7 +269,7 @@ final class Probe {
 			$r6 = wp_remote_get( add_query_arg( array( 'action' => 'ansa_promo_runtime', 'op' => rawurlencode( $ctk ) ), admin_url( 'admin-ajax.php' ) ), $a ); $j6 = is_wp_error( $r6 ) ? null : json_decode( (string) wp_remote_retrieve_body( $r6 ), true );
 			$t->ok( 'phone: runtime ajax с токена носи op (кутия + продукти + имейл) и слага бисквитката на оператора', is_array( $j6 ) && ! empty( $j6['data']['op']['ok'] ) && ! empty( $j6['data']['op']['items'] ) && false !== stripos( (string) ( is_wp_error( $r6 ) ? '' : ( is_array( $h6 = wp_remote_retrieve_headers( $r6 ) ) || is_object( $h6 ) ? ( is_array( $h6['set-cookie'] ?? '' ) ? implode( ',', $h6['set-cookie'] ) : (string) ( $h6['set-cookie'] ?? '' ) ) : '' ) ), Phone_Orders::COOKIE ), is_array( $j6 ) ? wp_json_encode( $j6['data']['op'] ?? null, JSON_UNESCAPED_UNICODE ) : 'няма JSON' );
 			$r7 = wp_remote_get( Phone_Orders::checkout_url( $ctk ), array_merge( $a, array( 'redirection' => 0 ) ) ); $c7 = is_wp_error( $r7 ) ? 0 : (int) wp_remote_retrieve_response_code( $r7 ); $l7 = is_wp_error( $r7 ) ? '' : (string) wp_remote_retrieve_header( $r7, 'location' );
-			$t->ok( 'phone: ⚡ Чекаут → 303 към чекаута', 303 === $c7 && '' !== $l7, 'HTTP ' . $c7 . ' → ' . $l7 );
+			$t->ok( 'phone: ✅ Завърши поръчка → 303 към чекаута', 303 === $c7 && '' !== $l7, 'HTTP ' . $c7 . ' → ' . $l7 );
 		} else { $t->note( 'phone: количка', 'няма изоставена промо количка с продукти за последните 30 дни — load/чекаут не са проверени' ); }
 		return array( 'url' => $url, 'user' => $s['user'], 'ttl' => $s['ttl'] );
 	}

@@ -5,10 +5,11 @@
  * отидем на чекаут (да пренапълни имейл, телефон и две имена, ако са запазени, и само да се избере офис)“).
  *
  *  - От 📈 Insights (🛒 Колички, 🧾 Сесии, 🟢 На живо — в админа и в портала) всеки ред с имейл и без поръчка има два бутона:
- *      📞 Пресъздай — отваря промо страницата в браузъра на оператора с ВЕЧЕ избраната кутия и продуктите в нея (екранът за редакция),
+ *      ✏️ Редактирай поръчка — отваря промо страницата в браузъра на оператора с ВЕЧЕ избраната кутия и продуктите в нея (екранът за редакция),
  *                     имейлът е попълнен, попъп няма; операторът коригира, ако трябва, и натиска „Към плащане“ → чекаутът е с имейл,
  *                     телефон и имена на клиента — остава офисът/адресът;
- *      ⚡ Чекаут   — направо: количката се прави на сървъра и браузърът отива в чекаута с попълнените данни (без корекции).
+ *      ✅ Завърши поръчка — направо: количката се прави на сървъра и браузърът отива в чекаута с попълнените данни (без корекции).
+ *    1.30.1: и двата първо питат „Отстъпка / Продукт подарък / Нищо“ (скриптът на Insights; &ansa_bonus= / &bonus=).
  *  - Линковете носят подписан токен (HMAC, 24 ч; само източник + оператор, без лични данни в адреса); промо страницата ги разпознава по
  *    ?ansa_op= (query string → без кеш). Данните идват от сървъра: количката от таблицата на FunnelKit (кутия, продукти, имейл, телефон,
  *    имена от checkout_data) или сесията на Insights (кутия, продукти, имейлът от попъпа) + последната поръчка на WooCommerce с този имейл
@@ -33,7 +34,7 @@ final class Phone_Orders {
 
 	public static function register() {
 		add_action( 'woocommerce_cart_calculate_fees', array( __CLASS__, 'fees' ), 30 ); /* 1.30.0: −X % по телефона като отрицателна такса */
-		add_action( 'template_redirect', array( __CLASS__, 'maybe_go' ), 1 ); /* ⚡ Чекаут: ?ansa_op=…&go=1 на промо страницата */
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_go' ), 1 ); /* ✅ Завърши поръчка: ?ansa_op=…&go=1 на промо страницата */
 		add_action( 'ansa_promo_order_created', array( __CLASS__, 'on_order' ), 30, 2 );
 		add_filter( 'woocommerce_checkout_get_value', array( __CLASS__, 'checkout_value' ), 20, 2 );
 	}
@@ -104,13 +105,18 @@ final class Phone_Orders {
 		return '';
 	}
 	public static function promo_url() { $pub = Config::get_published(); return ! empty( $pub['page_id'] ) ? (string) get_permalink( (int) $pub['page_id'] ) : ''; }
-	public static function recreate_url( $tok ) { $u = self::promo_url(); return $u ? add_query_arg( array( self::PARAM => rawurlencode( $tok ) ), $u ) : ''; }
-	public static function checkout_url( $tok ) { $u = self::promo_url(); return $u ? add_query_arg( array( self::PARAM => rawurlencode( $tok ), 'go' => '1' ), $u ) : ''; }
-	/** Двата бутона за ред в Insights. $info — текст за title (имейл/телефон). */
+	/** Линкът „Редактирай поръчка“: промо страницата с ?ansa_op= (+ ansa_bonus=pct|gift — предварително избран бонус, 1.30.1). */
+	public static function recreate_url( $tok, $bonus = '' ) { $u = self::promo_url(); if ( ! $u ) { return ''; } $q = array( self::PARAM => rawurlencode( $tok ) ); if ( '' !== self::norm_bonus( $bonus ) ) { $q['ansa_bonus'] = $bonus; } return add_query_arg( $q, $u ); }
+	/** Линкът „Завърши поръчка“: количката на сървъра → чекаутът (+ bonus=pct|gift). */
+	public static function checkout_url( $tok, $bonus = '' ) { $u = self::promo_url(); if ( ! $u ) { return ''; } $q = array( self::PARAM => rawurlencode( $tok ), 'go' => '1' ); if ( '' !== self::norm_bonus( $bonus ) ) { $q['bonus'] = $bonus; } return add_query_arg( $q, $u ); }
+	/** Двата бутона за ред в Insights (1.30.1, човекът: „Редактирай поръчка“ и „Завърши поръчка“ — и двата питат „Отстъпка / Продукт подарък / Нищо“).
+	 *  Скриптът на Insights (data-op) показва избора и добавя &bonus= / &ansa_bonus=; без JS линковете работят без бонус. $info — за title. */
 	public static function buttons( $type, $id, $info = '' ) {
 		$tok = self::issue( $type, $id, self::operator() ); $r = self::recreate_url( $tok ); if ( ! $r ) { return ''; }
-		return '<span class="ap-op"><a class="ap-chip ap-chip--sm" href="' . esc_url( $r ) . '" target="_blank" rel="noopener" title="отваря промо страницата с кутията и продуктите на човека — коригирай и „Към плащане“' . ( $info ? ' · ' . esc_attr( $info ) : '' ) . '">📞 Пресъздай</a> <a class="ap-chip ap-chip--sm" href="' . esc_url( self::checkout_url( $tok ) ) . '" target="_blank" rel="noopener" title="направо в чекаута с количката и данните на човека">⚡ Чекаут</a></span>';
+		return '<span class="ap-op"><a class="ap-chip ap-chip--sm" data-op="edit" href="' . esc_url( $r ) . '" target="_blank" rel="noopener" title="отваря промо страницата с кутията и продуктите на човека — коригирай и „Завърши поръчката“' . ( $info ? ' · ' . esc_attr( $info ) : '' ) . '">✏️ Редактирай поръчка</a> <a class="ap-chip ap-chip--sm" data-op="go" href="' . esc_url( self::checkout_url( $tok ) ) . '" target="_blank" rel="noopener" title="количката на човека → направо в чекаута с имейл, телефон и имена">✅ Завърши поръчка</a></span>';
 	}
+	/** За скрипта на Insights: текстовете на избора „Отстъпка / Продукт подарък / Нищо“. */
+	public static function chooser_cfg() { $c = self::bonus_cfg(); return array( 'pct' => $c['pct'] > 0 ? '−' . Cart::fmt( $c['pct'] ) . ' % отстъпка' : '', 'gift' => $c['gift'] ? '🎁 Подарък: ' . $c['gift']['name'] : '', 'none' => 'Нищо' ); }
 
 	/* ── данните на източника ── */
 	/** [ok, box, items (ключове, по 1 на опаковка), email, phone, first, last, name, label, pay, note] или null. */
@@ -178,7 +184,7 @@ final class Phone_Orders {
 		self::mark_operator(); self::prefill_customer( $d ); $bonus = self::norm_bonus( $bonus ); if ( 'gift' === $bonus && ! self::gift_product() ) { $bonus = ''; }
 		return array( 'by' => $d['by'], 'src' => $d['src'], 'email' => $d['email'], 'phone' => $d['phone'], 'first' => $d['first'], 'last' => $d['last'], 'label' => $d['label'], 'bonus' => $bonus, 'bonus_pct' => (float) self::settings()['pct'] );
 	}
-	/** ⚡ Чекаут: ?ansa_op=<токен>&go=1 → количката се прави тук и браузърът отива в чекаута. */
+	/** ✅ Завърши поръчка: ?ansa_op=<токен>&go=1[&bonus=pct|gift] → количката се прави тук и браузърът отива в чекаута. */
 	public static function maybe_go() {
 		if ( empty( $_GET[ self::PARAM ] ) || empty( $_GET['go'] ) ) { return; }
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers();
@@ -186,8 +192,8 @@ final class Phone_Orders {
 		if ( ! $d || ! $d['ok'] ) { wp_die( esc_html( $d['note'] ?? 'Линкът е изтекъл или невалиден — направи нов от Insights.' ), '📞 Обаждане', array( 'response' => 410, 'back_link' => true ) ); }
 		$cfg = Config::get_published(); $prods = Frontend::products( $cfg ); $ids = array(); foreach ( $d['items'] as $k ) { if ( isset( $prods[ $k ] ) ) { $ids[] = (int) $prods[ $k ]['id']; } }
 		$box = Config::box( $cfg, $d['box'] ); if ( $box && count( $ids ) < (int) $box['packs'] ) { $b2 = Config::box_for_count( $cfg, count( $ids ) ); if ( $b2 ) { $d['box'] = (string) $b2['id']; } }
-		$r = Cart::perform_add( array( 'trusted' => true, 'box' => $d['box'], 'items' => $ids, 'pay' => $d['pay'], 'email' => $d['email'], 'cosm' => true, 'sid' => Insights::request_sid( '' ), 'op' => $tok ) );
-		if ( empty( $r['ok'] ) ) { wp_die( esc_html( '⚡ Чекаут: ' . ( $r['msg'] ?? 'количката не може да се направи' ) . ' — отвори „📞 Пресъздай“ и коригирай.' ), '📞 Обаждане', array( 'response' => 409, 'back_link' => true ) ); }
+		$r = Cart::perform_add( array( 'trusted' => true, 'box' => $d['box'], 'items' => $ids, 'pay' => $d['pay'], 'email' => $d['email'], 'cosm' => true, 'sid' => Insights::request_sid( '' ), 'op' => $tok, 'op_bonus' => self::norm_bonus( (string) ( $_GET['bonus'] ?? '' ) ) ) ); /* 1.30.1: &bonus=pct|gift от избора в Insights */
+		if ( empty( $r['ok'] ) ) { wp_die( esc_html( '✅ Завърши поръчка: ' . ( $r['msg'] ?? 'количката не може да се направи' ) . ' — отвори „✏️ Редактирай поръчка“ и коригирай.' ), '📞 Обаждане', array( 'response' => 409, 'back_link' => true ) ); }
 		wp_safe_redirect( (string) $r['checkoutUrl'], 303 ); exit;
 	}
 	/** Поръчката: бележка в WooCommerce. */

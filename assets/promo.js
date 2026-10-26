@@ -1036,9 +1036,9 @@
     S.email=op.email||'';S.emailDone=true;gateMark();S.opInfo=op;if(op.pay&&(op.pay!=='cod'||(A.checkout&&A.checkout.cod)))S.pay=op.pay;
     var bi=BI[op.box];if(bi==null)bi=0;S.chosen=bi;S.box=bi;S.slots=(op.items||[]).filter(function(k){return !!PROD[k]});
     if(S.slots.length>maxFor(BX()))S.slots=S.slots.slice(0,maxFor(BX()));normSlots();syncBox();startTimer();saveS();
-    go(2);render();
-    S.opBonus='';S.opBonusCfg=op.bonus||{pct:0,gift:null};opBar();
-    toast('📞 Количката е заредена — коригирай и „Към плащане“',false);
+    S.opBonusCfg=op.bonus||{pct:0,gift:null};var pre=S._opBonusPre||'';S.opBonus=(pre==='pct'&&S.opBonusCfg.pct>0)||(pre==='gift'&&S.opBonusCfg.gift)?pre:''; /* 1.30.1: изборът „Отстъпка / Подарък / Нищо“ от Insights */
+    go(2);render();opBar();
+    toast(S.opBonus==='pct'?'📞 Количката е заредена · −'+S.opBonusCfg.pct+' % на поръчката':S.opBonus==='gift'?'📞 Количката е заредена · 🎁 подарък':'📞 Количката е заредена — коригирай → „Продължи“',false);
   }
   /* 1.30.0: лентата на оператора — кой е клиентът + бонусът за обаждането (без · −X % · 🎁 подарък); виж се в „Поръчка“ и в чекаута */
   function opBonus(tot){var c=S.opBonusCfg||{},b=S.opBonus||'';if(!S._op||!b)return {off:0,row:''};
@@ -1144,7 +1144,7 @@
   if(A.mode==='li'){root.classList.add('info');root.classList.add('li');S.emailDone=true;A.editorNoGate=true;renderLi();refreshRuntime();return} /* 1.24.20: /kozmetika — като /info */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
-  try{var qop=new URLSearchParams(location.search).get('ansa_op');if(qop){S._op=qop;try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){} /* 1.29.0: 📞 обаждане — чисто състояние, количката идва от сървъра */
+  try{var qq=new URLSearchParams(location.search),qop=qq.get('ansa_op');if(qop){S._op=qop;S._opBonusPre=qq.get('ansa_bonus')||'';try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){} /* 1.29.0: 📞 обаждане — чисто състояние, количката идва от сървъра; 1.30.1: &ansa_bonus=pct|gift — изборът от Insights */
   var restored=S._op?false:restoreS();
   /* v1.18.2: кацане от имейл (utm_medium=email / utm_source с mail, sendgrid, newsletter, fka) или ?gate=0 → без имейл-попъп (имейлът вече е известен) */
   try{var qg=new URLSearchParams(location.search),gm=(qg.get('utm_medium')||'').toLowerCase(),gs=(qg.get('utm_source')||'').toLowerCase();if(qg.get('gate')==='0'||gm==='email'||gm==='e-mail'||/mail|sendgrid|newsletter|fka/.test(gs)){S.emailDone=true;gateMark()}}catch(e){}
