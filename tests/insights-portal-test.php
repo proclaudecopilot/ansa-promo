@@ -35,6 +35,7 @@ $ok( 'url: https://ansa.test/promo-insights/ · с аргументи · без 
 /* ── нормализации ── */
 $ok( 'norm_slug', 'promo-insights' === Insights_Portal::norm_slug( ' Promo Insights/ ' ) && 'promo-insights' === Insights_Portal::norm_slug( '' ) && 'promo-insights' === Insights_Portal::norm_slug( 'wp-admin' ) && 'ads/stats' === Insights_Portal::norm_slug( '/ads//stats/' ), Insights_Portal::norm_slug( '/ads//stats/' ) );
 $ok( 'norm_user', 'adminpromo' === Insights_Portal::norm_user( ' AdminPromo ' ) && '' === Insights_Portal::norm_user( 'ab' ) && '' === Insights_Portal::norm_user( 'bad name!' ) && 'a.b_c-1' === Insights_Portal::norm_user( 'a.b_c-1' ) );
+$_SERVER['REQUEST_URI'] = '/promo-insights/?view=live'; $ok( 'request_matches: от REQUEST_URI, с query string', Insights_Portal::request_matches() && Insights_Portal::request_matches( '/promo-insights' ) && ! Insights_Portal::request_matches( '/promo-insights/x' ) && ! Insights_Portal::request_matches( '/' ) );
 $ok( 'matches: пътят със/без наклонени черти, без „почти“', Insights_Portal::matches( 'promo-insights' ) && Insights_Portal::matches( '/Promo-Insights/' ) && ! Insights_Portal::matches( 'promo-insightsx' ) && ! Insights_Portal::matches( 'promo-insights/x' ) && ! Insights_Portal::matches( '' ) );
 
 /* ── политика за паролата ── */

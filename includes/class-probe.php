@@ -217,7 +217,7 @@ final class Probe {
 	public static function suite_insights_url( $t, $params ) {
 		$s = Insights_Portal::settings(); $st = Insights_Portal::status(); $t->note( 'състояние', $st[0] );
 		if ( ! $s['enabled'] ) { $t->note( 'изключен', 'включи го от 🧰 Настройки → 📈 Insights URL' ); return array( 'enabled' => false ); }
-		$url = Insights_Portal::url(); $t->note( 'url', $url );
+		$url = Insights_Portal::url(); $t->note( 'url', $url ); Insights_Portal::purge(); $t->note( 'кеш', 'FlyingPress purge на ' . $url ); /* 1.27.1 */
 		$t->ok( 'паролата не е началната', (bool) $s['changed_at'], $s['changed_at'] ? 'сменена ' . wp_date( 'd.m.Y', $s['changed_at'] ) : 'смени я от 🧰 Настройки → 📈 Insights URL' );
 		$t->ok( 'само HTTPS', (bool) $s['https_only'] );
 		$t->ok( 'хешът е bcrypt', 0 === strpos( (string) $s['hash'], '$2y$' ), substr( (string) $s['hash'], 0, 7 ) );
@@ -232,6 +232,7 @@ final class Probe {
 		$t->ok( 'Content-Security-Policy', false !== stripos( $hv( 'content-security-policy' ), 'frame-ancestors' ), substr( $hv( 'content-security-policy' ), 0, 60 ) );
 		$t->ok( 'Cache-Control no-store/no-cache', (bool) preg_match( '/no-(store|cache)/i', $hv( 'cache-control' ) ), $hv( 'cache-control' ) );
 		$t->ok( 'CSRF бисквитка на формата', false !== stripos( $hv( 'set-cookie' ), Insights_Portal::CSRF_COOKIE ), substr( $hv( 'set-cookie' ), 0, 80 ) );
+		$t->ok( 'не идва от кеша на страниците', 'hit' !== strtolower( $hv( 'x-flying-press-cache' ) ) && 'hit' !== strtolower( $hv( 'x-runcloud-cache' ) ), 'x-flying-press-cache=' . $hv( 'x-flying-press-cache' ) ); /* 1.27.1 */
 		/* грешен вход от сървъра (без CSRF бисквитка → формата се отказва, без да брои) и с CSRF → „Грешно потребителско име или парола“ */
 		$csrf = ''; if ( preg_match( '/' . Insights_Portal::CSRF_COOKIE . '=([a-f0-9]{32})/', $hv( 'set-cookie' ), $m ) ) { $csrf = $m[1]; }
 		$p = $a; $p['headers']['Cookie'] = Insights_Portal::CSRF_COOKIE . '=' . $csrf; $p['headers']['Origin'] = home_url(); $p['body'] = array( 'ap_login' => '1', 'csrf' => $csrf, 'user' => 'probe', 'pw' => 'probe-wrong-password' );

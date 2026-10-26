@@ -15,6 +15,10 @@ body.ap-portal-body { min-height: 100dvh; }
 #ansa-promo-app.ap-portal .ap-actions { padding-left: 0; padding-right: 0; }
 
 /* ── вход ── */
+/* 1.27.1: палитрата на админа живее в #ansa-promo-app (admin-app.css); формата за вход е извън него и бутонът ставаше бял с бял текст.
+   Тук променливите са на body + явни цветове на бутона/полетата, за да не зависят от нищо. */
+body.ap-portal-login { --coral: #f47a49; --coral-deep: #e0602c; --coral-soft: #fde4d9; --blush: #fdebe9; --amber: #f8a41d; --amber-soft: #fdeecd; --card: #fff; --ink: #43302a; --muted: #a08579; --line: #f6ddd5;
+  --good: #3bb273; --good-soft: #def3e7; --bad: #d64545; --bad-soft: #fadddd; --info: #2469a8; --info-soft: #ddeefc; --r-lg: 20px; --r-md: 14px; --shadow: 0 8px 24px rgba(224, 96, 44, .09); }
 body.ap-portal-login { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: max(24px, env(safe-area-inset-top)) 16px 40px; box-sizing: border-box;
   background: radial-gradient(1200px 600px at 10% -10%, #fde4d9 0%, transparent 60%), radial-gradient(900px 500px at 110% 110%, #fdeecd 0%, transparent 55%), #fdebe9; }
 .ap-login { width: 100%; max-width: 400px; }
@@ -25,11 +29,14 @@ body.ap-portal-login { min-height: 100dvh; display: flex; align-items: center; j
 .ap-login__card h1 { margin: 0 0 14px; font-size: 22px; font-weight: 900; color: #43302a; }
 .ap-login__card form { display: grid; gap: 12px; }
 .ap-login__card label { display: grid; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #a08579; }
-.ap-login__card input[type=text], .ap-login__card input[type=password] { font: inherit; font-size: 15px; font-weight: 700; color: #43302a; background: #fdebe9; border: 2px solid transparent; border-radius: 999px; padding: 11px 16px; outline: none; transition: .15s; width: 100%; box-sizing: border-box; letter-spacing: 0; text-transform: none; }
+.ap-login__card input[type=text], .ap-login__card input[type=password] { font-family: inherit; font-size: 15px; font-weight: 700; color: #43302a; background: #fdebe9; border: 2px solid transparent; border-radius: 999px; padding: 11px 16px; outline: none; transition: .15s; width: 100%; box-sizing: border-box; letter-spacing: 0; text-transform: none; }
 .ap-login__card input:focus { border-color: #f47a49; background: #fff; }
 .ap-login__card input:disabled { opacity: .5; }
-.ap-login__card .ap-btn { justify-content: center; font-size: 14px; padding: 12px 18px; margin-top: 4px; }
-.ap-login__card .ap-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ap-login__card .ap-btn, .ap-login__card button[type=submit] { justify-content: center; font-size: 15px; font-weight: 900; padding: 13px 18px; margin-top: 4px; border: 0; border-radius: 999px; cursor: pointer;
+  background: #f47a49; color: #fff; box-shadow: 0 6px 16px rgba(244, 122, 73, .4); font-family: inherit; width: 100%; transition: .15s; }
+.ap-login__card .ap-btn:hover, .ap-login__card button[type=submit]:hover { background: #e0602c; color: #fff; }
+.ap-login__card .ap-btn:focus-visible, .ap-login__card button[type=submit]:focus-visible { outline: 3px solid #fde4d9; outline-offset: 2px; }
+.ap-login__card .ap-btn:disabled, .ap-login__card button[type=submit]:disabled { opacity: .5; cursor: not-allowed; background: #f47a49; color: #fff; }
 .ap-login__card form.is-off { opacity: .85; }
 .ap-login__err { background: #fadddd; color: #d64545; font-weight: 800; font-size: 13px; border-radius: 14px; padding: 10px 14px; margin: 0 0 14px; }
 .ap-login__foot { margin: 16px 0 0; font-size: 11.5px; font-weight: 700; color: #a08579; text-align: center; }
