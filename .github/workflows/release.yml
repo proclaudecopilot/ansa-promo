@@ -7,6 +7,9 @@
 # нужни са secrets PCC_HOOK_URL и PCC_HOOK_SECRET (Settings → GitHub ъпдейти на сайта); старите LOGADOR_HOOK_* още се приемат.
 # Без тях само предупреждава — сайтът вижда версията при следващата си проверка.
 # Ръчно „Run workflow“ (workflow_dispatch) само пингва сайта за текущата версия, ако тагът ѝ вече го има.
+# ansa™ Meta (meta/ansa-meta/, отделен плъгин със своя версия) пътува като ansa-meta-X.Y.Z.zip в СЪЩИЯ release: при нов таг — с него;
+# при push без нов таг на промото — закача се към release-а на текущата версия, ако там още няма zip за тази версия на Meta
+# (updater-ът сравнява по версията в името на файла; сайтът го вижда до 6 ч или при ръчно „Run workflow“).
 name: release
 on:
   push:
@@ -30,6 +33,21 @@ jobs:
           [ -n "$VER" ] && [ "$VER" = "$CONST" ] || { echo "::error::Version: ($VER) и ANSA_PROMO_VER ($CONST) не съвпадат"; exit 1; }
           if git ls-remote --exit-code --tags origin "v$VER" >/dev/null 2>&1; then echo "exists=1" >> "$GITHUB_OUTPUT"; echo "Таг v$VER вече има — няма нов release"; else echo "exists=0" >> "$GITHUB_OUTPUT"; fi
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
+      - name: ansa™ Meta version
+        id: m
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.v.outputs.ver }}
+          EXISTS: ${{ steps.v.outputs.exists }}
+        run: |
+          MVER=$(grep -m1 -E '^\s*\*\s*Version:' meta/ansa-meta/ansa-meta.php | sed -E 's/.*Version:\s*//; s/\s+$//')
+          MCONST=$(grep -m1 -E "define\(\s*'ANSA_META_VER'" meta/ansa-meta/ansa-meta.php | sed -E "s/.*'ANSA_META_VER'[^']*'([0-9.]+)'.*/\1/")
+          echo "meta header=$MVER const=$MCONST"
+          [ -n "$MVER" ] && [ "$MVER" = "$MCONST" ] || { echo "::error::ansa-meta: Version: ($MVER) и ANSA_META_VER ($MCONST) не съвпадат"; exit 1; }
+          echo "ver=$MVER" >> "$GITHUB_OUTPUT"
+          if [ "$EXISTS" = "0" ]; then echo "attach=1" >> "$GITHUB_OUTPUT"; echo "нов release → ansa-meta-$MVER.zip отива с него"; exit 0; fi
+          have=$(gh release view "v$VER" --json assets -q '.assets[].name' 2>/dev/null | grep -cx "ansa-meta-$MVER.zip" || true)
+          if [ "$have" = "0" ]; then echo "attach=1" >> "$GITHUB_OUTPUT"; echo "release v$VER няма ansa-meta-$MVER.zip → ще се закачи"; else echo "attach=0" >> "$GITHUB_OUTPUT"; echo "release v$VER вече има ansa-meta-$MVER.zip"; fi
       - name: PHP lint
         if: steps.v.outputs.exists == '0'
         run: |
@@ -39,7 +57,7 @@ jobs:
         if: steps.v.outputs.exists == '0'
         run: |
           mkdir -p build/ansa-promo
-          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'landing' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'landing' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude 'meta' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
           cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
           unzip -l ansa-promo.zip | tail -1
           # ansa™ Probe — отделен плъгин (качва се веднъж, ръчно); същият release го носи като ansa-probe.zip.
@@ -63,6 +81,24 @@ jobs:
         with:
           tag_name: v${{ steps.v.outputs.ver }}
           files: ansa-probe.zip
+      - name: Build ansa-meta zip
+        if: steps.m.outputs.attach == '1'
+        env:
+          MVER: ${{ steps.m.outputs.ver }}
+        run: |
+          sudo apt-get install -y -qq php-cli >/dev/null 2>&1 || true
+          for f in $(find meta/ansa-meta -name '*.php'); do php -l "$f" >/dev/null || exit 1; done
+          mkdir -p build/ansa-meta
+          rsync -a --exclude 'tests' --exclude '*.md' --exclude '.gitignore' meta/ansa-meta/ build/ansa-meta/
+          cd build && zip -qr "../ansa-meta-$MVER.zip" ansa-meta && cd ..
+          unzip -l "ansa-meta-$MVER.zip" | tail -1
+      - name: Attach ansa-meta-${{ steps.m.outputs.ver }}.zip → v${{ steps.v.outputs.ver }}
+        if: steps.m.outputs.attach == '1'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.ver }}
+          files: ansa-meta-${{ steps.m.outputs.ver }}.zip
       - name: Ping сайта → обнови се сега
         # ръчно пускане (workflow_dispatch) винаги пингва — за „обнови сайта сега“ към вече качен release
         if: steps.v.outputs.exists == '0' || github.event_name == 'workflow_dispatch'

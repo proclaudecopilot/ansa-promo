@@ -8,6 +8,8 @@ WordPress/WooCommerce плъгин за ansa.bg: промо играта с тр
 1. Вдигни версията на **две места** в `ansa-promo.php`: header `Version:` и `define( 'ANSA_PROMO_VER', ... )`.
 2. Push в `main`.
 
+**ansa™ Meta** (`meta/ansa-meta/`) има своя версия в `ansa-meta.php` (header + `ANSA_META_VER`); workflow-ът го зипва като `ansa-meta-X.Y.Z.zip` и го закача към release-а на текущата версия на промото (нов или вече съществуващ) → updater-ът го вижда по версията в името на файла (до 6 ч или ръчно „Run workflow“). Първата инсталация е ръчна.
+
 GitHub Action-ът (`.github/workflows/release.yml`) прави `php -l`, `ansa-promo.zip` (папка `ansa-promo/` вътре; `docs/`, `snippets/` и `*.md` не влизат), тага `vX.Y.Z` и Release-а, после пингва сайта (secrets `PCC_HOOK_URL` / `PCC_HOOK_SECRET` от Settings → GitHub ъпдейти; без тях само предупреждава). Сайтът вижда новата версия през proclaudecopilot GitHub Updater (mu-plugin, инсталира се сам от плъгина) → Plugins → Update now / auto-updates. Zip се качва ръчно само за първата инсталация.
 
 ## Landing „Сезонът на ansa: Sakura ×5“ (`landing/`)
@@ -59,6 +61,7 @@ includes/class-merge.php     1.8.2: merge tags за имейлите — FunnelK
 includes/class-favorite.php  1.20.0: {{ansa_promo_fav}} / {{ansa_promo_fav_url}} — най-купуваният продукт на човека (по всичките му поръчки с този имейл) с КРАТКОТО име от картата „ID = Кратко име“ (🧰 Настройки → ⭐ Любим продукт); метрика опаковки/количество/сума/поръчки; тестер по имейл; option ansa_promo_favorite; 1.20.1: дневник на извикванията (option ansa_promo_fav_log)
 includes/class-probe.php     проверките за ansa™ Probe (filter ansa_probe_suites): promo-env, promo-page, promo-cart, promo-tickets, promo-insights
 probe/ansa-probe/            ansa™ Probe — отделен плъгин (ansa-probe.zip в release-а), REST с token за проверки/лог/поръчки/ъпдейт
+meta/ansa-meta/              ansa™ Meta — отделен плъгин (ansa-meta-X.Y.Z.zip в release-а, своя версия): Meta Pixel + Conversions API с общ event_id, Purchase от сървъра, пълни данни за съвпадение; слуша ansa_promo_added (кутията → AddToCart) и ansa_promo_lead_captured (попъпът → Lead); вж. meta/ansa-meta/README.md
 includes/mu/                 proclaudecopilot GitHub Updater (копира се в mu-plugins)
 assets/promo.css             порт на CSS-а от мокъпа — генерира се с docs/port-css.py, не се пипа на ръка
 assets/promo-extra.css       добавките на плъгина върху порта: WC снимки, z-index над темата, бадж/цени в пълненето, цял екран, снимки в попъпа
