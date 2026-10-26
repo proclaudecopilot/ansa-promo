@@ -121,7 +121,7 @@ final class Insights {
 		}
 		if ( ! $row ) {
 			$ins = array_merge( array(
-				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^a-z0-9_\-\.\s]/i' ),
+				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^\p{L}\p{N}_\-\.\s@]/u' ), /* 1.29.0: и кирилица (операторът при 📞) */
 				'ref' => substr( esc_url_raw( (string) ( $d['ref'] ?? '' ) ), 0, 191 ), 'device' => in_array( $d['dev'] ?? '', array( 'mobile', 'desktop' ), true ) ? $d['dev'] : '', 'box' => $box, 'step' => self::step_of( $ev ), 'ip' => Leads::ip(), 'utm_last' => $utm, 'vid' => $vid, 'internal' => $internal,
 			), $upd );
 			$wpdb->insert( $ts, $ins );
@@ -193,13 +193,14 @@ final class Insights {
 	   created/paid/activated по билета), и назад за старите (backfill_orders), и занапред. Така „поръчали“ в Insights = промо поръчките в WooCommerce. */
 	const ORDER_SID = 'order-';
 	public static function order_sid_for( $order_id ) { return self::ORDER_SID . (int) $order_id; }
-	public static function is_order_sid( $sid ) { return 0 === strpos( (string) $sid, self::ORDER_SID ); }
+	public static function is_order_sid( $sid ) { return 0 === strpos( (string) $sid, self::ORDER_SID ) || Phone_Orders::is_phone_sid( $sid ); } /* 1.29.0: и phone-<id> — без проследен път */
 	/** sid-ът на поръчката: от meta, иначе order-<id>. */
-	private static function order_sid( $order, $m = null ) { $m = null === $m ? ( $order ? (array) $order->get_meta( '_ansa_promo' ) : array() ) : (array) $m; $s = self::sid( $m['sid'] ?? '' ); return '' !== $s ? $s : ( $order ? self::order_sid_for( $order->get_id() ) : '' ); }
+	private static function order_sid( $order, $m = null ) { $m = null === $m ? ( $order ? (array) $order->get_meta( '_ansa_promo' ) : array() ) : (array) $m; if ( ! empty( $m['phone_order'] ) && $order ) { return Phone_Orders::sid_for( $order->get_id() ); } /* 1.29.0: сесията на оператора не е на клиента */ $s = self::sid( $m['sid'] ?? '' ); return '' !== $s ? $s : ( $order ? self::order_sid_for( $order->get_id() ) : '' ); }
 	public static function on_order( $order, $m ) {
 		if ( ! empty( $m['draft'] ) ) { return; }
 		self::hit( 'created', (string) ( $m['box'] ?? '' ), (string) ( $m['utm'] ?? '' ) );
-		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ), 'dev' => self::device_of( (string) $order->get_customer_user_agent() ), 'internal' => Insights_Reports::is_internal_email( (string) $order->get_billing_email() ), 'at' => ( $dc = $order->get_date_created() ) ? $dc->date( 'Y-m-d H:i:s' ) : '' ) ); /* 1.28.0: тестовите поръчки (probe@example.com) са вътрешни; времето е на поръчката */
+		$po = ! empty( $m['phone_order'] ) && is_array( $m['phone_order'] ) ? $m['phone_order'] : null; /* 1.29.0: 📞 — източник „телефон“, не е вътрешна (клиентът е истински) */
+		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ), 'dev' => self::device_of( (string) $order->get_customer_user_agent() ), 'internal' => ! $po && Insights_Reports::is_internal_email( (string) $order->get_billing_email() ), 'at' => ( $dc = $order->get_date_created() ) ? $dc->date( 'Y-m-d H:i:s' ) : '', 'src' => $po ? 'phone' : '', 'med' => $po ? 'call' : '', 'camp' => $po ? (string) ( $po['by'] ?: 'обаждане' ) : '' ) ); /* 1.28.0: тестовите поръчки (probe@example.com) са вътрешни; времето е на поръчката */
 	}
 	public static function on_ticket( $row, $order ) {
 		$m = (array) $order->get_meta( '_ansa_promo' ); if ( ! empty( $m['draft'] ) ) { return; }
@@ -326,7 +327,7 @@ final class Insights {
 	const FILTER_KEYS = array( 'f_utm', 'f_src', 'f_med', 'f_camp', 'f_dev', 'f_box', 'attr', 'internal' );
 	public static function filters() {
 		$g = $_GET; $f = array( 'attr' => 'last' === ( $g['attr'] ?? '' ) ? 'last' : 'first', 'internal' => ! empty( $g['internal'] ) );
-		foreach ( array( 'utm' => 64, 'src' => 64, 'med' => 64, 'camp' => 128 ) as $k => $len ) { $v = isset( $g[ 'f_' . $k ] ) ? self::tok( wp_unslash( $g[ 'f_' . $k ] ), $len, 'camp' === $k ? '/[^a-z0-9_\-\.\s]/i' : '/[^a-z0-9_\-\.]/i' ) : ''; $f[ $k ] = $v; }
+		foreach ( array( 'utm' => 64, 'src' => 64, 'med' => 64, 'camp' => 128 ) as $k => $len ) { $v = isset( $g[ 'f_' . $k ] ) ? self::tok( wp_unslash( $g[ 'f_' . $k ] ), $len, 'camp' === $k ? '/[^\p{L}\p{N}_\-\.\s@]/u' : '/[^a-z0-9_\-\.]/i' ) : ''; $f[ $k ] = $v; }
 		$f['dev'] = in_array( $g['f_dev'] ?? '', array( 'mobile', 'desktop' ), true ) ? (string) $g['f_dev'] : ''; $f['box'] = self::tok( $g['f_box'] ?? '', 8, '/[^a-z]/' );
 		return $f;
 	}
@@ -567,7 +568,7 @@ final class Insights {
 		$z = array( 'n' => 0, 'total' => 0.0 ); $out = array( 'n' => 0, 'total' => 0.0, 'delivered' => $z, 'open' => $z, 'lost' => $z, 'by_status' => array(), 'avg' => 0.0, 'delivered_pct' => '—',
 			/* 1.24.26: stale = в път ≥ N дни (вероятно загубени), young = пресни (не влизат); decided = взети + загубени + stale; proj = взети ÷ decided */
 			'mature_days' => $mature, 'stale' => $z, 'young' => $z, 'decided' => 0, 'proj_raw' => null, 'proj_pct' => '—', 'proj_n' => 0, 'proj_total' => 0.0, 'proj_final_pct' => '—',
-			'by_id' => array(), 'by_day' => array(), 'untracked' => $z );
+			'by_id' => array(), 'by_day' => array(), 'untracked' => $z, 'phone' => array( 'n' => 0, 'total' => 0.0, 'pct' => 0, 'gift' => 0 ) );
 		if ( ! function_exists( 'wc_get_order' ) ) { return $out; }
 		$ts = Schema::table( 'sessions' ); $w = array( 'order_id IS NOT NULL AND order_id > 0' ); if ( is_array( $rg ) ) { $w[] = self::where_range( 'started_at', $rg ); } $w = array_merge( $w, self::filter_where( $o ) );
 		$cfg = Config::get_published(); $seen = array();
@@ -578,7 +579,7 @@ final class Insights {
 			$st = (string) $ord->get_status(); $t = (float) $ord->get_total(); $day = substr( (string) $sr['started_at'], 0, 10 ); $tracked = ! self::is_order_sid( $sr['sid'] );
 			$grp = Tombola::delivered( $ord, $cfg ) ? 'delivered' : ( in_array( $st, self::LOST_STATUSES, true ) ? 'lost' : 'open' );
 			$out['n']++; $out['total'] += $t; $out[ $grp ]['n']++; $out[ $grp ]['total'] += $t;
-			if ( ! $tracked ) { $out['untracked']['n']++; $out['untracked']['total'] += $t; }
+			if ( ! $tracked ) { $out['untracked']['n']++; $out['untracked']['total'] += $t; } if ( Phone_Orders::is_phone_sid( $sr['sid'] ) ) { $out['phone']['n']++; $out['phone']['total'] += $t; $pb = (string) ( $m['phone_order']['bonus'] ?? '' ); if ( 'pct' === $pb ) { $out['phone']['pct']++; } elseif ( 'gift' === $pb ) { $out['phone']['gift']++; } } /* 1.29.0; 1.30.0: бонусите */
 			if ( ! isset( $out['by_status'][ $st ] ) ) { $out['by_status'][ $st ] = array( 'n' => 0, 'total' => 0.0, 'name' => wc_get_order_status_name( $st ), 'grp' => $grp, 'stale' => 0, 'young' => 0 ); }
 			$out['by_status'][ $st ]['n']++; $out['by_status'][ $st ]['total'] += $t;
 			if ( 'open' === $grp ) { $sub = self::status_age_days( $ord, $now ) >= $mature ? 'stale' : 'young'; $out[ $sub ]['n']++; $out[ $sub ]['total'] += $t; $out['by_status'][ $st ][ $sub ]++; }
@@ -607,7 +608,8 @@ final class Insights {
 		'conv' => 'Сесии с поръчка ÷ всички сесии. Под 30 сесии числото е „малка извадка“ — не вади изводи от него.',
 		'tto' => 'Средно и средно по средата (медиана) време от първото влизане до поръчката, за сесиите с поръчка.',
 		'o_n' => 'Поръчки от WooCommerce (всички статуси, без чернови), отнесени към датата на СЕСИЯТА си — същите поръчки като „Сесии с поръчка“ + тези без проследен път.',
-		'o_untracked' => 'Поръчки, чиято сесия не е проследена (стар promo.js от кеша или преди 16.10): броят се в Поръчки и Оборот, не и във фунията.',
+		'o_untracked' => 'Поръчки, чиято сесия не е проследена (стар promo.js от кеша, преди 16.10, или по телефон): броят се в Поръчки и Оборот, не и във фунията.',
+		'o_phone' => 'Поръчки, направени от оператор по телефона от бутоните „✏️ Редактирай поръчка“ / „✅ Завърши поръчка“ в Колички и Сесии. Сесията на оператора е вътрешна; поръчката е истинска (източник „телефон“).',
 		'o_delivered' => 'Взети = статус „получена“ (Delivered) в WooCommerce.',
 		'o_open' => 'В път / чакат = всички статуси между поръчка и получаване; „застояли“ = в този статус от ≥ N дни (вероятно няма да се вземат).',
 		'o_lost' => 'Отказани, неуспешни, възстановени, кошче.',
@@ -654,6 +656,7 @@ final class Insights {
 			'tto'         => array( 'funnel', 'Време до поръчка', self::dur_fmt( (float) ( $r['tto_med'] ?? 0 ) ), 'медиана · средно <b data-k="tto_avg">' . esc_html( self::dur_fmt( (float) ( $r['tto_avg'] ?? 0 ) ) ) . '</b> · <b data-k="tto_n">' . (int) ( $r['tto_n'] ?? 0 ) . '</b> поръчки', '', false ),
 			'o_n'         => array( 'orders', 'Поръчки', (string) $os['n'], 'WooCommerce, по датата на сесията · <b data-k="o_total">' . esc_html( self::money( $os['total'] ) ) . '</b>', 'info', false ),
 			'o_untracked' => array( 'orders', 'Поръчки без проследен път', (string) $un['n'], 'не са във фунията · ' . esc_html( self::money( $un['total'] ) ) . ( $oo !== (int) $un['n'] ? ' · сесии order-№: <b data-k="oo">' . $oo . '</b>' : '' ), 'warn', false ),
+			'o_phone'     => array( 'orders', '📞 Поръчки по телефон', (string) ( $os['phone']['n'] ?? 0 ), 'от обаждане · ' . esc_html( self::money( $os['phone']['total'] ?? 0 ) ) . ' · с −%: <b data-k="o_phone_pct">' . (int) ( $os['phone']['pct'] ?? 0 ) . '</b> · с подарък: <b data-k="o_phone_gift">' . (int) ( $os['phone']['gift'] ?? 0 ) . '</b>', 'info', false ),
 			'o_delivered' => array( 'orders', 'Взети (Delivered)', (string) $os['delivered']['n'], '<b data-k="o_delivered_pct">' . esc_html( $os['delivered_pct'] ) . '</b> от поръчките · ' . esc_html( self::money( $os['delivered']['total'] ) ), 'good', false ),
 			'o_open'      => array( 'orders', 'В път / чакат', (string) $os['open']['n'], 'още не са взети · ' . esc_html( self::money( $os['open']['total'] ) ) . ' · от тях ≥ ' . $md . ' дни: <b data-k="o_stale">' . (int) $st['n'] . '</b> · пресни: <b data-k="o_young">' . (int) $yg['n'] . '</b>', 'warn', false ),
 			'o_lost'      => array( 'orders', 'Отказани / неуспешни', (string) $os['lost']['n'], 'отказани, неуспешни, възстановени · ' . esc_html( self::money( $os['lost']['total'] ) ), 'bad', false ),
@@ -672,7 +675,7 @@ final class Insights {
 		$t['sh_add']     = array( 'shrine', 'Сложили кутията в количката', (string) $sh['add'], esc_html( self::pct( $sh['add'], $sh['view'] ) ) . ' от видeлите', 'info', false );
 		$t['sh_created'] = array( 'shrine', 'Поръчали през 3+2', (string) $sh['created'], esc_html( self::pct( $sh['created'], $sh['view'] ) ) . ' от видeлите · ' . esc_html( self::pct( $sh['created'], $sh['add'] ) ) . ' от количката', 'good', false );
 		/* източникът, Δ и sparkline */
-		$wc = array( 'o_n', 'o_untracked', 'o_delivered', 'o_open', 'o_lost', 'o_proj', 'rev_real', 'rev_open', 'rev_lost', 'rev_proj', 'avg' ); $inverse = array( 'bounce', 'o_lost', 'rev_lost', 'tto' );
+		$wc = array( 'o_n', 'o_untracked', 'o_phone', 'o_delivered', 'o_open', 'o_lost', 'o_proj', 'rev_real', 'rev_open', 'rev_lost', 'rev_proj', 'avg' ); $inverse = array( 'bounce', 'o_lost', 'rev_lost', 'tto' );
 		$prev = isset( $ctx['prev']['r'], $ctx['prev']['os'] ) ? self::dashboard_data( $ctx['prev']['r'], $ctx['prev']['os'] ) : null;
 		foreach ( $t as $kk => &$tile ) {
 			$tile[6] = $prev && isset( $prev[ $kk ] ) ? self::delta_html( $tile[2], $prev[ $kk ][2], in_array( $kk, $inverse, true ) ) : '';
@@ -1049,13 +1052,14 @@ final class Insights {
 			. self::tile( 'още в чекаута', $s['open'], 'FKA ги обявява изоставени след 15 мин', '' )
 			. self::tile( 'с таг „' . ( $tag ?: '—' ) . '“', $s['tagged'], 'контактът носи тага сега (условието на flow-а)', $s['tagged'] === $s['abandoned'] + $s['skipped'] + $s['open'] ? 'ok' : '' );
 		$h .= '<div class="ap-dash">' . self::group_html( '🛒 Изоставени промо колички · ' . ( $days ? 'последните ' . $days . ' дни' : 'целият период' ), $tiles, 'Данните са от FunnelKit Automations (таблицата на изоставените колички), само количките с промо кутия. Тагът е това, по което flow-ът „Cart Abandoned“ ги различава.' ) . '</div>';
-		$h .= '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛒 Количките</span></div><div class="ap-sec__hint">Статусът е на FKA: <b>в чекаута</b> (още не са минали 15 мин) · <b>изоставена</b> (recoverable, flow-ът може да тръгне) · <b>пропусната</b> (FKA: без активна автоматизация или cool-off) · <b>изгубена</b> (след 15 дни) · <b>възстановена</b> (има поръчка). Последно променените първи.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>кога</th><th>кой</th><th>кутия</th><th>продукти</th><th>сума</th><th>статус</th><th>таг</th><th>сесия</th><th>поръчка</th></tr></thead><tbody>';
+		$h .= '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛒 Количките</span></div><div class="ap-sec__hint">📞 <b>Обаждане:</b> „✏️ Редактирай поръчка“ отваря промо страницата с кутията и продуктите на човека (коригираш → „Продължи“ → „Завърши поръчката“ — чекаутът е с имейл, телефон и имена), „✅ Завърши поръчка“ води направо в чекаута. И двата първо питат: <b>отстъпка / продукт подарък / нищо</b>. Линкът важи 24 ч. Статусът е на FKA: <b>в чекаута</b> (още не са минали 15 мин) · <b>изоставена</b> (recoverable, flow-ът може да тръгне) · <b>пропусната</b> (FKA: без активна автоматизация или cool-off) · <b>изгубена</b> (след 15 дни) · <b>възстановена</b> (има поръчка). Последно променените първи.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>кога</th><th>кой</th><th>кутия</th><th>продукти</th><th>сума</th><th>статус</th><th>таг</th><th>сесия</th><th>поръчка</th></tr></thead><tbody>';
 		foreach ( $rows as $r ) {
 			$m = $r['meta']; $box = $m ? ( $boxes[ $m['box'] ] ?? $m['box'] ) . ( $m['packs'] ? ' · ' . $m['packs'] . ' оп.' : '' ) . ( $m['pct'] ? ' · −' . Cart::fmt( $m['pct'] ) . '%' : '' ) . ( $m['week'] ? ' · седм. ' . $m['week'] : '' ) . ( $m['draft'] ? ' · чернова' : '' ) : '—';
 			$lines = array(); foreach ( $r['lines'] as $l ) { $lines[] = esc_html( $l['name'] ) . ( $l['qty'] > 1 ? ' ×' . $l['qty'] : '' ) . ( 'secret' === $l['role'] ? ' <small>сет</small>' : ( 'book' === $l['role'] ? ' <small>книга</small>' : ( '' === $l['role'] ? ' <small>друго</small>' : '' ) ) ); }
 			$who = '<a href="mailto:' . esc_attr( $r['email'] ) . '">' . esc_html( $r['email'] ) . '</a>' . ( $r['name'] || $r['phone'] ? '<br><small>' . esc_html( trim( $r['name'] . ' ' . $r['phone'] ) ) . '</small>' : '' );
 			$ord = $r['order_id'] > 0 ? ( self::$portal ? '<b>#' . (int) $r['order_id'] . '</b>' : '<a href="' . esc_url( admin_url( 'post.php?post=' . (int) $r['order_id'] . '&action=edit' ) ) . '">#' . (int) $r['order_id'] . '</a>' ) : '—';
 			$sess = $steps[ strtolower( (string) $r['email'] ) ] ?? ''; $sess = $sess ? '<small>' . esc_html( self::SHORT[ $sess ] ?? $sess ) . '</small>' : '<small>—</small>'; /* 1.28.0 (т. 27): докъде е стигнала сесията на същия имейл */
+			if ( $r['order_id'] <= 0 ) { $ord = Phone_Orders::buttons( 'cart', (int) $r['id'], trim( $r['email'] . ' ' . $r['phone'] ) ); } /* 1.29.0: 📞 обаждане — пресъздай количката / направо чекаут */
 			$h .= '<tr><td>' . esc_html( self::dt_short( $r['modified'] ) ) . '<br><small>от ' . esc_html( self::dt_short( $r['created'] ) ) . '</small></td><td>' . $who . '</td><td>' . esc_html( $box ) . '</td><td>' . implode( '<br>', $lines ) . '</td><td>' . esc_html( self::money( $r['total'] ) ) . '</td><td><span class="ap-pill' . ( $r['tone'] ? ' ap-pill--' . $r['tone'] : '' ) . '">' . esc_html( $r['status_label'] ) . '</span></td><td>' . ( $r['tagged'] ? '🏷️ да' : '<small>не</small>' ) . '</td><td>' . $sess . '</td><td>' . $ord . '</td></tr>';
 		}
 		if ( ! $rows ) { $h .= '<tr><td colspan="9"><small>няма промо колички за периода — появяват се, когато човек с промо кутия напише имейла си в чекаута (гост) или е логнат</small></td></tr>'; }
@@ -1275,6 +1279,18 @@ final class Insights {
 	public static function scripts() {
 		static $done = false; if ( $done ) { return ''; } $done = true;
 		return '<script>(function(){'
+			/* 1.30.1: 📞 „✏️ Редактирай поръчка“ / „✅ Завърши поръчка“ — и двата първо питат „Отстъпка / Продукт подарък / Нищо“; изборът отива в линка
+			   (&bonus= за чекаута, &ansa_bonus= за промо страницата). Без JS линковете работят без бонус. */
+			. 'var OPC=' . json_encode( Phone_Orders::chooser_cfg(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) . ';'
+			. 'function H(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}'
+			. 'document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[data-op]"):null;if(!a)return;e.preventDefault();var old=document.getElementById("apOpPick");if(old)old.remove();'
+			. 'var go=a.getAttribute("data-op")==="go",w=document.createElement("div");w.id="apOpPick";w.setAttribute("role","dialog");'
+			. 'var h="<div class=\\"ap-oppick__c\\"><b>📞 Бонус за обаждането?</b><small>"+(go?"количката на човека отива направо в чекаута":"отваря промо страницата за корекции")+"</small>";'
+			. 'if(OPC.pct)h+="<button type=\\"button\\" data-b=\\"pct\\">💶 "+H(OPC.pct)+"</button>";if(OPC.gift)h+="<button type=\\"button\\" data-b=\\"gift\\">"+H(OPC.gift)+"</button>";'
+			. 'h+="<button type=\\"button\\" data-b=\\"\\">"+H(OPC.none)+"</button><button type=\\"button\\" class=\\"x\\" data-b=\\"x\\">отказ</button></div>";w.innerHTML=h;document.body.appendChild(w);'
+			. 'function kd(ev){if(ev.key==="Escape")close()}function close(){w.remove();document.removeEventListener("keydown",kd)}document.addEventListener("keydown",kd);var f=w.querySelector("button");if(f)f.focus();'
+			. 'w.addEventListener("click",function(ev){if(ev.target===w){close();return}var b=ev.target.closest?ev.target.closest("[data-b]"):null;if(!b)return;var v=b.getAttribute("data-b");close();if(v==="x")return;'
+			. 'var u=new URL(a.getAttribute("href"),location.href);if(v)u.searchParams.set(go?"bonus":"ansa_bonus",v);var l=document.createElement("a");l.href=u.toString();l.target="_blank";l.rel="noopener";document.body.appendChild(l);l.click();l.remove()})});'
 			/* сортиране */
 			. 'document.querySelectorAll("table.ap-sort").forEach(function(t){t.querySelectorAll("thead th").forEach(function(th,i){if(i===0||!th.hasAttribute("data-sort"))return;th.classList.add("ap-sortable");th.addEventListener("click",function(){var tb=t.tBodies[0],rows=Array.prototype.slice.call(tb.rows),asc=th.classList.contains("desc");t.querySelectorAll("thead th").forEach(function(x){x.classList.remove("asc","desc")});th.classList.add(asc?"asc":"desc");rows.sort(function(a,b){var av=parseFloat((a.cells[i]||{}).getAttribute&&a.cells[i].getAttribute("data-v")||"-1"),bv=parseFloat((b.cells[i]||{}).getAttribute&&b.cells[i].getAttribute("data-v")||"-1");return asc?av-bv:bv-av});rows.forEach(function(r){tb.appendChild(r)})})})});'
 			/* групи колони */
@@ -1320,6 +1336,8 @@ final class Insights {
 			. 'th.ap-sortable{cursor:pointer;user-select:none}th.ap-sortable.desc::after{content:" ▼"}th.ap-sortable.asc::after{content:" ▲"}.ap-sorti{font-style:normal;opacity:.5}.ap-hot{background:#fadddd!important}'
 			. '.ap-fn__drop{padding:0 0 0 200px;font-size:11.5px;font-weight:800;color:#a08579;margin:-3px 0}.ap-fn__drop.has{color:#d64545}.ap-fn__drop small{font-weight:700;color:#a08579}'
 			. '#apInsFeedT tr.ap-new td{animation:apNew 6s ease-out}@keyframes apNew{0%{background:#fdeecd}100%{background:transparent}}.ap-cart{font-size:10.5px;font-weight:800;color:#a86b09}'
+			/* 1.30.1: 📞 изборът „Отстъпка / Продукт подарък / Нищо“ */
+			. '#apOpPick{position:fixed;inset:0;z-index:2147483000;background:rgba(67,48,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}.ap-oppick__c{background:#fff;border-radius:20px;box-shadow:0 24px 60px rgba(67,48,42,.3);padding:22px 24px;display:grid;gap:8px;min-width:280px;max-width:420px}.ap-oppick__c b{font-size:16px;color:#43302a}.ap-oppick__c small{color:#a08579;font-weight:700;margin-bottom:4px}.ap-oppick__c button{border:0;border-radius:999px;padding:11px 16px;font:800 13px Nunito,sans-serif;cursor:pointer;background:#fdebe9;color:#43302a;text-align:left}.ap-oppick__c button:hover,.ap-oppick__c button:focus-visible{background:#f47a49;color:#fff;outline:none}.ap-oppick__c button.x{background:transparent;color:#a08579;text-align:center}.ap-oppick__c button.x:hover{background:#fdebe9;color:#43302a}'
 			. '.ap-trend__svg{width:100%;height:220px;display:block}.ap-trend__legend{display:flex;gap:14px;flex-wrap:wrap;padding:6px 0 0;font-size:11.5px;font-weight:800;color:#a08579}.ap-trend__legend i{display:inline-block;width:12px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}.ap-trend__c select{font-size:12px;font-weight:700;border-radius:999px;border:0;background:#fdebe9;padding:4px 10px;margin-right:6px}'
 			. '.ap-gloss summary{cursor:pointer;list-style:none}.ap-gloss summary::-webkit-details-marker{display:none}.ap-gloss dl{columns:2;column-gap:28px;font-size:12.5px}.ap-gloss dt{font-weight:900;break-after:avoid}.ap-gloss dd{margin:0 0 10px;color:#6b5f58;font-weight:600}'
 			. '@media(max-width:900px){.ap-gloss dl{columns:1}.ap-fn__drop{padding-left:0}}'
@@ -1343,8 +1361,9 @@ final class Insights {
 			$ul = ! empty( $s['utm_last'] ) && $s['utm_last'] !== $s['utm'] ? '<br><small title="последен UTM в сесията">→ ' . esc_html( $names[ $s['utm_last'] ] ?? $s['utm_last'] ) . '</small>' : '';
 			$from = ( $s['utm_name'] ? '🏷️ ' . esc_html( $s['utm_name'] ) . $ul : '<small>—</small>' ) . ( ! empty( $s['internal'] ) ? '<br><small class="ap-small">вътрешен</small>' : '' );
 			$campc = ( ! empty( $s['camp'] ) ? '<small>' . esc_html( $s['camp'] ) . '</small>' : '<small>директно</small>' ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
-			$tl = '<div class="ap-tl">' . ( ! empty( $s['nosess'] ) ? '<small title="поръчка преди 16.10 следобед или от стар promo.js (кеш): пътят до нея не е записан">🧾 само поръчката, сесията не е проследена</small> ' : '' ); foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
+			$tl = '<div class="ap-tl">' . ( ! empty( $s['nosess'] ) ? ( Phone_Orders::is_phone_sid( $s['sid'] ) ? '<small title="поръчка, направена от оператор по телефона">📞 поръчка по телефон</small> ' : '<small title="поръчка преди 16.10 следобед или от стар promo.js (кеш): пътят до нея не е записан">🧾 само поръчката, сесията не е проследена</small> ' ) : '' ); foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
 			$onum = '#' . esc_html( $s['order']['number'] ?? '' ); $ord = $s['order'] ? ( self::$portal ? '<b>' . $onum . '</b>' : '<a href="' . esc_url( $s['order']['edit'] ) . '">' . $onum . '</a>' ) . '<br><small>' . esc_html( $s['order']['status'] ) . ' · ' . esc_html( number_format( (float) $s['order']['total'], 2, ',', '' ) ) . ' €</small>' : '<small>' . esc_html( $s['step_label'] ) . '</small>' . ( ! empty( $s['cart'] ) ? '<br><span class="ap-cart" title="изоставена количка във FunnelKit за същия имейл">🛒 количка: ' . esc_html( $s['cart'] ) . '</span>' : '' ); /* 1.28.0: в портала без линк към wp-admin */
+			if ( ! $s['order'] && '' !== (string) $s['email'] && ( self::ORDER[ $s['step'] ] ?? 0 ) >= self::ORDER['box'] && empty( $s['nosess'] ) ) { $ord .= '<br>' . Phone_Orders::buttons( 'sess', (int) $s['id'], $s['email'] ); } /* 1.29.0: 📞 обаждане */
 			$h .= '<tr data-id="' . (int) $s['id'] . '" data-vis="' . esc_attr( (string) ( $s['visitor'] ?? '' ) ) . '"><td><b>' . esc_html( substr( $s['last'], 11, 5 ) ) . '</b><br><small>' . esc_html( substr( $s['started'], 0, 10 ) ) . ' · преди ' . esc_html( $s['ago'] ) . '</small></td><td>' . $who . '</td><td>' . $from . '</td><td>' . $campc . '</td><td>' . ( 'mobile' === $s['device'] ? '📱' : ( 'desktop' === $s['device'] ? '🖥️' : '—' ) ) . '</td><td>' . ( $s['box'] ? '<b>' . esc_html( $s['box_name'] ) . '</b>' : '<small>—</small>' ) . ( $s['items'] ? '<br><small>' . esc_html( implode( ', ', $s['items'] ) ) . '</small>' : '' ) . '</td><td>' . $tl . '</td><td>' . $ord . '</td></tr>';
 		}
 		return $h;
