@@ -12,6 +12,11 @@
  * Цените идват от двигателя: {{sx_price}} (1 опаковка Sakura), {{sx_full}} (×packs на Голямата), {{sx_pay}} (с −pct_l), {{sx_total}}
  * (+ cosm_pay), {{sx_value}} (full + cosm_value), {{sx_save}}, {{sx_days}} (packs × sx.days), {{sx_day}} (на ден), {{sx_packs}}.
  * Снимките по подразбиране са в assets/img/sx/ (hero, sakura-box, tonic, day-cream, night-serum); своя снимка на секция — от 📄 Страници.
+ * 1.33.0 (човекът: „ако приемеш офертата, директно на чекаут да те праща с напълнена количка“): бутоните водят към промо страницата с
+ * ?box=l&fill=sakura&go=1 — maybe_go() (template_redirect 1) прави количката на сървъра (Cart::perform_add: 5× Sakura в Голямата кутия, сетът,
+ * книгата, билетите) и праща браузъра направо в чекаута (303); Insights брои box → full → order → add за сесията на promo.js (sid/vid в адреса).
+ * Не стане ли (промото не е на живо, няма наличност, Sakura не е в двигателя) — страницата се рендира както досега (?box=l&fill=sakura → „Честито“).
+ * Изключва се от 🧰 Инструменти → „Sakura ×5“ → „направо към чекаут“ (sx.direct): тогава бутоните водят към „Честито“ както в 1.31.0.
  *
  * @package AnsaPromo
  * @since 1.31.0
@@ -30,6 +35,7 @@ final class Sakura_Page {
 		add_action( 'parse_request', array( __CLASS__, 'route' ) );
 		add_filter( 'pre_handle_404', array( __CLASS__, 'no_404' ), 10, 2 );
 		add_action( 'template_redirect', array( __CLASS__, 'render_route' ), 0 );
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_go' ), 1 ); /* 1.33.0: ?box=l&fill=sakura&go=1 на промо страницата → количката + чекаутът */
 		add_action( 'ansa_promo_published', array( __CLASS__, 'purge' ) );
 	}
 
@@ -51,7 +57,7 @@ final class Sakura_Page {
 	}
 	/** Частта от runtime-а за promo.js (и на промо страницата — канвасът на редактора показва /kozmetichen-set-promo като попъп). */
 	public static function runtime_part( $cfg ) {
-		return array( 'days' => (int) ( $cfg['sx']['days'] ?? 30 ), 'product' => self::PRODUCT, 'assets' => self::assets(), 'url' => self::enabled( $cfg ) ? self::url( $cfg ) : '', 'product_url' => self::product_url( $cfg ) );
+		return array( 'days' => (int) ( $cfg['sx']['days'] ?? 30 ), 'product' => self::PRODUCT, 'assets' => self::assets(), 'url' => self::enabled( $cfg ) ? self::url( $cfg ) : '', 'product_url' => self::product_url( $cfg ), 'direct' => self::direct( $cfg ) ); /* 1.33.0: direct — бутоните → направо чекаут */
 	}
 	/** Продуктовата страница на Sakura в WooCommerce („Още ревюта“, „страницата на Sakura“); '' без WC/продукт → promo.js пада на /info. */
 	public static function product_url( $cfg ) {
@@ -63,6 +69,49 @@ final class Sakura_Page {
 			$id = $pr->is_type( 'variation' ) ? (int) $pr->get_parent_id() : (int) $pr->get_id(); return $id ? (string) get_permalink( $id ) : '';
 		}
 		return '';
+	}
+
+	/* ── 1.33.0: „приемам офертата“ → количката се прави тук и браузърът отива в чекаута ── */
+	/** Настройката sx.direct (по подразбиране включена): бутоните на страницата водят направо към чекаут с напълнена количка. */
+	public static function direct( $cfg = null ) { $sx = self::cfg( $cfg ); return ! isset( $sx['direct'] ) || ! empty( $sx['direct'] ); }
+	/**
+	 * Количката за „приемам офертата“ без HTTP: кутията $box_id (по подразбиране Голямата) пълна с продукта $key (по подразбиране Sakura) —
+	 * packs × продукта, сетът (cosm), плащане с карта (гейтуеят се сменя в чекаута), без имейл (идва от чекаута). Връща резултата на
+	 * Cart::perform_add ([ok, checkoutUrl, …] или [ok=false, code, msg]) или null, когато продуктът/кутията не са в двигателя.
+	 */
+	public static function direct_add( $cfg, $key = '', $box_id = '', $sid = '', $utm = '' ) {
+		$key = sanitize_key( (string) $key ) ?: self::PRODUCT; $box = Config::box( $cfg, sanitize_key( (string) $box_id ) ?: 'l' ); if ( ! $box ) { return null; }
+		$prods = Frontend::products( $cfg ); if ( empty( $prods[ $key ]['id'] ) ) { return null; }
+		$items = array_fill( 0, max( 1, (int) $box['packs'] ), (int) $prods[ $key ]['id'] );
+		return Cart::perform_add( array( 'box' => (string) $box['id'], 'items' => $items, 'secret' => array(), 'pay' => 'card', 'email' => '', 'cosm' => true, 'utm' => '' !== (string) $utm ? (string) $utm : $key, 'lead' => 0, 'sid' => (string) $sid ) );
+	}
+	/**
+	 * ?box=l&fill=sakura&go=1 на промо страницата: количката се прави на сървъра → 303 към чекаута. При неуспех (промото не е на живо,
+	 * наличност, лимит на заявките) нищо не се праща — страницата се рендира както досега и ?box=l&fill=sakura пълни кутията в браузъра („Честито“).
+	 * Insights: сесията е тази на promo.js от /kozmetichen-set-promo (sid/vid от адреса, иначе бисквитката) — box → full → order → add, както
+	 * бийкъните на promo.js, за да стои фунията вярна; ботовете не броят, вътрешният трафик се маркира.
+	 */
+	public static function maybe_go() {
+		if ( empty( $_GET['go'] ) || empty( $_GET['fill'] ) || ! empty( $_GET[ Phone_Orders::PARAM ] ) || ! Frontend::is_promo_page() ) { return; }
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers();
+		if ( Frontend::is_draft_request() || Frontend::gate_shown() ) { return; }
+		$cfg = Config::at( Config::get_published() ); if ( ! Config::is_live( $cfg ) || ! self::direct( $cfg ) ) { return; }
+		if ( Leads::rate_limited( 'add', 10 ) ) { return; }
+		$key = sanitize_key( (string) wp_unslash( $_GET['fill'] ) ); $box_id = sanitize_key( (string) ( $_GET['box'] ?? 'l' ) ) ?: 'l';
+		$utm = ! empty( $_GET[ $cfg['utm_param'] ] ) ? strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) wp_unslash( $_GET[ $cfg['utm_param'] ] ) ) ) : $key;
+		$ua = (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ); $bot = Insights_Reports::is_bot( $ua );
+		$sid = Insights::request_sid( (string) ( $_GET['sid'] ?? '' ) );
+		$r = self::direct_add( $cfg, $key, $box_id, $sid, $utm );
+		if ( empty( $r['ok'] ) || empty( $r['checkoutUrl'] ) ) { return; }
+		if ( ! $bot && '' !== $sid ) {
+			$box = Config::box( $cfg, (string) $r['box'] ); $n = $box ? (int) $box['packs'] : 0; $items = array_fill( 0, max( 1, $n ), $key );
+			$q = function ( $k ) { return (string) wp_unslash( $_GET[ $k ] ?? '' ); };
+			foreach ( array( 'box', 'full', 'order', 'add' ) as $ev ) {
+				Insights::hit( $ev, (string) $r['box'], $utm );
+				Insights::track( array( 'sid' => $sid, 'ev' => $ev, 'box' => (string) $r['box'], 'utm' => $utm, 'n' => $n, 'items' => 'box' === $ev ? null : $items, 'src' => $q( 'utm_source' ), 'med' => $q( 'utm_medium' ), 'camp' => $q( 'utm_campaign' ), 'ref' => (string) ( $_SERVER['HTTP_REFERER'] ?? '' ), 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop', 'vid' => Insights::request_vid( (string) ( $_GET['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request() ) );
+			}
+		}
+		wp_safe_redirect( (string) $r['checkoutUrl'], 303 ); exit;
 	}
 
 	/* ── маршрут ── */
