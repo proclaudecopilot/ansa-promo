@@ -86,9 +86,23 @@ EXTRA = """
 .ansa-flow .pop-gift.book{border-top:0;padding-top:0;margin-top:-2px}.ansa-flow .pop-gift b{color:#a93e28}.ansa-flow .pop-gift s{color:#9b8a80;font-weight:700}
 .ansa-flow .pop-gift-ico{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;flex-shrink:0;color:#a93e28}.ansa-flow .pop-gift-ico svg{width:18px;height:18px}
 .ansa-flow .pop-tomb{margin:12px 18px 0;display:flex;gap:10px;align-items:center;background:#edf3fc;border:1px solid #c9d9ee;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#2f4c73;line-height:1.35}.ansa-flow .pop-tomb .pop-gift-ico{background:#fff;color:#3b5f8f}
-.ansa-flow .pop-ask{padding:16px 18px 6px;text-align:center;font-size:16px;font-weight:900}
-.ansa-flow .modal-cta.pop-cta{margin:0 18px;width:calc(100% - 36px);background:var(--coral);border-radius:14px;padding:17px 16px;font-size:16px;letter-spacing:.02em;box-shadow:0 10px 22px #ef6b4d55}
-@media(min-width:900px){.ansa-flow .drawer.is-welcome{max-width:440px}}
+.ansa-flow .pop-ask{padding:0 0 6px;text-align:center;font-size:16px;font-weight:900}
+/* 1.36.2 (човекът, S25 Ultra): бутонът е залепен долу в попъпа — вижда се винаги, съдържанието скролва над него */
+.ansa-flow .pop-foot{position:sticky;bottom:0;margin:12px 0 0;padding:10px 18px 4px;background:linear-gradient(#fffaf700,#fffaf7 28%)}
+.ansa-flow .modal-cta.pop-cta{margin:0;width:100%;background:var(--coral);border-radius:14px;padding:16px;font-size:16px;letter-spacing:.02em;box-shadow:0 10px 22px #ef6b4d55}
+.ansa-flow .drawer.is-welcome .drawer-content{padding-bottom:0}
+@media(min-width:900px){.ansa-flow .drawer.is-welcome{max-width:440px}.ansa-flow .pop-foot{padding-bottom:18px}}
+@media(max-width:899px){.ansa-flow .drawer.is-welcome{max-height:96%}
+.ansa-flow .pop-top{padding:16px 18px 14px}.ansa-flow .pop-eyebrow{font-size:9.5px}.ansa-flow .pop-top h3{font-size:20px;margin-top:4px}.ansa-flow .pop-top p{margin-top:4px;font-size:12.5px}
+.ansa-flow .pop-x{top:10px;right:10px;width:30px;height:30px}
+.ansa-flow .pop-intro{margin:11px 16px 0;font-size:12.5px;line-height:1.35}.ansa-flow .pop-intro strong{font-size:11px;margin-bottom:2px}
+.ansa-flow .pop-tiers{gap:6px;padding:8px 16px 0}.ansa-flow .pop-tier{padding:8px 12px;border-radius:12px;gap:10px}
+.ansa-flow .pop-tier-n{font-size:13.5px}.ansa-flow .pop-tier-n small{display:none}.ansa-flow .pop-tier.best .pop-tier-n small{display:block;font-size:11px}
+.ansa-flow .pop-tier-pct{font-size:20px}
+.ansa-flow .pop-gift{gap:8px;padding-top:7px;font-size:12.5px}.ansa-flow .pop-gift.book{margin-top:-1px}.ansa-flow .pop-gift-ico{width:28px;height:28px;border-radius:8px}.ansa-flow .pop-gift-ico svg{width:15px;height:15px}
+.ansa-flow .pop-tomb{margin:8px 16px 0;padding:8px 10px;font-size:11.5px;gap:8px}
+.ansa-flow .pop-foot{padding:8px 16px 4px}.ansa-flow .pop-ask{font-size:15px;padding-bottom:5px}.ansa-flow .modal-cta.pop-cta{padding:14px;min-height:50px}
+}
 body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}
 """
 
