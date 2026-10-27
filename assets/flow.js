@@ -235,10 +235,23 @@
   function openDrawer(kind){
     lastFocus=document.activeElement;modal=kind;document.body.classList.add('modal-open');$('flLayer').hidden=false;
     for(var i=0;i<root.children.length;i++){var el=root.children[i];if(el.id!=='flLayer'&&!el.classList.contains('sr-only')&&!el.classList.contains('toast'))el.inert=true}
-    if(kind==='cart')renderCart();else if(kind==='gifts')renderGifts();else if(kind==='rules')renderRules();else if(kind==='tombola')renderTombola();else if(kind.indexOf('product:')===0)renderDetail(kind.split(':')[1]);
+    if(kind==='cart')renderCart();else if(kind==='gifts')renderGifts();else if(kind==='rules')renderRules();else if(kind==='tombola')renderTombola();else if(kind==='welcome')renderWelcome();else if(kind.indexOf('product:')===0)renderDetail(kind.split(':')[1]);
     $('flDrawerContent').scrollTop=0;try{$('flClose').focus({preventScroll:true})}catch(e){}
   }
-  function closeDrawer(){modal=null;document.body.classList.remove('modal-open');$('flLayer').hidden=true;for(var i=0;i<root.children.length;i++)root.children[i].inert=false;if(lastFocus&&lastFocus.isConnected){try{lastFocus.focus({preventScroll:true})}catch(e){}}else{try{$('flCatalog').focus({preventScroll:true})}catch(e){}}}
+  function closeDrawer(){if(modal==='welcome'){popSeen();if(!popCta)beacon('pop_close')}modal=null;$('flDrawer').classList.remove('is-welcome');document.body.classList.remove('modal-open');$('flLayer').hidden=true;for(var i=0;i<root.children.length;i++)root.children[i].inert=false;if(lastFocus&&lastFocus.isConnected){try{lastFocus.focus({preventScroll:true})}catch(e){}}else{try{$('flCatalog').focus({preventScroll:true})}catch(e){}}}
+  /* 1.36.0: приветственият попъп — веднъж на устройство (localStorage), само при празна количка, не в редактора/чернова */
+  var popCta=false,POPKEY='ansa_flow_pop_'+A.id;
+  function popSeen(){try{localStorage.setItem(POPKEY,'1')}catch(e){}}
+  function welcome(){if(!Number(A.pop)||A.editor||itemCount()>0)return;try{if(localStorage.getItem(POPKEY))return}catch(e){}popCta=false;openDrawer('welcome');beacon('pop_view')}
+  function renderWelcome(){$('flDrawer').classList.add('is-welcome');$('flDrawerTitle').textContent=T('fl.pop.h');
+    var tiers=BOXES.map(function(b,i){var nx=BOXES[i+1],last=!nx,hi=nx?nx.packs-1:0,name,sub;
+      if(last){name=T('fl.pop.t.l',{a:b.packs});sub=T('fl.pop.t.l.s')}else if(i===0){name=T('fl.pop.t.s',{b:hi});sub=T('fl.pop.t.s.s')}else{name=T(hi===b.packs?'fl.pop.t.one':(hi===b.packs+1?'fl.pop.t.m':'fl.pop.t.range'),{a:b.packs,b:hi});sub=T('fl.pop.t.m.s')}
+      return '<div class="pop-tier'+(last?' best':'')+'"><div class="pop-tier-n">'+esc(name)+'<small>'+esc(sub)+'</small></div><div class="pop-tier-pct">'+TT('fl.pop.pct',{pct:fmt(b.pct)})+'</div>'
+        +(last?(cosmOn()?'<div class="pop-gift"><span class="pop-gift-ico">'+icon('gift')+'</span><div>'+T('fl.pop.cosm')+'</div></div>':'')+'<div class="pop-gift book"><span class="pop-gift-ico">'+icon('book')+'</span><div>'+T('fl.pop.book')+'</div></div>':'')+'</div>'}).join('');
+    $('flDrawerContent').innerHTML='<div class="pop-top"><div class="pop-eyebrow">'+TT('fl.pop.eyebrow')+'</div><h3>'+TT('fl.pop.h')+'</h3><p>'+TT('fl.pop.p')+'</p><button class="pop-x" type="button" data-close aria-label="Затвори">'+icon('close')+'</button></div>'
+      +'<p class="pop-intro"><strong>'+TT('fl.pop.intro.b')+'</strong> '+TT('fl.pop.intro')+'</p><div class="pop-tiers">'+tiers+'</div>'
+      +'<div class="pop-tomb"><span class="pop-gift-ico">'+icon('ticket')+'</span><span>'+TT('fl.pop.tomb')+'</span></div>'
+      +'<div class="pop-ask">'+TT('fl.pop.ask')+'</div><button class="modal-cta pop-cta" type="button" data-close data-pop-cta>'+TT('fl.pop.cta')+'</button>'}
   function cta(k,attrs,v){return '<button class="modal-cta" type="button" '+(attrs||'data-close')+'>'+T(k,v)+'</button>'}
   function renderDetail(key){var p=PROD[key];if(!p)return;$('flDrawerTitle').textContent=T('fl.d.prod.h');
     $('flDrawerContent').innerHTML=picture(p,'detail-image')+(p.cat?'<div class="detail-meta">'+esc(p.cat)+'</div>':'')+'<h3 class="detail-name">'+esc(p.name)+'</h3>'+(p.ds?'<p><b>'+esc(p.ds)+'</b></p>':'')+(p.desc?'<p>'+p.desc+'</p>':'')+(p.ing?'<p><b>Съставки:</b> '+esc(p.ing)+'</p>':'')+(p.who?'<p><b>За кого:</b> '+esc(p.who)+'</p>':'')
@@ -296,6 +309,7 @@
     var gf=e.target.closest('#flGift');if(gf){if(MOB()){S.giftOpen=!S.giftOpen;renderDock()}else{openDrawer('gifts')}return}
     var dt=e.target.closest('[data-detail]');if(dt){openDrawer('product:'+dt.dataset.detail);return}
     if(e.target.closest('#flSubmit')){submit(e.target.closest('#flSubmit'));return}
+    if(e.target.closest('[data-pop-cta]')){popCta=true;beacon('pop_cta')}
     if(e.target.closest('[data-close]')||e.target.closest('#flClose')||e.target===$('flLayer')){closeDrawer()}
   });
   root.addEventListener('change',function(e){
@@ -321,6 +335,6 @@
   }
 
   var rz=0;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(renderDock,150)},{passive:true});
-  shell();renderProducts();renderDock();refresh();
+  shell();renderProducts();renderDock();refresh();welcome();
   if(itemCount()>0){beacon('box')}
 })();

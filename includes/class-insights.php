@@ -28,14 +28,14 @@ defined( 'ABSPATH' ) || exit;
 final class Insights {
 
 	const STEPS   = array( 'view', 'gate', 'box', 'full', 'order', 'add', 'created', 'paid', 'activated' );
-	const CLIENT  = array( 'view', 'gate', 'box', 'item', 'full', 'order', 'add', 'sh_view', 'sh_pick', 'sh_more' ); /* 1.24.2: sh_* = 4-тата опция (3+2) в Shrine; sh_add идва само от сървъра */
+	const CLIENT  = array( 'view', 'gate', 'box', 'item', 'full', 'order', 'add', 'sh_view', 'sh_pick', 'sh_more', 'pop_view', 'pop_cta', 'pop_close' ); /* 1.36.0: pop_* = приветственият попъп на B */ /* 1.24.2: sh_* = 4-тата опция (3+2) в Shrine; sh_add идва само от сървъра */
 	/* 1.24.2: събитията от продуктовите страници (Shrine, промо картата „5 = 3+2“): видяла картата · избрала я · „Виж повече“ · сложила кутията в количката */
 	const SHRINE  = array( 'sh_view', 'sh_pick', 'sh_more', 'sh_add' );
 	/* редът на стъпките за „най-далечна“ (item не е стъпка на фунията — брои се отделно) */
 	const ORDER   = array( 'view' => 1, 'gate' => 2, 'box' => 3, 'item' => 3, 'full' => 4, 'order' => 5, 'add' => 6, 'created' => 7, 'paid' => 8, 'activated' => 9, 'sh_view' => 1, 'sh_pick' => 1, 'sh_more' => 1, 'sh_add' => 4 );
 	const FUNNEL  = array( 'view', 'gate', 'box', 'full', 'order', 'add', 'created', 'paid', 'activated' );
 	const LABELS  = array( 'view' => 'Видели страницата', 'gate' => 'Минали попъпа', 'box' => 'Избрали кутия', 'item' => 'Сложили продукт', 'full' => 'Напълнили кутията', 'order' => 'Екран „Поръчка“', 'add' => 'Към плащане', 'created' => 'Поръчка', 'paid' => 'Платена (билет)', 'activated' => 'Активиран билет' );
-	const SHORT   = array( 'view' => '👀 видяла', 'gate' => '📧 попъп', 'box' => '📦 кутия', 'item' => '➕ продукт', 'full' => '✅ пълна', 'order' => '🧾 поръчка', 'add' => '💳 плащане', 'created' => '🛒 поръчала', 'paid' => '🎟️ платена', 'activated' => '🏆 активиран', 'sh_view' => '🛍️ видяла 3+2', 'sh_pick' => '👆 избрала 3+2', 'sh_more' => '👁️ виж повече', 'sh_add' => '🛒 3+2 в количката' );
+	const SHORT   = array( 'view' => '👀 видяла', 'gate' => '📧 попъп', 'box' => '📦 кутия', 'item' => '➕ продукт', 'full' => '✅ пълна', 'order' => '🧾 поръчка', 'add' => '💳 плащане', 'created' => '🛒 поръчала', 'paid' => '🎟️ платена', 'activated' => '🏆 активиран', 'sh_view' => '🛍️ видяла 3+2', 'sh_pick' => '👆 избрала 3+2', 'sh_more' => '👁️ виж повече', 'sh_add' => '🛒 3+2 в количката', 'pop_view' => '👋 попъп B', 'pop_cta' => '👋 „Започваме“', 'pop_close' => '👋 затворила попъпа' );
 	const NONCE   = 'ansa_promo_insights';
 
 	public static function register() {
