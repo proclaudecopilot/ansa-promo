@@ -154,7 +154,7 @@
   /* ── продукти ── */
   function tagText(){var n=itemCount(),b=boxFor(n);return b?T('fl.tag.now',{pct:fmt(b.pct)}):T('fl.tag.max')}
   function priceBlock(p){var t=totals(),pct=pctOf(p,t.disp),u=unit(p,pct),low=unit(p,pctOf(p,BIG));
-    return '<div><div class="price"><strong>'+money(u)+'</strong><s>'+money(cents(p.price))+'</s></div><div class="price-note">'+TT('fl.price.note',{pct:fmt(pct),save:money(cents(p.price)-u)})+'</div>'+(t.max?'':'<div class="lowest-price">'+TT('fl.price.lowest',{lowest:money(low)})+'</div>')+'</div>'}
+    return '<div><div class="price"><strong>'+money(u)+'</strong><s>'+money(cents(p.price))+'</s></div><div class="price-note">'+TT('fl.price.note',{pct:fmt(pct),save:money(cents(p.price)-u)})+'</div>'+'</div>'}
   function stepper(p){var n=S.qty[p.key]||0;return '<div class="quantity">'+(n?'<button type="button" data-change="-1" data-id="'+esc(p.key)+'" aria-label="Премахни една опаковка '+esc(p.name)+'">'+icon('minus')+'</button><output aria-label="Брой '+esc(p.name)+'">'+n+'</output><button type="button" data-change="1" data-id="'+esc(p.key)+'" aria-label="Добави още една опаковка '+esc(p.name)+'">'+icon('plus')+'</button>':'<button type="button" class="add-only" data-change="1" data-id="'+esc(p.key)+'" aria-label="'+TT('fl.add')+' '+esc(p.name)+'">'+icon('plus')+TT('fl.add')+'</button>')+'</div>'}
   function picture(p,cls){return p.img?'<img class="'+cls+'" src="'+esc(p.img)+'" alt="'+esc(p.name)+' — опаковка" loading="lazy">':'<span class="'+cls+' ph" aria-hidden="true">'+esc(p.ph||'🌿')+'</span>'}
   function renderProducts(){
@@ -168,11 +168,11 @@
 
   /* ── панелът ── */
   function dockCopy(t){
-    if(!t.count)return {h:T('fl.msg.0.h'),p:T('fl.msg.0.p'),pill:T('fl.pill.0'),a:T('fl.msg.0.a')};
+    if(!t.count)return {h:T('fl.msg.0.h'),p:MOB()?'':T('fl.msg.0.p'),pill:T('fl.pill.0'),a:T('fl.msg.0.a')};
     var o=offer(t);
-    if(t.max)return {h:T('fl.msg.max.h',{save:money(o.saving)}),p:T('fl.msg.max.p',{n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)}),pill:icon('check')+TT('fl.pill.max',{pct:fmt(t.pct)}),a:T('fl.msg.max.a',{save:money(o.saving),n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)})};
+    if(t.max)return {h:T('fl.msg.max.h',{save:money(o.saving)}),p:MOB()?'':T('fl.msg.max.p',{n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)}),pill:icon('check')+TT('fl.pill.max',{pct:fmt(t.pct)}),a:T('fl.msg.max.a',{save:money(o.saving),n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)})};
     var nx=nextBox(t.count),need=nx.packs-t.count,v={need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.gifts'):'',pct:fmt(t.pct)};
-    if(MOB())return {h:T('fl.msg.next.h',v),p:'',pill:T('fl.pill.next',v),a:T('fl.msg.next.a',v)};
+    if(MOB())return {h:T('fl.msg.next.h',v),p:T('fl.msg.next.m2',v),pill:T('fl.pill.now',v),a:T('fl.msg.next.a',v)};
     return {h:T(isBig(nx)?'fl.msg.last.h':'fl.msg.next.h',v),p:T('fl.msg.next.p',v),a:T('fl.msg.next.a',v)};
   }
   function renderSelection(t){
