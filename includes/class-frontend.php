@@ -31,6 +31,36 @@ final class Frontend {
 		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 99 );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'wp_head', array( __CLASS__, 'hide_css' ), 99 );
+		add_action( 'wp_head', array( __CLASS__, 'ab_script' ), 1 ); /* 1.34.0: A/B — разпределянето на трафика между A и B */
+	}
+
+	/* ── 1.34.0: вариант B „потокът без кутии“ — [ansa_promo variant="flow"] (templates/flow.php + assets/flow.css/js) ──
+	   Страницата за A/B теста. Разпознава се още на wp_enqueue_scripts (преди shortcode-ът да се изпълни) от съдържанието на страницата
+	   (post_content или _elementor_data), за да се заредят flow.css/flow.js вместо promo.css/js. Същият runtime JSON, същият ansa_promo_add
+	   (с variant=flow), същият beacon — само фронтът е друг. */
+	private static $variant = null;
+	public static function page_variant() {
+		if ( null !== self::$variant ) { return self::$variant; }
+		self::$variant = '';
+		if ( is_singular() ) {
+			$post = get_post(); $src = $post ? (string) $post->post_content . (string) get_post_meta( $post->ID, '_elementor_data', true ) : '';
+			if ( '' !== $src && preg_match( '/\[' . Plugin::SHORTCODE . '[^\]]*\bvariant\s*=\s*\\\\?["\']?flow/i', $src ) ) { self::$variant = 'flow'; }
+		}
+		return self::$variant;
+	}
+	public static function is_flow() { return 'flow' === self::page_variant(); }
+	/** A/B: на основната страница (A) при ab.share > 0 — бисквитка a/b за 30 дни и клиентски redirect на „b“ към страницата B (статичен скрипт,
+	 *  работи и от кеша). На страницата B бисквитката се записва като „b“, за да остане посетителят там и при връщане на A. Черновата/редакторът не се делят. */
+	public static function ab_script() {
+		if ( ! self::is_promo_page() || self::is_draft_request() || self::gate_shown() ) { return; }
+		$cfg = Config::get_published(); $ab = is_array( $cfg['ab'] ?? null ) ? $cfg['ab'] : array( 'page_id' => 0, 'share' => 0 );
+		$bid = (int) ( $ab['page_id'] ?? 0 ); if ( ! $bid ) { return; }
+		if ( self::is_flow() || get_queried_object_id() === $bid ) {
+			echo '<script id="ansa-promo-ab">try{document.cookie="ansa_promo_ab=b;path=/;max-age=2592000;SameSite=Lax"}catch(e){}</script>' . "\n"; return;
+		}
+		$share = max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ); $url = get_permalink( $bid ); if ( ! $share || ! $url || 'publish' !== get_post_status( $bid ) ) { return; }
+		echo '<script id="ansa-promo-ab">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab="+v+";path=/;max-age=2592000;SameSite=Lax"}'
+			. 'if(v==="b"){location.replace(' . wp_json_encode( $url ) . '+location.search+location.hash)}}catch(e){}})();</script>' . "\n";
 	}
 
 	const TEMPLATE = 'ansa-promo-fullscreen.php';
@@ -154,7 +184,7 @@ final class Frontend {
 			. 'var i=g&&g.querySelector("input");if(i){try{i.focus()}catch(e){}}})();</script>';
 	}
 	public static function robots( $robots ) {
-		if ( self::is_promo_page() && ( self::is_draft_request() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; }
+		if ( self::is_promo_page() && ( self::is_draft_request() || self::is_flow() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; } /* 1.34.0: страницата B не се индексира */
 		return $robots;
 	}
 	public static function hints( $urls, $relation ) {
@@ -174,6 +204,12 @@ final class Frontend {
 	public static function enqueue() {
 		static $done = false; if ( $done ) { return; } $done = true;
 		wp_enqueue_style( 'ansa-promo-nunito', 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap', array(), null );
+		if ( self::is_flow() ) { /* 1.34.0: вариант B — свой CSS/JS, същият runtime */
+			wp_enqueue_style( 'ansa-promo-flow', ANSA_PROMO_URL . 'assets/flow.css', array( 'ansa-promo-nunito' ), ANSA_PROMO_VER );
+			wp_enqueue_script( 'ansa-promo-flow', ANSA_PROMO_URL . 'assets/flow.js', array(), ANSA_PROMO_VER, true );
+			wp_add_inline_script( 'ansa-promo-flow', 'window.AnsaPromoRuntime=' . wp_json_encode( self::runtime( self::cfg(), self::is_draft_request() ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';', 'before' );
+			return;
+		}
 		wp_enqueue_style( 'ansa-promo', ANSA_PROMO_URL . 'assets/promo.css', array( 'ansa-promo-nunito' ), ANSA_PROMO_VER );
 		wp_enqueue_style( 'ansa-promo-extra', ANSA_PROMO_URL . 'assets/promo-extra.css', array( 'ansa-promo' ), ANSA_PROMO_VER );
 		wp_enqueue_script( 'ansa-promo', ANSA_PROMO_URL . 'assets/promo.js', array(), ANSA_PROMO_VER, true );
@@ -333,6 +369,8 @@ final class Frontend {
 			'bgn'       => $cfg['bgn'],
 			'utm'       => $utm,
 			'gv'        => $gv, /* 1.24.7 */
+			'variant'   => self::page_variant(), /* 1.34.0: '' = A, flow = B */
+			'deadline_ts' => (int) ( Config::deadline_ts( $cfg ) ?: 0 ), /* 1.34.0: броячът „още N дни“ във варианта B */
 			'campaigns' => (object) ( $cfg['campaigns'] ?? array() ), /* 1.24.14: по UTM — gate / попъп козметика / кутия */
 			'copy_utm'  => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ), /* 1.24.19: текстове по UTM */
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
@@ -368,6 +406,7 @@ final class Frontend {
 	}
 
 	public static function shortcode( $atts = array(), $content = '' ) {
+		$atts = shortcode_atts( array( 'variant' => '' ), (array) $atts ); if ( 'flow' === strtolower( (string) $atts['variant'] ) ) { self::$variant = 'flow'; } /* 1.34.0 */
 		$cfg = self::cfg();
 		$draft = self::is_draft_request();
 		if ( self::gate_shown() ) { return self::gate_html( $cfg ); } /* v1.0.38: формата за парола е пред всичко, докато защитата е включена */
@@ -381,7 +420,7 @@ final class Frontend {
 		self::enqueue();
 		$editor = self::is_editor_request();
 		ob_start();
-		include ANSA_PROMO_PATH . 'templates/page.php';
+		include ANSA_PROMO_PATH . ( self::is_flow() ? 'templates/flow.php' : 'templates/page.php' );
 		return ob_get_clean();
 	}
 }

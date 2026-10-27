@@ -83,7 +83,7 @@ final class Cart {
 		foreach ( $cart->get_cart() as $key => $item ) {
 			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { $foreign[] = $key; continue; }
 			$m = $item[ self::META ];
-			if ( null === $g ) { $g = array( 'group' => (string) $m['group'], 'box' => (string) $m['box'], 'promo' => (string) $m['promo'], 'pct' => (float) ( $m['pct'] ?? 0 ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'spct' => (float) ( $m['spct'] ?? 0 ), 'ship' => ! empty( $m['ship'] ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'base' => array(), 'book' => null, 'secret' => array(), 'sum' => 0 ); }
+			if ( null === $g ) { $g = array( 'flow' => ! empty( $m['flow'] ), 'group' => (string) $m['group'], 'box' => (string) $m['box'], 'promo' => (string) $m['promo'], 'pct' => (float) ( $m['pct'] ?? 0 ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'spct' => (float) ( $m['spct'] ?? 0 ), 'ship' => ! empty( $m['ship'] ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'base' => array(), 'book' => null, 'secret' => array(), 'sum' => 0 ); }
 			if ( 'base' === $m['role'] ) { $g['base'][ $key ] = $item; $g['sum'] += (int) $item['quantity']; }
 			elseif ( 'book' === $m['role'] ) { $g['book'] = $key; }
 			elseif ( 'gift' === $m['role'] ) { $g['gift'] = $key; } /* 1.30.0: 📞 подаръкът за обаждането */
@@ -92,6 +92,8 @@ final class Cart {
 		if ( $g ) { $g['foreign'] = $foreign; $g += array( 'gift' => '' ); }
 		return $g;
 	}
+	/** 1.34.0: кутията на групата с правилата на нейния вариант — flow групата минава през Config::flow_box (без книга извън най-голямата, +1 билет на опаковка). */
+	public static function box_of( $cfg, $g ) { $box = $g ? Config::box( $cfg, (string) $g['box'] ) : null; return ( $box && ! empty( $g['flow'] ) ) ? Config::flow_box( $cfg, $box, (int) ( $g['sum'] ?? 0 ) ) : $box; }
 	/** v1.10.0: валидна = поне packs опаковки (повече са позволени — същата отстъпка). */
 	public static function group_valid( $g ) { return $g && $g['packs'] > 0 && $g['sum'] >= $g['packs'] && count( $g['base'] ) > 0; }
 
@@ -122,6 +124,7 @@ final class Cart {
 			'items'  => json_decode( (string) wp_unslash( $_POST['items'] ?? '[]' ), true ), 'secret' => json_decode( (string) wp_unslash( $_POST['secret'] ?? '[]' ), true ),
 			'pay'    => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ), 'cosm' => ! isset( $_POST['cosm'] ) || '0' !== (string) $_POST['cosm'],
 			'utm'    => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
+			'variant' => sanitize_key( (string) ( $_POST['variant'] ?? '' ) ), /* 1.34.0: 'flow' = вариант B (кутията е по броя, книгата само при най-голямата) */
 			'sid'    => Insights::request_sid( (string) ( $_POST['sid'] ?? '' ) ), /* 1.17.0: сесията на Insights; 1.17.1: или бисквитката */
 			'op'     => (string) wp_unslash( $_POST['op'] ?? '' ), 'op_bonus' => sanitize_key( (string) ( $_POST['op_bonus'] ?? '' ) ), /* 1.29.0: 📞 поръчка по телефон (токен от Insights); 1.30.0: бонусът −X % / подарък */
 		) );
@@ -145,6 +148,10 @@ final class Cart {
 		$err   = function ( $code, $vars = array() ) use ( $copy ) { return array( 'ok' => false, 'code' => $code, 'msg' => Copy::render( $copy[ 'err.' . $code ] ?? $code, $vars ) ); };
 		if ( ! $draft && ! Config::is_live( $cfg ) ) { return $err( 'live' ); }
 		$box_id = sanitize_key( (string) ( $a['box'] ?? '' ) ); $box = Config::box( $cfg, $box_id );
+		/* 1.34.0: вариант B „поток“ — клиентът праща само броя; кутията е по броя (Config::flow_box): 1–2 → малка, 3–4 → средна, 5+ → голяма, всяка
+		   расте, 1 опаковка = 1 билет, книгата и сетът само в най-голямата. Редовете носят flow=1, за да важат същите правила в чекаута и поръчката. */
+		$flow = 'flow' === (string) ( $a['variant'] ?? '' );
+		if ( $flow ) { $box = Config::flow_box( $cfg, null, is_array( $a['items'] ?? null ) ? count( array_filter( array_map( 'absint', $a['items'] ) ) ) : 0 ); $box_id = $box ? (string) $box['id'] : ''; }
 		if ( ! $box ) { return $err( 'box' ); }
 		$bv = array( 'packs' => (int) $box['packs'], 'opk' => 1 === (int) $box['packs'] ? 'опаковка' : 'опаковки', 'box' => $box['name'], 'box_l' => mb_strtolower( $box['name'] ) );
 		$items  = is_array( $a['items'] ?? null ) ? array_values( array_filter( array_map( 'absint', $a['items'] ) ) ) : array();
@@ -168,7 +175,7 @@ final class Cart {
 		$pay   = ( 'cod' === ( $a['pay'] ?? '' ) && ! empty( $cfg['checkout']['cod_gateway'] ) ) ? 'cod' : 'card';
 		$email = sanitize_email( (string) ( $a['email'] ?? '' ) );
 		$cosm  = ! isset( $a['cosm'] ) || (bool) $a['cosm'];
-		$ctx   = array( 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
+		$ctx   = array( 'variant' => $flow ? 'flow' : '', 'promo' => $cfg['id'], 'box' => $box_id, 'email' => $email, 'cosm' => $cosm, 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'lead' => (int) ( $a['lead'] ?? 0 ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time() );
 		/* 1.29.0: 📞 поръчка по телефон — токенът от Insights носи кой звъни и откъде е количката; клиентът на WC се попълва (имейл, телефон, имена) */
 		if ( ! empty( $a['op'] ) ) { $op = Phone_Orders::ctx_for( (string) $a['op'], (string) ( $a['op_bonus'] ?? '' ) ); if ( $op ) { $ctx['op'] = $op; if ( '' === $ctx['email'] && '' !== $op['email'] ) { $ctx['email'] = $op['email']; } } }
 
@@ -209,7 +216,7 @@ final class Cart {
 		if ( $merge ) { foreach ( WC()->cart->get_cart() as $k => $it ) { if ( ! empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } } }
 		else { WC()->cart->empty_cart(); }
 		$group = 'ap_' . substr( md5( uniqid( '', true ) ), 0, 10 );
-		$meta  = array( 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $box['pct'], 'packs' => (int) $box['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $box['rw'], true ), 'draft' => $draft, 'cv' => (int) Config::version(), 't' => time(), 'week' => (int) ( $cfg['season']['cur']['i'] ?? 0 ) ); /* v1.19.0: t/week — кога и в коя седмица е добавено (гратисът при смяна на седмицата) */
+		$meta  = array( 'flow' => $flow ? 1 : 0, 'promo' => $cfg['id'], 'group' => $group, 'box' => $box_id, 'pct' => (float) $box['pct'], 'packs' => (int) $box['packs'], 'spct' => (float) $cfg['secret']['pct'], 'ship' => in_array( 'ship', $box['rw'], true ), 'draft' => $draft, 'cv' => (int) Config::version(), 't' => time(), 'week' => (int) ( $cfg['season']['cur']['i'] ?? 0 ) ); /* v1.19.0: t/week — кога и в коя седмица е добавено (гратисът при смяна на седмицата) */
 		$added = 0;
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
@@ -399,7 +406,7 @@ final class Cart {
 	private static function maybe_shrink( $cart, $g ) {
 		if ( ! $g || empty( $g['base'] ) || (int) $g['sum'] <= 0 ) { return $g; }
 		$cfg = self::cfg(); $cur = Config::box( $cfg, $g['box'] );
-		$eff = Config::box_for_count( $cfg, (int) $g['sum'] );
+		$eff = ! empty( $g['flow'] ) ? Config::flow_box( $cfg, null, (int) $g['sum'] ) : Config::box_for_count( $cfg, (int) $g['sum'] ); /* 1.34.0: flow групата пази правилата си */
 		if ( ! $eff || (int) $eff['packs'] > (int) $g['sum'] || ( $cur && (string) $eff['id'] === (string) $cur['id'] ) ) { return $g; }
 		$allowed = self::allowed( $cfg ); $box_id = (string) $eff['id']; $group = (string) $g['group'];
 		self::$mutating = true;
@@ -482,7 +489,7 @@ final class Cart {
 	}
 	public static function checkout_rewards_row() {
 		$g = self::group(); if ( ! $g ) { return; }
-		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return; }
+		$cfg = self::cfg(); $box = self::box_of( $cfg, $g ); if ( ! $box ) { return; }
 		$v = self::vars( $cfg, $box, (int) $g['sum'] );
 		$bonus = Partner::bonus_now( $cfg ); $prow = $bonus > 0 ? '<li><i>🤝</i> ' . wp_kses_post( self::copy( 'co.partner', array_merge( $v, array( 'bonus' => $bonus, 'bonus_bileta' => 1 === $bonus ? 'билет' : 'билета' ) ) ) ) . '</li>' : '';
 		$prow .= (string) apply_filters( 'ansa_promo_checkout_rows', '', $cfg, $v ); /* 1.6.0: Tombola — „+1 билет — подарък от близък човек“ */
@@ -491,7 +498,7 @@ final class Cart {
 	}
 	public static function checkout_cosm_consent() {
 		$g = self::group(); if ( ! $g || ! self::group_valid( $g ) ) { return; }
-		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box || null === $box['cosm_pay'] ) { return; }
+		$cfg = self::cfg(); $box = self::box_of( $cfg, $g ); if ( ! $box || null === $box['cosm_pay'] ) { return; }
 		$v = self::vars( $cfg, $box, (int) $g['sum'] ); $ctx = self::ctx();
 		/* v1.5.0: картичка — чекбокс | икона | текст, подравнено вляво; !important, защото FunnelKit/reskin-ът центрират и презаписват label-ите.
 		   v1.5.4: цената е отделен ред „<s>€129</s> €1“ (co.cosm.price), винаги от PHP — не зависи от това дали co.cosm.label е редактиран
@@ -537,10 +544,11 @@ final class Cart {
 	/** Метаданните за поръчката от текущата количка (null, ако няма промо група). */
 	public static function build_meta( $cosm_posted = null ) {
 		$g = self::group(); if ( ! $g ) { return null; }
-		$cfg = self::cfg(); $box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return null; }
+		$cfg = self::cfg(); $box = self::box_of( $cfg, $g ); if ( ! $box ) { return null; }
 		$ctx = self::ctx(); $valid = self::group_valid( $g );
 		if ( null !== $box['cosm_pay'] ) { $cosm_on = null !== $cosm_posted ? (bool) $cosm_posted : ( isset( $ctx['cosm'] ) ? (bool) $ctx['cosm'] : true ); } else { $cosm_on = false; }
 		$meta = array(
+			'variant' => ! empty( $g['flow'] ) ? 'flow' : '', /* 1.34.0 */
 			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'week' => (int) ( $g['week'] ?? 0 ), 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
 			'tickets' => array( 'allowance' => $valid ? Config::tickets_for( $box, (int) $g['sum'] ) : 0, 'partner' => false, 'issued' => array() ), /* 1.12.0: + tix_extra за всяка опаковка над packs */
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
@@ -561,6 +569,7 @@ final class Cart {
 		$order->update_meta_data( '_ansa_promo_cosm', $meta['cosm'] ? '1' : '0' );
 		$order->update_meta_data( '_ansa_promo_cosm_status', $meta['cosm'] ? $meta['cosm']['status'] : '' );
 		$order->update_meta_data( '_ansa_promo_utm', $meta['utm'] );
+		$order->update_meta_data( '_ansa_promo_variant', (string) ( $meta['variant'] ?? '' ) ); /* 1.34.0: '' = A (кутиите), flow = B */
 		$order->update_meta_data( '_ansa_promo_lead', (int) $meta['lead_id'] );
 		$order->update_meta_data( '_ansa_promo_week', (int) ( $meta['week'] ?? 0 ) ); /* v1.19.0: седмицата на сезона, в която е добавена кутията */
 	}

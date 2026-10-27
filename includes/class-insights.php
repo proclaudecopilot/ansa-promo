@@ -101,9 +101,11 @@ final class Insights {
 		if ( '' === $sid || ! isset( self::ORDER[ $ev ] ) ) { return false; }
 		$box = self::tok( $d['box'] ?? '', 8, '/[^a-z]/' ); $utm = self::tok( $d['utm'] ?? '', 64 ); $k = self::tok( $d['k'] ?? '', 64 ); $n = max( 0, min( 65535, (int) ( $d['n'] ?? 0 ) ) );
 		$vid = self::sid( $d['vid'] ?? '' ); $internal = ! empty( $d['internal'] ) ? 1 : 0; /* 1.28.0 */
+		$variant = self::tok( $d['variant'] ?? '', 8, '/[^a-z]/' ); /* 1.34.0: '' = A, flow = B; първият на сесията остава */
 		$now = ! empty( $d['at'] ) && preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', (string) $d['at'] ) ? (string) $d['at'] : current_time( 'mysql' ); /* 1.28.0: сървърните събития носят своето време (датата на поръчката) */ $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' );
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id, step, box, utm, vid, internal FROM $ts WHERE sid = %s", $sid ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id, step, box, utm, vid, internal, variant FROM $ts WHERE sid = %s", $sid ), ARRAY_A );
 		$upd = array( 'last_at' => $now );
+		if ( $variant && ( ! $row || '' === (string) ( $row['variant'] ?? '' ) ) ) { $upd['variant'] = $variant; } elseif ( ! $variant && $row ) { $variant = (string) ( $row['variant'] ?? '' ); }
 		if ( $box ) { $upd['box'] = $box; }
 		/* 1.28.0: utm = ПЪРВИЯТ UTM на сесията (не се презаписва), utm_last = последният; отчетите избират атрибуцията */
 		if ( $utm ) { $upd['utm_last'] = $utm; if ( ! $row || '' === (string) $row['utm'] ) { $upd['utm'] = $utm; } }
@@ -121,7 +123,7 @@ final class Insights {
 		}
 		if ( ! $row ) {
 			$ins = array_merge( array(
-				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^\p{L}\p{N}_\-\.\s@]/u' ), /* 1.29.0: и кирилица (операторът при 📞) */
+				'sid' => $sid, 'started_at' => $now, 'utm' => $utm, 'variant' => $variant, 'src' => self::tok( $d['src'] ?? '', 64 ), 'med' => self::tok( $d['med'] ?? '', 64 ), 'camp' => self::tok( $d['camp'] ?? '', 128, '/[^\p{L}\p{N}_\-\.\s@]/u' ), /* 1.29.0: и кирилица (операторът при 📞) */
 				'ref' => substr( esc_url_raw( (string) ( $d['ref'] ?? '' ) ), 0, 191 ), 'device' => in_array( $d['dev'] ?? '', array( 'mobile', 'desktop' ), true ) ? $d['dev'] : '', 'box' => $box, 'step' => self::step_of( $ev ), 'ip' => Leads::ip(), 'utm_last' => $utm, 'vid' => $vid, 'internal' => $internal,
 			), $upd );
 			$wpdb->insert( $ts, $ins );
@@ -133,7 +135,7 @@ final class Insights {
 			unset( $upd['utm'] ); if ( isset( $upd['utm_last'] ) && '' === (string) $row['utm'] ) { $upd['utm'] = $upd['utm_last']; } /* първият остава първи */
 			$wpdb->update( $ts, $upd, array( 'id' => (int) $row['id'] ) );
 		}
-		$wpdb->insert( $te, array( 'sid' => $sid, 'at' => $now, 'ev' => $ev, 'box' => $box, 'k' => $k, 'n' => $n, 'utm' => $utm ), array( '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) );
+		$wpdb->insert( $te, array( 'sid' => $sid, 'at' => $now, 'ev' => $ev, 'box' => $box, 'k' => $k, 'n' => $n, 'utm' => $utm, 'variant' => $variant ), array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ) );
 		return true;
 	}
 
@@ -151,6 +153,7 @@ final class Insights {
 			'sid' => self::request_sid( (string) ( $_POST['sid'] ?? '' ) ), 'ev' => $ev, 'box' => $box, 'utm' => $utm, 'k' => (string) ( $_POST['k'] ?? '' ), 'n' => (int) ( $_POST['n'] ?? 0 ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'items' => is_array( $items ) ? $items : null, 'src' => (string) ( $_POST['src'] ?? '' ), 'med' => (string) ( $_POST['med'] ?? '' ), 'camp' => (string) ( $_POST['camp'] ?? '' ), 'ref' => (string) wp_unslash( $_POST['ref'] ?? '' ), 'dev' => (string) ( $_POST['dev'] ?? '' ),
 			'vid' => self::request_vid( (string) ( $_POST['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request(), /* 1.28.0 */
+			'variant' => (string) ( $_POST['variant'] ?? '' ), /* 1.34.0 */
 		) );
 		wp_send_json_success( array( 'ok' => true ) );
 	}
@@ -161,7 +164,7 @@ final class Insights {
 		$pub = Config::get_published(); if ( ! Config::is_live( $pub ) ) { return; }
 		$sid = self::request_sid( (string) ( $_GET['sid'] ?? '' ) ); if ( '' === $sid ) { return; }
 		$ua = (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ); if ( Insights_Reports::is_bot( $ua ) ) { return; } /* 1.28.0 */
-		self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => (string) ( $_GET['utm'] ?? '' ), 'ref' => (string) ( $_SERVER['HTTP_REFERER'] ?? '' ), 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop', 'vid' => self::request_vid( (string) ( $_GET['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request() ) );
+		self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => (string) ( $_GET['utm'] ?? '' ), 'variant' => (string) ( $_GET['variant'] ?? '' ), 'ref' => (string) ( $_SERVER['HTTP_REFERER'] ?? '' ), 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop', 'vid' => self::request_vid( (string) ( $_GET['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request() ) );
 	}
 
 	/** 1.17.1: самодиагностика — таблици, редове, последно събитие, режимът на играта. */
@@ -200,7 +203,7 @@ final class Insights {
 		if ( ! empty( $m['draft'] ) ) { return; }
 		self::hit( 'created', (string) ( $m['box'] ?? '' ), (string) ( $m['utm'] ?? '' ) );
 		$po = ! empty( $m['phone_order'] ) && is_array( $m['phone_order'] ) ? $m['phone_order'] : null; /* 1.29.0: 📞 — източник „телефон“, не е вътрешна (клиентът е истински) */
-		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ), 'dev' => self::device_of( (string) $order->get_customer_user_agent() ), 'internal' => ! $po && Insights_Reports::is_internal_email( (string) $order->get_billing_email() ), 'at' => ( $dc = $order->get_date_created() ) ? $dc->date( 'Y-m-d H:i:s' ) : '', 'src' => $po ? 'phone' : '', 'med' => $po ? 'call' : '', 'camp' => $po ? (string) ( $po['by'] ?: 'обаждане' ) : '' ) ); /* 1.28.0: тестовите поръчки (probe@example.com) са вътрешни; времето е на поръчката */
+		self::track( array( 'sid' => self::order_sid( $order, $m ), 'ev' => 'created', 'box' => (string) ( $m['box'] ?? '' ), 'utm' => (string) ( $m['utm'] ?? '' ), 'variant' => (string) ( $m['variant'] ?? '' ), 'order_id' => $order->get_id(), 'lead' => (int) ( $m['lead_id'] ?? 0 ), 'n' => (int) ( $m['count'] ?? 0 ), 'dev' => self::device_of( (string) $order->get_customer_user_agent() ), 'internal' => ! $po && Insights_Reports::is_internal_email( (string) $order->get_billing_email() ), 'at' => ( $dc = $order->get_date_created() ) ? $dc->date( 'Y-m-d H:i:s' ) : '', 'src' => $po ? 'phone' : '', 'med' => $po ? 'call' : '', 'camp' => $po ? (string) ( $po['by'] ?: 'обаждане' ) : '' ) ); /* 1.28.0: тестовите поръчки (probe@example.com) са вътрешни; времето е на поръчката */
 	}
 	public static function on_ticket( $row, $order ) {
 		$m = (array) $order->get_meta( '_ansa_promo' ); if ( ! empty( $m['draft'] ) ) { return; }
@@ -369,18 +372,20 @@ final class Insights {
 	 *  измерение, т. 19–20), cfg ]. Сесиите „само поръчка“ (order-<id>, без проследен път) НЕ влизат във фунията и разбивките — броят се отделно (orders_only, т. 11).
 	 *  Посетител = vid (бисквитка 30 дни), резерва IP, резерва sid (т. 13). + bounce/dur/tto (т. 16), by_week (т. 19), rev/delivered по ред (т. 20), dev_stop (т. 26),
 	 *  camp_day (т. 24). */
+	/** 1.34.0: човешкото име на варианта в отчетите ('' = A — екранът с кутиите; flow = B — потокът без кутии). */
+	public static function variant_label( $v ) { $v = (string) $v; return '' === $v ? 'A · кутиите' : ( 'flow' === $v ? 'B · потокът без кутии' : $v ); }
 	public static function sessions_report( $days = 30, $range = null, $o = array() ) {
 		global $wpdb; $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' ); $o = is_array( $o ) ? $o : array();
 		$since = self::since( $days );
 		$w = array(); if ( is_array( $range ) ) { $w[] = self::where_range( 'started_at', $range ); } elseif ( $since ) { $w[] = $wpdb->prepare( 'started_at >= %s', $since ); }
 		$w = array_merge( $w, self::filter_where( $o ) ); $where = $w ? 'WHERE ' . implode( ' AND ', $w ) : '';
-		$rows = $wpdb->get_results( "SELECT utm, utm_last, src, med, camp, ref, device, box, step, items, lead_id, order_id, started_at, last_at, ip, sid, vid, internal FROM $ts $where", ARRAY_A );
+		$rows = $wpdb->get_results( "SELECT utm, utm_last, src, med, camp, ref, device, box, step, items, lead_id, order_id, started_at, last_at, ip, sid, vid, internal, variant FROM $ts $where", ARRAY_A );
 		$totals = isset( $o['totals'] ) && is_array( $o['totals'] ) ? $o['totals'] : array(); $attr = 'last' === ( $o['attr'] ?? 'first' ) ? 'last' : 'first';
 		$cfg = isset( $o['cfg'] ) && is_array( $o['cfg'] ) ? $o['cfg'] : Config::get_published();
 		$zero = array( 'n' => 0, 'v' => 0, 'gate' => 0, 'box' => 0, 'full' => 0, 'add' => 0, 'created' => 0, 'paid' => 0, 'rev' => 0.0, 'delivered' => 0, 'rev_del' => 0.0 );
 		$out = array( 'sessions' => 0, 'visitors' => 0, 'funnel' => array_fill_keys( self::FUNNEL, 0 ), 'stopped' => array_fill_keys( self::FUNNEL, 0 ), 'vfunnel' => array_fill_keys( self::FUNNEL, 0 ), 'vstopped' => array_fill_keys( self::FUNNEL, 0 ), 'by_utm' => array(), 'by_src' => array(), 'by_dev' => array(), 'by_box' => array(), 'by_day' => array(), 'items' => array(), 'leads' => 0, 'orders' => 0,
 			/* 1.27.0 (човекът: „от кой UTM са дошли, коя кутия са избрали, докъде са я напълнили, къде са дропнали“): by_camp = utm_source / medium · campaign, by_ref = домейнът на referrer-а, by_hour = часът на влизане (0–23), by_utm_box = UTM × избрана кутия, fill = докъде е напълнена кутията (виж по-долу) */
-			'by_camp' => array(), 'by_ref' => array(), 'by_hour' => array(), 'by_utm_box' => array(), 'fill' => array(),
+			'by_camp' => array(), 'by_ref' => array(), 'by_hour' => array(), 'by_utm_box' => array(), 'fill' => array(), 'by_variant' => array(), /* 1.34.0: A/B */
 			/* 1.28.0 */
 			'attr' => $attr, 'orders_only' => 0, 'orders_only_rev' => 0.0, 'bounce' => 0, 'dur_sum' => 0, 'dur_n' => 0, 'dur_avg' => 0.0, 'tto_avg' => 0.0, 'tto_med' => 0.0, 'tto_n' => 0, 'by_week' => array(), 'dev_stop' => array(), 'camp_day' => array(), 'rev' => 0.0, 'delivered' => 0, 'rev_del' => 0.0, 'internal_n' => 0 );
 		/* 1.20.4 (човекът): уникални посетители = различни IP (без IP — сесията е свой посетител); общо и във всяка разбивка (v). 1.28.0: по vid, резерва IP */
@@ -405,7 +410,7 @@ final class Insights {
 			$hour = sprintf( '%02d:00', (int) substr( (string) $r['started_at'], 11, 2 ) );
 			$dev = $r['device'] ?: '—'; $stp = isset( $out['stopped'][ $r['step'] ] ) ? $r['step'] : 'view'; $out['dev_stop'][ $dev ][ $stp ] = ( $out['dev_stop'][ $dev ][ $stp ] ?? 0 ) + 1; /* т. 26 */
 			$ub = $utm ?: '—'; if ( ! isset( $out['by_utm_box'][ $ub ] ) ) { $out['by_utm_box'][ $ub ] = array( 'n' => 0, 'none' => 0, 'boxes' => array() ); } $out['by_utm_box'][ $ub ]['n']++; if ( $r['box'] ) { $out['by_utm_box'][ $ub ]['boxes'][ $r['box'] ] = ( $out['by_utm_box'][ $ub ]['boxes'][ $r['box'] ] ?? 0 ) + 1; } else { $out['by_utm_box'][ $ub ]['none']++; }
-			$groups = array( 'by_utm' => $utm ?: '—', 'by_src' => $r['src'] ?: ( $utm ? 'utm' : 'директно' ), 'by_dev' => $dev, 'by_box' => $r['box'] ?: '—', 'by_day' => $day, 'by_camp' => $camp, 'by_ref' => $refh, 'by_hour' => $hour );
+			$groups = array( 'by_utm' => $utm ?: '—', 'by_src' => $r['src'] ?: ( $utm ? 'utm' : 'директно' ), 'by_dev' => $dev, 'by_box' => $r['box'] ?: '—', 'by_day' => $day, 'by_camp' => $camp, 'by_ref' => $refh, 'by_hour' => $hour, 'by_variant' => self::variant_label( (string) ( $r['variant'] ?? '' ) ) );
 			if ( $weeks ) { foreach ( $weeks as $wk ) { if ( $ts_ >= (int) $wk['from'] && $ts_ < (int) $wk['to'] ) { $groups['by_week'] = 'седм. ' . (int) $wk['i'] . ' (' . wp_date( 'd.m', (int) $wk['from'] ) . '–' . wp_date( 'd.m', (int) $wk['to'] - MINUTE_IN_SECONDS ) . ') · −' . implode( ' / −', array_map( array( 'AnsaPromo\\Cart', 'fmt' ), array_values( (array) $wk['pct'] ) ) ) . '%'; break; } } if ( ! isset( $groups['by_week'] ) ) { $groups['by_week'] = 'извън седмиците'; } } /* т. 19 */
 			foreach ( $groups as $grp => $key ) {
 				if ( ! isset( $out[ $grp ][ $key ] ) ) { $out[ $grp ][ $key ] = $zero; }
@@ -457,7 +462,7 @@ final class Insights {
 		uasort( $out['shrine'], function ( $a, $b ) { return $b['view'] <=> $a['view']; } );
 		$out['visitors'] = count( $vis ); foreach ( $vg as $grp => $keys ) { foreach ( $keys as $key => $set ) { $out[ $grp ][ $key ]['v'] = count( $set ); } }
 		foreach ( self::FUNNEL as $st ) { $out['vfunnel'][ $st ] = count( $vf[ $st ] ?? array() ); $out['vstopped'][ $st ] = count( $vs[ $st ] ?? array() ); }
-		foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box', 'by_camp', 'by_ref' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
+		foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box', 'by_camp', 'by_ref', 'by_variant' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
 		uasort( $out['by_utm_box'], function ( $a, $b ) { return $b['n'] <=> $a['n']; } );
 		uasort( $out['camp_day'], function ( $a, $b ) { return array_sum( array_column( $b, 'n' ) ) <=> array_sum( array_column( $a, 'n' ) ); } ); $out['camp_day'] = array_slice( $out['camp_day'], 0, 8, true );
 		ksort( $out['by_day'] ); ksort( $out['by_hour'] ); ksort( $out['by_week'], SORT_NATURAL ); uasort( $out['items'], function ( $a, $b ) { return ( $b['sessions'] + ( $b['clicked'] ?? 0 ) ) <=> ( $a['sessions'] + ( $a['clicked'] ?? 0 ) ); } );
@@ -969,6 +974,7 @@ final class Insights {
 		if ( $spend['utm'] || $spend['camp'] ) { $h .= '<div class="ap-sec__hint">💸 Разход, CPA, ROAS — от въведеното в <a href="' . esc_url( self::url( array( 'view' => 'spend' ) ) ) . '">💸 Разход</a>' . self::q( 'spend' ) . '; включи групата „разход“ над таблицата.</div>'; }
 		$h .= self::table_html( '📦 По кутия', $r['by_box'], 'кутия', function ( $k ) use ( $boxes ) { return $boxes[ $k ] ?? $k; }, array( 'id' => 'apTBox', 'link' => $lk ? $lk( 'f_box', 'box' ) : null ) );
 		$h .= self::table_html( '📱 По устройство', $r['by_dev'], 'устройство', null, array( 'id' => 'apTDev', 'link' => $lk ? $lk( 'f_dev', 'dev' ) : null ) );
+		if ( count( $r['by_variant'] ) > 1 || isset( $r['by_variant']['B · потокът без кутии'] ) ) { $h .= self::table_html( '🧪 A/B: по вариант на страницата', $r['by_variant'], 'вариант', null, array( 'id' => 'apTVar', 'hint' => 'A = сегашната страница с трите кутии; B = страницата с <code>[ansa_promo variant="flow"]</code> — без избор на кутия, отстъпката и подаръците се отключват с броя опаковки (1.34.0). Сравнявай „поръчали“ (created) и средната количка, не само кликовете; B позволява 2 и 4 опаковки, затова гледай и „По кутия“.' ) ); }
 		$h .= self::table_html( '📣 По източник (utm_source / директно)', $r['by_src'], 'източник', null, array( 'id' => 'apTSrc', 'link' => $lk ? $lk( 'f_src', 'src' ) : null ) );
 		$h .= self::table_html( '📅 По дни', array_reverse( $r['by_day'], true ), 'ден', null, array( 'id' => 'apTDay' ) );
 		if ( $r['by_week'] ) { $h .= self::table_html( '🗓️ По седмица на сезона (отстъпката)', $r['by_week'], 'седмица', null, array( 'id' => 'apTWeek', 'hint' => 'Седмиците на сезона с процента отстъпка за малка / средна / голяма кутия — как се държи интересът, докато отстъпката пада.' ) ); }
