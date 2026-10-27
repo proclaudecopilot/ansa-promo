@@ -36,6 +36,8 @@ EXTRA = """
 .ansa-flow .ticket-list{display:grid;gap:10px;padding:14px 0 4px}.ansa-flow .ticket-list>div{display:flex;gap:10px;font-size:12px;align-items:flex-start}.ansa-flow .ticket-list svg{width:17px;height:17px;flex-shrink:0;color:#3b5f8f;margin-top:1px}.ansa-flow .ticket-list b{display:block;font-size:12px}.ansa-flow .ticket-list span{color:#786254;font-size:11px;line-height:1.5}
 .ansa-flow .rules-link{display:inline-block;margin-top:10px;font-size:11px;font-weight:800;color:#3b5f8f}.ansa-flow .rules-grid small{display:block;font-size:10px;color:var(--muted);font-weight:600}
 .ansa-flow .mini-tag.max{background:#eaf2e9;color:#2e6953}
+/* 1.35.1: иконата на количката на FunnelKit и плаващите елементи на темата са скрити и на страницата B (както на A в promo-extra.css) */
+body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}
 """
 
 def strip_comments(css):
