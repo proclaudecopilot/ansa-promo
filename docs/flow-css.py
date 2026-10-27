@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ansa™ Промо 1.34.0 — генерира assets/flow.css от <style> на docs/ansa-desktop-mockup.html (вариант B „потокът без кутии“).
+"""ansa™ Промо 1.35.0 — генерира assets/flow.css от <style> на docs/ansa-flow-mockup-v5.html (вариант B „потокът без кутии“, десктоп + телефон v5).
 
 Всеки селектор се слага под .ansa-flow (както promo.css е под .ansa-promo); :root → .ansa-flow; body → .ansa-flow (контейнерът);
 html,body (скролът на страницата по ширина) → html.ansa-flow-html / body.ansa-flow-page; @font-face пада (шрифтът идва от Google Fonts
@@ -9,7 +9,7 @@ html,body (скролът на страницата по ширина) → html.
 import re, sys, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'docs', 'ansa-desktop-mockup.html')
+SRC = os.path.join(ROOT, 'docs', 'ansa-flow-mockup-v5.html')
 DST = os.path.join(ROOT, 'assets', 'flow.css')
 P = '.ansa-flow'
 
@@ -25,6 +25,17 @@ EXTRA = """
 .ansa-flow .pay-choice label{display:flex;align-items:center;gap:7px;cursor:pointer;min-height:32px}.ansa-flow .pay-choice input{accent-color:var(--coral);width:18px;height:18px;margin:0}
 .ansa-flow .product.is-out{opacity:.55}.ansa-flow .product.is-out .quantity{pointer-events:none}
 .ansa-flow .detail-image{height:175px;width:175px;object-fit:contain;border-radius:16px;margin:4px auto 15px;background:#fff1e8;padding:10px}
+.ansa-flow .logo-link{display:block;line-height:0}.ansa-flow .logo{height:30px;width:auto;max-width:150px;display:block;object-fit:contain}
+@media(min-width:900px){.ansa-flow .logo{height:46px;max-width:220px}}
+.ansa-flow .benefit-thumbs .thumb-fallback{position:absolute;inset:0;display:grid;place-items:center;color:#a5462a}.ansa-flow .benefit-thumbs .thumb-fallback svg{width:30px;height:30px}
+.ansa-flow .selected-item .sel-pic{width:31px;height:35px;object-fit:contain;mix-blend-mode:multiply;border-radius:4px;flex-shrink:0}.ansa-flow .selected-item .sel-pic.ph{display:grid;place-items:center;font-size:22px}
+.ansa-flow .modal-cta.secondary{background:#f1e4d8;color:#5a3f30;margin-top:14px}
+.ansa-flow .cart-tickets{display:flex;gap:10px;font-size:11px;align-items:center;background:#edf3fc;border-radius:10px;padding:10px;margin:12px 0}.ansa-flow .cart-tickets svg{color:#3b5f8f;flex-shrink:0}.ansa-flow .cart-tickets small{display:block;color:#5f7593;font-size:10px}
+.ansa-flow .yacht-hero{background:linear-gradient(135deg,#dbe8f7,#eef4fb);border-radius:14px;padding:16px;text-align:center;margin:4px 0 12px}.ansa-flow .yacht-hero svg{width:38px;height:38px;color:#3b5f8f;margin:0 auto 8px}.ansa-flow .yacht-hero strong{display:block;font-size:17px;letter-spacing:-.4px;color:#1f3a5f;line-height:1.25}.ansa-flow .yacht-hero span{display:block;font-size:11px;color:#4d6688;margin-top:4px}
+.ansa-flow .ticket-now{display:flex;justify-content:space-between;align-items:center;background:#edf3fc;border:1px solid #bfd1ea;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:800;color:#2f4c73;margin-top:4px}.ansa-flow .ticket-now strong{font-size:20px;color:#1f3a5f}
+.ansa-flow .ticket-list{display:grid;gap:10px;padding:14px 0 4px}.ansa-flow .ticket-list>div{display:flex;gap:10px;font-size:12px;align-items:flex-start}.ansa-flow .ticket-list svg{width:17px;height:17px;flex-shrink:0;color:#3b5f8f;margin-top:1px}.ansa-flow .ticket-list b{display:block;font-size:12px}.ansa-flow .ticket-list span{color:#786254;font-size:11px;line-height:1.5}
+.ansa-flow .rules-link{display:inline-block;margin-top:10px;font-size:11px;font-weight:800;color:#3b5f8f}.ansa-flow .rules-grid small{display:block;font-size:10px;color:var(--muted);font-weight:600}
+.ansa-flow .mini-tag.max{background:#eaf2e9;color:#2e6953}
 """
 
 def strip_comments(css):
@@ -56,7 +67,8 @@ def prefix_sel(sel, in_keyframes):
     for s in sel.split(','):
         s = s.strip()
         if not s: continue
-        if s == ':root' or s == 'body': parts.append(P)
+        if s == ':root' or s == 'body' or s == '.studio': parts.append(P)
+        elif s.startswith('.studio'): parts.append(P + s[7:])
         elif s == 'html': parts.append('html.ansa-flow-html')
         elif s == 'body.modal-open': parts.append('body.ansa-flow-page.modal-open')
         elif s.startswith('body'): parts.append('body.ansa-flow-page' + s[4:])
@@ -87,7 +99,7 @@ def main():
     css = html[html.index('<style>') + 7:html.index('</style>')]
     css = strip_comments(css)
     out = render(parse(css))
-    head = ('/* ansa™ Промо — вариант B „потокът без кутии“ (1.34.0). Генериран от docs/ansa-desktop-mockup.html с docs/flow-css.py —\n'
+    head = ('/* ansa™ Промо — вариант B „потокът без кутии“ (1.35.0, v5). Генериран от docs/ansa-flow-mockup-v5.html с docs/flow-css.py —\n'
             '   не се редактира на ръка, редактира се мокъпът. Всеки селектор е под .ansa-flow; под 900px мобилният изглед (скролът е в\n'
             '   каталога, офертата е долу), над 900px десктоп с лепкав панел вдясно. */\n')
     open(DST, 'w', encoding='utf-8').write(head + out + '\n' + EXTRA)
