@@ -1207,6 +1207,9 @@ final class Copy {
 				'fl.pill.0'          => '−{{pct_s}}% с първата',
 				'fl.pill.next'       => '−{{pct}}% → −{{pct_next}}%',
 				'fl.pill.max'        => '−{{pct}}%',
+				/* 1.35.5 (човекът): „−30% → −40%“ не е разбираемо — пилът е „−30% сега“, а под „Добави още X“ пише какво става */
+				'fl.pill.now'        => '−{{pct}}% сега',
+				'fl.msg.next.m2'     => 'и −{{pct}}% става <strong>−{{pct_next}}%</strong> за всички продукти',
 				'fl.ben.locked.m'    => 'Козметичен сет за €{{cosm_pay_l}} при {{packs_l}}+ опаковки',
 				'fl.ben.unlocked.m'  => 'Козметичен сет за €{{cosm_pay_l}} — отключен',
 				'fl.ben.reserved.m'  => 'Козметичен сет за €{{cosm_pay_l}} — отключен',
