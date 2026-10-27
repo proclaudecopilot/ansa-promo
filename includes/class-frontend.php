@@ -373,6 +373,8 @@ final class Frontend {
 			'gv'        => $gv, /* 1.24.7 */
 			'variant'   => self::page_variant(), /* 1.34.0: '' = A, flow = B */
 			'deadline_ts' => (int) ( Config::deadline_ts( $cfg ) ?: 0 ), /* 1.34.0: броячът „още N дни“ във варианта B */
+			'logo'      => self::flow_logo( $cfg ), /* 1.35.0: логото в хедъра на варианта B (flow.logo → custom_logo на темата → '' = думата „ansa™“) */
+			'home'      => home_url( '/' ),
 			'campaigns' => (object) ( $cfg['campaigns'] ?? array() ), /* 1.24.14: по UTM — gate / попъп козметика / кутия */
 			'copy_utm'  => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ), /* 1.24.19: текстове по UTM */
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */
@@ -397,6 +399,13 @@ final class Frontend {
 		);
 	}
 
+	/** 1.35.0: URL на логото за варианта B: настройката flow.logo (attachment id или URL), иначе логото на темата (custom_logo), иначе празно (думата „ansa™“). */
+	public static function flow_logo( $cfg ) {
+		$v = (string) ( $cfg['flow']['logo'] ?? '' ); $url = '';
+		if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'full' ); } elseif ( '' !== $v ) { $url = $v; }
+		if ( '' === $url ) { $id = (int) get_theme_mod( 'custom_logo' ); if ( $id ) { $url = (string) wp_get_attachment_image_url( $id, 'full' ); } }
+		return (string) apply_filters( 'ansa_promo_flow_logo', $url, $cfg );
+	}
 	/** Свеж runtime за кеширана страница (само публикуваното; без registry). */
 	public static function ajax_runtime() {
 		Insights::on_runtime(); /* 1.17.1: „view“ и от кеширана страница — sid от заявката или бисквитка */

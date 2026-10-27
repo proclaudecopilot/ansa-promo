@@ -36,6 +36,8 @@ final class Config {
 			   сегашното“): page_id = страницата с [ansa_promo variant="flow"]; share = % от посетителите на основната страница, които се пращат там
 			   (бисквитка ansa_promo_ab за 30 дни, клиентски redirect — работи и от кеша на FlyingPress); 0 = само директен трафик/реклами към страницата B. */
 			'ab'        => array( 'page_id' => 0, 'share' => 0 ),
+			/* 1.35.0: вариант B — логото в хедъра (attachment id или URL); празно = логото на темата (custom_logo), а без такова — думата „ansa™“ */
+			'flow'      => array( 'logo' => '' ),
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'when' => 'random', 'images' => self::gate_image_defaults() ), /* 1.32.0: when = след коя стъпка излиза (random | box | full | order); при кацане вече никога */
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
@@ -360,6 +362,7 @@ final class Config {
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
 		$ab = is_array( $out['ab'] ?? null ) ? $out['ab'] : array(); $out['ab'] = array( 'page_id' => (int) ( $ab['page_id'] ?? 0 ), 'share' => max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ) ); /* 1.34.0 */
+		$fl = is_array( $out['flow'] ?? null ) ? $out['flow'] : array(); $lg = trim( (string) ( $fl['logo'] ?? '' ) ); $out['flow'] = array( 'logo' => ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg ) ); /* 1.35.0 */
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
 		$out['gate']['when'] = in_array( (string) ( $out['gate']['when'] ?? '' ), array( 'random', 'box', 'full', 'order' ), true ) ? (string) $out['gate']['when'] : 'random';
 		$imgs = array();
@@ -568,10 +571,13 @@ final class Config {
 		try { if ( ! empty( $cfg['page_id'] ) ) { self::purge_page( (int) $cfg['page_id'] ); } } catch ( \Throwable $e ) {}
 		try { do_action( 'ansa_promo_published', $cfg ); } catch ( \Throwable $e ) {}
 	}
-	/** Purge само на URL-а на страницата — никога purge_everything. */
+	/** Purge само на URL-а на страницата — никога purge_everything.
+	 *  1.35.0: когато се чисти основната страница (page_id), се чисти и страницата B на A/B теста (ab.page_id) — тя носи същия runtime и flow.css/js. */
 	public static function purge_page( $page_id ) {
 		$url = $page_id ? get_permalink( (int) $page_id ) : '';
 		if ( ! $url ) { return; }
+		static $in_ab = false;
+		if ( ! $in_ab ) { try { $pub = self::get_published(); $b = (int) ( $pub['ab']['page_id'] ?? 0 ); if ( $b && (int) $page_id === (int) $pub['page_id'] && $b !== (int) $page_id ) { $in_ab = true; self::purge_page( $b ); $in_ab = false; } } catch ( \Throwable $e ) { $in_ab = false; } }
 		if ( class_exists( '\\FlyingPress\\Purge' ) ) { try { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_url' ) ) ) { \FlyingPress\Purge::purge_url( $url ); } elseif ( is_callable( array( '\\FlyingPress\\Purge', 'purge_urls' ) ) ) { \FlyingPress\Purge::purge_urls( array( $url ) ); } } catch ( \Throwable $e ) {} }
 		if ( function_exists( 'rocket_clean_post' ) ) { try { rocket_clean_post( (int) $page_id ); } catch ( \Throwable $e ) {} }
 		/* 1.23.7: и другите разпространени кеш плъгини — само URL-а на страницата, всичко е guarded */
