@@ -455,7 +455,11 @@
   function sxVars(){var SX=A.sx||{},bl=boxOf('l')||bigBox(),pk=bl?Number(bl.packs)||5:5,key=SX.product||'sakura',sp=PROD[key]||null,price=sp?Number(sp.price)||0:0,pct=sp&&bl?ppct(sp,bl):(bl?Number(bl.pct)||0:0);
     var full=r2(price*pk),pay=r2(full*(1-pct/100)),cp=bl&&bl.cosm_pay!=null?Number(bl.cosm_pay)||0:0,pd=Number(SX.days)||30,days=pk*pd,total=r2(pay+cp),value=r2(full+COSM),save=r2(value-total),day=days?r2(pay/days):0;
     return {sx_price:sxFmt(price),sx_full:sxFmt(full),sx_pay:sxFmt(pay),sx_total:sxFmt(total),sx_value:sxFmt(value),sx_save:sxFmt(save),sx_days:String(days),sx_day:sxFmt(day),sx_packs:String(pk),sx_pack_days:String(pd),_pct:pct,_cp:cp,_prod:sp}}
-  function sxUrl(){var k=(A.sx&&A.sx.product)||'sakura',u=addQ(A.promo_url||'/',A.utm_param||'utm_content',k);u=addQ(u,'box','l');u=addQ(u,'fill',k); /* 1.31.0: кутията се пълни сама с 5× Sakura → „Честито“ */try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
+  function sxUrl(go){var k=(A.sx&&A.sx.product)||'sakura',u=addQ(A.promo_url||'/',A.utm_param||'utm_content',k);u=addQ(u,'box','l');u=addQ(u,'fill',k); /* 1.31.0: кутията се пълни сама с 5× Sakura → „Честито“ */
+    /* 1.33.0 (човекът: „ако приемеш офертата, директно на чекаут да те праща с напълнена количка“): go → &go=1 — сървърът прави количката (5× Sakura в Голямата
+       + сетът) и праща в чекаута; sid/vid, за да е същата сесия в Insights; изключено от настройките (sx.direct) или в редактора → както досега („Честито“) */
+    if(go&&A.sx&&A.sx.direct!==false&&!A.editor&&!A.draft){u=addQ(u,'go','1');u=addQ(u,'sid',sid());var v=vid();if(v)u=addQ(u,'vid',v)}
+    try{var q=new URLSearchParams(location.search);['utm_source','utm_medium','utm_campaign','utm_term','fbclid'].forEach(function(k){var v=q.get(k);if(v)u=addQ(u,k,v)})}catch(e){}return u}
   function sxPic(sec,asset,alt){var own=pageCfg('sx').images[sec],u=own||((A.sx&&A.sx.assets)||{})[asset]||'';return u?'<img src="'+esc(u)+'" alt="'+esc(alt||'')+'" loading="lazy" decoding="async">':''}
   function sxHtml(){
     var V=sxVars(),lf=liLeft(),lv=lf?{left:lf.left}:{left:''},SX=A.sx||{},AS=SX.assets||{},info_u=A.info_url||'',rules_u=A.tombola_url||info_u,prod_u=SX.product_url||info_u;
@@ -513,9 +517,10 @@
     var stk='<div class="sx-stk"><div class="sx-c"><div class="t"><strong>'+eur(V.sx_pay)+'<s>'+eur(V.sx_full)+'</s></strong>'+p('sx.stk.note','small')+'</div><button class="sx-btn" type="button" data-sx="bar"'+ck('sx.stk.cta')+'><span>'+T2('sx.stk.cta')+'</span><i aria-hidden="true">↓</i></button></div></div>'; /* 1.31.3: към офертата, на всички екрани */
     return '<div class="sx">'+bar+secJoin('sx',{hero:h,miss:ms,derm:dm,sol:sl,reviews:rs,offer:of,five:fv,get:gt,yacht:y,faq:faq,'final':fin})+stk+'</div>';
   }
-  /* бутоните: на живо (nav) → промо страницата с ?utm_content=sakura&box=l; в редактора (попъп) → Sakura като продукт и Голямата кутия на място */
+  /* бутоните: на живо (nav) → направо в чекаута с напълнена количка (1.33.0, ?…&go=1; без sx.direct → промо страницата с ?utm_content=sakura&box=l&fill=sakura → „Честито“);
+     в редактора (попъп) → Sakura като продукт и Голямата кутия на място */
   function sxBind(dc,nav){
-    var u=sxUrl();dc.querySelectorAll('[data-sx="go"]').forEach(function(b){if(nav){b.setAttribute('data-go',u);b.onclick=function(){location.href=u};return}
+    var u=sxUrl(true);dc.querySelectorAll('[data-sx="go"]').forEach(function(b){if(nav){b.setAttribute('data-go',u);b.onclick=function(){location.href=u};return}
       b.onclick=function(){closeInfo();var k=(A.sx&&A.sx.product)||'sakura';if(PROD[k]){S.utm=k;S.core=k;A.utm=k}go(1);if(BI.l!=null)chooseBox(BI.l)}});
     dc.querySelectorAll('[data-sx="bar"]').forEach(function(a){a.onclick=function(e){e.preventDefault();var t=dc.querySelector('.sx-of');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}});
     var ds=dc.querySelectorAll('.sx-faqs details');ds.forEach(function(d){d.addEventListener('toggle',function(){if(d.open)ds.forEach(function(o){if(o!==d)o.open=false})})});

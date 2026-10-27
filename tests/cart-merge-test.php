@@ -173,6 +173,18 @@ ok( false === strpos( $lbl, '1 брой' ) && 0 === strpos( $lbl, 'ansa™ – �
 ok( false !== strpos( $lbl, '5 опаковки' ) && false !== strpos( $lbl, '−40%' ), '(9) тагът носи 5 опаковки · −40%: ' . $lbl );
 $lbl2 = Cart::cart_label( '<a href="#">ansa™ Greens - 1 кутия</a>', $it, $bk );
 ok( 0 === strpos( $lbl2, '<a href="#">ansa™ Greens</a><br>' ), '(9) и в линк: ' . $lbl2 );
+
+/* (10) 1.33.0: /kozmetichen-set-promo „приемам офертата“ → Sakura_Page::direct_add — Голямата кутия пълна с 5× Sakura, сетът, книгата, −40%, чекаут адрес; непознат продукт/кутия → null */
+WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
+$r = \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'sakura', 'l', 'sx1', 'sakura' );
+ok( ! empty( $r['ok'] ) && empty( $r['merged'] ) && 'l' === $r['box'] && 'http://x/checkout/' === $r['checkoutUrl'], '(10) direct_add: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
+$g = grp(); ok( Cart::group_valid( $g ) && 'l' === $g['box'] && base_counts( $g ) === array( 200 => 5 ) && $g['book'] && ! foreign_keys(), '(10) 5× Sakura в Голямата + книга: ' . json_encode( $g ? base_counts( $g ) : null ) );
+WC()->cart->calculate_totals(); ok( abs( WC()->cart->get_total() - 49.90 * 5 * 0.6 ) < 0.01, '(10) общо = 5 × 49,90 −40%: ' . WC()->cart->get_total() );
+$ctx = Cart::ctx(); ok( 'sakura' === $ctx['utm'] && 'sx1' === $ctx['sid'] && $ctx['cosm'] && 'card' === $ctx['pay'] && '' === $ctx['email'], '(10) ctx: utm sakura, sid, сетът, карта, без имейл: ' . json_encode( $ctx ) );
+$meta = Cart::build_meta( true ); ok( $meta && 5 === (int) $meta['count'] && $meta['cosm'] && 'reserved' === $meta['cosm']['status'] && 5 === (int) $meta['tickets']['allowance'], '(10) order meta: 5 опаковки, сетът, 5 билета: ' . json_encode( $meta ) );
+$r2 = \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'sakura', 'l', 'sx1', 'sakura' ); ok( ! empty( $r2['ok'] ) && ! empty( $r2['idempotent'] ) && base_counts( grp() ) === array( 200 => 5 ), '(10) второ кацане → идемпотентно' );
+ok( null === \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'nosuch', 'l' ) && null === \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'sakura', 'xl' ), '(10) непознат продукт/кутия → null' );
+$r3 = \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), '', '' ); ok( ! empty( $r3['ok'] ) && 'l' === $r3['box'] && base_counts( grp() ) === array( 200 => 5 ), '(10) без параметри = Sakura в Голямата' );
 ok( 0 === strpos( Cart::cart_label( 'ansa™ Greens', $it, $bk ), 'ansa™ Greens<br>' ), '(9) име без суфикс остава' );
 
 if ( $errors ) { echo "ГРЕШКИ:\n- " . implode( "\n- ", $errors ) . "\n"; exit( 1 ); }

@@ -78,7 +78,7 @@ final class Config {
 			   снимка (attachment id или URL; празно = емоджи) и blur (замъглена — изненадите 4 и 5). Текстовете им са li.pr.N.t/.d в регистъра. */
 			'li'        => array( 'enabled' => true, 'slug' => 'kozmetika', 'items' => self::li_item_defaults() ),
 			/* 1.31.0: страницата „Sakura ×5“ (адверториалът за рекламата за комплекта) — на корена на сайта: {сайт}/{slug}; days = дни в една опаковка Sakura ({{sx_days}} = packs × days) */
-			'sx'        => array( 'enabled' => true, 'slug' => 'kozmetichen-set-promo', 'days' => 30 ),
+			'sx'        => array( 'enabled' => true, 'slug' => 'kozmetichen-set-promo', 'days' => 30, 'direct' => true ),
 			/* 1.24.21: страниците /info (how) и /kozmetika (li) — редът на секциите (order), скритите (off) и снимка по секция (images: attachment id или URL;
 			   празно = снимката от имейл-попъпа, gate.images). Местят се от редактора (📄 Страници / лентата над секцията в канваса). */
 			'pages'     => self::pages_defaults(),
@@ -440,7 +440,7 @@ final class Config {
 		$tb = is_array( $out['tombola'] ?? null ) ? $out['tombola'] : array(); $out['tombola'] = self::merge( $d['tombola'], $tb );
 		$out['info']['enabled'] = ! empty( $out['info']['enabled'] ); $out['info']['slug'] = sanitize_title( (string) ( $out['info']['slug'] ?? 'info' ) ) ?: 'info';
 		$out['li']['enabled'] = ! empty( $out['li']['enabled'] ); $out['li']['slug'] = sanitize_title( (string) ( $out['li']['slug'] ?? 'kozmetika' ) ) ?: 'kozmetika'; /* 1.24.20 */
-		$sx = is_array( $out['sx'] ?? null ) ? $out['sx'] : array(); $out['sx'] = array( 'enabled' => ! empty( $sx['enabled'] ), 'slug' => sanitize_title( (string) ( $sx['slug'] ?? 'kozmetichen-set-promo' ) ) ?: 'kozmetichen-set-promo', 'days' => max( 1, min( 365, (int) ( $sx['days'] ?? 30 ) ?: 30 ) ) ); /* 1.31.0 */
+		$sx = is_array( $out['sx'] ?? null ) ? $out['sx'] : array(); $out['sx'] = array( 'enabled' => ! empty( $sx['enabled'] ), 'slug' => sanitize_title( (string) ( $sx['slug'] ?? 'kozmetichen-set-promo' ) ) ?: 'kozmetichen-set-promo', 'days' => max( 1, min( 365, (int) ( $sx['days'] ?? 30 ) ?: 30 ) ), 'direct' => ! isset( $sx['direct'] ) || ! empty( $sx['direct'] ) ); /* 1.31.0; 1.33.0: direct — бутоните → направо чекаут (по подразбиране да) */
 		$out['pages'] = self::normalize_pages( $out['pages'] ?? null ); /* 1.24.21: секциите на /info и /kozmetika; 1.31.0: и /kozmetichen-set-promo (sx) */
 		$out['li']['items'] = self::normalize_li_items( $out['li']['items'] ?? null ); /* 1.24.22 */
 		$out['tombola']['enabled'] = ! empty( $out['tombola']['enabled'] ); $out['tombola']['slug'] = sanitize_title( (string) $out['tombola']['slug'] ) ?: 'tombola'; $out['tombola']['draw'] = trim( (string) $out['tombola']['draw'] );
