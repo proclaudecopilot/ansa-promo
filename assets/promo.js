@@ -64,9 +64,9 @@
 
   /* ── състояние (мокъп S) + sessionStorage ── */
   var SKEY='ansa_promo_s';
-  function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0}}
+  function freshS(){return {box:null,chosen:null,slots:[],core:A.utm||null,secret:{},pay:'card',cosm:true,screen:1,utm:A.utm||null,_undo:null,timerEnd:null,replaceSlot:null,emailDone:!(A.gate&&A.gate.enabled),email:'',lead:0,gateAt:null}}
   var S=freshS();
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,quiz:S.quiz||null,quizSeen:!!S.quizSeen}}))}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,v:A.version,s:{box:S.box,chosen:S.chosen,slots:S.slots,core:S.core,secret:S.secret,pay:S.pay,cosm:S.cosm,screen:S.screen,utm:S.utm,timerEnd:S.timerEnd,emailDone:S.emailDone,email:S.email,lead:S.lead,gateAt:S.gateAt||null,quiz:S.quiz||null,quizSeen:!!S.quizSeen}}))}catch(e){}}
   function restoreS(){try{var raw=sessionStorage.getItem(SKEY);if(!raw)return false;var d=JSON.parse(raw);if(!d||d.id!==A.id||!d.s)return false;var s=d.s;
     if(s.box!==null&&(!BOXES[s.box]))return false;var ok=true;(s.slots||[]).forEach(function(k){if(k&&!PROD[k])ok=false});if(!ok)return false;
     Object.keys(s).forEach(function(k){S[k]=s[k]});
@@ -158,6 +158,16 @@
 
   /* ── имейл-попъп (v73 „g2“): веднъж на сесия, може да се пропусне ── */
   function gateSeen(){try{return sessionStorage.getItem('ansa_promo_gate')==='1'}catch(e){return false}}
+  /* 1.32.0 (човекът: „не показвай pop-up-а веднага след лендинга … на рандъм след някоя от следващите стъпки“): попъпът излиза на стъпката от
+     настройката gate.when — box (избор на кутия) · full („Честито“) · order (екран „Поръчка“) · random (една от трите, тегли се веднъж на сесия, пази се в S.gateAt).
+     При кацане никога. Стъпка, минала автоматично (?box=l / ?fill= от рекламата, A._autoUntil), не брои — излиза на следващата, която човекът прави сам. */
+  var GATE_RANK={box:1,full:2,order:3};
+  function gateStep(){var w=(A.gate&&A.gate.when)||'random';if(GATE_RANK[w])return w;if(!S.gateAt||!GATE_RANK[S.gateAt]){var o=['box','full','order'];S.gateAt=o[Math.floor(Math.random()*o.length)];saveS()}return S.gateAt}
+  function maybeGate(step,after){
+    if(S.emailDone||gateSeen()||A.editorNoGate||!(A.gate&&A.gate.enabled))return false;
+    if(A._autoUntil&&Date.now()<A._autoUntil)return false;
+    if((GATE_RANK[step]||0)<(GATE_RANK[gateStep()]||9))return false;
+    S._afterGate=after||null;setTimeout(emailGate,250);return true}
   function gateMark(){try{sessionStorage.setItem('ansa_promo_gate','1')}catch(e){}}
   function emailGate(){
     if(S.emailDone||A.editorNoGate)return;var c=S.core?PROD[S.core]:null;
@@ -217,7 +227,7 @@
   }
   /* ── навигация ── */
   function go(n){
-    S.screen=n;if(n===1&&!S.emailDone&&!gateSeen())setTimeout(emailGate,250);
+    S.screen=n;if(n===5)setTimeout(function(){maybeGate('order')},250); /* 1.32.0: при кацане (екран 1) попъпът вече не излиза */
     [1,2,4,5].forEach(function(i){var e=$('apS'+i);if(e)e.classList.toggle('on',i===n)});
     $('apHdr').classList.toggle('builder',n===2);
     if(n!==2)$('apStrip').innerHTML='';
@@ -563,7 +573,7 @@
 
   /* ── честито ── */
   function celebrate(){beacon('full');
-    var b=BX();if(!b)return;var conf='';for(var ci=0;ci<18;ci++)conf+='<i style="left:'+(ci*5.5+2)+'%;animation-delay:'+(ci*.11)+'s;background:'+['#e8722a','#f59e0b','#16a34a','#6366f1','#e0507a'][ci%5]+'"></i>';
+    var b=BX();if(!b)return;if(maybeGate('full',celebrate))return; /* 1.32.0 */var conf='';for(var ci=0;ci<18;ci++)conf+='<i style="left:'+(ci*5.5+2)+'%;animation-delay:'+(ci*.11)+'s;background:'+['#e8722a','#f59e0b','#16a34a','#6366f1','#e0507a'][ci%5]+'"></i>';
     var dc=$('apDc');dc.className='dc wide';dc.scrollTop=0;
     /* наградите — всяка с пълното си име; яхтата и сетът са героите */
     /* 1.31.1 (човекът: „Козметичния сет да идва преди яхтата“): редът на наградите в „Честито“ е сетът → билетите → останалото (по реда на кутията) */
@@ -627,9 +637,9 @@
     S.slots=down?kept.slice(0,b.packs):kept;normSlots();
     startTimer();saveS();
     /* попъпът пълни кутията докрай; таблото (екран 2) е само резервен екран за редакция */
-    if(!full()){if(S.screen!==2)render();S._fillPending=(S.screen!==2);fillModePopup();return} /* 1.24.4 (човекът: „излишен friction“): без попъпа „Запозната ли си с продуктите?“ — кутията се отваря направо; въпросникът остава през „Не си сигурна какво ти трябва?“ */
+    if(!full()){if(S.screen!==2)render();var openFill=function(){S._fillPending=(S.screen!==2);fillModePopup()};if(maybeGate('box',openFill))return;openFill();return} /* 1.32.0: попъпът (ако е на „box“) преди пълненето */ /* 1.24.4 (човекът: „излишен friction“): без попъпа „Запозната ли си с продуктите?“ — кутията се отваря направо; въпросникът остава през „Не си сигурна какво ти трябва?“ */
     if(S.screen===2){go(2);return}
-    render();S._fillPending=false;setTimeout(celebrate,200);
+    render();S._fillPending=false;if(maybeGate('box',function(){setTimeout(celebrate,200)}))return;setTimeout(celebrate,200);
   }
 
   /* 1.24.4: knowPopup() („Запозната ли си с продуктите на ansa™?“, 1.23.2) е махнат — човекът: „излишен friction“ */
@@ -1257,6 +1267,6 @@
       if(cpl.cosm_pop&&!qB&&!restored&&!sessionStorage.getItem('ansa_promo_cosmpop'))runL=function(){if(S.box===null)cosmPopup()};
       else if(boxId&&fillK)runL=function(){if(S.box===null)fillBox(BI[boxId],fillK)};
       else if(boxId)runL=function(){if(S.box===null)chooseBox(BI[boxId])};
-      if(runL){if(S.emailDone||gateSeen())setTimeout(runL,320);else S._afterGate=runL}}
+      if(runL){A._autoUntil=Date.now()+2500;setTimeout(runL,320)}} /* 1.32.0: автоматичната кутия/пълнене тръгва веднага и не брои като стъпка за попъпа */
   }catch(e){}
 })();

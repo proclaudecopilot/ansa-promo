@@ -2352,3 +2352,8 @@ body.ansa-cd-on .ansa-promo #apS1{padding-bottom:72px}
 .ansa-promo .dc.hw.sx .sx .sx-prod .v{height:110px}.ansa-promo .dc.hw.sx .sx .sx-prod small{font-size:11.5px}
 .ansa-promo .dc.hw.sx .sx .sx-solv{min-height:360px}.ansa-promo .dc.hw.sx .sx .sx-solv>img{width:62%}
 }
+
+/* 1.32.0 (човекът: „бутонът Пропусни в pop-up-а да бъде малко по-голям“): „Продължи без имейл“ е истински бутон на цяла ширина, не линк в сиво */
+.ansa-promo .gate .gskip,.ansa-promo .gate.g2 .gskip{display:block;width:100%;box-sizing:border-box;margin:12px auto 0;padding:12px 14px;font-size:15px;font-weight:700;line-height:1.2;color:#1a1a2e;background:#fff;border:1.5px solid #d9cfc2;border-radius:12px;cursor:pointer;text-decoration:none;text-align:center;-webkit-appearance:none;appearance:none}
+.ansa-promo .gate .gskip:hover,.ansa-promo .gate .gskip:focus-visible{background:#faf5ee;border-color:#c9b9a4;outline:none}
+@media(max-width:480px){.ansa-promo .gate .gskip,.ansa-promo .gate.g2 .gskip{padding:13px 14px;font-size:16px;margin-top:10px}}

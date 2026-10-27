@@ -140,6 +140,7 @@ final class Admin {
 				for ( $i = 0; $i <= $nmax; $i++ ) { $row = array(); foreach ( array( 's', 'm', 'l' ) as $bid ) { $v = isset( $wk[ $i ][ $bid ] ) ? str_replace( ',', '.', trim( (string) wp_unslash( $wk[ $i ][ $bid ] ) ) ) : ''; $row[ $bid ] = ( '' === $v || ! is_numeric( $v ) ) ? null : (float) $v; } $row['to'] = sanitize_text_field( (string) wp_unslash( $wto[ $i ] ?? '' ) ); $cfg['season']['weeks'][] = $row; }
 				$cfg['utm_param'] = sanitize_text_field( (string) wp_unslash( $_POST['utm_param'] ?? 'utm_content' ) );
 				$cfg['gate']['enabled'] = ! empty( $_POST['gate_enabled'] ); $cfg['gate']['required'] = ! empty( $_POST['gate_required'] );
+				$gw = sanitize_key( (string) wp_unslash( $_POST['gate_when'] ?? 'random' ) ); $cfg['gate']['when'] = in_array( $gw, array( 'random', 'box', 'full', 'order' ), true ) ? $gw : 'random'; /* 1.32.0 */
 				$gi = (array) ( $_POST['gate_img'] ?? array() ); $cfg['gate']['images'] = array();
 				foreach ( Config::gate_image_slots() as $k => $label ) { $cfg['gate']['images'][ $k ] = sanitize_text_field( (string) wp_unslash( $gi[ $k ] ?? '' ) ); }
 				/* 1.24.22: снимките на петте козметични продукта (/kozmetika → „Какво се крие в кутията“) + замъглени */
@@ -322,6 +323,13 @@ final class Admin {
 						<p class="ap-fl"><b>Край</b></p><input type="text" name="deadline" value="<?php echo esc_attr( $draft['deadline'] ); ?>" class="regular-text" placeholder="2026-12-31 23:59">
 						<p class="ap-fl"><b>UTM параметър</b></p><input type="text" name="utm_param" value="<?php echo esc_attr( $draft['utm_param'] ); ?>" class="regular-text"> <span class="description">кацане: <code>?<?php echo esc_html( $draft['utm_param'] ); ?>=sakura</code></span>
 						</div></section><?php self::season_section( $draft, $draft_url ); ?><section class="ap-sec" id="s-gate"><div class="ap-sec__h"><span class="ap-sec__t">Имейл-попъп</span></div><div class="ap-sec__b"><label><input type="checkbox" name="gate_enabled" value="1"<?php checked( $draft['gate']['enabled'] ); ?>> включен</label> &nbsp; <label><input type="checkbox" name="gate_required" value="1"<?php checked( $draft['gate']['required'] ); ?>> задължителен (без „Продължи без имейл“)</label>
+							<p class="ap-fl"><b>Кога излиза</b></p><?php $gw = (string) ( $draft['gate']['when'] ?? 'random' ); ?><select name="gate_when">
+								<option value="random"<?php selected( $gw, 'random' ); ?>>на рандъм — след избор на кутия, след напълването ѝ или на екран „Поръчка“ (по равно, веднъж на сесия)</option>
+								<option value="box"<?php selected( $gw, 'box' ); ?>>след избор на кутия</option>
+								<option value="full"<?php selected( $gw, 'full' ); ?>>след напълване на кутията („Честито“)</option>
+								<option value="order"<?php selected( $gw, 'order' ); ?>>на екран „Поръчка“</option>
+							</select>
+							<p class="description"><b>1.32.0:</b> попъпът вече <b>никога не излиза при кацане</b> — там гонеше трафика (Insights 20–26.10: 88 % от рекламния трафик спираше на първия екран, само 3 % го прескачаха). Излиза на избраната стъпка, а ако тя е минала автоматично (кацане с <code>?box=l</code> / <code>?fill=</code>), на следващата, която човекът прави сам. „Продължи без имейл“ е голям бутон.</p>
 							<p class="description">Промяната важи след <b>🚀 Публикувай</b>. Кешираната страница се оправя сама до секунда след отваряне (свежият конфиг идва по ajax и затваря попъпа), но изчисти кеша (Публикуване → 🧹), за да не трепва. <b>Кацане от имейл е без попъп</b> винаги: линк с <code>utm_medium=email</code> или <code>utm_source</code>, съдържащ mail/sendgrid/newsletter/fka, или <code>?gate=0</code> — имейлът вече е известен.</p>
 						</div></section><section class="ap-sec" id="s-leads"><div class="ap-sec__h"><span class="ap-sec__t">📨 Лийдовете → FunnelKit</span></div><div class="ap-sec__b"><?php $ld = $draft['leads']; $ls = Leads::stats(); ?>
 							<p><label><input type="checkbox" name="leads_fka" value="1"<?php checked( ! empty( $ld['fka'] ) ); ?>> имейлът от попъпа става контакт във FunnelKit (и за гост, без WP акаунт) и получава лист + таг — тригърът за автоматизацията „не е завършила поръчката“</label></p>
