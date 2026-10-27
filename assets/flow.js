@@ -251,7 +251,7 @@
     $('flDrawerContent').innerHTML='<div class="pop-top"><div class="pop-eyebrow">'+TT('fl.pop.eyebrow')+'</div><h3>'+TT('fl.pop.h')+'</h3><p>'+TT('fl.pop.p')+'</p><button class="pop-x" type="button" data-close aria-label="Затвори">'+icon('close')+'</button></div>'
       +'<p class="pop-intro"><strong>'+TT('fl.pop.intro.b')+'</strong> '+TT('fl.pop.intro')+'</p><div class="pop-tiers">'+tiers+'</div>'
       +'<div class="pop-tomb"><span class="pop-gift-ico">'+icon('ticket')+'</span><span>'+TT('fl.pop.tomb')+'</span></div>'
-      +'<div class="pop-ask">'+TT('fl.pop.ask')+'</div><button class="modal-cta pop-cta" type="button" data-close data-pop-cta>'+TT('fl.pop.cta')+'</button>'}
+      +'<div class="pop-foot"><div class="pop-ask">'+TT('fl.pop.ask')+'</div><button class="modal-cta pop-cta" type="button" data-close data-pop-cta>'+TT('fl.pop.cta')+'</button></div>'}
   function cta(k,attrs,v){return '<button class="modal-cta" type="button" '+(attrs||'data-close')+'>'+T(k,v)+'</button>'}
   function renderDetail(key){var p=PROD[key];if(!p)return;$('flDrawerTitle').textContent=T('fl.d.prod.h');
     $('flDrawerContent').innerHTML=picture(p,'detail-image')+(p.cat?'<div class="detail-meta">'+esc(p.cat)+'</div>':'')+'<h3 class="detail-name">'+esc(p.name)+'</h3>'+(p.ds?'<p><b>'+esc(p.ds)+'</b></p>':'')+(p.desc?'<p>'+p.desc+'</p>':'')+(p.ing?'<p><b>Съставки:</b> '+esc(p.ing)+'</p>':'')+(p.who?'<p><b>За кого:</b> '+esc(p.who)+'</p>':'')
