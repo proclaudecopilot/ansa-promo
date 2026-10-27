@@ -32,6 +32,10 @@ final class Config {
 			'season'    => array( 'weekly' => false, 'start' => '2026-10-23', 'grace_hours' => 24, 'weeks' => array() ),
 			'page_id'   => 0,
 			'utm_param' => 'utm_content',
+			/* 1.34.0: A/B тест — вариант B „потокът без кутии“ (templates/flow.php + assets/flow.js; човекът, 27.10: „да го тестваме малко на трафик, без да трием
+			   сегашното“): page_id = страницата с [ansa_promo variant="flow"]; share = % от посетителите на основната страница, които се пращат там
+			   (бисквитка ansa_promo_ab за 30 дни, клиентски redirect — работи и от кеша на FlyingPress); 0 = само директен трафик/реклами към страницата B. */
+			'ab'        => array( 'page_id' => 0, 'share' => 0 ),
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'when' => 'random', 'images' => self::gate_image_defaults() ), /* 1.32.0: when = след коя стъпка излиза (random | box | full | order); при кацане вече никога */
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
@@ -355,6 +359,7 @@ final class Config {
 		$out['deadline']  = trim( (string) $out['deadline'] );
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
+		$ab = is_array( $out['ab'] ?? null ) ? $out['ab'] : array(); $out['ab'] = array( 'page_id' => (int) ( $ab['page_id'] ?? 0 ), 'share' => max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ) ); /* 1.34.0 */
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
 		$out['gate']['when'] = in_array( (string) ( $out['gate']['when'] ?? '' ), array( 'random', 'box', 'full', 'order' ), true ) ? (string) $out['gate']['when'] : 'random';
 		$imgs = array();
@@ -608,6 +613,23 @@ final class Config {
 			if ( (int) $b['packs'] <= (int) $count && ( ! $best || (int) $b['packs'] > (int) $best['packs'] ) ) { $best = $b; }
 		}
 		return $best;
+	}
+	/** 1.34.0: най-голямата кутия (по packs). */
+	public static function largest_box( $cfg ) { $b = null; foreach ( (array) $cfg['boxes'] as $x ) { if ( is_array( $x ) && ( ! $b || (int) $x['packs'] > (int) $b['packs'] ) ) { $b = $x; } } return $b; }
+	/** 1.34.0: кутията във варианта B „поток“ (човекът, 27.10: „2 и 4 опаковки възможни · книга с рецепти при 5 опаковки, не при 3“): броят опаковки
+	 *  е свободен — кутията е най-голямата с packs ≤ броя (box_for_count), всяка кутия расте (grow) до max_packs, всяка опаковка над packs носи
+	 *  +1 билет (tix_extra = 1; при tickets = packs това е „1 опаковка = 1 билет“), а книгата и сетът остават само в най-голямата кутия.
+	 *  Връща копие на кутията с тези правила (flow = true); $box = null → кутията по $count. Конфигът на кутиите не се пипа — вариантът A не се променя. */
+	public static function flow_box( $cfg, $box = null, $count = 0 ) {
+		if ( ! is_array( $box ) ) { $box = self::box_for_count( $cfg, (int) $count ); }
+		if ( ! $box ) { return null; }
+		$big = self::largest_box( $cfg ); $is_big = $big && (string) $big['id'] === (string) $box['id'];
+		$box['grow'] = true; $box['tix_extra'] = 1; $box['flow'] = true;
+		if ( ! $is_big ) {
+			$box['rw'] = array_values( array_diff( (array) $box['rw'], array( 'book' ) ) ); $box['no'] = array_values( array_unique( array_merge( (array) ( $box['no'] ?? array() ), array( 'book' ) ) ) );
+			$box['cosm_pay'] = null;
+		}
+		return $box;
 	}
 	public static function max_packs( $cfg ) { return max( self::max_packs_floor( $cfg['boxes'] ?? array() ), (int) ( $cfg['max_packs'] ?? 20 ) ?: 20 ); }
 	public static function max_pct( $cfg ) { $m = 0; foreach ( $cfg['boxes'] as $b ) { $m = max( $m, (float) $b['pct'] ); } return $m; }

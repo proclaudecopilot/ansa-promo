@@ -9,6 +9,7 @@
  * {prefix}ansa_promo_sessions — Insights 2 (DB ver 5, 1.17.0): една сесия на посетител (sid от браузъра): кога, откъде (utm/src/med/camp/ref),
  *                               устройство, лийд (имейлът от попъпа), кутия, продуктите в кутията, най-далечната стъпка, поръчката.
  *                               DB ver 6 (1.28.0): utm_last (последният UTM; utm = първият), vid (посетителска бисквитка, 30 дни), internal (вътрешен трафик/бот).
+ *                               DB ver 7 (1.34.0): variant ('' = A кутиите, flow = B потокът без кутии) — и в events
  * {prefix}ansa_promo_events   — Insights 2: всяко събитие на сесията (view, gate, box, item, full, order, add, created, paid, activated).
  * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
  *                               tickets получава ref_code + bonus).
@@ -118,6 +119,7 @@ final class Schema {
   device varchar(8) NOT NULL DEFAULT '',
   vid varchar(40) NOT NULL DEFAULT '',
   internal tinyint(1) NOT NULL DEFAULT 0,
+  variant varchar(8) NOT NULL DEFAULT '',
   lead_id bigint(20) unsigned NULL,
   box varchar(8) NOT NULL DEFAULT '',
   items text NULL,
@@ -142,6 +144,7 @@ final class Schema {
   k varchar(64) NOT NULL DEFAULT '',
   n smallint(5) unsigned NOT NULL DEFAULT 0,
   utm varchar(64) NOT NULL DEFAULT '',
+  variant varchar(8) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   KEY sid (sid),
   KEY at (at),
