@@ -75,9 +75,9 @@ final class Listicle {
 			. '<meta property="og:type" content="website"><meta property="og:title" content="' . esc_attr( $m['title'] ) . '"><meta property="og:description" content="' . esc_attr( $m['desc'] ) . '"><meta property="og:url" content="' . esc_url( $url ) . '">' . ( $og ? '<meta property="og:image" content="' . esc_url( $og ) . '">' : '' )
 			. '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap">'
 			. '<link rel="stylesheet" href="' . esc_url( ANSA_PROMO_URL . 'assets/promo.css?ver=' . $ver ) . '"><link rel="stylesheet" href="' . esc_url( ANSA_PROMO_URL . 'assets/promo-extra.css?ver=' . $ver ) . '">'
-			. '<style>html,body{margin:0;padding:0;background:#f6e4d1}</style></head>'
+			. '<style>html,body{margin:0;padding:0;background:#f6e4d1}</style>' . apply_filters( 'ansa_promo_standalone_head', '', 'li', $cfg ) . '</head>'
 			. '<body class="ansa-promo-page ansa-promo-info-page ansa-promo-li-page">' . $body
-			. '<script>window.AnsaPromoRuntime=' . wp_json_encode( $rt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';</script><script src="' . esc_url( ANSA_PROMO_URL . 'assets/promo.js?ver=' . $ver ) . '"></script></body></html>';
+			. '<script>window.AnsaPromoRuntime=' . wp_json_encode( $rt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';</script><script src="' . esc_url( ANSA_PROMO_URL . 'assets/promo.js?ver=' . $ver ) . '"></script>' . apply_filters( 'ansa_promo_standalone_footer', '', 'li', $cfg ) . '</body></html>';
 	}
 	private static function soon_html( $cfg ) {
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . esc_html( $cfg['name'] ) . '</title>'

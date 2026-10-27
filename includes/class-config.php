@@ -33,7 +33,7 @@ final class Config {
 			'page_id'   => 0,
 			'utm_param' => 'utm_content',
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
-			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'images' => self::gate_image_defaults() ),
+			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'when' => 'random', 'images' => self::gate_image_defaults() ), /* 1.32.0: when = след коя стъпка излиза (random | box | full | order); при кацане вече никога */
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
 			'ship'      => array( 'paid' => 2.55 ),
 			/* v1.10.0 (човекът): кутията не е с точен брой — packs на кутията е МИНИМУМ, добавяш и повече на същата отстъпка; броят сам
@@ -356,6 +356,7 @@ final class Config {
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
+		$out['gate']['when'] = in_array( (string) ( $out['gate']['when'] ?? '' ), array( 'random', 'box', 'full', 'order' ), true ) ? (string) $out['gate']['when'] : 'random';
 		$imgs = array();
 		foreach ( self::gate_image_slots() as $k => $label ) { $v = trim( (string) ( is_array( $out['gate']['images'] ?? null ) ? ( $out['gate']['images'][ $k ] ?? '' ) : '' ) ); $imgs[ $k ] = ctype_digit( $v ) ? (string) (int) $v : esc_url_raw( $v ); }
 		$out['gate']['images'] = $imgs;

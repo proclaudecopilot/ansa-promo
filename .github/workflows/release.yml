@@ -7,6 +7,7 @@
 # нужни са secrets PCC_HOOK_URL и PCC_HOOK_SECRET (Settings → GitHub ъпдейти на сайта); старите LOGADOR_HOOK_* още се приемат.
 # Без тях само предупреждава — сайтът вижда версията при следващата си проверка.
 # Ръчно „Run workflow“ (workflow_dispatch) само пингва сайта за текущата версия, ако тагът ѝ вече го има.
+# ansa™ Meta (meta/ansa-meta/) е отделен плъгин със СВОЕ repo (proclaudecopilot/ansa-meta) и свой release workflow — не влиза в ansa-promo.zip и не се закача тук.
 name: release
 on:
   push:
@@ -39,7 +40,7 @@ jobs:
         if: steps.v.outputs.exists == '0'
         run: |
           mkdir -p build/ansa-promo
-          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'landing' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' --exclude 'docs' --exclude 'landing' --exclude 'snippets' --exclude 'tests' --exclude 'probe' --exclude 'meta' --exclude '*.md' --exclude '.gitignore' --exclude '.gitattributes' ./ build/ansa-promo/
           cd build && zip -qr ../ansa-promo.zip ansa-promo && cd ..
           unzip -l ansa-promo.zip | tail -1
           # ansa™ Probe — отделен плъгин (качва се веднъж, ръчно); същият release го носи като ansa-probe.zip.

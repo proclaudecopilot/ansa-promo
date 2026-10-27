@@ -285,7 +285,7 @@ final class Book {
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>' . esc_html( $title . ' · ' . $cfg['name'] ) . '</title>'
 			. '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">'
 			. '<style>html,body{margin:0;padding:0;background:#faf3ec;color:#1a1a2e;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}body{min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top)) 16px 40px;box-sizing:border-box}</style>'
-			. '</head><body class="ansa-promo-book-page">' . self::widget_html( $cfg, true, $access ) . '</body></html>';
+			. apply_filters( 'ansa_promo_standalone_head', '', 'book', $cfg ) . '</head><body class="ansa-promo-book-page">' . self::widget_html( $cfg, true, $access ) . apply_filters( 'ansa_promo_standalone_footer', '', 'book', $cfg ) . '</body></html>';
 	}
 	/** Картата; $full = самостоятелната страница (с „ansa™“ отгоре); $access ≠ null → направо „книгата ти е тук“. */
 	public static function widget_html( $cfg, $full = true, $access = null ) {
