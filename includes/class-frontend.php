@@ -376,6 +376,7 @@ final class Frontend {
 			'logo'      => self::flow_logo( $cfg ), /* 1.35.0: логото в хедъра на варианта B (flow.logo → custom_logo на темата → '' = думата „ansa™“) */
 			'home'      => home_url( '/' ),
 			'pop'       => (int) ( $cfg['flow']['popup'] ?? 1 ), /* 1.36.0: приветственият попъп */
+			'pop_gen'   => (int) ( $cfg['flow']['popup_gen'] ?? 2 ), /* 1.36.1: поколението на попъпа — част от ключа в браузъра */
 			'campaigns' => (object) ( $cfg['campaigns'] ?? array() ), /* 1.24.14: по UTM — gate / попъп козметика / кутия */
 			'copy_utm'  => (object) array_map( function ( $m ) { return (object) $m; }, (array) ( $cfg['copy_utm'] ?? array() ) ), /* 1.24.19: текстове по UTM */
 			'utm_param' => $cfg['utm_param'], /* v1.4.3: promo.js чете UTM-а и от адреса — кешираната страница (FlyingPress HIT за ?utm_content=) носи празен utm */

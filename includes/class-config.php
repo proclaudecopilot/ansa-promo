@@ -37,7 +37,7 @@ final class Config {
 			   (бисквитка ansa_promo_ab за 30 дни, клиентски redirect — работи и от кеша на FlyingPress); 0 = само директен трафик/реклами към страницата B. */
 			'ab'        => array( 'page_id' => 0, 'share' => 0 ),
 			/* 1.35.0: вариант B — логото в хедъра (attachment id или URL); празно = логото на темата (custom_logo), а без такова — думата „ansa™“ */
-			'flow'      => array( 'logo' => '', 'popup' => 1 ), /* 1.36.0: popup = приветственият попъп на B */
+			'flow'      => array( 'logo' => '', 'popup' => 1, 'popup_gen' => 2 ), /* 1.36.0: popup = приветственият попъп на B · 1.36.1: popup_gen = „поколение“ — влиза в ключа в браузъра; +1 = всички го виждат отново веднъж */
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'when' => 'random', 'images' => self::gate_image_defaults() ), /* 1.32.0: when = след коя стъпка излиза (random | box | full | order); при кацане вече никога */
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
@@ -362,7 +362,7 @@ final class Config {
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
 		$ab = is_array( $out['ab'] ?? null ) ? $out['ab'] : array(); $out['ab'] = array( 'page_id' => (int) ( $ab['page_id'] ?? 0 ), 'share' => max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ) ); /* 1.34.0 */
-		$fl = is_array( $out['flow'] ?? null ) ? $out['flow'] : array(); $lg = trim( (string) ( $fl['logo'] ?? '' ) ); $out['flow'] = array( 'logo' => ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg ), 'popup' => array_key_exists( 'popup', $fl ) ? (int) ! empty( $fl['popup'] ) : 1 ); /* 1.35.0 · 1.36.0: popup */
+		$fl = is_array( $out['flow'] ?? null ) ? $out['flow'] : array(); $lg = trim( (string) ( $fl['logo'] ?? '' ) ); $out['flow'] = array( 'logo' => ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg ), 'popup' => array_key_exists( 'popup', $fl ) ? (int) ! empty( $fl['popup'] ) : 1, 'popup_gen' => max( 1, (int) ( $fl['popup_gen'] ?? 2 ) ) ); /* 1.35.0 · 1.36.0: popup · 1.36.1: popup_gen */
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
 		$out['gate']['when'] = in_array( (string) ( $out['gate']['when'] ?? '' ), array( 'random', 'box', 'full', 'order' ), true ) ? (string) $out['gate']['when'] : 'random';
 		$imgs = array();

@@ -239,10 +239,10 @@
     $('flDrawerContent').scrollTop=0;try{$('flClose').focus({preventScroll:true})}catch(e){}
   }
   function closeDrawer(){if(modal==='welcome'){popSeen();if(!popCta)beacon('pop_close')}modal=null;$('flDrawer').classList.remove('is-welcome');document.body.classList.remove('modal-open');$('flLayer').hidden=true;for(var i=0;i<root.children.length;i++)root.children[i].inert=false;if(lastFocus&&lastFocus.isConnected){try{lastFocus.focus({preventScroll:true})}catch(e){}}else{try{$('flCatalog').focus({preventScroll:true})}catch(e){}}}
-  /* 1.36.0: приветственият попъп — веднъж на устройство (localStorage), само при празна количка, не в редактора/чернова */
-  var popCta=false,POPKEY='ansa_flow_pop_'+A.id;
+  /* 1.36.0: приветственият попъп — веднъж на устройство (localStorage), не в редактора/чернова; 1.36.1 (човекът): на всички, ключът носи поколението (pop_gen) — вдигне ли се, всички го виждат отново веднъж */
+  var popCta=false,POPKEY='ansa_flow_pop_'+A.id+'_'+(Number(A.pop_gen)||1);
   function popSeen(){try{localStorage.setItem(POPKEY,'1')}catch(e){}}
-  function welcome(){if(!Number(A.pop)||A.editor||itemCount()>0)return;try{if(localStorage.getItem(POPKEY))return}catch(e){}popCta=false;openDrawer('welcome');beacon('pop_view')}
+  function welcome(){if(!Number(A.pop)||A.editor)return;try{if(localStorage.getItem(POPKEY))return}catch(e){}popCta=false;openDrawer('welcome');beacon('pop_view')}
   function renderWelcome(){$('flDrawer').classList.add('is-welcome');$('flDrawerTitle').textContent=T('fl.pop.h');
     var tiers=BOXES.map(function(b,i){var nx=BOXES[i+1],last=!nx,hi=nx?nx.packs-1:0,name,sub;
       if(last){name=T('fl.pop.t.l',{a:b.packs});sub=T('fl.pop.t.l.s')}else if(i===0){name=T('fl.pop.t.s',{b:hi});sub=T('fl.pop.t.s.s')}else{name=T(hi===b.packs?'fl.pop.t.one':(hi===b.packs+1?'fl.pop.t.m':'fl.pop.t.range'),{a:b.packs,b:hi});sub=T('fl.pop.t.m.s')}
