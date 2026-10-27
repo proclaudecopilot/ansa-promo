@@ -126,7 +126,7 @@
       +'<section class="reward-dock" id="flDock" aria-label="Твоята отстъпка и поръчка">'
       +'<div class="desktop-offer-heading desktop-only"><span class="offer-bag">'+icon('bag')+'</span><div><h2>'+TT('fl.offer.h')+'</h2><p>'+TT('fl.offer.s')+'</p></div></div>'
       +'<div class="offer-status"><button class="selection-link" type="button" data-open="cart"><span id="flSelectedCount"></span>'+icon('chevron')+'</button><span class="current-discount is-empty" id="flDiscount"></span></div>'
-      +'<div class="offer-message"><h2 class="offer-headline" id="flHeadline"></h2><p class="offer-description" id="flDesc"></p></div>'
+      +'<div class="offer-message"><div class="offer-text"><h2 class="offer-headline" id="flHeadline"></h2><p class="offer-description" id="flDesc"></p></div><span class="offer-pill" id="flPill"></span></div>'
       +'<div class="offer-progress" id="flProgress"><div class="progress-rail" role="progressbar" aria-label="Напредък към подаръците" aria-valuemin="0" aria-valuemax="'+BIG.packs+'" aria-valuenow="0" id="flRail"><div class="progress-fill" id="flFill"></div></div><div class="progress-caption"><span id="flProgCap"></span><span>'+TT('fl.prog.r')+'</span></div></div>'
       +'<div class="desktop-selection desktop-only" id="flSelection" aria-label="Избрани продукти"></div>'
       +(cosmOn()?'<button class="benefit-preview is-locked" id="flGift" type="button" data-reward-state="locked"><span class="benefit-thumbs" aria-hidden="true">'+thumbs()+'<span class="reward-state-icon" id="flGiftState">'+icon('lock')+'</span></span><span class="benefit-copy"><strong class="benefit-title" id="flGiftTitle"></strong><small class="benefit-detail" id="flGiftSub"></small><span class="book-benefit">'+icon('book')+'<span id="flGiftBook"></span></span></span><span class="benefit-action" data-open="gifts" role="link"><span id="flGiftAction"></span>'+icon('chevron')+'</span></button>':'')
@@ -168,11 +168,11 @@
 
   /* ── панелът ── */
   function dockCopy(t){
-    if(!t.count)return {h:T('fl.msg.0.h'),p:T('fl.msg.0.p'),a:T('fl.msg.0.a')};
+    if(!t.count)return {h:T('fl.msg.0.h'),p:T('fl.msg.0.p'),pill:T('fl.pill.0'),a:T('fl.msg.0.a')};
     var o=offer(t);
-    if(t.max)return {h:T('fl.msg.max.h',{save:money(o.saving)}),p:T('fl.msg.max.p',{n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)}),a:T('fl.msg.max.a',{save:money(o.saving),n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)})};
+    if(t.max)return {h:T('fl.msg.max.h',{save:money(o.saving)}),p:T('fl.msg.max.p',{n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)}),pill:icon('check')+TT('fl.pill.max',{pct:fmt(t.pct)}),a:T('fl.msg.max.a',{save:money(o.saving),n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)})};
     var nx=nextBox(t.count),need=nx.packs-t.count,v={need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.gifts'):'',pct:fmt(t.pct)};
-    if(MOB())return {h:T('fl.disc.n',v),p:T('fl.msg.next.m',{need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.m.gifts'):''}),a:T('fl.msg.next.a',v)};
+    if(MOB())return {h:T('fl.msg.next.h',v),p:'',pill:T('fl.pill.next',v),a:T('fl.msg.next.a',v)};
     return {h:T(isBig(nx)?'fl.msg.last.h':'fl.msg.next.h',v),p:T('fl.msg.next.p',v),a:T('fl.msg.next.a',v)};
   }
   function renderSelection(t){
@@ -189,7 +189,7 @@
     $('flDiscount').innerHTML=n?(t.max?icon('check')+TT('fl.disc.best'):TT('fl.disc.n',{pct:fmt(t.pct)})):TT('fl.disc.0');
     $('flDiscount').classList.toggle('is-empty',!n);$('flDiscount').classList.toggle('is-best',t.max);
     $('flDock').classList.toggle('offer-complete',t.max);
-    $('flHeadline').innerHTML=c.h;$('flDesc').innerHTML=c.p;
+    $('flHeadline').innerHTML=c.h;$('flDesc').innerHTML=c.p;$('flPill').innerHTML=c.pill||'';$('flPill').classList.toggle('is-best',t.max);
     $('flProgress').hidden=t.max;
     $('flFill').style.width=Math.min(100,n*100/BIG.packs)+'%';$('flRail').setAttribute('aria-valuenow',String(Math.min(n,BIG.packs)));$('flRail').setAttribute('aria-valuetext',n+' избрани опаковки. Подаръци при '+BIG.packs+' или повече.');
     $('flProgCap').textContent=n===1?T('fl.prog.1'):T('fl.prog.n',{n:n});
@@ -197,7 +197,7 @@
       g.classList.toggle('is-locked',!t.gift);g.classList.toggle('is-unlocked',t.gift);g.classList.toggle('is-reserved',t.reserved);g.setAttribute('data-reward-state',state);g.classList.toggle('is-collapsed',MOB()&&!S.giftOpen);g.setAttribute('aria-expanded',MOB()?String(!!S.giftOpen):'true');
       g.setAttribute('aria-label',t.gift?(t.reserved?'Козметичният сет е запазен. Виж подробности.':'Козметичният сет е отключен. Запази сета.'):'Козметичният сет е заключен. Добави още '+need+' '+opk(need)+', за да го отключиш. Виж условията.');
       $('flGiftState').innerHTML=icon(t.gift?'check':'lock');
-      $('flGiftTitle').innerHTML=T('fl.ben.'+state+'.t');
+      $('flGiftTitle').innerHTML=T('fl.ben.'+state+(MOB()?'.m':'.t'));
       $('flGiftSub').innerHTML=T('fl.ben.'+state+'.s',{need:need,opk_need:opk(need)});
       $('flGiftBook').textContent=T(t.gift?'fl.ben.on.book':'fl.ben.locked.book');
       $('flGiftAction').textContent=T('fl.ben.'+state+'.a');}
@@ -219,7 +219,7 @@
     var p=PROD[key];if(!p)return;var before=totals();var cur=S.qty[key]||0;
     if(delta>0&&before.count>=MAXP){toast(T('fl.toast.max_packs'));return}
     var nv=Math.max(0,Math.min(99,cur+delta));if(nv)S.qty[key]=nv;else delete S.qty[key];
-    var t=totals();if(t.gift&&!before.gift)S.giftOpen=true;if(!t.gift)S.giftOpen=false;saveS();
+    var t=totals();if(t.gift&&!before.gift){S.giftOpen=true;setTimeout(function(){var g=$('flGift');if(!g)return;g.classList.add('unlock-anim');setTimeout(function(){g.classList.remove('unlock-anim')},1400)},30)}if(!t.gift)S.giftOpen=false;saveS();
     var active=document.activeElement,activeChange=active&&active.dataset?active.dataset.change:null,inModal=!!(active&&active.closest&&active.closest('#flDrawer')),inSel=!!(active&&active.closest&&active.closest('#flSelection'));
     updateProducts();var next=renderDock();
     if(modal==='cart')renderCart();else if(modal&&modal.indexOf('product:')===0)renderDetail(modal.split(':')[1]);
