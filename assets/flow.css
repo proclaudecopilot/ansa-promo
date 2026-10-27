@@ -688,10 +688,24 @@ html.ansa-flow-html,body.ansa-flow-page{height:100%;overflow:hidden;background:#
 .ansa-flow .pop-tomb{margin:12px 18px 0;display:flex;gap:10px;align-items:center;background:#edf3fc;border:1px solid #c9d9ee;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#2f4c73;line-height:1.35}.ansa-flow .pop-tomb .pop-gift-ico{background:#fff;color:#3b5f8f}
 .ansa-flow .pop-ask{padding:0 0 6px;text-align:center;font-size:16px;font-weight:900}
 /* 1.36.2 (човекът, S25 Ultra): бутонът е залепен долу в попъпа — вижда се винаги, съдържанието скролва над него */
-.ansa-flow .pop-foot{position:sticky;bottom:0;margin:12px 0 0;padding:10px 18px 4px;background:linear-gradient(#fffaf700,#fffaf7 28%)}
+.ansa-flow .pop-foot{position:sticky;bottom:0;margin:12px 0 0;padding:10px 18px 4px;background:#fffaf7;box-shadow:0 -8px 18px #3a24160d}
 .ansa-flow .modal-cta.pop-cta{margin:0;width:100%;background:var(--coral);border-radius:14px;padding:16px;font-size:16px;letter-spacing:.02em;box-shadow:0 10px 22px #ef6b4d55}
 .ansa-flow .drawer.is-welcome .drawer-content{padding-bottom:0}
 @media(min-width:900px){.ansa-flow .drawer.is-welcome{max-width:440px}.ansa-flow .pop-foot{padding-bottom:18px}}
+/* 1.36.4 (човекът): количката — „Как ще платиш?“ + „Продължи към плащане“ са залепени долу с реда „Общо“; на телефон по-сбито */
+.ansa-flow .cart-foot{position:sticky;bottom:0;margin:10px -18px 0;padding:8px 18px 14px;background:#fffaf7;border-top:1px solid var(--line);box-shadow:0 -8px 18px #3a24160d}
+.ansa-flow .cart-foot .pay-choice{margin-top:2px}.ansa-flow .cart-foot .modal-cta{margin-top:10px}
+.ansa-flow .drawer.is-cart .drawer-content{padding-bottom:0}.ansa-flow .cart-sum .sum-total{padding-top:8px}
+@media(min-width:900px){.ansa-flow .cart-foot{margin:8px -24px 0;padding:8px 24px 18px}}
+@media(max-width:899px){.ansa-flow .drawer.is-cart{max-height:96%}
+.ansa-flow .cart-item{padding:8px 0;gap:9px}.ansa-flow .cart-item img,.ansa-flow .cart-pic{width:46px;height:50px}
+.ansa-flow .cart-gift,.ansa-flow .cart-tickets{padding:8px 10px;margin:8px 0;font-size:11px}
+.ansa-flow .gift-option{padding:6px 0}.ansa-flow .gift-locked-notice{padding:9px 11px}
+.ansa-flow .cart-sum{gap:4px;margin:10px 0 8px;font-size:12px}.ansa-flow .cart-sum .sum-total{font-size:17px}
+.ansa-flow .cart-sum .due-later{font-size:11px}.ansa-flow .notice{padding:9px 11px;line-height:1.45}
+.ansa-flow .cart-foot{padding:8px 16px 12px;margin:10px -18px 0}.ansa-flow .cart-foot .pay-choice{gap:6px 10px;font-size:12.5px;flex-wrap:nowrap}.ansa-flow .cart-foot .pay-choice b{font-size:12.5px;white-space:nowrap}.ansa-flow .cart-foot .pay-choice label{gap:5px;min-height:28px;white-space:nowrap}.ansa-flow .cart-foot .pay-choice input{width:17px;height:17px}
+.ansa-flow .cart-foot .modal-cta{margin-top:8px}.ansa-flow .cart-foot .demo-notice{margin-top:6px}
+}
 @media(max-width:899px){.ansa-flow .drawer.is-welcome{max-height:96%}
 .ansa-flow .pop-top{padding:16px 18px 14px}.ansa-flow .pop-eyebrow{font-size:9.5px}.ansa-flow .pop-top h3{font-size:20px;margin-top:4px}.ansa-flow .pop-top p{margin-top:4px;font-size:12.5px}
 .ansa-flow .pop-x{top:10px;right:10px;width:30px;height:30px}
