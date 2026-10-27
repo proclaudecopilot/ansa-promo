@@ -422,7 +422,7 @@ html.ansa-flow-html,body.ansa-flow-page{height:100%;overflow:hidden;background:#
 .ansa-flow .product-image{position:static;width:148px;height:151px;padding:8px;object-fit:contain;background:transparent;max-width:100%;margin:0 auto}
 .ansa-flow .mini-tag{left:8px;right:auto;bottom:auto;top:8px;padding:4px 7px;border:1px solid #fff7ef;font-size:10px;box-shadow:0 1px 4px #5b37250a;background:#fffaf1e8}
 .ansa-flow .pack-label{font-size:10px;margin-top:7px;color:#8e7766}
-.ansa-flow .product>div{display:flex;flex:1;flex-direction:column;min-width:0}
+.ansa-flow .product-info{display:flex;flex:1;flex-direction:column;min-width:0}
 .ansa-flow .product-kind{font-size:10px;line-height:1.4;color:#9e795f}
 .ansa-flow .product-title{font-size:20px;letter-spacing:-.55px;line-height:1.15;margin:4px 0 6px;font-weight:900}
 .ansa-flow .product-desc{font-size:12px;line-height:1.4;min-height:34px;color:#806f63}
@@ -656,5 +656,15 @@ html.ansa-flow-html,body.ansa-flow-page{height:100%;overflow:hidden;background:#
 .ansa-flow .benefit-action{padding:6px 0 6px 3px}
 .ansa-flow .dock-foot{display:none}
 .ansa-flow .checkout-button{min-height:52px}
+/* 1.35.4 (човекът): без подзаглавието под „Нашите продукти“; картата на продукта на два реда — 1) снимка + категория/заглавие/описание, 2) цена + бутон */
+.ansa-flow .catalog-head p{display:none}
+.ansa-flow .product{grid-template-columns:100px minmax(0,1fr);grid-template-rows:auto auto;align-items:start;padding:10px 10px 9px}
+.ansa-flow .product-info{min-width:0;align-self:center}.ansa-flow .product-desc{min-height:0}
+.ansa-flow .purchase-row{grid-column:1/-1;margin-top:9px;padding-top:9px;border-top:1px solid #f3e9e1;align-items:center;gap:8px}
+.ansa-flow .purchase-row>div:first-child{min-height:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:1px;min-width:0}
+.ansa-flow .price{flex-wrap:nowrap}.ansa-flow .price strong{font-size:20px}.ansa-flow .price s{font-size:11px}
+.ansa-flow .price-note{margin-top:0;font-size:10px;white-space:nowrap}.ansa-flow .lowest-price{flex-basis:100%;font-size:9.5px}
+.ansa-flow .quantity{flex-shrink:0}
+.ansa-flow .pack-picture{height:98px}.ansa-flow .pack-picture .ph{font-size:40px}
 }
 body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}

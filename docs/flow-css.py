@@ -56,6 +56,16 @@ EXTRA = """
 .ansa-flow .benefit-action{padding:6px 0 6px 3px}
 .ansa-flow .dock-foot{display:none}
 .ansa-flow .checkout-button{min-height:52px}
+/* 1.35.4 (човекът): без подзаглавието под „Нашите продукти“; картата на продукта на два реда — 1) снимка + категория/заглавие/описание, 2) цена + бутон */
+.ansa-flow .catalog-head p{display:none}
+.ansa-flow .product{grid-template-columns:100px minmax(0,1fr);grid-template-rows:auto auto;align-items:start;padding:10px 10px 9px}
+.ansa-flow .product-info{min-width:0;align-self:center}.ansa-flow .product-desc{min-height:0}
+.ansa-flow .purchase-row{grid-column:1/-1;margin-top:9px;padding-top:9px;border-top:1px solid #f3e9e1;align-items:center;gap:8px}
+.ansa-flow .purchase-row>div:first-child{min-height:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:1px;min-width:0}
+.ansa-flow .price{flex-wrap:nowrap}.ansa-flow .price strong{font-size:20px}.ansa-flow .price s{font-size:11px}
+.ansa-flow .price-note{margin-top:0;font-size:10px;white-space:nowrap}.ansa-flow .lowest-price{flex-basis:100%;font-size:9.5px}
+.ansa-flow .quantity{flex-shrink:0}
+.ansa-flow .pack-picture{height:98px}.ansa-flow .pack-picture .ph{font-size:40px}
 }
 body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}
 """
@@ -121,6 +131,7 @@ def main():
     css = html[html.index('<style>') + 7:html.index('</style>')]
     css = strip_comments(css)
     out = render(parse(css))
+    out = out.replace('.ansa-flow .product>div{', '.ansa-flow .product-info{')
     head = ('/* ansa™ Промо — вариант B „потокът без кутии“ (1.35.0, v5). Генериран от docs/ansa-flow-mockup-v5.html с docs/flow-css.py —\n'
             '   не се редактира на ръка, редактира се мокъпът. Всеки селектор е под .ansa-flow; под 900px мобилният изглед (скролът е в\n'
             '   каталога, офертата е долу), над 900px десктоп с лепкав панел вдясно. */\n')
