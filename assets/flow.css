@@ -670,4 +670,23 @@ html.ansa-flow-html,body.ansa-flow-page{height:100%;overflow:hidden;background:#
 .ansa-flow .cart-item .quantity,.ansa-flow .cart-item .quantity button{height:34px}.ansa-flow .cart-item .quantity button{width:30px;font-size:20px}
 .ansa-flow .pack-picture{height:98px}.ansa-flow .pack-picture .ph{font-size:40px}
 }
+/* 1.36.0 (човекът): приветственият попъп „Ти попадна в Сезона на ANSA“ — в чекмеджето, с тъмна глава и стъпалата на отстъпката */
+.ansa-flow .drawer.is-welcome .drawer-top{display:none}.ansa-flow .drawer.is-welcome .drawer-content{padding:0 0 18px}
+.ansa-flow .pop-top{background:linear-gradient(135deg,#2b1e19,#4a2d22);color:#fff;padding:22px 22px 18px;position:relative}
+.ansa-flow .pop-eyebrow{font-size:10.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#f6b18f;padding-right:40px}
+.ansa-flow .pop-top h3{margin:6px 0 0;font-size:24px;line-height:1.1;font-weight:900;letter-spacing:-.6px;color:#fff}.ansa-flow .pop-top p{margin:8px 0 0;font-size:13px;color:#e9d5c8;font-weight:700}
+.ansa-flow .pop-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;background:#ffffff22;color:#fff;display:grid;place-items:center;padding:0}.ansa-flow .pop-x svg{width:16px;height:16px}
+.ansa-flow .pop-intro{margin:14px 18px 0;font-size:13.5px;font-weight:700;color:#5a4a42;line-height:1.4}.ansa-flow .pop-intro strong{display:block;font-size:12px;font-weight:900;letter-spacing:.06em;color:#a93e28;margin-bottom:3px}
+.ansa-flow .pop-tiers{display:flex;flex-direction:column;gap:8px;padding:10px 18px 0}
+.ansa-flow .pop-tier{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;background:#fff;border:1px solid #f0e3db;border-radius:14px;padding:11px 14px}
+.ansa-flow .pop-tier-n{font-size:14px;font-weight:900}.ansa-flow .pop-tier-n small{display:block;font-size:11.5px;font-weight:700;color:#7d6a61;margin-top:1px}
+.ansa-flow .pop-tier-pct{font-size:22px;font-weight:900;color:#a93e28;letter-spacing:-.6px;white-space:nowrap;text-align:right}
+.ansa-flow .pop-tier.best{background:linear-gradient(135deg,#fff0e7,#ffe3d2);border-color:#f0b9a2}.ansa-flow .pop-tier.best .pop-tier-pct{color:#ef6b4d}
+.ansa-flow .pop-gift{grid-column:1/-1;display:flex;gap:10px;align-items:center;border-top:1px dashed #efc9b7;padding-top:9px;margin-top:2px;font-size:13px;font-weight:800;color:#5a3f30;line-height:1.3}
+.ansa-flow .pop-gift.book{border-top:0;padding-top:0;margin-top:-2px}.ansa-flow .pop-gift b{color:#a93e28}.ansa-flow .pop-gift s{color:#9b8a80;font-weight:700}
+.ansa-flow .pop-gift-ico{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;flex-shrink:0;color:#a93e28}.ansa-flow .pop-gift-ico svg{width:18px;height:18px}
+.ansa-flow .pop-tomb{margin:12px 18px 0;display:flex;gap:10px;align-items:center;background:#edf3fc;border:1px solid #c9d9ee;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#2f4c73;line-height:1.35}.ansa-flow .pop-tomb .pop-gift-ico{background:#fff;color:#3b5f8f}
+.ansa-flow .pop-ask{padding:16px 18px 6px;text-align:center;font-size:16px;font-weight:900}
+.ansa-flow .modal-cta.pop-cta{margin:0 18px;width:calc(100% - 36px);background:var(--coral);border-radius:14px;padding:17px 16px;font-size:16px;letter-spacing:.02em;box-shadow:0 10px 22px #ef6b4d55}
+@media(min-width:900px){.ansa-flow .drawer.is-welcome{max-width:440px}}
 body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}
