@@ -1203,6 +1203,8 @@ final class Copy {
 				'fl.msg.next.p'      => 'и <strong>всички</strong> продукти стават с <strong>−{{pct_next}}%.</strong>',
 				'fl.msg.next.a'      => 'Добави още {{need}} {{opk_need}} и всички продукти стават с {{pct_next}}% отстъпка{{extra}}.',
 				'fl.msg.next.gifts'  => ', плюс подаръци',
+				'fl.msg.next.m'      => 'само още {{need}} {{opk_need}} и всички продукти стават с −{{pct_next}}%{{extra}}.', /* 1.35.2: телефон, на един ред след „−x% сега“ */
+				'fl.msg.next.m.gifts' => ' + подаръците',
 				'fl.prog.n'          => '{{n}} избрани опаковки',
 				'fl.prog.1'          => '1 избрана опаковка',
 				'fl.prog.r'          => 'Подаръци при {{packs_l}}+',

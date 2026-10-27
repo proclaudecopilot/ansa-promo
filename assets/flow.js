@@ -62,18 +62,18 @@
   function TT(k,x){return esc(T(k,x))}
 
   /* ── състояние ── */
-  var S={qty:{},cosm:false,pay:'card',utm:''},modal=null,toastTimer=null,lastFocus=null,filter='all',sending=false;
+  var S={qty:{},cosm:false,cosmTouched:false,giftOpen:false,pay:'card',utm:''},modal=null,toastTimer=null,lastFocus=null,filter='all',sending=false;
   try{var qs=new URLSearchParams(location.search),u=qs.get(A.utm_param||'utm_content');if(u){u=String(u).toLowerCase().replace(/[^a-z0-9_\-]/g,'');if(PROD[u])S.utm=u;else{var nn=u.replace(/[^a-z0-9]/g,'');for(var pk in PROD){if(String(PROD[pk].name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===nn){S.utm=pk;break}}}}}catch(e){}
   var SKEY='ansa_flow_s';
-  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,qty:S.qty,cosm:S.cosm,pay:S.pay}))}catch(e){}}
-  function restoreS(){try{var d=JSON.parse(sessionStorage.getItem(SKEY)||'null');if(!d||d.id!==A.id)return;var q={};for(var k in d.qty||{}){if(PROD[k]&&d.qty[k]>0)q[k]=Math.min(99,d.qty[k]|0)}S.qty=q;S.cosm=!!d.cosm;S.pay=d.pay==='cod'?'cod':'card'}catch(e){}}
+  function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,qty:S.qty,cosm:S.cosm,cosmTouched:S.cosmTouched,pay:S.pay}))}catch(e){}}
+  function restoreS(){try{var d=JSON.parse(sessionStorage.getItem(SKEY)||'null');if(!d||d.id!==A.id)return;var q={};for(var k in d.qty||{}){if(PROD[k]&&d.qty[k]>0)q[k]=Math.min(99,d.qty[k]|0)}S.qty=q;S.cosm=!!d.cosm;S.cosmTouched=!!d.cosmTouched;S.pay=d.pay==='cod'?'cod':'card'}catch(e){}}
   restoreS();
   function itemCount(){var n=0;for(var k in S.qty)n+=S.qty[k];return n}
   function totals(){
     var n=itemCount(),b=boxFor(n),disp=b||SMALL,orig=0,tot=0;
     for(var k in S.qty){var p=PROD[k];if(!p)continue;orig+=cents(p.price)*S.qty[k];tot+=unit(p,pctOf(p,disp))*S.qty[k]}
     var gift=!!b&&isBig(b)&&cosmOn();
-    return {count:n,box:b,disp:disp,pct:b?Number(b.pct):0,original:orig,total:tot,saving:orig-tot,gift:gift,book:!!b&&isBig(b),ship:hasShip(b),tickets:ticketsFor(b,n),max:!!b&&isBig(b),reserved:gift&&S.cosm};
+    return {count:n,box:b,disp:disp,pct:b?Number(b.pct):0,original:orig,total:tot,saving:orig-tot,gift:gift,book:!!b&&isBig(b),ship:hasShip(b),tickets:ticketsFor(b,n),max:!!b&&isBig(b),reserved:gift&&(S.cosmTouched?S.cosm:true)};
   }
   /* сравнението „редовно / с офертата“ за същия избор: сетът (€1 при получаване) влиза и от двете страни само след резервация */
   function offer(t){var set=t.reserved;var val=cents(COSM_VAL),pay=cosmPay();return {hasSet:set,original:t.original+(set?val:0),total:t.total+(set?pay:0),saving:t.saving+(set?val-pay:0),dueNow:t.total,dueLater:set?pay:0}}
@@ -129,7 +129,7 @@
       +'<div class="offer-message"><h2 class="offer-headline" id="flHeadline"></h2><p class="offer-description" id="flDesc"></p></div>'
       +'<div class="offer-progress" id="flProgress"><div class="progress-rail" role="progressbar" aria-label="Напредък към подаръците" aria-valuemin="0" aria-valuemax="'+BIG.packs+'" aria-valuenow="0" id="flRail"><div class="progress-fill" id="flFill"></div></div><div class="progress-caption"><span id="flProgCap"></span><span>'+TT('fl.prog.r')+'</span></div></div>'
       +'<div class="desktop-selection desktop-only" id="flSelection" aria-label="Избрани продукти"></div>'
-      +(cosmOn()?'<button class="benefit-preview is-locked" id="flGift" type="button" data-open="gifts" data-reward-state="locked"><span class="benefit-thumbs" aria-hidden="true">'+thumbs()+'<span class="reward-state-icon" id="flGiftState">'+icon('lock')+'</span></span><span class="benefit-copy"><strong class="benefit-title" id="flGiftTitle"></strong><small class="benefit-detail" id="flGiftSub"></small><span class="book-benefit">'+icon('book')+'<span id="flGiftBook"></span></span></span><span class="benefit-action"><span id="flGiftAction"></span>'+icon('chevron')+'</span></button>':'')
+      +(cosmOn()?'<button class="benefit-preview is-locked" id="flGift" type="button" data-reward-state="locked"><span class="benefit-thumbs" aria-hidden="true">'+thumbs()+'<span class="reward-state-icon" id="flGiftState">'+icon('lock')+'</span></span><span class="benefit-copy"><strong class="benefit-title" id="flGiftTitle"></strong><small class="benefit-detail" id="flGiftSub"></small><span class="book-benefit">'+icon('book')+'<span id="flGiftBook"></span></span></span><span class="benefit-action" data-open="gifts" role="link"><span id="flGiftAction"></span>'+icon('chevron')+'</span></button>':'')
       +'<div class="desktop-amounts desktop-only" id="flAmounts" hidden></div>'
       +'<button class="checkout-button" id="flCheckout" type="button" data-open="cart" disabled><span class="checkout-main"><span id="flCheckoutLabel"></span><span class="checkout-prices" id="flPrices" hidden><s class="checkout-original" id="flOriginal"></s><strong class="checkout-total" id="flTotal"></strong></span></span>'+icon('arrow')+'</button>'
       +'<p class="dock-foot" id="flFoot"></p></section>'
@@ -171,7 +171,8 @@
     if(!t.count)return {h:T('fl.msg.0.h'),p:T('fl.msg.0.p'),a:T('fl.msg.0.a')};
     var o=offer(t);
     if(t.max)return {h:T('fl.msg.max.h',{save:money(o.saving)}),p:T('fl.msg.max.p',{n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)}),a:T('fl.msg.max.a',{save:money(o.saving),n:t.count,opk_n:opk(t.count),pct:fmt(t.pct)})};
-    var nx=nextBox(t.count),need=nx.packs-t.count,v={need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.gifts'):''};
+    var nx=nextBox(t.count),need=nx.packs-t.count,v={need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.gifts'):'',pct:fmt(t.pct)};
+    if(MOB())return {h:T('fl.disc.n',v),p:T('fl.msg.next.m',{need:need,opk_need:opk(need),pct_next:fmt(nx.pct),extra:isBig(nx)?T('fl.msg.next.m.gifts'):''}),a:T('fl.msg.next.a',v)};
     return {h:T(isBig(nx)?'fl.msg.last.h':'fl.msg.next.h',v),p:T('fl.msg.next.p',v),a:T('fl.msg.next.a',v)};
   }
   function renderSelection(t){
@@ -193,7 +194,7 @@
     $('flFill').style.width=Math.min(100,n*100/BIG.packs)+'%';$('flRail').setAttribute('aria-valuenow',String(Math.min(n,BIG.packs)));$('flRail').setAttribute('aria-valuetext',n+' избрани опаковки. Подаръци при '+BIG.packs+' или повече.');
     $('flProgCap').textContent=n===1?T('fl.prog.1'):T('fl.prog.n',{n:n});
     if(cosmOn()){var need=Math.max(0,BIG.packs-n),state=t.gift?(t.reserved?'reserved':'unlocked'):'locked',g=$('flGift');
-      g.classList.toggle('is-locked',!t.gift);g.classList.toggle('is-unlocked',t.gift);g.classList.toggle('is-reserved',t.reserved);g.setAttribute('data-reward-state',state);
+      g.classList.toggle('is-locked',!t.gift);g.classList.toggle('is-unlocked',t.gift);g.classList.toggle('is-reserved',t.reserved);g.setAttribute('data-reward-state',state);g.classList.toggle('is-collapsed',MOB()&&!S.giftOpen);g.setAttribute('aria-expanded',MOB()?String(!!S.giftOpen):'true');
       g.setAttribute('aria-label',t.gift?(t.reserved?'Козметичният сет е запазен. Виж подробности.':'Козметичният сет е отключен. Запази сета.'):'Козметичният сет е заключен. Добави още '+need+' '+opk(need)+', за да го отключиш. Виж условията.');
       $('flGiftState').innerHTML=icon(t.gift?'check':'lock');
       $('flGiftTitle').innerHTML=T('fl.ben.'+state+'.t');
@@ -218,7 +219,7 @@
     var p=PROD[key];if(!p)return;var before=totals();var cur=S.qty[key]||0;
     if(delta>0&&before.count>=MAXP){toast(T('fl.toast.max_packs'));return}
     var nv=Math.max(0,Math.min(99,cur+delta));if(nv)S.qty[key]=nv;else delete S.qty[key];
-    var t=totals();if(!t.gift)S.cosm=false;saveS();
+    var t=totals();if(t.gift&&!before.gift)S.giftOpen=true;if(!t.gift)S.giftOpen=false;saveS();
     var active=document.activeElement,activeChange=active&&active.dataset?active.dataset.change:null,inModal=!!(active&&active.closest&&active.closest('#flDrawer')),inSel=!!(active&&active.closest&&active.closest('#flSelection'));
     updateProducts();var next=renderDock();
     if(modal==='cart')renderCart();else if(modal&&modal.indexOf('product:')===0)renderDetail(modal.split(':')[1]);
@@ -243,7 +244,7 @@
     $('flDrawerContent').innerHTML=picture(p,'detail-image')+(p.cat?'<div class="detail-meta">'+esc(p.cat)+'</div>':'')+'<h3 class="detail-name">'+esc(p.name)+'</h3>'+(p.ds?'<p><b>'+esc(p.ds)+'</b></p>':'')+(p.desc?'<p>'+p.desc+'</p>':'')+(p.ing?'<p><b>Съставки:</b> '+esc(p.ing)+'</p>':'')+(p.who?'<p><b>За кого:</b> '+esc(p.who)+'</p>':'')
       +'<div class="facts">'+(p.pack?'<div class="fact"><strong>'+esc(p.pack)+'</strong>'+TT('fl.d.prod.pack')+'</div>':'')+'<div class="fact"><strong>'+TT('fl.d.prod.mix.b')+'</strong>'+TT('fl.d.prod.mix.s')+'</div></div><p class="modal-tier-note">'+TT('fl.d.prod.note')+'</p><div class="detail-purchase">'+priceBlock(p)+stepper(p)+'</div>'}
   function giftCheck(){var t=totals();if(!t.gift){var n=Math.max(0,BIG.packs-t.count);return '<div class="gift-locked-notice">'+icon('lock')+'<span><strong>'+TT('fl.d.gift.notice.b')+'</strong><br>'+TT('fl.d.gift.notice',{need:n,opk_need:opk(n)})+'</span></div>'}
-    return '<label class="gift-option"><input type="checkbox" id="flGiftChoice"'+(S.cosm?' checked':'')+'><span>'+TT('fl.d.gift.check')+'<small>'+TT('fl.d.gift.check.s')+'</small></span></label>'}
+    return '<label class="gift-option"><input type="checkbox" id="flGiftChoice"'+(t.reserved?' checked':'')+'><span>'+TT('fl.d.gift.check')+'<small>'+TT('fl.d.gift.check.s')+'</small></span></label>'}
   function lineup(){var li=(A.li_items||[]).filter(function(it){return it&&(it.img||it.url)});if(!li.length)return '';var names=[T('fl.d.gift.i1'),T('fl.d.gift.i2'),T('fl.d.gift.i3'),'Изненада','Изненада'];return '<div class="gift-lineup" aria-label="Козметичният сет на ANSA">'+li.map(function(it,i){return '<img src="'+esc(it.img||it.url)+'" alt="'+esc(names[i]||'')+'"'+(it.blur?' class="mystery"':'')+' loading="lazy">'}).join('')+'</div>'}
   function renderGifts(){var t=totals();
     $('flDrawerTitle').textContent=T(t.gift?'fl.d.gift.on':'fl.d.gift.off');
@@ -292,13 +293,14 @@
   root.addEventListener('click',function(e){
     var ch=e.target.closest('[data-change]');if(ch){change(ch.dataset.id,Number(ch.dataset.change));return}
     var op=e.target.closest('[data-open]');if(op){openDrawer(op.dataset.open);return}
+    var gf=e.target.closest('#flGift');if(gf){if(MOB()){S.giftOpen=!S.giftOpen;renderDock()}else{openDrawer('gifts')}return}
     var dt=e.target.closest('[data-detail]');if(dt){openDrawer('product:'+dt.dataset.detail);return}
     if(e.target.closest('#flSubmit')){submit(e.target.closest('#flSubmit'));return}
     if(e.target.closest('[data-close]')||e.target.closest('#flClose')||e.target===$('flLayer')){closeDrawer()}
   });
   root.addEventListener('change',function(e){
     if(e.target.id==='flCategory'){filter=e.target.value;renderProducts();$('flCatalog').scrollTop=0;announce($('flVisibleCount').textContent+' в избраната категория.');return}
-    if(e.target.id==='flGiftChoice'){S.cosm=e.target.checked&&totals().gift;saveS();renderDock();if(modal==='cart'){renderCart();var c=$('flGiftChoice');if(c)c.focus()}announce(S.cosm?'Козметичният сет е запазен.':'Резервацията за козметичния сет е премахната.')}
+    if(e.target.id==='flGiftChoice'){S.cosm=e.target.checked&&totals().gift;S.cosmTouched=true;saveS();renderDock();if(modal==='cart'){renderCart();var c=$('flGiftChoice');if(c)c.focus()}announce(S.cosm?'Козметичният сет е запазен.':'Резервацията за козметичния сет е премахната.')}
     if(e.target.name==='flPay'){S.pay=e.target.value==='cod'?'cod':'card';saveS()}
   });
   document.addEventListener('keydown',function(e){
@@ -318,6 +320,7 @@
     }).catch(function(){});
   }
 
+  var rz=0;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(renderDock,150)},{passive:true});
   shell();renderProducts();renderDock();refresh();
   if(itemCount()>0){beacon('box')}
 })();
