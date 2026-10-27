@@ -56,10 +56,12 @@ final class Frontend {
 		$cfg = Config::get_published(); $ab = is_array( $cfg['ab'] ?? null ) ? $cfg['ab'] : array( 'page_id' => 0, 'share' => 0 );
 		$bid = (int) ( $ab['page_id'] ?? 0 ); if ( ! $bid ) { return; }
 		if ( self::is_flow() || get_queried_object_id() === $bid ) {
-			echo '<script id="ansa-promo-ab">try{document.cookie="ansa_promo_ab=b;path=/;max-age=2592000;SameSite=Lax"}catch(e){}</script>' . "\n"; return;
+			echo '<script id="ansa-promo-ab" data-loading-method="immediate">try{document.cookie="ansa_promo_ab=b;path=/;max-age=2592000;SameSite=Lax"}catch(e){}</script>' . "\n"; return;
 		}
 		$share = max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ); $url = get_permalink( $bid ); if ( ! $share || ! $url || 'publish' !== get_post_status( $bid ) ) { return; }
-		echo '<script id="ansa-promo-ab">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab="+v+";path=/;max-age=2592000;SameSite=Lax"}'
+		/* 1.34.1: data-loading-method е атрибутът, по който FlyingPress пропуска скрипта при „defer/delay JS“ (иначе го правеше defer src="data:…" и
+		   пренасочването към B ставаше след парсването на A — мигане на A и броене на „view“ за A); loader-ът му гледа само script[data-loading-method][data-src]. */
+		echo '<script id="ansa-promo-ab" data-loading-method="immediate">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab="+v+";path=/;max-age=2592000;SameSite=Lax"}'
 			. 'if(v==="b"){location.replace(' . wp_json_encode( $url ) . '+location.search+location.hash)}}catch(e){}})();</script>' . "\n";
 	}
 
