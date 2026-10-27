@@ -7,7 +7,7 @@
 # нужни са secrets PCC_HOOK_URL и PCC_HOOK_SECRET (Settings → GitHub ъпдейти на сайта); старите LOGADOR_HOOK_* още се приемат.
 # Без тях само предупреждава — сайтът вижда версията при следващата си проверка.
 # Ръчно „Run workflow“ (workflow_dispatch) само пингва сайта за текущата версия, ако тагът ѝ вече го има.
-# ansa™ Meta (meta/ansa-meta/) е отделен плъгин със СВОЕ repo (proclaudecopilot/ansa-meta) и свой release workflow — не влиза в ansa-promo.zip и не се закача тук.
+# Pixel CAPI Pro (Meta Pixel + CAPI) е отделен плъгин със свое repo (proclaudecopilot/pixel-capi-pro) и свой release workflow.
 name: release
 on:
   push:
