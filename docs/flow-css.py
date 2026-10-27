@@ -36,12 +36,16 @@ EXTRA = """
 .ansa-flow .ticket-list{display:grid;gap:10px;padding:14px 0 4px}.ansa-flow .ticket-list>div{display:flex;gap:10px;font-size:12px;align-items:flex-start}.ansa-flow .ticket-list svg{width:17px;height:17px;flex-shrink:0;color:#3b5f8f;margin-top:1px}.ansa-flow .ticket-list b{display:block;font-size:12px}.ansa-flow .ticket-list span{color:#786254;font-size:11px;line-height:1.5}
 .ansa-flow .rules-link{display:inline-block;margin-top:10px;font-size:11px;font-weight:800;color:#3b5f8f}.ansa-flow .rules-grid small{display:block;font-size:10px;color:var(--muted);font-weight:600}
 .ansa-flow .mini-tag.max{background:#eaf2e9;color:#2e6953}
+.ansa-flow .offer-pill{display:none}
 /* 1.35.1: иконата на количката на FunnelKit и плаващите елементи на темата са скрити и на страницата B (както на A в promo-extra.css) */
 /* 1.35.2 (човекът): телефонът — по-нисък панел: без реда „N опаковки в количката / −x% сега“, съобщението на един ред, картата на сета е един ред
    (разгъва се с докосване и сама при 5), без надписа под бутона */
 @media(max-width:899px){
 .ansa-flow .offer-status{display:none}
-.ansa-flow .offer-message{min-height:0;margin:1px 0 0;line-height:1.3}.ansa-flow .offer-headline{display:inline;font-size:18px;letter-spacing:-.4px;margin-right:5px}.ansa-flow .offer-description{display:inline;font-size:12px;margin:0}
+.ansa-flow .offer-message{min-height:0;margin:2px 0 0;display:flex;align-items:center;justify-content:space-between;gap:10px}.ansa-flow .offer-text{min-width:0}.ansa-flow .offer-headline{font-size:18px;letter-spacing:-.4px;line-height:1.2}.ansa-flow .offer-description{display:none}
+.ansa-flow .offer-pill{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:12px;font-weight:900;line-height:1;background:#fff7f0;border:1px solid #e5bd9e;color:#964d31;border-radius:100px;padding:8px 10px;white-space:nowrap}.ansa-flow .offer-pill.is-best{background:#eaf2e9;border-color:#c6d8c4;color:#36684f}.ansa-flow .offer-pill svg{width:13px;height:13px}.ansa-flow .offer-pill:empty{display:none}
+.ansa-flow .benefit-preview.is-collapsed .benefit-action>span{display:none}
+.ansa-flow .benefit-preview.unlock-anim{animation:pop .5s ease,softGlow 1.2s ease}
 .ansa-flow .offer-complete .offer-message{margin:1px 0 6px}.ansa-flow .offer-progress{margin:8px 0 9px}
 .ansa-flow .benefit-preview{min-height:0;padding:6px 9px;margin-bottom:9px;grid-template-columns:40px minmax(0,1fr) auto;gap:8px;transition:none}
 .ansa-flow .benefit-thumbs{width:40px;height:38px}.ansa-flow .benefit-thumbs img{width:34px;height:38px}.ansa-flow .benefit-thumbs img:nth-child(1){left:-6px}.ansa-flow .benefit-thumbs img:nth-child(2){left:5px}.ansa-flow .benefit-thumbs img:nth-child(3){left:15px}
