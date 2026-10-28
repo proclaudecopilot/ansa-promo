@@ -117,6 +117,10 @@ EXTRA = """
 .ansa-flow .pop-tomb{margin:8px 16px 0;padding:8px 10px;font-size:11.5px;gap:8px}
 .ansa-flow .pop-foot{padding:8px 16px 4px}.ansa-flow .pop-ask{font-size:15px;padding-bottom:5px}.ansa-flow .modal-cta.pop-cta{padding:14px;min-height:50px}
 }
+/* 1.39.2 (човекът: „бутонът се скрива от долната граница, бели отстояния“): главната страница е в Elementor контейнер с padding 10px — приложението е
+   фиксирано на целия екран (inset:0), а обвивките на Elementor са без отстояния; iOS: fixed + inset следва видимия viewport, не 100vh */
+body.ansa-flow-page .ansa-flow{position:fixed;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0;z-index:5;overflow:hidden}
+body.ansa-flow-page .elementor-shortcode,body.ansa-flow-page .elementor-widget-container,body.ansa-flow-page .elementor-widget,body.ansa-flow-page .e-con,body.ansa-flow-page .e-con-inner,body.ansa-flow-page .elementor,body.ansa-flow-page .elementor-section,body.ansa-flow-page .elementor-container,body.ansa-flow-page #content,body.ansa-flow-page #main,body.ansa-flow-page .site-content,body.ansa-flow-page .content-area{padding:0!important;margin:0!important;min-height:0!important;max-width:none!important}
 body.ansa-flow-page #fkcart-floating-toggler,body.ansa-flow-page .fkcart-floating-toggler,body.ansa-flow-page .fkcart-toggler,body.ansa-flow-page .fkcart-floating-icon,body.ansa-flow-page #scroll-top,body.ansa-flow-page .claspo-widget{display:none!important;visibility:hidden!important}
 """
 
