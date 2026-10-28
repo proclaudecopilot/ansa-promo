@@ -197,6 +197,7 @@ final class Mega_Menu {
 .amm-trust{list-style:none;margin:0;padding:12px 14px;background:#fff;border:1px solid var(--amm-line);border-radius:14px;display:grid;gap:7px;font-size:12px;font-weight:700;color:#5a3f30}.amm-trust li{white-space:nowrap;margin:0}
 .amm-mobile{display:none}
 @media (max-width:1024px){
+body:has(.elementskit-menu-offcanvas-elements.active) #fkcart-floating-toggler{opacity:0!important;pointer-events:none!important}
 .amm{display:block;background:#fffaf7}
 .amm:before{display:none}
 .amm-needs,.amm-grid,.amm-aside{display:none}
