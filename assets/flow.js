@@ -247,7 +247,7 @@
     var tiers=BOXES.map(function(b,i){var nx=BOXES[i+1],last=!nx,hi=nx?nx.packs-1:0,name,sub;
       if(last){name=T('fl.pop.t.l',{a:b.packs});sub=T('fl.pop.t.l.s')}else if(i===0){name=T('fl.pop.t.s',{b:hi});sub=T('fl.pop.t.s.s')}else{name=T(hi===b.packs?'fl.pop.t.one':(hi===b.packs+1?'fl.pop.t.m':'fl.pop.t.range'),{a:b.packs,b:hi});sub=T('fl.pop.t.m.s')}
       return '<div class="pop-tier'+(last?' best':'')+'"><div class="pop-tier-n">'+esc(name)+'<small>'+esc(sub)+'</small></div><div class="pop-tier-pct">'+TT('fl.pop.pct',{pct:fmt(b.pct)})+'</div>'
-        +(last?(cosmOn()?'<div class="pop-gift"><span class="pop-gift-ico">'+icon('gift')+'</span><div>'+T('fl.pop.cosm')+'</div></div>':'')+'<div class="pop-gift book"><span class="pop-gift-ico">'+icon('book')+'</span><div>'+T('fl.pop.book')+'</div></div>':'')+'</div>'}).join('');
+        +(last?(cosmOn()?'<div class="pop-gift"><span class="pop-gift-ico">'+icon('gift')+'</span><div>'+T('fl.pop.cosm')+'<small>'+TT('fl.pop.cosm.s')+'</small></div></div>':'')+'<div class="pop-gift book"><span class="pop-gift-ico">'+icon('book')+'</span><div>'+T('fl.pop.book')+'</div></div>':'')+'</div>'}).join('');
     $('flDrawerContent').innerHTML='<div class="pop-top"><div class="pop-eyebrow">'+TT('fl.pop.eyebrow')+'</div><h3>'+TT('fl.pop.h')+'</h3><p>'+TT('fl.pop.p')+'</p><button class="pop-x" type="button" data-close aria-label="Затвори">'+icon('close')+'</button></div>'
       +'<p class="pop-intro"><strong>'+TT('fl.pop.intro.b')+'</strong> '+TT('fl.pop.intro')+'</p><div class="pop-tiers">'+tiers+'</div>'
       +'<div class="pop-tomb"><span class="pop-gift-ico">'+icon('ticket')+'</span><span>'+TT('fl.pop.tomb')+'</span></div>'
