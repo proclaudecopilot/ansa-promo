@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.39.2
+ * Version:     1.40.0
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.39.2' );
+define( 'ANSA_PROMO_VER', '1.40.0' );
+
+/* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
+   (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
+if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || 'cli' === PHP_SAPI ) {
+	$ansa_promo_ml = (string) ini_get( 'memory_limit' );
+	if ( '-1' !== $ansa_promo_ml && (int) $ansa_promo_ml > 0 && (int) $ansa_promo_ml < 1024 && false !== stripos( $ansa_promo_ml, 'M' ) ) { @ini_set( 'memory_limit', '1024M' ); }
+	unset( $ansa_promo_ml );
+}
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
