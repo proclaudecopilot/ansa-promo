@@ -54,7 +54,7 @@ final class Mega_Menu {
 	/** Вмъква хапчето след „Продукти“ (преди „Отзиви“, елемент 15391) само в главното меню. */
 	public static function season_item( $items, $args ) {
 		if ( ! self::season_on() || false === strpos( $items, 'menu-item-15392' ) || false !== strpos( $items, 'amm-season' ) ) { return $items; }
-		$li = '<li class="menu-item nav-item amm-season"><a href="' . esc_url( Cart::promo_url() ) . '" class="ekit-menu-nav-link amm-season-link">Сезонът<span class="amm-sx"> на ANSA</span> <i>−' . self::season_pct() . '%</i></a></li>';
+		$li = '<li class="menu-item nav-item amm-season"><a href="' . esc_url( Cart::promo_url() ) . '" class="ekit-menu-nav-link amm-season-link"><span>Сезонът<span class="amm-sx"> на ANSA</span></span><i>−' . self::season_pct() . '%</i></a></li>';
 		$pos = strpos( $items, '<li id="menu-item-15391"' );
 		return false === $pos ? $items . $li : substr( $items, 0, $pos ) . $li . substr( $items, $pos );
 	}
