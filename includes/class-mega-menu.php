@@ -54,13 +54,18 @@ final class Mega_Menu {
 	/** Вмъква хапчето след „Продукти“ (преди „Отзиви“, елемент 15391) само в главното меню. */
 	public static function season_item( $items, $args ) {
 		if ( ! self::season_on() || false === strpos( $items, 'menu-item-15392' ) || false !== strpos( $items, 'amm-season' ) ) { return $items; }
-		$li = '<li class="menu-item nav-item amm-season"><a href="' . esc_url( Cart::promo_url() ) . '" class="ekit-menu-nav-link amm-season-link">Сезонът на ANSA <i>−' . self::season_pct() . '%</i></a></li>';
+		$li = '<li class="menu-item nav-item amm-season"><a href="' . esc_url( Cart::promo_url() ) . '" class="ekit-menu-nav-link amm-season-link">Сезонът<span class="amm-sx"> на ANSA</span> <i>−' . self::season_pct() . '%</i></a></li>';
 		$pos = strpos( $items, '<li id="menu-item-15391"' );
 		return false === $pos ? $items . $li : substr( $items, 0, $pos ) . $li . substr( $items, $pos );
 	}
 	public static function season_css() {
 		if ( ! self::season_on() ) { return; }
-		echo '<style id="amm-season-css">.elementskit-navbar-nav li.amm-season{display:inline-flex;align-items:center}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important;align-items:center;gap:7px;background:#2b1e19;color:#fff!important;padding:7px 12px!important;border-radius:100px;font-size:12.5px;font-weight:800;line-height:1!important;margin:0 4px;white-space:nowrap;height:auto!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link:hover{background:#3d2a22;color:#fff!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-style:normal;background:#ef6b4d;color:#fff;border-radius:100px;padding:3px 7px;font-size:11px;font-weight:900}@media (min-width:1025px){.elementor-widget-ekit-nav-menu.elementor-widget__width-initial{width:auto!important;max-width:none!important}.ekit-wid-con .elementskit-navbar-nav{flex-wrap:nowrap!important;white-space:nowrap;padding-left:36px}.ekit-wid-con .elementskit-navbar-nav>li{flex:0 0 auto}.elementor-widget-ekit-nav-menu,.elementor-widget-ekit-nav-menu .elementor-widget-container,.elementskit-menu-container{overflow:visible!important}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:10px!important;padding-right:10px!important}.elementskit-navbar-nav>li:first-child>a.ekit-menu-nav-link{padding-left:0!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{margin:0 0 0 2px}}@media (max-width:1024px){.elementskit-navbar-nav li.amm-season{display:block;padding:10px 16px}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important}}</style>';
+		echo '<style id="amm-season-css">.elementskit-navbar-nav li.amm-season{display:inline-flex;align-items:center}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important;align-items:center;gap:7px;background:#2b1e19;color:#fff!important;padding:7px 12px!important;border-radius:100px;font-size:12.5px;font-weight:800;line-height:1!important;margin:0 4px;white-space:nowrap;height:auto!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link:hover{background:#3d2a22;color:#fff!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-style:normal;background:#ef6b4d;color:#fff;border-radius:100px;padding:3px 7px;font-size:11px;font-weight:900}@media (min-width:1025px){.elementor-widget-ekit-nav-menu.elementor-widget__width-initial{width:auto!important;max-width:none!important}.ekit-wid-con .elementskit-navbar-nav{flex-wrap:nowrap!important;white-space:nowrap;padding-left:36px}.ekit-wid-con .elementskit-navbar-nav>li{flex:0 0 auto}.elementor-widget-ekit-nav-menu,.elementor-widget-ekit-nav-menu .elementor-widget-container,.elementskit-menu-container{overflow:visible!important}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:10px!important;padding-right:10px!important}.elementskit-navbar-nav>li:first-child>a.ekit-menu-nav-link{padding-left:0!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{margin:0 0 0 2px}}
+@media (min-width:1025px){#site-header .elementor-widget-ekit-nav-menu{width:auto!important;max-width:100%!important}}
+@media (min-width:1025px) and (max-width:1600px){#site-header .elementor-widget-ekit-nav-menu>.elementor-widget-container{padding-left:0!important;padding-right:0!important}.ekit-wid-con .elementskit-navbar-nav{padding-left:0}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:6px!important;padding-right:6px!important;font-size:13px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11.5px!important;padding:6px 10px!important;gap:5px;margin:0 2px}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-size:10px;padding:3px 6px}}
+@media (min-width:1025px) and (max-width:1300px){.amm-sx{display:none}}
+@media (min-width:1025px) and (max-width:1200px){.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:5px!important;padding-right:5px!important;font-size:12px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11px!important;padding:5px 9px!important}}
+@media (max-width:1024px){.elementskit-navbar-nav li.amm-season{display:block;padding:10px 16px}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important}}</style>';
 	}
 
 	/** Продуктите: от ansa-promo (същият списък като в промото), иначе WooCommerce по slug. */
@@ -139,7 +144,7 @@ final class Mega_Menu {
 			. '<div class="amm-aside">'
 			. '<a class="amm-promo" href="' . esc_url( Cart::promo_url() ) . '"><span class="amm-ey">Сезонът на ANSA · нашият Черен петък</span><strong>До −40% + козметичен сет за 1 €</strong><span class="amm-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −40%, сетът и книгата с рецепти.</span><span class="amm-cta">Избери продуктите →</span></a>'
 			. '<a class="amm-quiz" href="' . $L['quiz'] . '"><span class="amm-qic">🧭</span><b>Не знаеш откъде да започнеш?</b><small>Няколко въпроса, 1 минута, и ти казваме кой продукт е за теб.</small><span>Започни теста →</span></a>'
-			. '<ul class="amm-trust"><li>💗 15 300+ доволни жени</li><li>🇧🇬 Направено в България</li><li>🚚 Доставка за 1–2 работни дни</li><li>💳 С карта или наложен платеж</li></ul>'
+			. '<ul class="amm-trust"><li>💗 15 300+ доволни жени</li><li>🌿 Направено в България</li><li>🚚 Доставка за 1–2 работни дни</li><li>💳 С карта или наложен платеж</li></ul>'
 			. '</div>'
 			. '<div class="amm-mobile"><div class="amm-acc">' . $acc . '</div><a class="amm-mpromo" href="' . $L['promo'] . '"><span><b>Сезонът на ANSA · до −40%</b><small>сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a><div class="amm-mlinks"><a href="' . $L['shop'] . '">Всички продукти</a><a href="' . $L['quiz'] . '">Как да избера</a><a href="' . $L['about'] . '">За ansa</a></div></div>'
 			. '</div>';
@@ -153,8 +158,8 @@ final class Mega_Menu {
 .elementskit-megamenu-panel{padding:0!important;border-radius:0!important;box-shadow:0 30px 60px #3a241626!important}
 .elementskit-megamenu-panel .e-con,.elementskit-megamenu-panel .e-con-inner,.elementskit-megamenu-panel .elementor-widget-container,.elementskit-megamenu-panel .elementor-widget{padding:0!important;margin:0!important;max-width:none!important}
 .amm-backdrop{position:fixed;inset:0;z-index:98;background:rgba(43,30,25,.32);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s}.amm-backdrop.on{opacity:1}
-@media (min-width:1025px){.amm{max-height:calc(100vh - 140px);overflow:auto}}
-.amm{--amm-ink:#332723;--amm-muted:#7d6a61;--amm-coral:#ef6b4d;--amm-deep:#a93e28;--amm-line:#f0e3db;font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--amm-ink);background:#fffaf7;display:grid;grid-template-columns:252px minmax(0,1fr) 290px;align-items:stretch;text-align:left;box-sizing:border-box;position:relative;line-height:1.3}
+@media (min-width:1025px){.amm{max-height:calc(100vh - 140px);overflow:auto}.elementskit-megamenu-panel.elementskit-dropdown-menu-full_width,.elementskit-dropdown-menu-full_width>.elementskit-megamenu-panel{background:#fffaf7}}
+.amm{--amm-ink:#332723;--amm-muted:#7d6a61;--amm-coral:#ef6b4d;--amm-deep:#a93e28;--amm-line:#f0e3db;font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--amm-ink);background:#fffaf7;display:grid;grid-template-columns:252px minmax(0,1fr) 290px;align-items:stretch;text-align:left;box-sizing:border-box;position:relative;line-height:1.3;white-space:normal;max-width:1760px;margin:0 auto}
 .amm *,.amm *:before,.amm *:after{box-sizing:border-box}
 .amm:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--amm-coral),#f6b18f)}
 .amm a{text-decoration:none;color:inherit}
@@ -168,7 +173,7 @@ final class Mega_Menu {
 .amm-grid{padding:22px 26px;display:flex;flex-direction:column;min-width:0}
 .amm-gt{display:flex;align-items:baseline;gap:8px;margin-left:0}.amm-gt b{color:var(--amm-ink);text-transform:none;letter-spacing:0;font-size:15px;font-weight:900}.amm-gt .amm-cnt{text-transform:none;letter-spacing:0;font-weight:700;color:#9a8474;font-size:12px}
 .amm-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.amm-cards.all{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.amm-cards.all.six{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.amm-cards.all.six .amm-card b{font-size:12.5px}
+.amm-cards.all{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.amm-cards.all.six{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.amm-cards.all.six .amm-card b{font-size:12.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;min-height:2.3em}
 .amm-card{display:flex;flex-direction:column;gap:3px;min-width:0;background:#fff;border:1px solid var(--amm-line);border-radius:16px;padding:10px;transition:box-shadow .15s,transform .15s}
 .amm-card:hover{box-shadow:0 10px 24px #5b3e2418;transform:translateY(-2px)}
 .amm-card[hidden]{display:none}
@@ -207,6 +212,7 @@ final class Mega_Menu {
 .amm-mpromo b{display:block;font-size:14px;font-weight:900;color:#fff}.amm-mpromo small{display:block;color:#e9d5c8;font-size:11.5px;margin-top:2px}.amm-mpromo em{font-style:normal;background:var(--amm-coral);color:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;white-space:nowrap}
 .amm-mlinks{display:flex;gap:16px;padding:6px 2px 0;font-size:12.5px;font-weight:800;color:#5a3f30;flex-wrap:wrap}
 }
+@media (min-width:1025px) and (max-width:1500px){.amm{grid-template-columns:214px minmax(0,1fr) 244px}.amm-needs{padding:18px 6px 18px 12px}.amm-grid{padding:18px 16px}.amm-aside{padding:18px 16px 18px 0}.amm-need{font-size:13px;padding:7px 10px}.amm-cards.all .amm-card b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;min-height:2.3em}.amm-promo strong{font-size:17px}}
 CSS;
 		$js = <<<'JS'
 (function(){function init(root){if(root.dataset.ammInit)return;root.dataset.ammInit='1';var cards=root.querySelectorAll('.amm-card'),title=root.querySelector('.amm-title'),cnt=root.querySelector('.amm-cnt'),grid=root.querySelector('.amm-cards');
