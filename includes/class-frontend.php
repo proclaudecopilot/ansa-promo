@@ -55,13 +55,14 @@ final class Frontend {
 		if ( ! self::is_promo_page() || self::is_draft_request() || self::gate_shown() ) { return; }
 		$cfg = Config::get_published(); $ab = is_array( $cfg['ab'] ?? null ) ? $cfg['ab'] : array( 'page_id' => 0, 'share' => 0 );
 		$bid = (int) ( $ab['page_id'] ?? 0 ); if ( ! $bid ) { return; }
-		if ( self::is_flow() || get_queried_object_id() === $bid ) {
-			echo '<script id="ansa-promo-ab" data-loading-method="immediate">try{document.cookie="ansa_promo_ab=b;path=/;max-age=2592000;SameSite=Lax"}catch(e){}</script>' . "\n"; return;
+		/* 1.37.0: „страницата B“ е тази от настройката (ab.page_id), не дизайнът — новият дизайн вече е на главния адрес; бисквитката е ansa_promo_ab2, за да не праща старите „b“ към стария дизайн */
+		if ( get_queried_object_id() === $bid ) {
+			echo '<script id="ansa-promo-ab" data-loading-method="immediate">try{document.cookie="ansa_promo_ab2=b;path=/;max-age=2592000;SameSite=Lax"}catch(e){}</script>' . "\n"; return;
 		}
 		$share = max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ); $url = get_permalink( $bid ); if ( ! $share || ! $url || 'publish' !== get_post_status( $bid ) ) { return; }
 		/* 1.34.1: data-loading-method е атрибутът, по който FlyingPress пропуска скрипта при „defer/delay JS“ (иначе го правеше defer src="data:…" и
 		   пренасочването към B ставаше след парсването на A — мигане на A и броене на „view“ за A); loader-ът му гледа само script[data-loading-method][data-src]. */
-		echo '<script id="ansa-promo-ab" data-loading-method="immediate">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab="+v+";path=/;max-age=2592000;SameSite=Lax"}'
+		echo '<script id="ansa-promo-ab" data-loading-method="immediate">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab2=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab2="+v+";path=/;max-age=2592000;SameSite=Lax"}'
 			. 'if(v==="b"){location.replace(' . wp_json_encode( $url ) . '+location.search+location.hash)}}catch(e){}})();</script>' . "\n";
 	}
 
@@ -186,7 +187,8 @@ final class Frontend {
 			. 'var i=g&&g.querySelector("input");if(i){try{i.focus()}catch(e){}}})();</script>';
 	}
 	public static function robots( $robots ) {
-		if ( self::is_promo_page() && ( self::is_draft_request() || self::is_flow() || ! Config::is_live( Config::get_published() ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; } /* 1.34.0: страницата B не се индексира */
+		$pub = Config::get_published(); $bid = (int) ( $pub['ab']['page_id'] ?? 0 ); /* 1.37.0: noindex е за страницата B от настройката, не за дизайна „поток“ (той вече е на главния адрес) */
+		if ( self::is_promo_page() && ( self::is_draft_request() || ( $bid && get_queried_object_id() === $bid ) || ! Config::is_live( $pub ) ) ) { $robots['noindex'] = true; $robots['nofollow'] = true; } /* 1.34.0: страницата B не се индексира */
 		return $robots;
 	}
 	public static function hints( $urls, $relation ) {

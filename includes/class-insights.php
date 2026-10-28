@@ -373,7 +373,7 @@ final class Insights {
 	 *  Посетител = vid (бисквитка 30 дни), резерва IP, резерва sid (т. 13). + bounce/dur/tto (т. 16), by_week (т. 19), rev/delivered по ред (т. 20), dev_stop (т. 26),
 	 *  camp_day (т. 24). */
 	/** 1.34.0: човешкото име на варианта в отчетите ('' = A — екранът с кутиите; flow = B — потокът без кутии). */
-	public static function variant_label( $v ) { $v = (string) $v; return '' === $v ? 'A · кутиите' : ( 'flow' === $v ? 'B · потокът без кутии' : $v ); }
+	public static function variant_label( $v ) { $v = (string) $v; return '' === $v ? 'кутиите (стар дизайн)' : ( 'flow' === $v ? 'потокът без кутии (нов дизайн)' : $v ); } /* 1.37.0: без A/B в имената — новият дизайн е на главния адрес */
 	public static function sessions_report( $days = 30, $range = null, $o = array() ) {
 		global $wpdb; $ts = Schema::table( 'sessions' ); $te = Schema::table( 'events' ); $o = is_array( $o ) ? $o : array();
 		$since = self::since( $days );
@@ -974,7 +974,7 @@ final class Insights {
 		if ( $spend['utm'] || $spend['camp'] ) { $h .= '<div class="ap-sec__hint">💸 Разход, CPA, ROAS — от въведеното в <a href="' . esc_url( self::url( array( 'view' => 'spend' ) ) ) . '">💸 Разход</a>' . self::q( 'spend' ) . '; включи групата „разход“ над таблицата.</div>'; }
 		$h .= self::table_html( '📦 По кутия', $r['by_box'], 'кутия', function ( $k ) use ( $boxes ) { return $boxes[ $k ] ?? $k; }, array( 'id' => 'apTBox', 'link' => $lk ? $lk( 'f_box', 'box' ) : null ) );
 		$h .= self::table_html( '📱 По устройство', $r['by_dev'], 'устройство', null, array( 'id' => 'apTDev', 'link' => $lk ? $lk( 'f_dev', 'dev' ) : null ) );
-		if ( count( $r['by_variant'] ) > 1 || isset( $r['by_variant']['B · потокът без кутии'] ) ) { $h .= self::table_html( '🧪 A/B: по вариант на страницата', $r['by_variant'], 'вариант', null, array( 'id' => 'apTVar', 'hint' => 'A = сегашната страница с трите кутии; B = страницата с <code>[ansa_promo variant="flow"]</code> — без избор на кутия, отстъпката и подаръците се отключват с броя опаковки (1.34.0). Сравнявай „поръчали“ (created) и средната количка, не само кликовете; B позволява 2 и 4 опаковки, затова гледай и „По кутия“.' ) ); }
+		if ( count( $r['by_variant'] ) > 1 || isset( $r['by_variant']['потокът без кутии (нов дизайн)'] ) ) { $h .= self::table_html( '🧪 A/B: по вариант на страницата', $r['by_variant'], 'вариант', null, array( 'id' => 'apTVar', 'hint' => 'A = сегашната страница с трите кутии; B = страницата с <code>[ansa_promo variant="flow"]</code> — без избор на кутия, отстъпката и подаръците се отключват с броя опаковки (1.34.0). Сравнявай „поръчали“ (created) и средната количка, не само кликовете; B позволява 2 и 4 опаковки, затова гледай и „По кутия“.' ) ); }
 		$h .= self::table_html( '📣 По източник (utm_source / директно)', $r['by_src'], 'източник', null, array( 'id' => 'apTSrc', 'link' => $lk ? $lk( 'f_src', 'src' ) : null ) );
 		$h .= self::table_html( '📅 По дни', array_reverse( $r['by_day'], true ), 'ден', null, array( 'id' => 'apTDay' ) );
 		if ( $r['by_week'] ) { $h .= self::table_html( '🗓️ По седмица на сезона (отстъпката)', $r['by_week'], 'седмица', null, array( 'id' => 'apTWeek', 'hint' => 'Седмиците на сезона с процента отстъпка за малка / средна / голяма кутия — как се държи интересът, докато отстъпката пада.' ) ); }
