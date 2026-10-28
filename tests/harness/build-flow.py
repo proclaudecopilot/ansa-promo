@@ -6,7 +6,7 @@ root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 out = sys.argv[1] if len(sys.argv) > 1 else '/tmp/ansa-promo-harness'
 os.makedirs(out + '/harness', exist_ok=True); os.makedirs(out + '/shots', exist_ok=True)
 rt = json.loads(subprocess.check_output(['php', root + '/tests/harness/runtime.php', 'sakura']).decode())
-rt['variant'] = 'flow'; rt['pop'] = 1; rt['pop_gen'] = 2; rt['logo'] = 'https://www.ansa.bg/wp-content/uploads/2025/02/Ansa-Website-Logo-1.png'; rt['home'] = 'https://www.ansa.bg/'; rt['deadline_ts'] = 1798757999; rt['refresh'] = False; rt['tombola_url'] = 'https://ansa.bg/sezonut-na-ansa/tombola/'; rt['draw'] = '25 януари'
+rt['variant'] = 'flow'; rt['pop'] = 1; rt['pop_gen'] = 2; rt['ladder'] = {2: 20, 4: 32}; rt['logo'] = 'https://www.ansa.bg/wp-content/uploads/2025/02/Ansa-Website-Logo-1.png'; rt['home'] = 'https://www.ansa.bg/'; rt['deadline_ts'] = 1798757999; rt['refresh'] = False; rt['tombola_url'] = 'https://ansa.bg/sezonut-na-ansa/tombola/'; rt['draw'] = '25 януари'
 t = open(root + '/templates/flow.php', encoding='utf-8').read()
 t = re.sub(r'<\?php.*?\?>', '', t, flags=re.S)
 html = ('<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>flow harness</title>'

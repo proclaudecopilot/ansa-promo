@@ -37,7 +37,7 @@ final class Config {
 			   (бисквитка ansa_promo_ab за 30 дни, клиентски redirect — работи и от кеша на FlyingPress); 0 = само директен трафик/реклами към страницата B. */
 			'ab'        => array( 'page_id' => 0, 'share' => 0 ),
 			/* 1.35.0: вариант B — логото в хедъра (attachment id или URL); празно = логото на темата (custom_logo), а без такова — думата „ansa™“ */
-			'flow'      => array( 'logo' => '', 'popup' => 1, 'popup_gen' => 2 ), /* 1.36.0: popup = приветственият попъп на B · 1.36.1: popup_gen = „поколение“ — влиза в ключа в браузъра; +1 = всички го виждат отново веднъж */
+			'flow'      => array( 'logo' => '', 'popup' => 1, 'popup_gen' => 2, 'ladder' => array( 2 => 20, 4 => 32 ) ), /* 1.39.0: ladder = отстъпка по брой опаковки само за новия дизайн (брой → %), над кутиите: 1→s, 2→20, 3→m, 4→32, 5+→l */ /* 1.36.0: popup = приветственият попъп на B · 1.36.1: popup_gen = „поколение“ — влиза в ключа в браузъра; +1 = всички го виждат отново веднъж */
 			/* images: снимките на плочките в попъпа (4 награди + 3 кутии) — attachment id или URL; празно = примерната снимка от assets/img/gate/ */
 			'gate'      => array( 'enabled' => true, 'required' => false, 'consent_default' => true, 'when' => 'random', 'images' => self::gate_image_defaults() ), /* 1.32.0: when = след коя стъпка излиза (random | box | full | order); при кацане вече никога */
 			'timer'     => array( 'minutes' => 15, 'warn_under' => 3 ),
@@ -362,7 +362,7 @@ final class Config {
 		$out['page_id']   = (int) $out['page_id'];
 		$out['utm_param'] = preg_replace( '/[^a-z0-9_\-]/i', '', (string) $out['utm_param'] ) ?: 'utm_content';
 		$ab = is_array( $out['ab'] ?? null ) ? $out['ab'] : array(); $out['ab'] = array( 'page_id' => (int) ( $ab['page_id'] ?? 0 ), 'share' => max( 0, min( 100, (int) ( $ab['share'] ?? 0 ) ) ) ); /* 1.34.0 */
-		$fl = is_array( $out['flow'] ?? null ) ? $out['flow'] : array(); $lg = trim( (string) ( $fl['logo'] ?? '' ) ); $out['flow'] = array( 'logo' => ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg ), 'popup' => array_key_exists( 'popup', $fl ) ? (int) ! empty( $fl['popup'] ) : 1, 'popup_gen' => max( 1, (int) ( $fl['popup_gen'] ?? 2 ) ) ); /* 1.35.0 · 1.36.0: popup · 1.36.1: popup_gen */
+		$fl = is_array( $out['flow'] ?? null ) ? $out['flow'] : array(); $lg = trim( (string) ( $fl['logo'] ?? '' ) ); $out['flow'] = array( 'logo' => ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg ), 'popup' => array_key_exists( 'popup', $fl ) ? (int) ! empty( $fl['popup'] ) : 1, 'popup_gen' => max( 1, (int) ( $fl['popup_gen'] ?? 2 ) ), 'ladder' => self::ladder( array_key_exists( 'ladder', $fl ) ? $fl['ladder'] : array( 2 => 20, 4 => 32 ) ) ); /* 1.35.0 · 1.36.0: popup · 1.36.1: popup_gen · 1.39.0: ladder */
 		$out['gate']['enabled'] = ! empty( $out['gate']['enabled'] ); $out['gate']['required'] = ! empty( $out['gate']['required'] ); $out['gate']['consent_default'] = ! empty( $out['gate']['consent_default'] );
 		$out['gate']['when'] = in_array( (string) ( $out['gate']['when'] ?? '' ), array( 'random', 'box', 'full', 'order' ), true ) ? (string) $out['gate']['when'] : 'random';
 		$imgs = array();
@@ -626,9 +626,20 @@ final class Config {
 	 *  е свободен — кутията е най-голямата с packs ≤ броя (box_for_count), всяка кутия расте (grow) до max_packs, всяка опаковка над packs носи
 	 *  +1 билет (tix_extra = 1; при tickets = packs това е „1 опаковка = 1 билет“), а книгата и сетът остават само в най-голямата кутия.
 	 *  Връща копие на кутията с тези правила (flow = true); $box = null → кутията по $count. Конфигът на кутиите не се пипа — вариантът A не се променя. */
+	/** 1.39.0: стълбицата по брой (само новият дизайн): [брой => %]; приема и масив, и текст „2=20, 4=32“. Празно = само кутиите. */
+	public static function ladder( $v ) {
+		$out = array();
+		if ( is_string( $v ) ) { $pairs = array(); foreach ( preg_split( '/[,;\s]+/', trim( $v ) ) as $p ) { if ( preg_match( '/^(\d+)\s*[=:]\s*(\d+(?:[.,]\d+)?)$/', trim( $p ), $m ) ) { $pairs[ (int) $m[1] ] = (float) str_replace( ',', '.', $m[2] ); } } $v = $pairs; }
+		foreach ( (array) $v as $n => $p ) { $n = (int) $n; $p = is_numeric( $p ) ? (float) $p : 0; if ( $n >= 1 && $n <= 20 && $p >= 0 && $p <= 90 ) { $out[ $n ] = $p; } }
+		ksort( $out ); return $out;
+	}
+	public static function ladder_text( $cfg ) { $o = array(); foreach ( (array) ( $cfg['flow']['ladder'] ?? array() ) as $n => $p ) { $o[] = $n . '=' . ( (float) $p == (int) $p ? (int) $p : $p ); } return implode( ', ', $o ); }
+	/** 1.39.0: процентът за брой опаковки в новия дизайн: стълбицата, иначе кутията по броя. */
+	public static function flow_pct( $cfg, $count ) { $count = (int) $count; $l = (array) ( $cfg['flow']['ladder'] ?? array() ); if ( $count > 0 && isset( $l[ $count ] ) ) { return (float) $l[ $count ]; } $b = self::box_for_count( $cfg, $count ); return $b ? (float) $b['pct'] : 0.0; }
 	public static function flow_box( $cfg, $box = null, $count = 0 ) {
 		if ( ! is_array( $box ) ) { $box = self::box_for_count( $cfg, (int) $count ); }
 		if ( ! $box ) { return null; }
+		$l = (array) ( $cfg['flow']['ladder'] ?? array() ); if ( (int) $count > 0 && isset( $l[ (int) $count ] ) ) { $box['pct'] = (float) $l[ (int) $count ]; } /* 1.39.0: стълбицата по брой */
 		$big = self::largest_box( $cfg ); $is_big = $big && (string) $big['id'] === (string) $box['id'];
 		$box['grow'] = true; $box['tix_extra'] = 1; $box['flow'] = true;
 		if ( ! $is_big ) {
