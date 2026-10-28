@@ -1145,7 +1145,7 @@ final class Insights {
 		$h .= '</tr></thead><tbody>';
 		$sum_n = 0; $sum_c = 0;
 		foreach ( array_reverse( $days ) as $day ) {
-			$bd = $r['by_day'][ $day ] ?? null; $n = $bd ? (int) $bd['n'] : 0; $c = $bd ? (int) $bd['created'] : 0; $sum_n += $n; $sum_c += $c;
+			$bd = $r['by_day'][ $day ] ?? null; $n = $bd ? (int) $bd['n'] : 0; $c = $bd ? (int) $bd['created'] : 0; if ( ! $n && ! $c ) { continue; } /* 1.38.1: без празните дни */ $sum_n += $n; $sum_c += $c;
 			$lbl = esc_html( wp_date( 'd.m (D)', (int) strtotime( $day . ' 12:00:00' ) ) );
 			$h .= '<tr><td><b>' . ( $frozen ? $lbl : '<a href="' . esc_url( self::url( array( 'from' => $day, 'to' => $day, 'days' => null, 'pg' => null ) ) ) . '" title="целият екран само за този ден">' . $lbl . '</a>' ) . '</b></td><td><b>' . $n . '</b></td><td>' . ( $c ? '<b>' . $c . '</b>' : '<small>—</small>' ) . '</td><td>' . esc_html( self::pct( $c, $n ) ) . '</td>';
 			foreach ( $keys as $k ) { $v = $dc[ $day ][ $k ] ?? null; $h .= $cell( $v ? (int) $v['n'] : 0, $v ? (int) $v['created'] : 0 ); }
