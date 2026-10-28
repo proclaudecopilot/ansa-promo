@@ -44,3 +44,8 @@ body.ap-portal-login { min-height: 100dvh; display: flex; align-items: center; j
 @media (max-width: 900px) {
   body.ap-portal-body #ansa-promo-app { position: static; height: auto; min-height: 100dvh; }
 }
+
+/* 1.38.0: 📅 По дни × откъде идват */
+.ap-dc td, .ap-dc th { white-space: nowrap; }
+.ap-dc tr.ap-dc-total td { border-top: 2px solid #c9b8ad; background: #fbf6f1; }
+.ap-dc .ap-dc-o { color: #2e6953; font-weight: 700; }

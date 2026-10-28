@@ -386,6 +386,7 @@ final class Insights {
 		$out = array( 'sessions' => 0, 'visitors' => 0, 'funnel' => array_fill_keys( self::FUNNEL, 0 ), 'stopped' => array_fill_keys( self::FUNNEL, 0 ), 'vfunnel' => array_fill_keys( self::FUNNEL, 0 ), 'vstopped' => array_fill_keys( self::FUNNEL, 0 ), 'by_utm' => array(), 'by_src' => array(), 'by_dev' => array(), 'by_box' => array(), 'by_day' => array(), 'items' => array(), 'leads' => 0, 'orders' => 0,
 			/* 1.27.0 (човекът: „от кой UTM са дошли, коя кутия са избрали, докъде са я напълнили, къде са дропнали“): by_camp = utm_source / medium · campaign, by_ref = домейнът на referrer-а, by_hour = часът на влизане (0–23), by_utm_box = UTM × избрана кутия, fill = докъде е напълнена кутията (виж по-долу) */
 			'by_camp' => array(), 'by_ref' => array(), 'by_hour' => array(), 'by_utm_box' => array(), 'fill' => array(), 'by_variant' => array(), /* 1.34.0: A/B */
+			'by_channel' => array(), 'by_chdet' => array(), 'day_ch' => array(), 'chdet_link' => array(), /* 1.38.0: каналът (Channel::of) — по канал, по канал · детайл, дни × канал */
 			/* 1.28.0 */
 			'attr' => $attr, 'orders_only' => 0, 'orders_only_rev' => 0.0, 'bounce' => 0, 'dur_sum' => 0, 'dur_n' => 0, 'dur_avg' => 0.0, 'tto_avg' => 0.0, 'tto_med' => 0.0, 'tto_n' => 0, 'by_week' => array(), 'dev_stop' => array(), 'camp_day' => array(), 'rev' => 0.0, 'delivered' => 0, 'rev_del' => 0.0, 'internal_n' => 0 );
 		/* 1.20.4 (човекът): уникални посетители = различни IP (без IP — сесията е свой посетител); общо и във всяка разбивка (v). 1.28.0: по vid, резерва IP */
@@ -411,6 +412,8 @@ final class Insights {
 			$dev = $r['device'] ?: '—'; $stp = isset( $out['stopped'][ $r['step'] ] ) ? $r['step'] : 'view'; $out['dev_stop'][ $dev ][ $stp ] = ( $out['dev_stop'][ $dev ][ $stp ] ?? 0 ) + 1; /* т. 26 */
 			$ub = $utm ?: '—'; if ( ! isset( $out['by_utm_box'][ $ub ] ) ) { $out['by_utm_box'][ $ub ] = array( 'n' => 0, 'none' => 0, 'boxes' => array() ); } $out['by_utm_box'][ $ub ]['n']++; if ( $r['box'] ) { $out['by_utm_box'][ $ub ]['boxes'][ $r['box'] ] = ( $out['by_utm_box'][ $ub ]['boxes'][ $r['box'] ] ?? 0 ) + 1; } else { $out['by_utm_box'][ $ub ]['none']++; }
 			$groups = array( 'by_utm' => $utm ?: '—', 'by_src' => $r['src'] ?: ( $utm ? 'utm' : 'директно' ), 'by_dev' => $dev, 'by_box' => $r['box'] ?: '—', 'by_day' => $day, 'by_camp' => $camp, 'by_ref' => $refh, 'by_hour' => $hour, 'by_variant' => self::variant_label( (string) ( $r['variant'] ?? '' ) ) );
+			$ch = Channel::of( $r ); $chd = $ch['l'] . ( '' !== $ch['d'] ? ' · ' . $ch['d'] : '' ); $groups['by_channel'] = $ch['l']; $groups['by_chdet'] = $chd; if ( $ch['f'] && ! isset( $out['chdet_link'][ $chd ] ) ) { $out['chdet_link'][ $chd ] = $ch['f']; } /* 1.38.0 */
+			if ( ! isset( $out['day_ch'][ $day ][ $ch['k'] ] ) ) { $out['day_ch'][ $day ][ $ch['k'] ] = array( 'n' => 0, 'created' => 0 ); } $out['day_ch'][ $day ][ $ch['k'] ]['n']++; if ( $o_ >= self::ORDER['created'] ) { $out['day_ch'][ $day ][ $ch['k'] ]['created']++; }
 			if ( $weeks ) { foreach ( $weeks as $wk ) { if ( $ts_ >= (int) $wk['from'] && $ts_ < (int) $wk['to'] ) { $groups['by_week'] = 'седм. ' . (int) $wk['i'] . ' (' . wp_date( 'd.m', (int) $wk['from'] ) . '–' . wp_date( 'd.m', (int) $wk['to'] - MINUTE_IN_SECONDS ) . ') · −' . implode( ' / −', array_map( array( 'AnsaPromo\\Cart', 'fmt' ), array_values( (array) $wk['pct'] ) ) ) . '%'; break; } } if ( ! isset( $groups['by_week'] ) ) { $groups['by_week'] = 'извън седмиците'; } } /* т. 19 */
 			foreach ( $groups as $grp => $key ) {
 				if ( ! isset( $out[ $grp ][ $key ] ) ) { $out[ $grp ][ $key ] = $zero; }
@@ -462,7 +465,7 @@ final class Insights {
 		uasort( $out['shrine'], function ( $a, $b ) { return $b['view'] <=> $a['view']; } );
 		$out['visitors'] = count( $vis ); foreach ( $vg as $grp => $keys ) { foreach ( $keys as $key => $set ) { $out[ $grp ][ $key ]['v'] = count( $set ); } }
 		foreach ( self::FUNNEL as $st ) { $out['vfunnel'][ $st ] = count( $vf[ $st ] ?? array() ); $out['vstopped'][ $st ] = count( $vs[ $st ] ?? array() ); }
-		foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box', 'by_camp', 'by_ref', 'by_variant' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
+		ksort( $out['day_ch'] ); foreach ( array( 'by_utm', 'by_src', 'by_dev', 'by_box', 'by_camp', 'by_ref', 'by_variant', 'by_channel', 'by_chdet' ) as $g ) { uasort( $out[ $g ], function ( $a, $b ) { return $b['n'] <=> $a['n']; } ); }
 		uasort( $out['by_utm_box'], function ( $a, $b ) { return $b['n'] <=> $a['n']; } );
 		uasort( $out['camp_day'], function ( $a, $b ) { return array_sum( array_column( $b, 'n' ) ) <=> array_sum( array_column( $a, 'n' ) ); } ); $out['camp_day'] = array_slice( $out['camp_day'], 0, 8, true );
 		ksort( $out['by_day'] ); ksort( $out['by_hour'] ); ksort( $out['by_week'], SORT_NATURAL ); uasort( $out['items'], function ( $a, $b ) { return ( $b['sessions'] + ( $b['clicked'] ?? 0 ) ) <=> ( $a['sessions'] + ( $a['clicked'] ?? 0 ) ); } );
@@ -524,6 +527,7 @@ final class Insights {
 				'box' => $r['box'], 'box_name' => $boxes[ $r['box'] ] ?? $r['box'], 'items' => $ic, 'step' => $r['step'], 'step_label' => self::SHORT[ $r['step'] ] ?? $r['step'], 'timeline' => $timeline,
 				'order' => $o ? array( 'id' => $o->get_id(), 'number' => $o->get_order_number(), 'status' => wc_get_order_status_name( $o->get_status() ), 'total' => $o->get_total(), 'edit' => $o->get_edit_order_url() ) : null,
 				'utm_last' => (string) ( $r['utm_last'] ?? '' ), 'internal' => ! empty( $r['internal'] ), 'camp' => trim( (string) $r['src'] . ( $r['med'] ? ' / ' . $r['med'] : '' ) . ( $r['camp'] ? ' · ' . $r['camp'] : '' ) ),
+				'ch' => Channel::of( $r ), /* 1.38.0: каналът */
 				'cart' => '', /* 1.28.0 (т. 27): изоставена количка във FunnelKit за същия имейл, без поръчка */
 			);
 			$em = strtolower( (string) end( $out )['email'] ); if ( ! $o && '' !== $em && isset( $carts[ $em ] ) ) { $out[ count( $out ) - 1 ]['cart'] = $carts[ $em ]; }
@@ -965,6 +969,11 @@ final class Insights {
 		$h .= '<div class="ap-dash">' . self::group_html( '🛑 Загубени по пътя', $tiles, 'сесии, спрели преди следващата стъпка; „кои →“ отваря списъка' ) . '</div>';
 		/* тренд (т. 24) */
 		if ( count( $days ) > 1 ) { $h .= self::trend_html( $days, $r, $os ); }
+		/* 1.38.0: дни × канал + по канал + по канал · детайл */
+		$h .= self::day_channel_html( $days, $r, $frozen );
+		$ch_link = $frozen ? null : function ( $v ) use ( $r ) { $f = $r['chdet_link'][ $v ] ?? null; if ( ! $f ) { return ''; } $f['pg'] = null; return self::url( $f ); };
+		$h .= self::table_html( '📣 Откъде идват (канал)', (array) ( $r['by_channel'] ?? array() ), 'канал', null, array( 'id' => 'apTCh', 'hint' => 'Meta реклама = utm_source facebook/fb/ig/an или utm_medium paid; Имейл = utm_medium email / newsletter; Попъп на сайта = utm_medium popup (името на попъпа е utm_campaign); Сайтът (линк с UTM) = utm_source home/site/shop…; без UTM — по referrer-а.' ) );
+		$h .= self::table_html( '📣 Откъде идват · детайл (кампания / имейл / попъп / страница)', (array) ( $r['by_chdet'] ?? array() ), 'канал · детайл', null, array( 'id' => 'apTChDet', 'link' => $ch_link, 'hint' => 'Редовете с UTM са линкове — филтрират целия екран по тази кампания.' ) );
 		/* разбивки (т. 5, 6, 20, 22, 23) */
 		$lk = $frozen ? null : function ( $key, $k ) { return function ( $v ) use ( $key, $k ) { return '—' === $v ? '' : self::url( array( $key => (string) $v, 'pg' => null ) ); }; };
 		$camp_link = $frozen ? null : function ( $v ) use ( $r ) { if ( in_array( $v, array( 'без UTM', 'само UTM продукт' ), true ) ) { return ''; } $p = self::camp_parts( $v ); return self::url( array( 'f_src' => $p[0], 'f_med' => $p[1], 'f_camp' => $p[2], 'pg' => null ) ); };
@@ -1123,6 +1132,30 @@ final class Insights {
 	}
 
 	/* ── 1.28.0 (т. 24): тренд по дни — SVG линия с избор на метрика и наслагване на до 2 кампании ── */
+	/** 1.38.0 (човекът: „поглед по дни — колко сесии, колко успешни, откъде са дошли“): дни × канал; каналът е от Channel::of (UTM, иначе referrer). */
+	private static function day_channel_html( $days, $r, $frozen = false ) {
+		$dc = (array) ( $r['day_ch'] ?? array() ); if ( ! $dc && ! $days ) { return ''; }
+		$tot = array(); foreach ( $dc as $day => $chs ) { foreach ( (array) $chs as $k => $v ) { if ( ! isset( $tot[ $k ] ) ) { $tot[ $k ] = array( 'n' => 0, 'created' => 0 ); } $tot[ $k ]['n'] += (int) $v['n']; $tot[ $k ]['created'] += (int) $v['created']; } }
+		$keys = array(); foreach ( array_keys( Channel::ORDER ) as $k ) { if ( ! empty( $tot[ $k ]['n'] ) ) { $keys[] = $k; } }
+		$cell = function ( $n, $c ) { if ( ! $n ) { return '<td><small>—</small></td>'; } return '<td data-v="' . (int) $n . '"><b>' . (int) $n . '</b>' . ( $c ? ' <small class="ap-dc-o" title="поръчали">· ' . (int) $c . ' 🛒</small>' : '' ) . '</td>'; };
+		$h = '<div class="ap-sec ap-sec--table" id="apTDayCh"><div class="ap-sec__h"><span class="ap-sec__t">📅 По дни × откъде идват</span></div>'
+			. '<div class="ap-sec__hint">Всеки ден: сесии · поръчали (🛒) · конверсия, и по канал. Каналът е от UTM-а на сесията; ако сесията няма UTM, но е дошла от подстраница на сайта, която носи UTM (кацане на /kozmetika от реклама → клик към промото), UTM-ът се чете от referrer-а. „Попъп на сайта“ се познава по <code>utm_medium=popup</code> в линка на попъпа, а името на попъпа е <code>utm_campaign</code>; попъп без UTM излиза като „Сайтът (линк без UTM)“ със страницата, на която е показан. Цъкни деня, за да видиш целия екран (и списъка със сесиите) само за него.</div>'
+			. '<div class="ap-sec__b"><table class="widefat striped ap-dc"><thead><tr><th>ден</th><th>сесии</th><th>поръчали</th><th>конверсия</th>';
+		foreach ( $keys as $k ) { $h .= '<th title="' . esc_attr( Channel::label( $k ) ) . '">' . esc_html( Channel::label( $k ) ) . '</th>'; }
+		$h .= '</tr></thead><tbody>';
+		$sum_n = 0; $sum_c = 0;
+		foreach ( array_reverse( $days ) as $day ) {
+			$bd = $r['by_day'][ $day ] ?? null; $n = $bd ? (int) $bd['n'] : 0; $c = $bd ? (int) $bd['created'] : 0; $sum_n += $n; $sum_c += $c;
+			$lbl = esc_html( wp_date( 'd.m (D)', (int) strtotime( $day . ' 12:00:00' ) ) );
+			$h .= '<tr><td><b>' . ( $frozen ? $lbl : '<a href="' . esc_url( self::url( array( 'from' => $day, 'to' => $day, 'days' => null, 'pg' => null ) ) ) . '" title="целият екран само за този ден">' . $lbl . '</a>' ) . '</b></td><td><b>' . $n . '</b></td><td>' . ( $c ? '<b>' . $c . '</b>' : '<small>—</small>' ) . '</td><td>' . esc_html( self::pct( $c, $n ) ) . '</td>';
+			foreach ( $keys as $k ) { $v = $dc[ $day ][ $k ] ?? null; $h .= $cell( $v ? (int) $v['n'] : 0, $v ? (int) $v['created'] : 0 ); }
+			$h .= '</tr>';
+		}
+		$h .= '<tr class="ap-dc-total"><td><b>общо</b></td><td><b>' . $sum_n . '</b></td><td><b>' . $sum_c . '</b></td><td>' . esc_html( self::pct( $sum_c, $sum_n ) ) . '</td>';
+		foreach ( $keys as $k ) { $h .= $cell( (int) $tot[ $k ]['n'], (int) $tot[ $k ]['created'] ); }
+		$h .= '</tr></tbody></table></div></div>';
+		return $h;
+	}
 	private static function trend_html( $days, $r, $os ) {
 		$ser = array( 'sessions' => array(), 'created' => array(), 'conv' => array(), 'o_n' => array(), 'rev' => array() ); $camps = array();
 		foreach ( $days as $day ) { $bd = $r['by_day'][ $day ] ?? null; $od = $os['by_day'][ $day ] ?? null; $ser['sessions'][] = $bd ? (int) $bd['n'] : 0; $ser['created'][] = $bd ? (int) $bd['created'] : 0; $ser['conv'][] = $bd && $bd['n'] ? round( 100 * $bd['created'] / $bd['n'], 1 ) : 0; $ser['o_n'][] = $od ? (int) $od['n'] : 0; $ser['rev'][] = $od ? round( (float) $od['total'], 2 ) : 0; }
@@ -1366,7 +1399,7 @@ final class Insights {
 			$who = ( $s['email'] ? '<b>' . esc_html( $s['email'] ) . '</b>' . ( $s['name'] ? '<br><small>' . esc_html( $s['name'] ) . '</small>' : '' ) : '<small>анонимна</small>' ) . ( $vis ? '<br>' . $vis : '' );
 			$ul = ! empty( $s['utm_last'] ) && $s['utm_last'] !== $s['utm'] ? '<br><small title="последен UTM в сесията">→ ' . esc_html( $names[ $s['utm_last'] ] ?? $s['utm_last'] ) . '</small>' : '';
 			$from = ( $s['utm_name'] ? '🏷️ ' . esc_html( $s['utm_name'] ) . $ul : '<small>—</small>' ) . ( ! empty( $s['internal'] ) ? '<br><small class="ap-small">вътрешен</small>' : '' );
-			$campc = ( ! empty( $s['camp'] ) ? '<small>' . esc_html( $s['camp'] ) . '</small>' : '<small>директно</small>' ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
+			$chx = is_array( $s['ch'] ?? null ) ? $s['ch'] : null; $campc = ( $chx ? '<small><b>' . esc_html( $chx['l'] ) . '</b>' . ( '' !== $chx['d'] ? ' · ' . esc_html( $chx['d'] ) : '' ) . '</small><br>' : '' ) . ( ! empty( $s['camp'] ) ? '<small>' . esc_html( $s['camp'] ) . '</small>' : ( $chx ? '' : '<small>директно</small>' ) ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
 			$tl = '<div class="ap-tl">' . ( ! empty( $s['nosess'] ) ? ( Phone_Orders::is_phone_sid( $s['sid'] ) ? '<small title="поръчка, направена от оператор по телефона">📞 поръчка по телефон</small> ' : '<small title="поръчка преди 16.10 следобед или от стар promo.js (кеш): пътят до нея не е записан">🧾 само поръчката, сесията не е проследена</small> ' ) : '' ); foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
 			$onum = '#' . esc_html( $s['order']['number'] ?? '' ); $ord = $s['order'] ? ( self::$portal ? '<b>' . $onum . '</b>' : '<a href="' . esc_url( $s['order']['edit'] ) . '">' . $onum . '</a>' ) . '<br><small>' . esc_html( $s['order']['status'] ) . ' · ' . esc_html( number_format( (float) $s['order']['total'], 2, ',', '' ) ) . ' €</small>' : '<small>' . esc_html( $s['step_label'] ) . '</small>' . ( ! empty( $s['cart'] ) ? '<br><span class="ap-cart" title="изоставена количка във FunnelKit за същия имейл">🛒 количка: ' . esc_html( $s['cart'] ) . '</span>' : '' ); /* 1.28.0: в портала без линк към wp-admin */
 			if ( ! $s['order'] && '' !== (string) $s['email'] && ( self::ORDER[ $s['step'] ] ?? 0 ) >= self::ORDER['box'] && empty( $s['nosess'] ) ) { $ord .= '<br>' . Phone_Orders::buttons( 'sess', (int) $s['id'], $s['email'] ); } /* 1.29.0: 📞 обаждане */
