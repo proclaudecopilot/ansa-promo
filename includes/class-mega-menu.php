@@ -134,7 +134,7 @@ final class Mega_Menu {
 			if ( 'new' === $k || ! $counts[ $k ] ) { continue; }
 			$rows = '';
 			foreach ( $n[2] as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
-			$acc .= '<details><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows">' . $rows . '</div></details>';
+			$acc .= '<details><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows"><div class="amm-acc-cap">' . esc_html( $n[0] ) . ' · ' . self::plural( $counts[ $k ] ) . '</div>' . $rows . '</div></details>';
 			$first = false;
 		}
 		$out = '<div class="amm" data-amm="' . self::VER . '">'
@@ -171,7 +171,9 @@ final class Mega_Menu {
 .amm{--amm-ink:#332723;--amm-muted:#7d6a61;--amm-coral:#ef6b4d;--amm-deep:#a93e28;--amm-line:#f0e3db;font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--amm-ink);background:#fffaf7;display:grid;grid-template-columns:252px minmax(0,1fr) 290px;align-items:stretch;text-align:left;box-sizing:border-box;position:relative;line-height:1.3;white-space:normal;max-width:1760px;margin:0 auto}
 .amm *,.amm *:before,.amm *:after{box-sizing:border-box}
 .amm:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--amm-coral),#f6b18f)}
-.amm a{text-decoration:none;color:inherit}
+.amm a{text-decoration:none;color:inherit;-webkit-tap-highlight-color:transparent}
+@keyframes amm-spin{to{transform:rotate(360deg)}}
+.amm-card.amm-go,.amm-need.amm-go{opacity:.7}
 .amm .amm-t{font-size:10.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#a07d68;margin:0 14px 10px}
 .amm-needs{padding:22px 8px 22px 18px;border-right:1px solid var(--amm-line);background:#fff4ec}
 .amm-need{display:grid;grid-template-columns:32px 1fr 12px;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;padding:8px 12px;border-radius:12px;font:inherit;font-size:13.5px;font-weight:800;color:#3b2a22;cursor:pointer;line-height:1.25}
@@ -227,12 +229,17 @@ body:has(.elementskit-menu-offcanvas-elements.active) #fkcart-floating-toggler{o
 .amm-acc summary .amm-ic{width:34px;height:34px;border-radius:10px;background:#fff4ec;display:grid;place-items:center;font-size:17px;flex:0 0 auto}
 .amm-acc summary small{margin-left:auto;color:#9a8474;font-weight:800;font-size:12px;background:#fff4ec;border-radius:100px;padding:3px 8px;line-height:1.2}
 .amm-acc summary:after{content:"";width:18px;height:18px;flex:0 0 auto;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9ad9c' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/18px no-repeat;transition:transform .2s}
-.amm-acc details[open] summary{background:#fffaf7}.amm-acc details[open] summary:after{content:"";transform:rotate(180deg)}
-.amm-acc-rows{padding:0 14px 8px}
-.amm-row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #f6ebe2}
+.amm-acc details[open] summary{background:#fff4ec;color:var(--amm-deep)}.amm-acc details[open] summary .amm-ic{background:var(--amm-coral);box-shadow:0 4px 10px #ef6b4d55}.amm-acc details[open] summary small{background:#fff;color:var(--amm-deep)}.amm-acc details[open] summary:after{content:"";transform:rotate(180deg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a93e28' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+.amm-acc summary{-webkit-tap-highlight-color:transparent}.amm-acc summary:active{background:#fff8f3}
+.amm-acc-rows{padding:4px 14px 10px 14px;background:#fffaf7;border-left:4px solid var(--amm-coral)}
+.amm-acc-cap{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--amm-deep);padding:6px 0 2px}
+.amm-row{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 8px;margin:0 -8px;border-top:1px solid #f6ebe2;border-radius:12px;transition:background .15s,opacity .15s;-webkit-tap-highlight-color:transparent}
+.amm-row:active,.amm-row.amm-go{background:#fff4ec}
 .amm-row:first-child{border-top:0}
-.amm-row img{width:46px;height:46px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #f6ebe2}
-.amm-row>span{min-width:0}.amm-row b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amm-row small{display:block;font-size:11.5px;color:var(--amm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amm-row em{font-style:normal;font-size:13px;font-weight:900;color:var(--amm-deep);white-space:nowrap}
+.amm-row img{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid #f6ebe2}
+.amm-row>span{min-width:0}.amm-row b{display:block;font-size:14.5px;font-weight:900;line-height:1.2;margin:2px 0 3px}.amm-row small{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:12.5px;line-height:1.35;color:#6f5b51}.amm-row em{font-style:normal;font-size:13.5px;font-weight:900;color:var(--amm-deep);white-space:nowrap;margin-top:3px;position:relative}
+.amm-row.amm-go em{color:transparent}.amm-row.amm-go em:after{content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-9px 0 0 -9px;border:2px solid #f0d6c6;border-top-color:var(--amm-coral);border-radius:50%;animation:amm-spin .7s linear infinite}
+.amm-mobile a.amm-go,.amm-mobile .amm-mnav a:active,.amm-mall:active,.amm-mquiz:active,.amm-mpromo:active{opacity:.72}
 .amm-mall{display:block;margin:12px 0 0;background:var(--amm-coral);color:#fff!important;text-align:center;border-radius:14px;padding:14px;font-size:15px;font-weight:900}
 .amm-mquiz{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;margin:12px 0 0;background:#fff4ec;border:1px solid #f0d6c6;border-radius:16px;padding:12px 14px}
 .amm-mquiz .amm-qic{width:36px;height:36px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:18px}
@@ -247,6 +254,8 @@ function pick(n,label){var k=0;for(var i=0;i<cards.length;i++){var c=cards[i],h=
 var needs=root.querySelectorAll('.amm-need');for(var j=0;j<needs.length;j++){(function(b){var go=function(){for(var x=0;x<needs.length;x++)needs[x].classList.toggle('on',needs[x]===b);pick(b.getAttribute('data-n'),b.querySelector('span:nth-child(2)').childNodes[0].textContent.trim())};b.addEventListener('mouseenter',go);b.addEventListener('click',function(e){e.preventDefault();go()});b.addEventListener('focus',go)})(needs[j])}}
 var bd=null;function backdrop(){if(bd)return bd;bd=document.createElement('div');bd.className='amm-backdrop';document.body.appendChild(bd);return bd}
 function hookItem(root){var li=root.closest('li.elementskit-megamenu-has,li.menu-item');if(!li||li.dataset.ammBd)return;li.dataset.ammBd='1';var show=function(){if(window.innerWidth>1024)backdrop().classList.add('on')},hide=function(){if(bd)bd.classList.remove('on')};li.addEventListener('mouseenter',show);li.addEventListener('mouseleave',hide);li.addEventListener('focusin',show);li.addEventListener('focusout',function(e){if(!li.contains(e.relatedTarget))hide()})}
+function go(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey)return;var a=e.target.closest&&e.target.closest('.amm a[href]');if(!a||a.target==='_blank')return;a.classList.add('amm-go')}
+document.addEventListener('click',go,true);window.addEventListener('pageshow',function(){var g=document.querySelectorAll('.amm-go');for(var i=0;i<g.length;i++)g[i].classList.remove('amm-go')});
 function all(){var r=document.querySelectorAll('.amm');for(var i=0;i<r.length;i++){init(r[i]);hookItem(r[i])}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();document.addEventListener('ekit-megamenu-open',all);setTimeout(all,1500)})();
 JS;

@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.41.0
+ * Version:     1.41.1
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.41.0' );
+define( 'ANSA_PROMO_VER', '1.41.1' );
 
 /* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
    (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
@@ -48,7 +48,7 @@ spl_autoload_register( function ( $class ) {
    WP „Замени текущия с качения" НЕ рестартира OPcache. При хостинг с
    opcache.validate_timestamps=0 сървърът върти СТАРИЯ PHP до безкрай.
    При засечена смяна на версията: OPcache reset + object cache flush, еднократно. */
-/* 1.41.0: на `init` (не само в админа) — от 1.40.0 менюто е на всяка страница и FlyingPress сервираше стария HTML навсякъде, докато някой не влезе в админа и не се изчисти ръчно */
+/* 1.41.1: на `init` (не само в админа) — от 1.40.0 менюто е на всяка страница и FlyingPress сервираше стария HTML навсякъде, докато някой не влезе в админа и не се изчисти ръчно */
 add_action( 'init', function () {
 	$seen = get_option( 'ansa_promo_ver_seen', '' );
 	if ( $seen === ANSA_PROMO_VER ) return;
@@ -63,10 +63,25 @@ add_action( 'init', function () {
 	try { \AnsaPromo\Insights_Portal::purge(); } catch ( \Throwable $e ) {} /* 1.27.1: и адресът на Insights за рекламата */
 	/* 1.33.1: и самостоятелните страници (/kozmetichen-set-promo, /info, /kozmetika, /tombola, /kniga) — те носят runtime JSON + promo.js и FlyingPress ги сервираше със стария код до следващото публикуване */
 	foreach ( array( '\\AnsaPromo\\Sakura_Page', '\\AnsaPromo\\Info', '\\AnsaPromo\\Listicle', '\\AnsaPromo\\Tombola', '\\AnsaPromo\\Book' ) as $cls ) { try { if ( class_exists( $cls ) && is_callable( array( $cls, 'purge' ) ) ) { $cls::purge(); } } catch ( \Throwable $e ) {} }
-	/* 1.41.0: целият кеш на страниците на FlyingPress — мега менюто и хапчето са във всяка страница */
+	/* 1.41.1: целият кеш на страниците на FlyingPress — мега менюто и хапчето са във всяка страница */
 	try { if ( class_exists( '\\FlyingPress\\Purge' ) ) { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_pages' ) ) ) { \FlyingPress\Purge::purge_pages(); } else { \FlyingPress\Purge::purge_everything(); } } } catch ( \Throwable $e ) {}
 	update_option( 'ansa_promo_ver_seen', ANSA_PROMO_VER, true );
 }, 1 );
+
+/* ── 1.41.1: страницата /health-quiz-by-ansa/ ([ansa_quiz]) излизаше празна — ANSA Quiz Studio (зарежда се СЛЕД този плъгин,
+   по азбучен ред) регистрира същия шорткод `ansa_quiz` и без атрибут id връща ''. Тук, в момента на зареждане, обработчикът на
+   ANSA Health Quiz още е на мястото си — пазим го; на `init` слагаме обвивка: с id → Quiz Studio, без id → Health Quiz.
+   Правилното място за поправката е ansa-quiz-studio.php (вж. README 1.41.1); това е предпазна мрежа, докато тя влезе там. ── */
+$ansa_promo_hq_sc = isset( $GLOBALS['shortcode_tags']['ansa_quiz'] ) ? $GLOBALS['shortcode_tags']['ansa_quiz'] : null;
+add_action( 'init', function () use ( $ansa_promo_hq_sc ) {
+	if ( ! $ansa_promo_hq_sc || ! is_callable( $ansa_promo_hq_sc ) ) { return; }
+	$cur = isset( $GLOBALS['shortcode_tags']['ansa_quiz'] ) ? $GLOBALS['shortcode_tags']['ansa_quiz'] : null;
+	if ( ! $cur || $cur === $ansa_promo_hq_sc ) { return; } /* никой не го е презаписал — нищо за правене */
+	add_shortcode( 'ansa_quiz', function ( $atts = array(), $content = '', $tag = 'ansa_quiz' ) use ( $ansa_promo_hq_sc, $cur ) {
+		$has_id = is_array( $atts ) && ! empty( $atts['id'] );
+		return (string) call_user_func( $has_id ? $cur : $ansa_promo_hq_sc, $atts, $content, $tag );
+	} );
+}, 5 );
 
 /* ── HPOS: плоски order meta ключове, съвместими с custom order tables ── */
 add_action( 'before_woocommerce_init', function () {
