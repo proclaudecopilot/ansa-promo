@@ -43,7 +43,7 @@
   function boxFor(n){var b=null;for(var i=0;i<BOXES.length;i++)if(BOXES[i].packs<=n)b=BOXES[i];return b}
   /* 1.39.0: отстъпката по брой — стълбицата (A.ladder: брой → %) печели над кутията; stepBox = кутията по броя с процента по броя; nextBox = следващият брой с по-голям процент или с подаръците */
   function pctFor(n){if(!n)return 0;var v=Number(LADDER[n]);if(v>0)return v;var b=boxFor(n);return b?Number(b.pct)||0:0}
-  function stepBox(n){var b=boxFor(n);if(!b)return null;var c={};for(var k in b)c[k]=b[k];c.pct=pctFor(n);return c}
+  function stepBox(n){var b=boxFor(n);if(!b)return null;var c={};for(var k in b)c[k]=b[k];c.pct=pctFor(n);c.ladder=Number(LADDER[n])>0?Number(LADDER[n]):0;return c}
   function nextBox(n){var cur=pctFor(n),b0=boxFor(n);for(var m=n+1;m<=Math.max(MAXP,BIG.packs);m++){var b=boxFor(m);if(!b)continue;if(pctFor(m)>cur||(isBig(b)&&!isBig(b0))){var c=stepBox(m);c.packs=m;return c}}return null}
   function steps(){var out=[],prev=null;for(var n=1;n<=BIG.packs;n++){var p=pctFor(n),big=n>=BIG.packs;if(prev&&prev.pct===p&&!big&&!prev.big){prev.b=n}else{prev={a:n,b:n,pct:p,big:big};out.push(prev)}}return out}
   function stepName(s){var last=s.a>=BIG.packs;if(last)return T('fl.pop.t.l',{a:s.a});if(s.a===s.b)return T('fl.pop.t.one',{a:s.a,opk:opk(s.a)});if(s.a===1)return T('fl.pop.t.s',{b:s.b});return T(s.b===s.a+1?'fl.pop.t.m':'fl.pop.t.range',{a:s.a,b:s.b})}
@@ -51,7 +51,8 @@
   function hasShip(b){return !!b&&(b.rw||[]).indexOf('ship')>-1}
   function cosmOn(){return BIG.cosm_pay!==null&&BIG.cosm_pay!==undefined}
   function cosmPay(){return cosmOn()?cents(BIG.cosm_pay):0}
-  function pctOf(p,b){var v=p.pct&&p.pct[b.id];v=Number(v);return v>0?v:Number(b.pct)||0}
+  /* 1.39.1: като Cart::line_pct — при брой от стълбицата (b.ladder) тя печели над процента на продукта за кутията, освен ако продуктът има истински override (различен от процента на кутията) */
+  function pctOf(p,b){var v=Number(p.pct&&p.pct[b.id])||0,lad=Number(b.ladder)||0;if(lad>0){var raw=byId(b.id),rawpct=raw?Number(raw.pct)||0:0;if(!(v>0)||Math.abs(v-rawpct)<0.001)return lad}return v>0?v:Number(b.pct)||0}
   function unit(p,pct){return Math.round(cents(p.price)*(100-pct)/100)}
   function ticketsFor(b,n){return b?Number(b.tickets)+Math.max(0,n-b.packs):0}
   function remaining(){var ms=Math.max(0,(Number(A.deadline_ts)||0)*1000-Date.now());return {d:Math.floor(ms/864e5),h:Math.floor(ms%864e5/36e5),m:Math.floor(ms%36e5/6e4),over:ms<=0}}
