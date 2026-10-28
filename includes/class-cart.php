@@ -71,6 +71,13 @@ final class Cart {
 	private static function copy( $k, $vars = array() ) { $c = Copy::effective( self::cfg()['copy'] ); return Copy::render( isset( $c[ $k ] ) ? $c[ $k ] : $k, $vars ); }
 	/** v1.14.0: отстъпката на base ред — ppct на продукта в кутията (ако е записан при добавянето), иначе процентът на групата/кутията. */
 	public static function item_pct( $item, $fallback ) { $m = is_array( $item ) ? ( $item[ self::META ] ?? array() ) : array(); return isset( $m['ppct'] ) && (float) $m['ppct'] > 0 ? (float) $m['ppct'] : (float) $fallback; }
+	/** 1.39.0: отстъпката на ред в кутия: override-ът на продукта (📦 Продукти), иначе процентът на кутията; в новия дизайн при брой от стълбицата
+	 *  (flow.ladder) стълбицата печели, освен ако продуктът има истински override (различен от процента на кутията). */
+	private static function line_pct( $cfg, $p, $box, $count = 0 ) {
+		$bid = (string) ( $box['id'] ?? '' ); $pp = (array) ( $p['pct'] ?? array() ); $ov = isset( $pp[ $bid ] ) && (float) $pp[ $bid ] > 0 ? (float) $pp[ $bid ] : 0;
+		if ( ! empty( $box['flow'] ) && (int) $count > 0 ) { $l = (array) ( $cfg['flow']['ladder'] ?? array() ); if ( isset( $l[ (int) $count ] ) ) { $raw = Config::box( $cfg, $bid ); $rawpct = $raw ? (float) $raw['pct'] : 0; if ( $ov <= 0 || abs( $ov - $rawpct ) < 0.001 ) { return (float) $l[ (int) $count ]; } } }
+		return $ov > 0 ? $ov : (float) ( $box['pct'] ?? 0 );
+	}
 	private static function reg_price( $p ) { $r = (float) $p->get_regular_price(); return $r > 0 ? $r : (float) $p->get_price(); }
 	public static function promo_url( $cfg = null ) { $cfg = $cfg ?: self::cfg(); return ! empty( $cfg['page_id'] ) ? get_permalink( (int) $cfg['page_id'] ) : home_url( '/' ); }
 	public static function checkout_url() { return apply_filters( 'ansa_promo_checkout_url', wc_get_checkout_url(), self::ctx() ); }
@@ -221,7 +228,7 @@ final class Cart {
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
 			/* v1.14.0: ppct = отстъпката на този продукт в тази кутия (override от 📦 Продукти или процентът на кутията) — записана в реда като pct */
-			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $box['pct'];
+			$ppct = self::line_pct( $cfg, $p, $box, $flow ? (int) array_sum( $counts ) : 0 ); /* 1.39.0: стълбицата по брой в новия дизайн */
 			$ppct = self::ppct_up( $ppct, $a ); /* v1.24.1 */
 			$key = WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'], 'ppct' => $ppct ) ) ) );
 			if ( $key ) { $added++; }
@@ -267,7 +274,7 @@ final class Cart {
 		$total = (int) $g['sum'] + (int) array_sum( $counts );
 		$cur   = Config::box( $cfg, $g['box'] ) ?: $box;
 		$min   = (int) $cur['packs'] >= (int) $box['packs'] ? $cur : $box;
-		$eff   = Config::box_for_count( $cfg, $total, $min ) ?: $min;
+		$eff   = ! empty( $g['flow'] ) ? ( Config::flow_box( $cfg, null, $total ) ?: $min ) : ( Config::box_for_count( $cfg, $total, $min ) ?: $min ); /* 1.39.0: flow групата расте по броя (и стълбицата) */
 		$bv    = array( 'packs' => (int) $eff['packs'], 'opk' => 1 === (int) $eff['packs'] ? 'опаковка' : 'опаковки', 'box' => $eff['name'], 'box_l' => mb_strtolower( $eff['name'] ) );
 		$maxp  = Config::max_for( $cfg, $eff );
 		if ( $total > $maxp ) { return $err( ! empty( $eff['grow'] ) ? 'max' : 'count', array_merge( $bv, array( 'max' => $maxp ) ) ); }
@@ -282,7 +289,7 @@ final class Cart {
 				if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) || (string) $item[ self::META ]['group'] !== $group ) { continue; }
 				$m = $item[ self::META ];
 				$m['box'] = $box_id; $m['pct'] = (float) $eff['pct']; $m['packs'] = (int) $eff['packs']; $m['ship'] = in_array( 'ship', $eff['rw'], true );
-				if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $np = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct']; $m['ppct'] = max( $np, (float) ( $m['ppct'] ?? 0 ) ); /* 1.24.1: вдигнат от Shrine ред не пада */ }
+				if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $np = self::line_pct( $cfg, $allowed[ (int) $item['product_id'] ] ?? array(), $eff, ! empty( $g['flow'] ) ? $total : 0 ); $m['ppct'] = max( $np, (float) ( $m['ppct'] ?? 0 ) ); /* 1.24.1: вдигнат от Shrine ред не пада */ }
 				$cart->cart_contents[ $key ][ self::META ] = $m;
 			}
 		}
@@ -290,7 +297,7 @@ final class Cart {
 		$added = 0;
 		foreach ( $counts as $pid => $q ) {
 			$p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0;
-			$pp = (array) ( $p['pct'] ?? array() ); $ppct = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : (float) $eff['pct'];
+			$ppct = self::line_pct( $cfg, $p, $eff, ! empty( $g['flow'] ) ? $total : 0 );
 			$ppct = self::ppct_up( $ppct, $a ); /* v1.24.1 */
 			$have = null;
 			foreach ( $cart->get_cart() as $key => $item ) { if ( ! empty( $item[ self::META ] ) && 'base' === $item[ self::META ]['role'] && (string) $item[ self::META ]['group'] === $group && (int) $item['product_id'] === (int) $pid ) { $have = $key; break; } }
@@ -389,7 +396,7 @@ final class Cart {
 		$cfg = self::cfg(); if ( empty( $cfg['season']['cur'] ) || empty( $g['base'] ) ) { return; }
 		$t = (int) ( $g['t'] ?? 0 ); if ( ! $t || time() - $t < (int) $cfg['season']['grace_hours'] * HOUR_IN_SECONDS ) { return; }
 		$box = Config::box( $cfg, $g['box'] ); if ( ! $box ) { return; }
-		$new = (float) $box['pct']; $old = (float) $g['pct']; if ( $new >= $old ) { return; }
+		$new = ! empty( $g['flow'] ) ? Config::flow_pct( $cfg, (int) $g['sum'] ) : (float) $box['pct']; $old = (float) $g['pct']; if ( $new >= $old ) { return; } /* 1.39.0: flow групата се сравнява със стълбицата по броя, не с кутията */
 		foreach ( $cart->cart_contents as $key => $item ) {
 			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { continue; }
 			$m = $item[ self::META ];
@@ -415,7 +422,7 @@ final class Cart {
 			$m = $item[ self::META ];
 			if ( 'book' === ( $m['role'] ?? '' ) && ! in_array( 'book', (array) $eff['rw'], true ) ) { $cart->remove_cart_item( $key ); continue; }
 			$m['box'] = $box_id; $m['pct'] = (float) $eff['pct']; $m['packs'] = (int) $eff['packs']; $m['ship'] = in_array( 'ship', (array) $eff['rw'], true );
-			if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $m['ppct'] = isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : 0; }
+			if ( 'base' === ( $m['role'] ?? '' ) ) { $pp = (array) ( $allowed[ (int) $item['product_id'] ]['pct'] ?? array() ); $m['ppct'] = ! empty( $g['flow'] ) ? self::line_pct( $cfg, $allowed[ (int) $item['product_id'] ] ?? array(), $eff, (int) $g['sum'] ) : ( isset( $pp[ $box_id ] ) && (float) $pp[ $box_id ] > 0 ? (float) $pp[ $box_id ] : 0 ); }
 			$cart->cart_contents[ $key ][ self::META ] = $m;
 		}
 		self::$mutating = false;

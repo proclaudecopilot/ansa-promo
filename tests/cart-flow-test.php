@@ -17,9 +17,9 @@ $books = function () { $n = 0; foreach ( WC()->cart->get_cart() as $it ) { if ( 
 /* (1) 2 опаковки → малка кутия, −15 %, 2 билета, без книга */
 $r = $flow( array( 100, 200 ) );
 ok( ! empty( $r['ok'] ) && 's' === $r['box'], '(1) 2 опаковки → малка: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
-$g = grp(); ok( $g && ! empty( $g['flow'] ) && Cart::group_valid( $g ) && 2 === (int) $g['sum'] && 15.0 === (float) $g['pct'] && ! $g['book'], '(1) групата е flow, 2 опаковки, −15 %, без книга' );
+$g = grp(); ok( $g && ! empty( $g['flow'] ) && Cart::group_valid( $g ) && 2 === (int) $g['sum'] && 20.0 === (float) $g['pct'] && ! $g['book'], '(1) групата е flow, 2 опаковки, −20 % (стълбицата 1.39.0), без книга' );
 WC()->cart->calculate_totals();
-ok( abs( WC()->cart->get_total() - ( round( 43.90 * 0.85, 2 ) + round( 49.90 * 0.85, 2 ) ) ) < 0.01, '(1) общо = двете на −15 %: ' . WC()->cart->get_total() );
+ok( abs( WC()->cart->get_total() - ( round( 43.90 * 0.8, 2 ) + round( 49.90 * 0.8, 2 ) ) ) < 0.01, '(1) общо = двете на −20 %: ' . WC()->cart->get_total() );
 $m = Cart::build_meta( true );
 ok( $m && 'flow' === $m['variant'] && 2 === (int) $m['count'] && 2 === (int) $m['tickets']['allowance'] && null === $m['book'] && null === $m['cosm'] && ! $m['ship_free'], '(1) order meta: variant flow, 2 билета, без книга/сет/доставка: ' . json_encode( array( $m['variant'], $m['count'], $m['tickets']['allowance'], $m['book'], $m['cosm'], $m['ship_free'] ) ) );
 $ctx = Cart::ctx(); ok( 'flow' === $ctx['variant'] && 'sakura' === $ctx['utm'] && 's9' === $ctx['sid'], '(1) ctx: variant/utm/sid' );
@@ -27,9 +27,18 @@ $ctx = Cart::ctx(); ok( 'flow' === $ctx['variant'] && 'sakura' === $ctx['utm'] &
 /* (2) 4 опаковки → средна, −30 %, 4 билета, без книга, безплатна доставка (rw на средната) */
 $r = $flow( array( 100, 100, 200, 300 ) );
 ok( ! empty( $r['ok'] ) && 'm' === $r['box'], '(2) 4 → средна: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
-$g = grp(); ok( 4 === (int) $g['sum'] && 30.0 === (float) $g['pct'] && ! $g['book'] && $g['ship'] && 0 === $books(), '(2) −30 %, без книга, с безплатна доставка' );
+$g = grp(); ok( 4 === (int) $g['sum'] && 32.0 === (float) $g['pct'] && ! $g['book'] && $g['ship'] && 0 === $books(), '(2) −32 % (стълбицата), без книга, с безплатна доставка' );
 $m = Cart::build_meta( true ); ok( 4 === (int) $m['tickets']['allowance'] && null === $m['book'] && null === $m['cosm'] && $m['ship_free'], '(2) meta: 4 билета, без книга, доставка безплатна' );
-WC()->cart->calculate_totals(); ok( abs( WC()->cart->get_total() - ( round( 43.90 * 0.7, 2 ) * 2 + round( 49.90 * 0.7, 2 ) + round( 39.90 * 0.7, 2 ) ) ) < 0.01, '(2) общо на −30 %: ' . WC()->cart->get_total() );
+WC()->cart->calculate_totals(); ok( abs( WC()->cart->get_total() - ( round( 43.90 * 0.68, 2 ) * 2 + round( 49.90 * 0.68, 2 ) + round( 39.90 * 0.68, 2 ) ) ) < 0.01, '(2) общо на −32 %: ' . WC()->cart->get_total() );
+/* 1.39.0: стълбицата по брой — само новият дизайн */
+$cfgp = Config::get_published();
+ok( array( 2 => 20.0, 4 => 32.0 ) === $cfgp['flow']['ladder'], '(L) стълбицата по подразбиране 2=20, 4=32: ' . json_encode( $cfgp['flow']['ladder'] ) );
+ok( 15.0 === Config::flow_pct( $cfgp, 1 ) && 20.0 === Config::flow_pct( $cfgp, 2 ) && 30.0 === Config::flow_pct( $cfgp, 3 ) && 32.0 === Config::flow_pct( $cfgp, 4 ) && 40.0 === Config::flow_pct( $cfgp, 5 ) && 40.0 === Config::flow_pct( $cfgp, 7 ), '(L) flow_pct 1→15, 2→20, 3→30, 4→32, 5→40, 7→40' );
+ok( 15.0 === (float) Config::box_for_count( $cfgp, 2 )['pct'] && 30.0 === (float) Config::box_for_count( $cfgp, 4 )['pct'], '(L) старият дизайн (box_for_count) е непокътнат: 2 → 15, 4 → 30' );
+ok( array( 2 => 20.0, 4 => 32.5 ) === Config::ladder( '2=20, 4=32.5' ) && array() === Config::ladder( '' ) && array( 3 => 31.0 ) === Config::ladder( array( 3 => '31', 99 => 5, 2 => 95 ) ), '(L) Config::ladder: текст и масив, граници' );
+ok( '2=20, 4=32' === Config::ladder_text( $cfgp ), '(L) ladder_text' );
+$r = $flow( array( 100, 200, 300 ) ); $g = grp(); ok( ! empty( $r['ok'] ) && 'm' === $r['box'] && 30.0 === (float) $g['pct'], '(L) 3 опаковки → средна −30 % (от кутията, не от стълбицата)' );
+$r = $flow( array( 100 ) ); $g = grp(); ok( ! empty( $r['ok'] ) && 's' === $r['box'] && 15.0 === (float) $g['pct'], '(L) 1 опаковка → малка −15 %' );
 
 /* (3) 5 опаковки → голяма, −40 %, книга, 5 билета, сетът резервиран */
 $r = $flow( array( 100, 100, 100, 200, 300 ) );
