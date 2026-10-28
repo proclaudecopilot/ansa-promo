@@ -65,7 +65,7 @@ final class Mega_Menu {
 @media (min-width:1025px) and (max-width:1600px){#site-header .elementor-widget-ekit-nav-menu>.elementor-widget-container{padding-left:0!important;padding-right:0!important}.ekit-wid-con .elementskit-navbar-nav{padding-left:0}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:6px!important;padding-right:6px!important;font-size:13px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11.5px!important;padding:6px 10px!important;gap:5px;margin:0 2px}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-size:10px;padding:3px 6px}}
 @media (min-width:1025px) and (max-width:1300px){.amm-sx{display:none}}
 @media (min-width:1025px) and (max-width:1200px){.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:5px!important;padding-right:5px!important;font-size:12px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11px!important;padding:5px 9px!important}}
-@media (max-width:1024px){.elementskit-navbar-nav li.amm-season{display:block;padding:10px 16px}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important}}</style>';
+@media (max-width:1024px){.elementskit-navbar-nav li.amm-season{display:none}}</style>';
 	}
 
 	/** Продуктите: от ansa-promo (същият списък като в промото), иначе WooCommerce по slug. */
@@ -133,8 +133,8 @@ final class Mega_Menu {
 		foreach ( self::NEEDS as $k => $n ) {
 			if ( 'new' === $k || ! $counts[ $k ] ) { continue; }
 			$rows = '';
-			foreach ( $n[2] as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( mb_substr( $p['ds'], 0, 48 ) ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
-			$acc .= '<details' . ( $first ? ' open' : '' ) . '><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows">' . $rows . '</div></details>';
+			foreach ( $n[2] as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
+			$acc .= '<details><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows">' . $rows . '</div></details>';
 			$first = false;
 		}
 		$out = '<div class="amm" data-amm="' . self::VER . '">'
@@ -146,7 +146,16 @@ final class Mega_Menu {
 			. '<a class="amm-quiz" href="' . $L['quiz'] . '"><span class="amm-qic">🧭</span><b>Не знаеш откъде да започнеш?</b><small>Няколко въпроса, 1 минута, и ти казваме кой продукт е за теб.</small><span>Започни теста →</span></a>'
 			. '<ul class="amm-trust"><li>💗 15 300+ доволни жени</li><li>🌿 Направено в България</li><li>🚚 Доставка за 1–2 работни дни</li><li>💳 С карта или наложен платеж</li></ul>'
 			. '</div>'
-			. '<div class="amm-mobile"><div class="amm-acc">' . $acc . '</div><a class="amm-mpromo" href="' . $L['promo'] . '"><span><b>Сезонът на ANSA · до −40%</b><small>сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a><div class="amm-mlinks"><a href="' . $L['shop'] . '">Всички продукти</a><a href="' . $L['quiz'] . '">Как да избера</a><a href="' . $L['about'] . '">За ansa</a></div></div>'
+			. '<div class="amm-mobile">'
+			. '<form class="amm-msearch" role="search" method="get" action="' . esc_url( home_url( '/' ) ) . '"><input type="search" name="s" placeholder="Търси продукт…" autocomplete="off" aria-label="Търси продукт"><input type="hidden" name="post_type" value="product"><button type="submit" aria-label="Търси">🔍</button></form>'
+			. ( self::season_on() ? '<a class="amm-mpromo" href="' . esc_url( Cart::promo_url() ) . '"><span><b>Сезонът на ANSA · до −' . self::season_pct() . '%</b><small>+ козметичен сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a>' : '' )
+			. '<nav class="amm-mnav" aria-label="Меню"><a href="' . esc_url( home_url( '/' ) ) . '">Начало</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . esc_url( home_url( '/ansa-blog/' ) ) . '">Полезно</a><a href="' . $L['about'] . '">За ansa</a><a href="' . esc_url( home_url( '/my-account/' ) ) . '">Вход</a></nav>'
+			. '<div class="amm-mt"><span>Продукти по нужда</span><a href="' . $L['shop'] . '">Всички →</a></div>'
+			. '<div class="amm-acc">' . $acc . '</div>'
+			. '<a class="amm-mall" href="' . $L['shop'] . '">Виж всички продукти →</a>'
+			. '<a class="amm-mquiz" href="' . $L['quiz'] . '"><span class="amm-qic">🧭</span><span><b>Не знаеш откъде да започнеш?</b><small>Тест за 1 минута — казваме ти кой продукт е за теб.</small></span><i>›</i></a>'
+			. '<div class="amm-mtrust">💗 15 300+ доволни жени · 🚚 Доставка за 1–2 дни · 💳 Карта или наложен платеж</div>'
+			. '</div>'
 			. '</div>';
 		return self::assets() . $out;
 	}
@@ -198,20 +207,37 @@ final class Mega_Menu {
 .amm-mobile{display:none}
 @media (max-width:1024px){
 body:has(.elementskit-menu-offcanvas-elements.active) #fkcart-floating-toggler{opacity:0!important;pointer-events:none!important}
-.amm{display:block;background:#fffaf7}
+.elementskit-megamenu-panel .elementor-widget,.elementskit-megamenu-panel .e-con{width:100%!important;flex:0 0 100%!important;min-width:0!important}
+.amm{display:block;background:#fffaf7;max-width:100%;min-width:0;overflow:hidden}
 .amm:before{display:none}
 .amm-needs,.amm-grid,.amm-aside{display:none}
-.amm-mobile{display:block;padding:4px 0 10px}
-.amm-acc details{border-bottom:1px solid var(--amm-line)}.amm-acc summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:15px;font-weight:900;cursor:pointer;color:var(--amm-ink)}
+.amm-mobile{display:block;padding:8px 16px 24px}
+.amm-msearch{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--amm-line);border-radius:14px;padding:0 5px 0 14px;height:46px;margin:0 0 12px}
+.amm-msearch input[type=search]{flex:1;min-width:0;border:0!important;background:none!important;box-shadow:none!important;font:inherit;font-size:15px;color:var(--amm-ink);outline:0;height:44px;padding:0;margin:0;-webkit-appearance:none}
+.amm-msearch button{border:0;background:#fff4ec;border-radius:10px;width:36px;height:36px;font-size:15px;display:grid;place-items:center;padding:0;flex:0 0 auto;cursor:pointer}
+.amm-mpromo{margin:0 0 12px;background:linear-gradient(135deg,#2b1e19,#4a2d22);color:#fff;border-radius:16px;padding:13px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.amm-mpromo b{display:block;font-size:14px;font-weight:900;color:#fff}.amm-mpromo small{display:block;color:#e9d5c8;font-size:11.5px;margin-top:2px;line-height:1.3}.amm-mpromo em{font-style:normal;background:var(--amm-coral);color:#fff;border-radius:12px;padding:11px 13px;font-size:13px;font-weight:900;white-space:nowrap}
+.amm-mnav{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:2px 16px}.amm-mnav::-webkit-scrollbar{display:none}
+.amm-mnav a{flex:0 0 auto;background:#fff;border:1px solid var(--amm-line);border-radius:100px;padding:9px 14px;font-size:13.5px;font-weight:800;color:var(--amm-ink);line-height:1.2}
+.amm-mt{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#a07d68;padding:2px 2px 8px}.amm-mt a{color:var(--amm-deep);letter-spacing:0;text-transform:none;font-size:13px}
+.amm-acc{background:#fff;border:1px solid var(--amm-line);border-radius:16px;overflow:hidden}
+.amm-acc details+details{border-top:1px solid var(--amm-line)}
+.amm-acc summary{list-style:none;display:flex;align-items:center;gap:12px;padding:10px 14px;min-height:54px;font-size:15px;font-weight:900;color:var(--amm-ink);cursor:pointer;box-sizing:border-box}
 .amm-acc summary::-webkit-details-marker{display:none}
-.amm-acc summary .amm-ic{width:32px;height:32px;border-radius:10px;background:#fff4ec;display:grid;place-items:center;font-size:16px}.amm-acc summary small{margin-left:auto;color:#9a8474;font-weight:700}
-.amm-acc summary:after{content:"⌄";font-weight:900;color:#c9ad9c}.amm-acc details[open] summary:after{content:"⌃"}
-.amm-acc-rows{padding:0 0 8px}
-.amm-row{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:7px 2px}
-.amm-row img{width:48px;height:48px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #f6ebe2}.amm-row b{display:block;font-size:13.5px;font-weight:900}.amm-row small{display:block;font-size:11px;color:var(--amm-muted)}.amm-row em{font-style:normal;font-size:12.5px;font-weight:900;color:var(--amm-deep)}
-.amm-mpromo{margin:12px 0;background:linear-gradient(135deg,#2b1e19,#4a2d22);color:#fff;border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px}
-.amm-mpromo b{display:block;font-size:14px;font-weight:900;color:#fff}.amm-mpromo small{display:block;color:#e9d5c8;font-size:11.5px;margin-top:2px}.amm-mpromo em{font-style:normal;background:var(--amm-coral);color:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;white-space:nowrap}
-.amm-mlinks{display:flex;gap:16px;padding:6px 2px 0;font-size:12.5px;font-weight:800;color:#5a3f30;flex-wrap:wrap}
+.amm-acc summary .amm-ic{width:34px;height:34px;border-radius:10px;background:#fff4ec;display:grid;place-items:center;font-size:17px;flex:0 0 auto}
+.amm-acc summary small{margin-left:auto;color:#9a8474;font-weight:800;font-size:12px;background:#fff4ec;border-radius:100px;padding:3px 8px;line-height:1.2}
+.amm-acc summary:after{content:"";width:18px;height:18px;flex:0 0 auto;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9ad9c' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/18px no-repeat;transition:transform .2s}
+.amm-acc details[open] summary{background:#fffaf7}.amm-acc details[open] summary:after{content:"";transform:rotate(180deg)}
+.amm-acc-rows{padding:0 14px 8px}
+.amm-row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #f6ebe2}
+.amm-row:first-child{border-top:0}
+.amm-row img{width:46px;height:46px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #f6ebe2}
+.amm-row>span{min-width:0}.amm-row b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amm-row small{display:block;font-size:11.5px;color:var(--amm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amm-row em{font-style:normal;font-size:13px;font-weight:900;color:var(--amm-deep);white-space:nowrap}
+.amm-mall{display:block;margin:12px 0 0;background:var(--amm-coral);color:#fff!important;text-align:center;border-radius:14px;padding:14px;font-size:15px;font-weight:900}
+.amm-mquiz{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;margin:12px 0 0;background:#fff4ec;border:1px solid #f0d6c6;border-radius:16px;padding:12px 14px}
+.amm-mquiz .amm-qic{width:36px;height:36px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:18px}
+.amm-mquiz b{display:block;font-size:14px;font-weight:900}.amm-mquiz small{display:block;font-size:12px;color:var(--amm-muted);line-height:1.35}.amm-mquiz i{font-style:normal;font-weight:900;color:var(--amm-deep);font-size:22px;line-height:1}
+.amm-mtrust{margin:14px 0 0;text-align:center;font-size:11.5px;font-weight:700;color:#8a7266;line-height:1.6}
 }
 @media (min-width:1025px) and (max-width:1500px){.amm{grid-template-columns:214px minmax(0,1fr) 244px}.amm-needs{padding:18px 6px 18px 12px}.amm-grid{padding:18px 16px}.amm-aside{padding:18px 16px 18px 0}.amm-need{font-size:13px;padding:7px 10px}.amm-cards.all .amm-card b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;min-height:2.3em}.amm-promo strong{font-size:17px}}
 CSS;

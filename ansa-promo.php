@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.40.4
+ * Version:     1.41.0
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.40.4' );
+define( 'ANSA_PROMO_VER', '1.41.0' );
 
 /* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
    (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
@@ -48,7 +48,7 @@ spl_autoload_register( function ( $class ) {
    WP „Замени текущия с качения" НЕ рестартира OPcache. При хостинг с
    opcache.validate_timestamps=0 сървърът върти СТАРИЯ PHP до безкрай.
    При засечена смяна на версията: OPcache reset + object cache flush, еднократно. */
-/* 1.40.4: на `init` (не само в админа) — от 1.40.0 менюто е на всяка страница и FlyingPress сервираше стария HTML навсякъде, докато някой не влезе в админа и не се изчисти ръчно */
+/* 1.41.0: на `init` (не само в админа) — от 1.40.0 менюто е на всяка страница и FlyingPress сервираше стария HTML навсякъде, докато някой не влезе в админа и не се изчисти ръчно */
 add_action( 'init', function () {
 	$seen = get_option( 'ansa_promo_ver_seen', '' );
 	if ( $seen === ANSA_PROMO_VER ) return;
@@ -63,7 +63,7 @@ add_action( 'init', function () {
 	try { \AnsaPromo\Insights_Portal::purge(); } catch ( \Throwable $e ) {} /* 1.27.1: и адресът на Insights за рекламата */
 	/* 1.33.1: и самостоятелните страници (/kozmetichen-set-promo, /info, /kozmetika, /tombola, /kniga) — те носят runtime JSON + promo.js и FlyingPress ги сервираше със стария код до следващото публикуване */
 	foreach ( array( '\\AnsaPromo\\Sakura_Page', '\\AnsaPromo\\Info', '\\AnsaPromo\\Listicle', '\\AnsaPromo\\Tombola', '\\AnsaPromo\\Book' ) as $cls ) { try { if ( class_exists( $cls ) && is_callable( array( $cls, 'purge' ) ) ) { $cls::purge(); } } catch ( \Throwable $e ) {} }
-	/* 1.40.4: целият кеш на страниците на FlyingPress — мега менюто и хапчето са във всяка страница */
+	/* 1.41.0: целият кеш на страниците на FlyingPress — мега менюто и хапчето са във всяка страница */
 	try { if ( class_exists( '\\FlyingPress\\Purge' ) ) { if ( is_callable( array( '\\FlyingPress\\Purge', 'purge_pages' ) ) ) { \FlyingPress\Purge::purge_pages(); } else { \FlyingPress\Purge::purge_everything(); } } } catch ( \Throwable $e ) {}
 	update_option( 'ansa_promo_ver_seen', ANSA_PROMO_VER, true );
 }, 1 );
