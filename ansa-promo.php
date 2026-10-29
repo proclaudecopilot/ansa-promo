@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.43.0
+ * Version:     1.43.1
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.43.0' );
+define( 'ANSA_PROMO_VER', '1.43.1' );
 
 /* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
    (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
@@ -27,7 +27,7 @@ if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || 'cli' === PHP_SAPI ) {
 /* Същата стойност под второ име: ansa™ Shrine ≥ 6.19.22 проверява точно тази константа
    в includes/promo/bootstrap.php и НЕ зарежда своя (пенсиониран) промо модул, щом я види. */
 define( 'ANSA_PROMO_PLUGIN_VER', ANSA_PROMO_VER );
-define( 'ANSA_PROMO_DB_VER', '8' ); /* 2 = + ansa_promo_stats (1.3.0) · 3 = + ansa_promo_referrals, tickets.ref_code/bonus (1.6.0) · 4 = leads.contact_id/fka/fka_at (1.11.0) · 5 = + ansa_promo_sessions/_events — Insights 2 (1.17.0) · 6 = sessions.utm_last/vid/internal (1.28.0) · 7 = sessions/events.variant — A/B вариант B „поток“ (1.34.0) · 8 = sessions.landers, lander_at, entry_qs/entry_ref, touch_qs/touch_ref; events.k за view (лендър) и created (поръчка) — Insights 4 (1.42.0) */
+define( 'ANSA_PROMO_DB_VER', '9' ); /* 2 = + ansa_promo_stats (1.3.0) · 3 = + ansa_promo_referrals, tickets.ref_code/bonus (1.6.0) · 4 = leads.contact_id/fka/fka_at (1.11.0) · 5 = + ansa_promo_sessions/_events — Insights 2 (1.17.0) · 6 = sessions.utm_last/vid/internal (1.28.0) · 7 = sessions/events.variant — A/B вариант B „поток“ (1.34.0) · 8 = sessions.landers, lander_at, entry_qs/entry_ref, touch_qs/touch_ref; events.k за view (лендър) и created (поръчка) — Insights 4 (1.42.0) · 9 = view.k по АДРЕС, не по дизайн (1.43.1) */
 define( 'ANSA_PROMO_FILE', __FILE__ );
 define( 'ANSA_PROMO_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ANSA_PROMO_URL', plugin_dir_url( __FILE__ ) );

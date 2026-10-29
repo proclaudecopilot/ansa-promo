@@ -98,7 +98,7 @@
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('variant','flow');
     fd.append('box',t.box?t.box.id:'');fd.append('utm',S.utm||'');fd.append('n',t.count);if(k)fd.append('k',k);
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(items()));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER);fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER);fd.append('path',location.pathname.slice(0,120));fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -335,7 +335,7 @@
   /* ── свеж runtime (цени, nonce, седмица) + „view“ в Insights; кешираната страница носи стар JSON ── */
   function refresh(){
     if(!A.ajax||A.editor||A.draft||A.refresh===false)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER,{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER+'&path='+encodeURIComponent(location.pathname.slice(0,120)),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data)return;var d=r.data;
       ['products','order','boxes','max_packs','rewards','nonce','season','deadline','deadline_ts','draw','tombola_url','cosm_reserved','copy','live','checkout','bgn','li_items','version','logo'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});
       bind();if(!BIG||!ORDER.length)return;var q={};for(var k in S.qty){if(PROD[k])q[k]=S.qty[k]}S.qty=q;

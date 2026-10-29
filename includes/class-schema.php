@@ -172,6 +172,7 @@ final class Schema {
 		$was = (int) get_option( self::OPT_DB_VER, 0 );
 		foreach ( self::sql() as $sql ) { dbDelta( $sql ); }
 		if ( $was > 0 && $was < 8 ) { self::migrate_v8(); }
+		if ( $was > 0 && $was < 9 ) { self::migrate_v9(); }
 		update_option( self::OPT_DB_VER, ANSA_PROMO_DB_VER, false );
 	}
 
@@ -184,6 +185,29 @@ final class Schema {
 	 *  - sessions.landers / lander_at — от view събитията.
 	 * Само MySQL (на живия сайт); грешка не спира ъпдейта.
 	 */
+	/**
+	 * 1.43.1 (DB ver 9): лендърът е адресът, не дизайнът. До смяната (1.37.0, публикувана 28.10 13:43) главният адрес показваше кутиите (variant ''),
+	 * а страницата B — потока (flow); 1.42.0 сложи view.k по дизайна и главният адрес „започваше“ от 28.10. Тук view.k се преизчислява по адрес:
+	 *  1) по време: преди смяната flow → old (страницата B) и '' → new (главната); след нея flow → new, '' → old. Моментът на смяната се чете от
+	 *     данните: първото „view“ с variant flow в сесия, чийто адрес (ref от runtime ajax-а = самата страница) е главният; резерва — 28.10 13:43.
+	 *  2) сесиите с известен адрес (ref = главната / B страницата, без подстраница): първото им лендър-view е по този адрес.
+	 *  3) sessions.landers / lander_at наново. Моментът се пази в option ansa_promo_lander_swap (екранът го показва).
+	 */
+	public static function migrate_v9() {
+		global $wpdb; $ts = self::table( 'sessions' ); $te = self::table( 'events' );
+		$main = 's.ref REGEXP \'ansa\\\\.bg/sezonut-na-ansa/?(\\\\?|$)\''; $b = 's.ref REGEXP \'ansa\\\\.bg/sezonut-na-ansa-b/?(\\\\?|$)\''; /* в SQL литерала \\ → \ → регексът вижда \. и \? */
+		try {
+			$swap = (string) $wpdb->get_var( "SELECT MIN(e.at) FROM $te e INNER JOIN $ts s ON s.sid = e.sid WHERE e.ev = 'view' AND e.variant = 'flow' AND $main" );
+			if ( ! preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $swap ) || $swap < '2026-10-27 00:00:00' || $swap > '2026-10-30 00:00:00' ) { $swap = '2026-10-28 13:43:00'; }
+			update_option( 'ansa_promo_lander_swap', $swap, false );
+			$wpdb->query( $wpdb->prepare( "UPDATE $te SET k = CASE WHEN at < %s THEN IF(variant = 'flow', 'old', 'new') ELSE IF(variant = 'flow', 'new', 'old') END WHERE ev = 'view' AND k IN ('new','old')", $swap ) );
+			$wpdb->query( "UPDATE $te e INNER JOIN (SELECT sid, MIN(id) AS mid FROM $te WHERE ev = 'view' AND k IN ('new','old') GROUP BY sid) f ON f.sid = e.sid AND f.mid = e.id INNER JOIN $ts s ON s.sid = e.sid SET e.k = CASE WHEN $b THEN 'old' WHEN $main THEN 'new' ELSE e.k END" );
+			$wpdb->query( "UPDATE $ts SET landers = '', lander_at = NULL WHERE landers <> '' OR lander_at IS NOT NULL" );
+			foreach ( array( 'new', 'old', 'sx' ) as $l ) { $wpdb->query( $wpdb->prepare( "UPDATE $ts s SET s.landers = TRIM(BOTH ',' FROM CONCAT(s.landers, ',', %s)) WHERE EXISTS (SELECT 1 FROM $te e WHERE e.sid = s.sid AND e.ev = 'view' AND e.k = %s)", $l, $l ) ); }
+			$wpdb->query( "UPDATE $ts s INNER JOIN (SELECT sid, MIN(at) AS a FROM $te WHERE ev = 'view' AND k IN ('new','old','sx') GROUP BY sid) x ON x.sid = s.sid SET s.lander_at = x.a" );
+		} catch ( \Throwable $e ) {}
+	}
+
 	public static function migrate_v8() {
 		global $wpdb; $ts = self::table( 'sessions' ); $te = self::table( 'events' );
 		try {

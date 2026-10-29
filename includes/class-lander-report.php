@@ -34,9 +34,10 @@ defined( 'ABSPATH' ) || exit;
 final class Lander_Report {
 
 	const LANDERS = array(
-		'new' => array( 'label' => 'Нов — основен', 'short' => 'нов', 'path' => '/sezonut-na-ansa', 'variant' => 'flow', 'tombola' => false, 'funnel' => array( 'view', 'item', 'add', 'created' ) ),
-		'old' => array( 'label' => 'Стар (с томболата)', 'short' => 'стар', 'path' => '/sezonut-na-ansa-b', 'variant' => '', 'tombola' => true, 'funnel' => array( 'view', 'box', 'item', 'full', 'add', 'created' ) ),
-		'sx'  => array( 'label' => 'Козметичният сет (адверториал)', 'short' => 'сет', 'path' => '/kozmetichen-set-promo', 'variant' => '', 'tombola' => false, 'funnel' => array( 'view', 'add', 'created' ) ),
+		/* 1.43.1: лендърът е АДРЕСЪТ — на главния до 28.10 13:43 беше старият дизайн (кутиите), на B дотогава — новият; смяната е в option ansa_promo_lander_swap */
+		'new' => array( 'label' => 'Основен — /sezonut-na-ansa', 'short' => 'основен', 'path' => '/sezonut-na-ansa', 'variant' => 'flow', 'tombola' => false, 'funnel' => array( 'view', 'item', 'add', 'created' ), 'design' => 'новият дизайн (потокът без кутии)' ),
+		'old' => array( 'label' => 'Стар — /sezonut-na-ansa-b', 'short' => 'стар', 'path' => '/sezonut-na-ansa-b', 'variant' => '', 'tombola' => true, 'funnel' => array( 'view', 'box', 'item', 'full', 'add', 'created' ), 'design' => 'старият дизайн (кутиите) с томболата' ),
+		'sx'  => array( 'label' => 'Сет — /kozmetichen-set-promo', 'short' => 'сет', 'path' => '/kozmetichen-set-promo', 'variant' => '', 'tombola' => false, 'funnel' => array( 'view', 'add', 'created' ), 'design' => 'адверториалът за козметичния сет' ),
 	);
 	const DEFAULT_LANDER = 'new';
 	const STEPS = array( 'view' => 'Отворили лендъра', 'box' => 'Избрали кутия', 'item' => 'Добавили продукт', 'full' => 'Напълнили кутията', 'add' => 'Отворили checkout', 'created' => 'Създали поръчка' );
@@ -68,6 +69,9 @@ final class Lander_Report {
 			'buy' => array( 'packs' => array(), 'same' => 0, 'mixed' => 0, 'cosm_yes' => 0, 'cosm_no' => 0, 'book' => 0, 'reach5' => 0, 'n' => 0 ), 'tombola' => array( 'orders' => 0, 'paid' => 0, 'activated' => 0, 'tickets' => 0 ),
 			'period_orders' => array( 'n' => 0, 'total' => 0.0, 'untracked_n' => 0, 'untracked_total' => 0.0 ), 'wc' => function_exists( 'wc_get_order' ) );
 		/* 1) кохортата: сесиите с отваряне на лендъра в периода (първото отваряне = денят на сесията) */
+		/* 1.43.1: връзката с „📊 Подробно“ — всички проследени сесии за периода (както ги брои Подробно, по начало на сесията) и колко от тях са отворили някой лендър */
+		$wi = empty( $o['internal'] ) ? ' AND internal = 0' : ''; $tot = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS n, SUM(landers <> '') AS l FROM $ts WHERE started_at >= %s AND started_at <= %s AND sid NOT LIKE %s AND sid NOT LIKE %s$wi", $from, $to, 'order-%', 'phone-%' ), ARRAY_A );
+		$out['all_sessions'] = (int) ( $tot['n'] ?? 0 ); $out['any_lander'] = (int) ( $tot['l'] ?? 0 ); $out['swap'] = (string) get_option( 'ansa_promo_lander_swap', '' );
 		$cohort = array(); foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT sid, MIN(at) AS first_at FROM $te WHERE ev = 'view' AND k = %s AND at >= %s AND at <= %s GROUP BY sid", $lander, $from, $to ), ARRAY_A ) as $r ) { $cohort[ $r['sid'] ] = (string) $r['first_at']; }
 		if ( ! $cohort ) { self::period_orders( $out, $lander, $from, $to, array() ); return $out; }
 		/* 2) сесиите и 3) събитията им */
@@ -217,7 +221,10 @@ final class Lander_Report {
 		$conv = Insights::pct( $d['created_sessions'], $n ); $pconv = Insights::pct( $p['created_sessions'], (int) $p['sessions'] );
 		$h = '<div class="ap-ld">';
 		/* контекст */
-		$h .= '<div class="ap-ld__ctx"><b>' . esc_html( $L['label'] ) . '</b> · ansa.bg' . esc_html( $L['path'] ) . ' · <b>' . esc_html( $plabel ) . '</b> · сравнение с ' . esc_html( $pplabel ) . ( '23:59:59' !== $cut ? ' (същият часови отрязък)' : '' ) . ' · данни към ' . esc_html( current_time( 'd.m H:i' ) ) . ( $L['tombola'] ? ' · томболата е отделен отчет най-долу' : ' · томболата не е в тази фуния' ) . '</div>';
+		$swap = ! empty( $d['swap'] ) ? date_i18n( 'd.m H:i', strtotime( $d['swap'] ) ) : '28.10 13:43';
+		$h .= '<div class="ap-ld__ctx"><b>' . esc_html( $L['label'] ) . '</b> · ansa.bg' . esc_html( $L['path'] ) . ' · <b>' . esc_html( $plabel ) . '</b> · сравнение с ' . esc_html( $pplabel ) . ( '23:59:59' !== $cut ? ' (същият часови отрязък)' : '' ) . ' · данни към ' . esc_html( current_time( 'd.m H:i' ) ) . ( $L['tombola'] ? ' · томболата е отделен отчет най-долу' : ' · томболата не е в тази фуния' ) . '</div>'
+			. '<div class="ap-ld__ctx ap-ld__ctx2">Лендърът е адресът: ' . ( 'new' === $lander ? 'до ' . esc_html( $swap ) . ' тук беше старият дизайн (кутиите), оттогава — новият (потокът)' : ( 'old' === $lander ? 'страницата съществува от 27.10; до ' . esc_html( $swap ) . ' показваше новия дизайн, оттогава — старият (кутиите) с томболата' : esc_html( $L['design'] ) ) ) . '. '
+			. 'За периода 📊 Подробно брои <b>' . (int) $d['all_sessions'] . '</b> сесии с какъвто и да е бийкън (и продуктови страници със Shrine картата, и подстраници); от тях <b>' . (int) $d['any_lander'] . '</b> са отворили някой лендър, а <b>' . $n . '</b> — този' . ( $d['both'] ? ' (' . (int) $d['both'] . ' са били и на друг)' : '' ) . '.</div>';
 		/* 1. резултатът — четири числа */
 		$tiles = Insights::tile( 'Сесии в лендъра', (string) $n, 'отворили ansa.bg' . esc_html( $L['path'] ) . ' · <b>' . (int) $d['visitors'] . '</b> уникални посетители' . ( $d['both'] ? ' · <b>' . (int) $d['both'] . '</b> са били и на друг лендър' : '' ), '', '', true, Insights::delta_html( (string) $n, (string) $p['sessions'] ) )
 			. Insights::tile( 'Сесии с поръчка', (string) $d['created_sessions'], 'от тези сесии · приписване: последният отворен лендър преди checkout', 'good', '', true, Insights::delta_html( (string) $d['created_sessions'], (string) $p['created_sessions'] ) )
@@ -372,7 +379,8 @@ final class Lander_Report {
 	}
 	private static function glossary_html( $d ) {
 		$g = array(
-			'Сесия в лендъра' => 'Сесия с отчетено отваряне на точно този адрес (таб на браузъра / бисквитка за деня). Презареждане не прави ново отваряне. Продуктови страници, Shrine картата и подстраниците (/info, /kozmetika) не са сесии в лендъра.',
+			'Сесия в лендъра' => 'Сесия с отчетено отваряне на точно този АДРЕС (таб на браузъра / бисквитка за деня), независимо кой дизайн е показвал тогава. Презареждане не прави ново отваряне. Продуктови страници, Shrine картата и подстраниците (/info, /kozmetika) не са сесии в лендъра — затова числото е по-малко от „Сесии“ в 📊 Подробно, което брои всяка сесия с бийкън.',
+			'Лендър = адрес' => 'Главният адрес /sezonut-na-ansa до 28.10 показваше старите кутии, оттогава новия поток; /sezonut-na-ansa-b е от 27.10 и дотогава показваше потока. Историята е преизчислена по адрес (DB 9). Фунията на основния адрес ползва общите стъпки (отворили → добавили продукт → checkout → поръчка), които важат и за двата дизайна.',
 			'Сесии с поръчка' => 'Сесии, в които след отварянето на лендъра е създадена поръчка; поръчката се приписва на последния отворен лендър преди checkout. Една сесия с две поръчки е 1 тук и 2 в „брой поръчки“.',
 			'Конверсия' => 'Сесии с поръчка ÷ сесии в лендъра. Под ' . self::MIN_ROWS . ' сесии — „малка извадка“.',
 			'Стойност' => 'Сумата на поръчките с ДДС и доставка, както е в WooCommerce; ДДС и доставката са показани отделно. Всички статуси без чернови; взети / в път / отказани са в „Статус на поръчките“.',
@@ -387,7 +395,7 @@ final class Lander_Report {
 	public static function styles() {
 		static $done = false; if ( $done ) { return; } $done = true;
 		echo '<style>#apLdKpi .ap-stg__g{grid-template-columns:repeat(4,1fr)}#apLdKpi .ap-st--hero{grid-column:span 1}#apLdKpi .ap-st--hero .ap-st__v{font-size:40px}@media(max-width:1100px){#apLdKpi .ap-stg__g{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){#apLdKpi .ap-stg__g{grid-template-columns:1fr 1fr}#apLdKpi .ap-st--hero .ap-st__v{font-size:28px}}.ap-ldchips .ap-chip.on small{color:#fff;opacity:.9}.ap-ldchips .ap-chip{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;line-height:1.15;padding:7px 14px}.ap-ldchips .ap-chip small{font-size:10px;font-weight:700;opacity:.75}.ap-ld__ctx{font-size:12px;font-weight:700;color:#a08579;padding:0 4px 10px}.ap-ld__ctx b{color:#43302a}'
-			. '.ap-ld__txt{padding:14px 20px;font-size:14px;line-height:1.55;color:#43302a}.ap-ld__txt p{margin:0}.ap-ld__cols table{width:100%}.ap-ld__chart{padding:12px 4px 0}.ap-ld__svg{width:100%;height:150px;display:block}.ap-ld__chart-l{display:flex;gap:14px;font-size:11.5px;font-weight:800;color:#a08579;padding:0 0 4px}.ap-ld__chart-l i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}'
+			. '.ap-ld__ctx2{font-weight:600;margin-top:-6px}.ap-ld__txt{padding:14px 20px;font-size:14px;line-height:1.55;color:#43302a}.ap-ld__txt p{margin:0}.ap-ld__cols table{width:100%}.ap-ld__chart{padding:12px 4px 0}.ap-ld__svg{width:100%;height:150px;display:block}.ap-ld__chart-l{display:flex;gap:14px;font-size:11.5px;font-weight:800;color:#a08579;padding:0 0 4px}.ap-ld__chart-l i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}'
 			. '.ap-ld__tree td,.ap-ld__tree th{white-space:nowrap}.ap-ld__tree tr.has td:first-child{cursor:pointer}.ap-ld__tree tr.lv1 td:first-child{padding-left:28px}.ap-ld__tree tr.lv2 td:first-child{padding-left:50px}.ap-ld__tree tr.lv3 td:first-child{padding-left:72px}.ap-ld__tree tr.ch td{background:#fffaf7;font-size:12px}.ap-ld__tree tr.lv2 td,.ap-ld__tree tr.lv3 td{background:#fff5ef}.ap-ld__tg{display:inline-block;width:14px;color:#e0602c;font-weight:900;transition:transform .15s}tr.open>td .ap-ld__tg{transform:rotate(90deg)}'
 			. '.ap-ld__modes{margin-left:auto}.ap-ld__sig{display:grid;gap:10px;padding:0 20px 16px}.ap-ld__s{display:grid;gap:3px;padding:12px 14px 12px 18px;border-radius:14px;background:#fdebe9;position:relative;font-size:13px}.ap-ld__s::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:#2469a8}.ap-ld__s.warn::before{background:#f8a41d}.ap-ld__s.bad::before{background:#d64545}.ap-ld__s.good::before{background:#3bb273}.ap-ld__s b{font-size:13.5px;color:#43302a}.ap-ld__s span{color:#6b5f58;font-weight:600}.ap-ld__s em{font-style:normal;font-weight:800;color:#e0602c}'
 			. '@media(max-width:900px){.ap-ld__tree tr.lv1 td:first-child{padding-left:18px}.ap-ld__tree tr.lv2 td:first-child{padding-left:30px}.ap-ld__tree tr.lv3 td:first-child{padding-left:42px}}</style>';
