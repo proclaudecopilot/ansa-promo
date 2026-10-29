@@ -13,7 +13,7 @@ function mmp( $id, $price, $name, $slug, $visible = true, $type = 'simple' ) { $
 $GLOBALS['products'] = array();
 mmp( 100, 49.50, 'ansa Sakura', 'sakura-skintonic', true, 'variable' ); mmp( 200, 43.90, 'ansa Daily Greens', 'daily-greens', true, 'variable' ); mmp( 300, 39.90, 'ansa MenoStop', 'menostop', true, 'variable' );
 mmp( 400, 59.00, 'ansa Dihydroberberine', 'dihidro-berberin', true, 'variable' ); mmp( 500, 39.90, 'ansa Red Routine', 'red-routine', true, 'variable' ); mmp( 600, 34.90, 'ansa Yonibiotic', 'ansa-yonibiotic', true, 'variable' );
-mmp( 700, 33.00, 'ansa ThyroZen', 'ansathyroid', true, 'variable' ); mmp( 800, 53.92, 'ansa EyeFresh пачове', 'eye-fresh', true, 'variable' );
+mmp( 700, 33.00, 'ansa ThyroZen', 'ansathyroid', true, 'variable' ); mmp( 800, 53.92, 'ansa EyeFresh пачове', 'eye-fresh', true, 'variable' ); $GLOBALS['products'][800]->vprices = array( 801 => '15.90', 802 => '27.90', 803 => '35.90' ); /* 1.43.2: „от“ = 1 кутия */
 mmp( 900, 39.90, 'ansa™ – Utera+ За здрава репродуктивна система', 'utera-plus' ); mmp( 910, 4.50, 'ansa™ – CollaMask - Попиваща колагенова маска', 'collamask' );
 mmp( 920, 27.90, 'ansa™ - Ашваганда + Магнезий + Вит. В6', 'ashwagandha' ); mmp( 930, 23.90, 'ansa™ – Омега 3 - Пречистено рибено масло', 'omega-3' ); mmp( 940, 19.90, 'ansa™ – D3K2 с Ретинол', 'd3k2', false );
 function wc_get_products( $a = array() ) { $o = array(); foreach ( $GLOBALS['products'] as $p ) { if ( $p instanceof MMProduct && 'variation' !== $p->type ) { $o[] = clone $p; } } return $o; }

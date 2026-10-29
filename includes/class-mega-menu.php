@@ -160,9 +160,9 @@ final class Mega_Menu {
 	}
 	private static function short_name( $n ) { $n = preg_replace( '/^\s*ansa(™|\x{2122})?\s*[-–—]\s*/u', '', (string) $n ); $n = preg_split( '/\s+[-–—|]\s+/u', $n )[0]; return trim( $n ); }
 	private static function first_sentence( $t ) { $t = trim( preg_replace( '/\s+/', ' ', (string) $t ) ); $parts = preg_split( '/(?<=[.!?])\s+/u', $t ); $f = trim( (string) ( $parts[0] ?? $t ), " .\n" ); return mb_strlen( $f ) > 70 ? mb_substr( $f, 0, 68 ) . '…' : $f; }
-	private static function need_of( $key ) { foreach ( self::NEEDS as $k => $n ) { if ( 'new' !== $k && in_array( $key, $n[2], true ) ) { return $n[0]; } } return 'Нови'; }
+	public static function need_of( $key ) { foreach ( self::NEEDS as $k => $n ) { if ( 'new' !== $k && in_array( $key, $n[2], true ) ) { return $n[0]; } } return 'Нови'; }
 	/** Всички нужди, в които продуктът се показва (основни + EXTRA); категорията на картата (need_of) е само основната. */
-	private static function needs_of( $key ) { $o = array(); foreach ( self::NEEDS as $k => $n ) { if ( in_array( $key, self::list_of( $k ), true ) ) { $o[] = $k; } } return $o ?: array( 'new' ); }
+	public static function needs_of( $key ) { $o = array(); foreach ( self::NEEDS as $k => $n ) { if ( in_array( $key, self::list_of( $k ), true ) ) { $o[] = $k; } } return $o ?: array( 'new' ); }
 	private static function money( $v ) { return '€ ' . number_format( (float) $v, 2, ',', ' ' ); }
 	private static function plural( $n ) { return 1 === (int) $n ? '1 продукт' : (int) $n . ' продукта'; }
 
