@@ -3,11 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промо играта на ansa™ (три кутии): страница [ansa_promo], визуален редактор на текстовете, количка и чекаут, дигитални билети. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
-<<<<<<< HEAD
- * Version:     1.42.4
-=======
- * Version:     1.43.1
->>>>>>> origin/main
+ * Version:     1.43.2
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -19,11 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-<<<<<<< HEAD
-define( 'ANSA_PROMO_VER', '1.42.4' );
-=======
-define( 'ANSA_PROMO_VER', '1.43.1' );
->>>>>>> origin/main
+define( 'ANSA_PROMO_VER', '1.43.2' );
 
 /* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
    (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
