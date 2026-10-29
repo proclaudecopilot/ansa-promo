@@ -169,6 +169,8 @@ final class Source {
 		$tq = (string) ( $r['touch_qs'] ?? '' ); $tr = (string) ( $r['touch_ref'] ?? '' );
 		if ( '' === $tq && '' === $tr ) { $tq = self::legacy_qs( $r ); $tr = (string) ( $r['ref'] ?? '' ); }
 		$ext = self::classify( $tq, $tr, $home );
+		/* 1.42.1: стари сесии от runtime ajax-а имат за referrer самия лендър (без UTM) — това не е „вътрешен линк“, а неустановен произход */
+		if ( 'internal' === $ext['k'] && '' === (string) ( $r['touch_qs'] ?? '' ) && '' === (string) ( $r['touch_ref'] ?? '' ) && isset( $ext['path'][0] ) && preg_match( '#^/(sezonut-na-ansa(-b)?|kozmetichen-set-promo)$#', $ext['path'][0] ) ) { $ext = self::classify( '', '', $home ); }
 		$eq = (string) ( $r['entry_qs'] ?? '' ); $er = (string) ( $r['entry_ref'] ?? '' );
 		if ( '' === $eq && '' === $er ) { $entry = $ext; $entry['legacy'] = true; }
 		else {

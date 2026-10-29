@@ -61,6 +61,10 @@ if ( 'internal' !== $o['entry']['k'] || 'email' !== $o['ext']['k'] ) { $bad++; e
 chk( '', 'https://www.ansa.bg/sezonut-na-ansa/?utm_content=general&utm_source=facebook&utm_medium=paid&utm_campaign=Season%2B%257C%2B%25D0%25A1%25D0%25B5%25D0%25B7%25D0%25BE%25D0%25BD%25D1%258A%25D1%2582%2B%25D0%25BD%25D0%25B0%2BAnsa&utm_term=MOF', 'meta', array( 'Season | Сезонът на Ansa', 'MOF' ) );
 chk( '', 'https://www.ansa.bg/sezonut-na-ansa/?utm_content=general&utm_source=facebook&utm_medium=paid&utm_campaign=Season%2B%257C%2B%25D0%25A1%25D0%25B5%25D0%25B7%25D0%25BE%25D0%25BD%25D1%258A%25D1%', 'meta', array( 'Season | Сезонъ' ) );
 chk( '', 'https://www.ansa.bg/sezonut-na-ansa/?utm_source=facebook&utm_medium=paid&utm_campaign=Season+%7C+%D0%A1%D0%B5%D0%B7%D0%BE%D0%BD%D1', 'meta', array( 'Season | Сезон' ) );
+$o = Source::of( array( 'src' => '', 'med' => '', 'camp' => '', 'ref' => 'https://www.ansa.bg/sezonut-na-ansa/' ) ); $n++;
+if ( 'direct' !== $o['ext']['k'] ) { $bad++; echo "FAIL of() самият лендър като referrer (стар runtime) → директно: ", json_encode( $o['ext'], JSON_UNESCAPED_UNICODE ), "\n"; }
+$o = Source::of( array( 'touch_qs' => '', 'touch_ref' => 'https://www.ansa.bg/sezonut-na-ansa-b/', 'entry_qs' => '', 'entry_ref' => 'https://www.ansa.bg/sezonut-na-ansa-b/' ) ); $n++;
+if ( 'internal' !== $o['ext']['k'] ) { $bad++; echo "FAIL of() нов ред: старият лендър → новия е вътрешен линк\n"; }
 /* params: чистене и малки ключове */
 $p = Source::params( '?UTM_Source=FB&utm_campaign=a%20b&x[]=1&ad_id=' . "12\x00" ); $n++; if ( 'FB' !== ( $p['utm_source'] ?? '' ) || 'a b' !== ( $p['utm_campaign'] ?? '' ) || isset( $p['x'] ) || '12' !== ( $p['ad_id'] ?? '' ) ) { $bad++; echo "FAIL params: ", json_encode( $p ), "\n"; }
 echo $bad ? "FAILED $bad / $n\n" : "OK $n проверки\n"; exit( $bad ? 1 : 0 );
