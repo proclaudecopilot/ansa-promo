@@ -88,13 +88,16 @@
   function sid(){try{var v=sessionStorage.getItem('ansa_promo_sid');if(!v){v='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);sessionStorage.setItem('ansa_promo_sid',v)}return v}catch(e){return S._sid||(S._sid='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))}}
   function vid(){try{var o=JSON.parse(localStorage.getItem('ansa_promo_vid')||'null'),now=Date.now();if(!o||!o.v||!o.t||now-o.t>30*864e5){o={v:'v'+now.toString(36)+Math.random().toString(36).slice(2,12),t:now};localStorage.setItem('ansa_promo_vid',JSON.stringify(o))}return o.v}catch(e){return ''}}
   function items(){var o=[];for(var k in S.qty)for(var i=0;i<S.qty[k];i++)o.push(k);return o}
+  /* 1.42.0 (Insights 4): лендърът е new (ansa.bg/sezonut-na-ansa); „view“ носи адреса (qs), referrer-а (eref) и първото докосване на сайта в този таб (tqs/tref — ansa_promo_touch от Frontend::touch_script) */
+  var LANDER='new';
+  function touch(fd){try{var t=JSON.parse(sessionStorage.getItem('ansa_promo_touch')||'null');if(t){fd.append('tqs',String(t.q||'').slice(0,700));fd.append('tref',String(t.r||'').slice(0,191))}}catch(e){}}
   function beacon(step,k){
-    if(!A.ajax||A.editor||A.draft)return;var t=totals();var key='ansa_flow_bc_'+A.id+'_'+step+(k?'_'+k:'')+(step==='box'?'_'+(t.box?t.box.id:''):'');
+    if(!A.ajax||A.editor||A.draft)return;var t=totals();var key='ansa_flow_bc_'+A.id+'_'+step+(step==='view'?'_'+LANDER:'')+(k?'_'+k:'')+(step==='box'?'_'+(t.box?t.box.id:''):'');
     try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1')}catch(e){}
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('variant','flow');
     fd.append('box',t.box?t.box.id:'');fd.append('utm',S.utm||'');fd.append('n',t.count);if(k)fd.append('k',k);
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(items()));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop')}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER);fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -331,7 +334,7 @@
   /* ── свеж runtime (цени, nonce, седмица) + „view“ в Insights; кешираната страница носи стар JSON ── */
   function refresh(){
     if(!A.ajax||A.editor||A.draft||A.refresh===false)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER,{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data)return;var d=r.data;
       ['products','order','boxes','max_packs','rewards','nonce','season','deadline','deadline_ts','draw','tombola_url','cosm_reserved','copy','live','checkout','bgn','li_items','version','logo'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});
       bind();if(!BIG||!ORDER.length)return;var q={};for(var k in S.qty){if(PROD[k])q[k]=S.qty[k]}S.qty=q;
@@ -340,6 +343,6 @@
   }
 
   var rz=0;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(renderDock,150)},{passive:true});
-  shell();renderProducts();renderDock();refresh();welcome();
+  shell();renderProducts();renderDock();refresh();beacon('view');welcome(); /* 1.42.0: „view“ с входа и докосването (runtime-ът остава резерва за кеширана страница) */
   if(itemCount()>0){beacon('box')}
 })();

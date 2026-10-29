@@ -32,6 +32,7 @@ final class Frontend {
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'wp_head', array( __CLASS__, 'hide_css' ), 99 );
 		add_action( 'wp_head', array( __CLASS__, 'ab_script' ), 1 ); /* 1.34.0: A/B — разпределянето на трафика между A и B */
+		add_action( 'wp_head', array( __CLASS__, 'touch_script' ), 2 ); /* 1.42.0: първото докосване на сайта — за „външния източник“ в Insights */
 	}
 
 	/* ── 1.34.0: вариант B „потокът без кутии“ — [ansa_promo variant="flow"] (templates/flow.php + assets/flow.css/js) ──
@@ -64,6 +65,18 @@ final class Frontend {
 		   пренасочването към B ставаше след парсването на A — мигане на A и броене на „view“ за A); loader-ът му гледа само script[data-loading-method][data-src]. */
 		echo '<script id="ansa-promo-ab" data-loading-method="immediate">(function(){try{var m=document.cookie.match(/(?:^|;\s*)ansa_promo_ab2=([ab])/),v=m?m[1]:"";if(!v){v=Math.random()*100<' . $share . '?"b":"a";document.cookie="ansa_promo_ab2="+v+";path=/;max-age=2592000;SameSite=Lax"}'
 			. 'if(v==="b"){location.replace(' . wp_json_encode( $url ) . '+location.search+location.hash)}}catch(e){}})();</script>' . "\n";
+	}
+
+	/**
+	 * 1.42.0 (Insights 4): на ВСЯКА страница (менюто е навсякъде от 1.40.0, страниците са кеширани — затова е в браузъра) се записва първото докосване
+	 * на сайта в този таб: sessionStorage ansa_promo_touch = { q: query string-ът на първата страница, r: referrer-ът, t }. Пише се само когато
+	 * адресът носи маркери (utm_*, fbclid, gclid, ttclid, msclkid, ap_*) или referrer-ът е външен / липсва (директно) — вътрешен преход без маркери
+	 * не е докосване. Лендърът го праща с „view“ (tqs/tref) → sessions.touch_qs/touch_ref = „външният източник“ (Source::of), а собственият му адрес и
+	 * referrer са „входът към лендъра“. Статичен скрипт без зависимости; data-loading-method="immediate" — FlyingPress не го отлага.
+	 */
+	public static function touch_script() {
+		if ( is_admin() || ( function_exists( 'is_feed' ) && is_feed() ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) { return; }
+		echo '<script id="ansa-promo-touch" data-loading-method="immediate">(function(){try{var K="ansa_promo_touch",s=window.sessionStorage;if(!s||s.getItem(K))return;var q=location.search.replace(/^\?/,""),r=document.referrer||"",h="";try{h=r?new URL(r).hostname:""}catch(e){}var me=location.hostname.replace(/^www\./,""),ext=h&&h.replace(/^www\./,"")!==me;if(/(^|&)(utm_|fbclid=|gclid=|ttclid=|msclkid=|ap_)/i.test(q)||ext||!r){s.setItem(K,JSON.stringify({q:q.slice(0,700),r:r.slice(0,191),t:Date.now()}))}}catch(e){}})();</script>' . "\n";
 	}
 
 	const TEMPLATE = 'ansa-promo-fullscreen.php';

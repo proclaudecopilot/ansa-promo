@@ -10,7 +10,12 @@
  *                               устройство, лийд (имейлът от попъпа), кутия, продуктите в кутията, най-далечната стъпка, поръчката.
  *                               DB ver 6 (1.28.0): utm_last (последният UTM; utm = първият), vid (посетителска бисквитка, 30 дни), internal (вътрешен трафик/бот).
  *                               DB ver 7 (1.34.0): variant ('' = A кутиите, flow = B потокът без кутии) — и в events
+ *                               DB ver 8 (1.42.0): landers (кои лендъри е отворила: new,old,sx), lander_at (първото отваряне на лендър), entry_qs/entry_ref
+ *                               (адресът и referrer-ът при отварянето на лендъра — „входът към лендъра“), touch_qs/touch_ref (първото докосване на сайта в
+ *                               този таб — „външният източник“); Source::of ги чете.
  * {prefix}ansa_promo_events   — Insights 2: всяко събитие на сесията (view, gate, box, item, full, order, add, created, paid, activated).
+ *                               DB ver 8: view.k = лендърът (new / old / sx / sub = подстраница); created/paid/activated.k = номерът на поръчката
+ *                               (една сесия може да има повече от една поръчка).
  * {prefix}ansa_promo_referrals — препоръките на томболата: кой код (tickets.ref_code) доведе коя поръчка, статус (DB ver 3;
  *                               tickets получава ref_code + bonus).
  *
@@ -120,6 +125,12 @@ final class Schema {
   vid varchar(40) NOT NULL DEFAULT '',
   internal tinyint(1) NOT NULL DEFAULT 0,
   variant varchar(8) NOT NULL DEFAULT '',
+  landers varchar(24) NOT NULL DEFAULT '',
+  lander_at datetime NULL,
+  entry_qs varchar(700) NOT NULL DEFAULT '',
+  entry_ref varchar(191) NOT NULL DEFAULT '',
+  touch_qs varchar(700) NOT NULL DEFAULT '',
+  touch_ref varchar(191) NOT NULL DEFAULT '',
   lead_id bigint(20) unsigned NULL,
   box varchar(8) NOT NULL DEFAULT '',
   items text NULL,
@@ -133,7 +144,9 @@ final class Schema {
   KEY step (step),
   KEY order_id (order_id),
   KEY vid (vid),
-  KEY internal (internal)
+  KEY internal (internal),
+  KEY landers (landers),
+  KEY lander_at (lander_at)
 ) $collate;",
 			"CREATE TABLE {$t['events']} (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -148,15 +161,40 @@ final class Schema {
   PRIMARY KEY  (id),
   KEY sid (sid),
   KEY at (at),
-  KEY ev (ev)
+  KEY ev (ev),
+  KEY ev_k (ev,k)
 ) $collate;",
 		);
 	}
 
 	public static function install() {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		$was = (int) get_option( self::OPT_DB_VER, 0 );
 		foreach ( self::sql() as $sql ) { dbDelta( $sql ); }
+		if ( $was > 0 && $was < 8 ) { self::migrate_v8(); }
 		update_option( self::OPT_DB_VER, ANSA_PROMO_DB_VER, false );
+	}
+
+	/**
+	 * 1.42.0: старите редове получават новите ключове, за да работи „Резултати на лендъра“ и назад във времето:
+	 *  - view.k = лендърът: variant flow → new; variant '' → old, освен сесиите, които са само гледали (step = view) и чийто адрес (ref от runtime
+	 *    ajax-а = самата страница) е подстраница (/info, /kozmetika, /tombola, /kniga → sub) или /kozmetichen-set-promo (→ sx). Преди 1.42.0 runtime
+	 *    ajax-ът броеше „view“ и на тези страници; евристиката е консервативна — сесия, която е направила още нещо, остава „old“.
+	 *  - created/paid/activated.k = номерът на поръчката (от sessions.order_id).
+	 *  - sessions.landers / lander_at — от view събитията.
+	 * Само MySQL (на живия сайт); грешка не спира ъпдейта.
+	 */
+	public static function migrate_v8() {
+		global $wpdb; $ts = self::table( 'sessions' ); $te = self::table( 'events' );
+		try {
+			$wpdb->query( "UPDATE $te SET k = 'new' WHERE ev = 'view' AND k = '' AND variant = 'flow'" );
+			$wpdb->query( "UPDATE $te e INNER JOIN $ts s ON s.sid = e.sid SET e.k = 'sub' WHERE e.ev = 'view' AND e.k = '' AND s.step = 'view' AND (s.ref LIKE '%/sezonut-na-ansa/info%' OR s.ref LIKE '%/sezonut-na-ansa/kozmetika%' OR s.ref LIKE '%/sezonut-na-ansa/tombola%' OR s.ref LIKE '%/kniga%')" );
+			$wpdb->query( "UPDATE $te e INNER JOIN $ts s ON s.sid = e.sid SET e.k = 'sx' WHERE e.ev = 'view' AND e.k = '' AND s.step = 'view' AND s.ref LIKE '%/kozmetichen-set-promo%'" );
+			$wpdb->query( "UPDATE $te SET k = 'old' WHERE ev = 'view' AND k = ''" );
+			$wpdb->query( "UPDATE $te e INNER JOIN $ts s ON s.sid = e.sid SET e.k = s.order_id WHERE e.ev IN ('created','paid','activated') AND e.k = '' AND s.order_id > 0" );
+			foreach ( array( 'new', 'old', 'sx' ) as $l ) { $wpdb->query( $wpdb->prepare( "UPDATE $ts s SET s.landers = TRIM(BOTH ',' FROM CONCAT(s.landers, ',', %s)) WHERE s.landers NOT LIKE %s AND EXISTS (SELECT 1 FROM $te e WHERE e.sid = s.sid AND e.ev = 'view' AND e.k = %s)", $l, '%' . $l . '%', $l ) ); }
+			$wpdb->query( "UPDATE $ts s INNER JOIN (SELECT sid, MIN(at) AS a FROM $te WHERE ev = 'view' AND k IN ('new','old','sx') GROUP BY sid) x ON x.sid = s.sid SET s.lander_at = x.a WHERE s.lander_at IS NULL" );
+		} catch ( \Throwable $e ) {}
 	}
 
 	public static function maybe_upgrade() {
