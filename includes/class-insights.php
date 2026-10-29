@@ -33,6 +33,27 @@ defined( 'ABSPATH' ) || exit;
 final class Insights {
 	/** 1.42.0: ключовете на лендърите в view.k (sub = подстраница /info, /kozmetika, /tombola, /kniga — не е лендър). */
 	const LANDERS = array( 'new', 'old', 'sx', 'sub' );
+	/**
+	 * 1.43.1 (човекът: „на Лендър дава грешна информация“): лендърът е АДРЕСЪТ, не дизайнът. До 28.10 главният адрес показваше кутиите, а
+	 * B страницата — потока; 1.42.0 ги броеше по дизайн и „ansa.bg/sezonut-na-ansa за 90 дни“ започваше от 28.10. Пътят на страницата идва от
+	 * promo.js / flow.js (path) и от runtime ajax-а; тук се превежда в ключ: new = главната промо страница (page_id), old = страницата B (ab.page_id),
+	 * sx = /kozmetichen-set-promo, sub = подстраница на промото (/info, /kozmetika, /tombola, /kniga), '' = непознат път (остава по дизайна).
+	 */
+	public static function lander_for_path( $path ) {
+		$p = strtolower( trim( (string) ( parse_url( (string) $path, PHP_URL_PATH ) ?: $path ) ) ); $p = '/' . trim( rawurldecode( $p ), '/' ); if ( '/' === $p ) { return ''; }
+		$home = (string) ( parse_url( home_url( '/' ), PHP_URL_PATH ) ?: '/' ); $home = '/' . trim( $home, '/' ); if ( '/' !== $home && 0 === strpos( $p, $home . '/' ) ) { $p = substr( $p, strlen( $home ) ); }
+		$main = ''; $b = ''; $sx = '/kozmetichen-set-promo';
+		try { $cfg = Config::get_published(); if ( ! empty( $cfg['page_id'] ) && function_exists( 'get_permalink' ) ) { $main = (string) ( parse_url( (string) get_permalink( (int) $cfg['page_id'] ), PHP_URL_PATH ) ?: '' ); } if ( ! empty( $cfg['ab']['page_id'] ) && function_exists( 'get_permalink' ) ) { $b = (string) ( parse_url( (string) get_permalink( (int) $cfg['ab']['page_id'] ), PHP_URL_PATH ) ?: '' ); } if ( class_exists( __NAMESPACE__ . '\\Sakura_Page' ) ) { $sx = '/' . Sakura_Page::path( $cfg ); } } catch ( \Throwable $e ) {}
+		$norm = function ( $x ) use ( $home ) { $x = '/' . trim( strtolower( rawurldecode( (string) $x ) ), '/' ); if ( '/' !== $home && 0 === strpos( $x, $home . '/' ) ) { $x = substr( $x, strlen( $home ) ); } return $x; };
+		$main = $main ? $norm( $main ) : '/sezonut-na-ansa'; $b = $b ? $norm( $b ) : '/sezonut-na-ansa-b'; $sx = $norm( $sx );
+		if ( $p === $sx ) { return 'sx'; }
+		if ( $p === $b ) { return 'old'; }
+		if ( $p === $main ) { return 'new'; }
+		if ( 0 === strpos( $p, $main . '/' ) || 0 === strpos( $p, $b . '/' ) ) { return 'sub'; }
+		/* резерва по името (ако page_id е друг/липсва): -b → old, главният → new */
+		if ( preg_match( '#^/sezonut-na-ansa-b$#', $p ) ) { return 'old'; } if ( preg_match( '#^/sezonut-na-ansa$#', $p ) ) { return 'new'; } if ( preg_match( '#^/sezonut-na-ansa/#', $p ) ) { return 'sub'; }
+		return '';
+	}
 
 	const STEPS   = array( 'view', 'gate', 'box', 'full', 'order', 'add', 'created', 'paid', 'activated' );
 	const CLIENT  = array( 'view', 'gate', 'box', 'item', 'full', 'order', 'add', 'sh_view', 'sh_pick', 'sh_more', 'pop_view', 'pop_cta', 'pop_close' ); /* 1.36.0: pop_* = приветственият попъп на B */ /* 1.24.2: sh_* = 4-тата опция (3+2) в Shrine; sh_add идва само от сървъра */
@@ -114,6 +135,7 @@ final class Insights {
 		$variant = self::tok( $d['variant'] ?? '', 8, '/[^a-z]/' ); /* 1.34.0: '' = A, flow = B; първият на сесията остава */
 		/* 1.42.0: „view“ носи лендъра в k (new / old / sx / sub); без изричен лендър (стар кеширан JS) — по варианта: flow → new, иначе old */
 		$lander = self::tok( $d['lander'] ?? '', 8, '/[^a-z]/' ); if ( ! in_array( $lander, self::LANDERS, true ) ) { $lander = ''; }
+		if ( 'view' === $ev && '' !== (string) ( $d['path'] ?? '' ) ) { $by_path = self::lander_for_path( (string) $d['path'] ); if ( '' !== $by_path ) { $lander = $by_path; } } /* 1.43.1: адресът печели над дизайна */
 		if ( 'view' === $ev ) { if ( '' === $lander ) { $lander = 'flow' === $variant ? 'new' : ( in_array( $k, self::LANDERS, true ) ? $k : 'old' ); } $k = $lander; }
 		$is_lander = 'view' === $ev && 'sub' !== $k;
 		$qs = self::qs( $d['qs'] ?? '' ); $eref = self::ref( $d['eref'] ?? '' ); $tqs = self::qs( $d['tqs'] ?? '' ); $tref = self::ref( $d['tref'] ?? '' );
@@ -187,7 +209,7 @@ final class Insights {
 			'vid' => self::request_vid( (string) ( $_POST['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request(), /* 1.28.0 */
 			'variant' => (string) ( $_POST['variant'] ?? '' ), /* 1.34.0 */
 			/* 1.42.0: лендърът, адресът и referrer-ът при отварянето му (входът), първото докосване на сайта в този таб (външният източник) */
-			'lander' => (string) ( $_POST['lander'] ?? '' ), 'qs' => (string) wp_unslash( $_POST['qs'] ?? '' ), 'eref' => (string) wp_unslash( $_POST['eref'] ?? '' ), 'tqs' => (string) wp_unslash( $_POST['tqs'] ?? '' ), 'tref' => (string) wp_unslash( $_POST['tref'] ?? '' ),
+			'lander' => (string) ( $_POST['lander'] ?? '' ), 'path' => (string) wp_unslash( $_POST['path'] ?? '' ), 'qs' => (string) wp_unslash( $_POST['qs'] ?? '' ), 'eref' => (string) wp_unslash( $_POST['eref'] ?? '' ), 'tqs' => (string) wp_unslash( $_POST['tqs'] ?? '' ), 'tref' => (string) wp_unslash( $_POST['tref'] ?? '' ),
 		) );
 		wp_send_json_success( array( 'ok' => true ) );
 	}
@@ -201,7 +223,8 @@ final class Insights {
 		/* 1.42.0: page = лендърът (new / old / sx / sub от promo.js / flow.js); referrer-ът на ajax-а е самата страница → нейният query string е входът */
 		$ref = (string) ( $_SERVER['HTTP_REFERER'] ?? '' ); $qs = ''; $home = (string) ( wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ?: 'ansa.bg' );
 		if ( '' !== $ref && Source::is_site_host( Source::ref_parts( $ref )[0], $home ) ) { $qs = (string) ( wp_parse_url( $ref, PHP_URL_QUERY ) ?: '' ); }
-		self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => (string) ( $_GET['utm'] ?? '' ), 'variant' => (string) ( $_GET['variant'] ?? '' ), 'lander' => (string) ( $_GET['page'] ?? '' ), 'qs' => $qs, 'ref' => $ref, 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop', 'vid' => self::request_vid( (string) ( $_GET['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request() ) );
+		$path = (string) wp_unslash( $_GET['path'] ?? '' ); if ( '' === $path && '' !== $qs ) { $path = (string) ( wp_parse_url( $ref, PHP_URL_PATH ) ?: '' ); } /* 1.43.1: адресът — от JS, иначе от referrer-а на ajax-а (самата страница) */
+		self::track( array( 'sid' => $sid, 'ev' => 'view', 'utm' => (string) ( $_GET['utm'] ?? '' ), 'variant' => (string) ( $_GET['variant'] ?? '' ), 'lander' => (string) ( $_GET['page'] ?? '' ), 'path' => $path, 'qs' => $qs, 'ref' => $ref, 'dev' => preg_match( '/Mobile|Android|iPhone|iPad/i', $ua ) ? 'mobile' : 'desktop', 'vid' => self::request_vid( (string) ( $_GET['vid'] ?? '' ) ), 'internal' => Insights_Reports::is_internal_request() ) );
 	}
 
 	/** 1.17.1: самодиагностика — таблици, редове, последно събитие, режимът на играта. */
