@@ -5,7 +5,7 @@
  * php tests/insights-test.php → „OK n проверки“ или списък с грешки (exit 1).
  */
 require __DIR__ . '/wpstub.php';
-use AnsaPromo\Insights; use AnsaPromo\Schema;
+use AnsaPromo\Insights; use AnsaPromo\Schema; use AnsaPromo\Lander_Report;
 
 /* ── WP/WC стъбове ── */
 define( 'ARRAY_A', 'ARRAY_A' ); define( 'ANSA_PROMO_DB_VER', '5' );
@@ -40,8 +40,8 @@ class FakeWpdb {
 	function delete( $tb, $w ) { $wh = implode( ' AND ', array_map( function ( $k ) { return "$k = :$k"; }, array_keys( $w ) ) ); $st = $this->db->prepare( "DELETE FROM $tb WHERE $wh" ); return $st && $st->execute( $w ) ? $st->rowCount() : false; }
 }
 $GLOBALS['wpdb'] = $wpdb = new FakeWpdb(); $GLOBALS['sql_errors'] = array();
-$wpdb->query( 'CREATE TABLE wp_ansa_promo_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT NOT NULL, started_at TEXT NOT NULL, last_at TEXT NOT NULL, utm TEXT NOT NULL DEFAULT "", utm_last TEXT NOT NULL DEFAULT "", src TEXT NOT NULL DEFAULT "", med TEXT NOT NULL DEFAULT "", camp TEXT NOT NULL DEFAULT "", ref TEXT NOT NULL DEFAULT "", device TEXT NOT NULL DEFAULT "", vid TEXT NOT NULL DEFAULT "", internal INTEGER NOT NULL DEFAULT 0, lead_id INTEGER NULL, box TEXT NOT NULL DEFAULT "", items TEXT NULL, step TEXT NOT NULL DEFAULT "view", order_id INTEGER NULL, ip TEXT NULL)' );
-$wpdb->query( 'CREATE TABLE wp_ansa_promo_events (id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT NOT NULL, at TEXT NOT NULL, ev TEXT NOT NULL, box TEXT NOT NULL DEFAULT "", k TEXT NOT NULL DEFAULT "", n INTEGER NOT NULL DEFAULT 0, utm TEXT NOT NULL DEFAULT "")' );
+$wpdb->query( 'CREATE TABLE wp_ansa_promo_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT NOT NULL, started_at TEXT NOT NULL, last_at TEXT NOT NULL, utm TEXT NOT NULL DEFAULT "", utm_last TEXT NOT NULL DEFAULT "", src TEXT NOT NULL DEFAULT "", med TEXT NOT NULL DEFAULT "", camp TEXT NOT NULL DEFAULT "", ref TEXT NOT NULL DEFAULT "", device TEXT NOT NULL DEFAULT "", vid TEXT NOT NULL DEFAULT "", internal INTEGER NOT NULL DEFAULT 0, variant TEXT NOT NULL DEFAULT "", landers TEXT NOT NULL DEFAULT "", lander_at TEXT NULL, entry_qs TEXT NOT NULL DEFAULT "", entry_ref TEXT NOT NULL DEFAULT "", touch_qs TEXT NOT NULL DEFAULT "", touch_ref TEXT NOT NULL DEFAULT "", lead_id INTEGER NULL, box TEXT NOT NULL DEFAULT "", items TEXT NULL, step TEXT NOT NULL DEFAULT "view", order_id INTEGER NULL, ip TEXT NULL)' ); /* 1.34.0: variant · 1.42.0: landers, lander_at, entry_*, touch_* */
+$wpdb->query( 'CREATE TABLE wp_ansa_promo_events (id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT NOT NULL, at TEXT NOT NULL, ev TEXT NOT NULL, box TEXT NOT NULL DEFAULT "", k TEXT NOT NULL DEFAULT "", n INTEGER NOT NULL DEFAULT 0, utm TEXT NOT NULL DEFAULT "", variant TEXT NOT NULL DEFAULT "")' );
 $wpdb->query( 'CREATE TABLE wp_ansa_promo_leads (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL)' );
 $wpdb->query( 'CREATE TABLE wp_ansa_promo_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, day TEXT NOT NULL, step TEXT NOT NULL, box TEXT NOT NULL DEFAULT "", utm TEXT NOT NULL DEFAULT "", n INTEGER NOT NULL DEFAULT 0)' );
 $wpdb->query( 'CREATE TABLE wp_ansa_promo_tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, code TEXT NOT NULL, tickets INTEGER NOT NULL DEFAULT 1, box TEXT NOT NULL DEFAULT "", status TEXT NOT NULL DEFAULT "issued", created_at TEXT NOT NULL, activated_at TEXT NULL, portal_user TEXT NULL, ip TEXT NULL, ref_code TEXT NULL, bonus INTEGER NOT NULL DEFAULT 0)' );
@@ -115,7 +115,7 @@ $render = function ( $get ) { $_GET = $get; ob_start(); Insights::render( isset(
 $h = $render( array( 'view' => 'history', 'from' => '2026-10-16', 'to' => $today ) ); /* 1.28.0: history = алиас на 🧾 Сесии; периодът е глобален и изричен */
 $ok( 'стиловете на екрана се печатат при първия рендер (веднъж на заявка)', 1 === substr_count( $h, '.ap-funnel{' ) && 1 === substr_count( $h, '.ap-ins-f{' ) );
 $ok( 'сесии: формата от–до с периода, чиповете на периода, без чипове на изгледите (навигацията е една)', false !== strpos( $h, '🛑 Докъде са стигнали и къде са спрели' ) && false !== strpos( $h, 'name="from" value="2026-10-16"' ) && false !== strpos( $h, 'name="to" value="' . $today . '"' ) && false === strpos( $h, '">📊 Преглед</a>' ) && false !== strpos( $h, '>от старта<' ) );
-$h2 = $render( array( 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'преглед: „Поръчки“ = 3 (11, 12, 13; 10 е от 15.10) и „Сесии с поръчка“ = 3 — едни и същи поръчки, по датата на сесията', (bool) preg_match( '/data-k="o_n">3<\/b>/u', $h2 ) && (bool) preg_match( '/data-k="created">3<\/b>/u', $h2 ) && false === strpos( $h2, '⚠ в WooCommerce' ) && false !== strpos( $h2, 'по датата на сесията' ) );
+$h2 = $render( array( 'view' => 'classic', 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'преглед: „Поръчки“ = 3 (11, 12, 13; 10 е от 15.10) и „Сесии с поръчка“ = 3 — едни и същи поръчки, по датата на сесията', (bool) preg_match( '/data-k="o_n">3<\/b>/u', $h2 ) && (bool) preg_match( '/data-k="created">3<\/b>/u', $h2 ) && false === strpos( $h2, '⚠ в WooCommerce' ) && false !== strpos( $h2, 'по датата на сесията' ) );
 $ok( 'преглед: поръчки по група — взети 1 (11, 120 €), в път 1, отказани 1 (13, 80 €); hero „Реализиран оборот“ 120,00 €', (bool) preg_match( '/data-k="o_delivered">1<\/b>/u', $h2 ) && (bool) preg_match( '/data-k="o_delivered_pct">33,3%<\/b> от поръчките · 120,00 €/u', $h2 ) && (bool) preg_match( '/ap-st--hero"><span class="ap-st__l">Реализиран оборот<span class="ap-q"/u', $h2 ) && (bool) preg_match( '/data-k="rev_real">120,00 €<\/b>/u', $h2 ) && (bool) preg_match( '/data-k="rev_open">99,50 €<\/b>/u', $h2 ) );
 $ok( 'преглед: петте групи + таблицата по статус + речникът + баджът на източника', false !== strpos( $h2, '👥 Трафик' ) && false !== strpos( $h2, '🔻 Фуния по сесии' ) && false !== strpos( $h2, '🛒 Поръчки (WooCommerce)' ) && false !== strpos( $h2, '💶 Оборот' ) && false !== strpos( $h2, '📦 Поръчките по статус' ) && (bool) preg_match( '/статус cancelled<\/b> <small>cancelled<\/small><\/td><td>1<\/td><td>33,3%<\/td><td>80,00 €<\/td><td>✕ загубени/u', $h2 ) && false !== strpos( $h2, '📖 Как се смята всяко число' ) && false !== strpos( $h2, 'class="ap-src ap-src--wc"' ) );
 $ok( 'преглед: плочка „Напълнили кутията, но НЕ поръчали“ = 3 с линк към списъка в 🧾 Сесии', (bool) preg_match( '/Напълнили кутията, но НЕ поръчали<\/span><span class="ap-st__row"><b class="ap-st__v">3<\/b><\/span><small class="ap-st__s">[^<]*<a href="[^"]*view=sessions[^"]*step=full[^"]*ord=no[^"]*#apInsList">кои →/u', $h2 ) && false !== strpos( $h2, '🛑 Загубени по пътя' ) );
@@ -130,9 +130,9 @@ $h = $render( array( 'view' => 'history', 'from' => '2026-10-17', 'to' => '2026-
 $ok( 'сесии: страница извън обхвата се връща на последната, 3 сесии за 17.10; линковете пазят изгледа и периода', (bool) preg_match( '/<b>3<\/b> сесии/u', $h ) && false !== strpos( $h, 'name="from" value="2026-10-17"' ) && false !== strpos( $h, 'tab=insights&from=2026-10-17&to=2026-10-17&view=sessions&step=' ) );
 $h = $render( array( 'view' => 'live', 'n' => '100' ) );
 $ok( 'на живо: отделен екран с фийда, превключвателя и дашборда за днес (всички плочки с data-k, sub-овете с data-ks); без диагностиката', false !== strpos( $h, '🟢 На живо — последните сесии' ) && false !== strpos( $h, 'id="apInsLive"' ) && false !== strpos( $h, 'var limit=100;' ) && false !== strpos( $h, '&days=1&limit=' ) && false === strpos( $h, '🩺 Работи ли отчитането' ) && false !== strpos( $h, 'id="apInsDash"' ) && false !== strpos( $h, 'data-k="rev_real"' ) && false !== strpos( $h, 'data-ks="o_delivered"' ) && false !== strpos( $h, 'kpi_sub' ) );
-$h = $render( array( 'days' => '0' ) );
+$h = $render( array( 'view' => 'classic', 'days' => '0' ) );
 $ok( 'преглед: фунията с отпаданията, диагностиката (админ), продуктите, разбивките, трендът; фийдът НЕ е тук', false !== strpos( $h, '🔻 Фунията по сесии' ) && false !== strpos( $h, 'ap-fn__drop' ) && false !== strpos( $h, '🩺 Работи ли отчитането' ) && false !== strpos( $h, '📅 По дни' ) && false === strpos( $h, 'id="apInsFeed"' ) && false !== strpos( $h, 'view=sessions' ) && false !== strpos( $h, 'id="apTrend"' ) && false !== strpos( $h, '📱 × 🛑 Къде спират по устройство' ) );
-$h = $render( array( 'view' => 'hack' ) ); $ok( 'непознат view → преглед', false !== strpos( $h, '🔻 Фунията по сесии' ) );
+$h = $render( array( 'view' => 'hack' ) ); $ok( 'непознат view → 🎯 Лендър (новият основен отчет)', false !== strpos( $h, '1 · Какъв е резултатът?' ) && false !== strpos( $h, 'ansa.bg/sezonut-na-ansa<' ) && false === strpos( $h, '🔻 Фунията по сесии' ) );
 /* ── 1.21.1: сверка с поръчките (човекът: „има 43 поръчки, а Insights отчита 16“) ── */
 $GLOBALS['orders'][20] = new FakeOrder( 20, array( 'sid' => '', 'box' => 'm', 'utm' => 'dg', 'lead_id' => 1, 'count' => 3 ), '2026-10-16 09:00:00', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', '20.20.20.20', 'delivered', 150 ); /* преди 1.17.0 — без sid, с билет */
 $wpdb->insert( 'wp_ansa_promo_tickets', array( 'order_id' => 20, 'code' => 'T20', 'tickets' => 3, 'box' => 'm', 'status' => 'issued', 'created_at' => '2026-10-16 12:00:00' ) );
@@ -175,10 +175,10 @@ $ok( 'без решени поръчки прогнозата е „—“', '�
 $o12 = $GLOBALS['orders'][12]; Insights::on_status( 12, 'processing', 'shipped' ); $ok( 'on_status пише кога поръчката е влязла в текущия статус (unix) и възрастта се смята от него', ctype_digit( (string) $o12->get_meta( '_ansa_promo_status_at' ) ) && Insights::status_age_days( $o12, (int) $o12->get_meta( '_ansa_promo_status_at' ) + 2 * DAY_IN_SECONDS ) > 1.99 && Insights::status_age_days( $o12, (int) $o12->get_meta( '_ansa_promo_status_at' ) + 2 * DAY_IN_SECONDS ) < 2.01 ); $o12->extra = array();
 $fl = Insights::dashboard_flat( Insights::dashboard_data( Insights::sessions_report( 0, $rgT ), $p1, array( 'period' => 'тест' ) ) );
 $ok( 'плочките: „Прогноза взети“ 66,7% със sub върху решените; „Прогнозен оборот“ с очаквани накрая 4 от 6; „В път“ показва застояли/пресни', '66,7%' === $fl['kpi']['o_proj'] && false !== strpos( $fl['kpi_sub']['o_proj'], 'data-k="o_decided">3<' ) && false !== strpos( $fl['kpi_sub']['rev_proj'], 'data-k="o_proj_n">4</b> от 6' ) && false !== strpos( $fl['kpi_sub']['o_open'], 'data-k="o_young">3<' ) && '469,00 €' === $fl['kpi']['rev_proj'], json_encode( array( $fl['kpi']['o_proj'], $fl['kpi']['rev_proj'], $fl['kpi_sub']['rev_proj'] ) ) );
-$h = $render( array( 'days' => '0', 'mature' => '7' ) ); $ok( '?mature=7 се пази (option) и чиповете „застояла = в път ≥ N дни“ са в групата Поръчки със 7 избрано; таблицата има колона „застояли ≥ 7 дни“', 7 === Insights::mature_days() && false !== strpos( $h, 'застояла = в път ≥' ) && (bool) preg_match( '/ap-chip--sm on" href="[^"]*mature=7"/u', $h ) && false !== strpos( $h, 'застояли ≥ 7 дни · пресни' ) && false !== strpos( $h, 'data-k="o_proj"' ) );
+$h = $render( array( 'view' => 'classic', 'days' => '0', 'mature' => '7' ) ); $ok( '?mature=7 се пази (option) и чиповете „застояла = в път ≥ N дни“ са в групата Поръчки със 7 избрано; таблицата има колона „застояли ≥ 7 дни“', 7 === Insights::mature_days() && false !== strpos( $h, 'застояла = в път ≥' ) && (bool) preg_match( '/ap-chip--sm on" href="[^"]*mature=7"/u', $h ) && false !== strpos( $h, 'застояли ≥ 7 дни · пресни' ) && false !== strpos( $h, 'data-k="o_proj"' ) );
 Insights::set_mature_days( 5 ); $ok( 'невалиден праг не се пази', 5 === Insights::set_mature_days( 4 ) );
-$h = $render( array( 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'преглед след сверката: сесии с поръчка 4, поръчки 6 (+ 2 без проследен път: order-20, order-30), hero 270,00 €', (bool) preg_match( '/data-k="created">4<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_n">6<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_untracked">2<\/b>/u', $h ) && (bool) preg_match( '/data-k="rev_real">270,00 €<\/b>/u', $h ) ); $h = $render( array( 'view' => 'sessions', 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'сесии: списъкът маркира сесията само от поръчката', false !== strpos( $h, '🧾 само поръчката' ) );
-$h = $render( array( 'days' => '0' ) ); $ok( 'преглед: дашбордът за целия период (8 поръчки, взети 3: 11, 20, 21) + таблицата по статус; ?days=0 = от първия ден', (bool) preg_match( '/data-k="o_n">8<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_delivered">3<\/b>/u', $h ) && false !== strpos( $h, '📦 Поръчките по статус · 15.10.2026 – ' ) && false !== strpos( $h, 'class="ap-chip on" href="http://x/wp-admin/admin.php?page=ansa-promo&tab=insights&from=2026-10-15&to=' ) );
+$h = $render( array( 'view' => 'classic', 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'преглед след сверката: сесии с поръчка 4, поръчки 6 (+ 2 без проследен път: order-20, order-30), hero 270,00 €', (bool) preg_match( '/data-k="created">4<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_n">6<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_untracked">2<\/b>/u', $h ) && (bool) preg_match( '/data-k="rev_real">270,00 €<\/b>/u', $h ) ); $h = $render( array( 'view' => 'sessions', 'from' => '2026-10-16', 'to' => '2026-10-17' ) ); $ok( 'сесии: списъкът маркира сесията само от поръчката', false !== strpos( $h, '🧾 само поръчката' ) );
+$h = $render( array( 'view' => 'classic', 'days' => '0' ) ); $ok( 'преглед: дашбордът за целия период (8 поръчки, взети 3: 11, 20, 21) + таблицата по статус; ?days=0 = от първия ден', (bool) preg_match( '/data-k="o_n">8<\/b>/u', $h ) && (bool) preg_match( '/data-k="o_delivered">3<\/b>/u', $h ) && false !== strpos( $h, '📦 Поръчките по статус · 15.10.2026 – ' ) && false !== strpos( $h, 'class="ap-chip on" href="http://x/wp-admin/admin.php?page=ansa-promo&tab=insights&from=2026-10-15&to=' ) );
 $ok( 'преглед: редът „Поръчките“ в 🩺 с бутона за сверка', false !== strpos( $h, 'промо поръчки в WooCommerce' ) && false !== strpos( $h, 'id="apInsBackfill"' ) && false !== strpos( $h, 'ansa_promo_insights_backfill' ) );
 /* 1.24.2: Shrine — 4-тата опция (3+2): sh_view/sh_pick/sh_more от клиента, sh_add от сървъра; сесията стига до „full“; таблица и плочки */
 $_SERVER['REMOTE_ADDR'] = '9.9.9.9';
@@ -196,7 +196,7 @@ $wpdb->query( "UPDATE wp_ansa_promo_sessions SET order_id = 77 WHERE sid = 'shri
 $rs = Insights::sessions_report( 0 );
 $ok( 'shrine: отчетът по продукт — dg: видели 2, избрали 1, виж повече 1, в количката 1, поръчали 1; vit: видели 1', isset( $rs['shrine']['dg'] ) && array( 'view' => 2, 'pick' => 1, 'more' => 1, 'add' => 1, 'created' => 1 ) === $rs['shrine']['dg'] && 1 === (int) ( $rs['shrine']['vit']['view'] ?? 0 ) && 0 === (int) ( $rs['shrine']['vit']['add'] ?? 0 ), json_encode( $rs['shrine'] ?? null ) );
 $ok( 'shrine: сесиите от Shrine са във фунията (full)', $rs['funnel']['full'] >= 1 );
-$h = $render( array( 'days' => '0' ) ); $ok( 'преглед: таблицата „Shrine · 3+2“ и плочките', false !== strpos( $h, 'Shrine · офертата „5 = 3+2“' ) && false !== strpos( $h, 'Видели картата 3+2' ) && false !== strpos( $h, '🛍️ Shrine · 3+2' ) );
+$h = $render( array( 'view' => 'classic', 'days' => '0' ) ); $ok( 'преглед: таблицата „Shrine · 3+2“ и плочките', false !== strpos( $h, 'Shrine · офертата „5 = 3+2“' ) && false !== strpos( $h, 'Видели картата 3+2' ) && false !== strpos( $h, '🛍️ Shrine · 3+2' ) );
 $fd = Insights::feed( 50 ); $shs = array_values( array_filter( $fd, function ( $s ) { return 'shrineS0001' === $s['sid']; } ) )[0] ?? null;
 $ok( 'фийдът: пътят на Shrine сесията с чиповете 3+2', $shs && count( $shs['timeline'] ) >= 4 && false !== strpos( wp_json_encode( $shs['timeline'] ), '3+2' ), $shs ? wp_json_encode( $shs['timeline'], JSON_UNESCAPED_UNICODE ) : 'няма' );
 
@@ -215,13 +215,13 @@ $ok( 'by_camp: facebook / cpc · esen-2026 = 3 (попъп 2, кутия 1); goo
 $ok( 'by_camp: сесия само с UTM продукт, без utm_source → „само UTM продукт“ (G)', isset( $r['by_camp']['само UTM продукт'] ) && $r['by_camp']['само UTM продукт']['n'] >= 1 && $r['by_camp']['само UTM продукт']['paid'] >= 1, json_encode( array_keys( $r['by_camp'] ) ) );
 $ok( 'by_ref: l.facebook.com → facebook.com 3, www.google.com → google.com 1, останалите директно', 3 === $r['by_ref']['facebook.com']['n'] && 1 === $r['by_ref']['google.com']['n'] && $r['by_ref']['директно / без referrer']['n'] >= 6 && 3 === count( $r['by_ref'] ), json_encode( array_map( function ( $x ) { return $x['n']; }, $r['by_ref'] ) ) );
 $ok( 'by_hour: 10-те сесии от сценария са в 10:00 (с ≥ 3 поръчки), часовете са подредени', 10 === $r['by_hour']['10:00']['n'] && $r['by_hour']['10:00']['created'] >= 3 && array_keys( $r['by_hour'] ) === ( function ( $k ) { sort( $k ); return $k; } )( array_keys( $r['by_hour'] ) ), json_encode( $r['by_hour'] ) );
-$h = $render( array( 'days' => '0' ) );
+$h = $render( array( 'view' => 'classic', 'days' => '0' ) );
 $ok( 'преглед: новите таблици са на екрана', false !== strpos( $h, 'Докъде са напълнили кутията' ) && false !== strpos( $h, 'Коя кутия избират по UTM' ) && false !== strpos( $h, 'По кампания (utm_source' ) && false !== strpos( $h, 'По referrer' ) && false !== strpos( $h, 'По час на влизане' ) && false !== strpos( $h, 'facebook / cpc · esen-2026' ) );
 $ok( 'преглед: редът на средната кутия — 2 оп. колоната и средното запълване', (bool) preg_match( '/🎁 Средна кутия.*?средно|33%/su', $h ) && false !== strpos( $h, '1,0 оп. · 33%' ) );
 $h = $render( array( 'view' => 'sessions', 'from' => '2026-10-16', 'to' => '2026-10-17' ) );
 $ok( 'сесии: без дублиране на таблиците от Прегледа — само списъкът и докъде/къде спират', false === strpos( $h, 'Докъде са напълнили кутията' ) && false === strpos( $h, 'По кампания (utm_source' ) && false !== strpos( $h, '🛑 Докъде са стигнали' ) );
 /* режим портал: диагностиката и admin-post формите изчезват, линковете сочат към портала */
-Insights::$portal = true; $h = $render( array( 'days' => '0' ) );
+Insights::$portal = true; $h = $render( array( 'view' => 'classic', 'days' => '0' ) );
 $ok( 'портал: без „Работи ли отчитането?“, без стария rollup, без admin-post, линковете са към портала', false === strpos( $h, 'Работи ли отчитането' ) && false === strpos( $h, 'Старият дневен rollup' ) && false === strpos( $h, 'admin-post.php' ) && false !== strpos( $h, 'https://ansa.test/promo-insights/?from=2026-10-15&to=' ) && false !== strpos( $h, 'view=sessions' ) && false !== strpos( $h, 'name="csv" value="sessions"' ) && false !== strpos( $h, 'name="csv" value="camp"' ) && false !== strpos( $h, 'Докъде са напълнили кутията' ) && false !== strpos( $h, 'name="ap_action" value="snap_add"' ) );
 $h = $render( array( 'view' => 'live' ) );
 $ok( 'портал · на живо: fetch-ът е към портала с action=…feed', false !== strpos( $h, 'var ajax="https:\\/\\/ansa.test\\/promo-insights\\/?"' ) && false !== strpos( $h, 'ajax+"action=ansa_promo_insights_feed' ) && false === strpos( $h, 'admin-ajax' ), substr( $h, strpos( $h, 'var ajax=' ), 80 ) );
@@ -304,8 +304,8 @@ $ok( 'status на отчетите е текст + ниво', is_string( $R::sta
 $h = $render( array( 'view' => 'spend' ) ); $ok( 'екран 💸 Разход: формата и таблицата', false !== strpos( $h, '💸 Разход по кампании' ) && false !== strpos( $h, 'name="do" value="ins_spend_add"' ) && false !== strpos( $h, '🧾 Въведените разходи' ) );
 $h = $render( array( 'view' => 'snap' ) ); $ok( 'екран 📌 Отчети: списъкът', false !== strpos( $h, '📌 Замразени отчети' ) );
 Insights::$portal = true; $h = $render( array( 'view' => 'spend' ) ); $ok( 'портал · 💸: формата е POST към портала с ap_action и csrf', false !== strpos( $h, 'name="ap_action" value="spend_add"' ) && false !== strpos( $h, 'name="csrf"' ) && false === strpos( $h, 'admin-post' ) ); Insights::$portal = false;
-$h = $render( array( 'from' => '2026-10-16', 'to' => '2026-10-17', 'f_box' => 'l' ) ); $ok( 'преглед с филтър кутия l: лентата показва филтъра, плочката Сесии = 1, линк „изчисти“', false !== strpos( $h, 'кутия: 👑 Голяма кутия ✕' ) && (bool) preg_match( '/data-k="sessions">1<\/b>/u', $h ) && false !== strpos( $h, '>изчисти всички<' ) );
-$h = $render( array( 'from' => '2026-10-16', 'to' => '2026-10-17', 'attr' => 'last' ) ); $ok( 'преглед с атрибуция „последен UTM“: чипът е on и таблицата го казва', false !== strpos( $h, 'class="ap-chip on" href="http://x/wp-admin/admin.php?page=ansa-promo&tab=insights&from=2026-10-16&to=2026-10-17&attr=last">последен UTM' ) && false !== strpos( $h, '· последен UTM)' ) );
+$h = $render( array( 'view' => 'classic', 'from' => '2026-10-16', 'to' => '2026-10-17', 'f_box' => 'l' ) ); $ok( 'преглед с филтър кутия l: лентата показва филтъра, плочката Сесии = 1, линк „изчисти“', false !== strpos( $h, 'кутия: 👑 Голяма кутия ✕' ) && (bool) preg_match( '/data-k="sessions">1<\/b>/u', $h ) && false !== strpos( $h, '>изчисти всички<' ) );
+$h = $render( array( 'view' => 'classic', 'from' => '2026-10-16', 'to' => '2026-10-17', 'attr' => 'last' ) ); $ok( 'преглед с атрибуция „последен UTM“: чипът е on и таблицата го казва', (bool) preg_match( '~class="ap-chip on" href="http://x/wp-admin/admin.php\?page=ansa-promo&tab=insights&from=2026-10-16&to=2026-10-17&view=classic&attr=last">последен UTM~', $h ) && false !== strpos( $h, '· последен UTM)' ) );
 
 /* ── 1.29.0: 📞 поръчки по телефон ── */
 $PO = '\AnsaPromo\Phone_Orders';
@@ -362,6 +362,85 @@ $no2 = new NoteOrder( 44, array( 'phone_order' => array( 'by' => 'Иван', 'bo
 $no3 = new NoteOrder( 45, array( 'box' => 'm' ) ); $PO::on_order( $no3, $no3->meta ); $ok( 'без phone_order няма бележка', array() === $no3->notes );
 
 $ok( 'без SQL грешки по пътя', ! $GLOBALS['sql_errors'], implode( ' | ', array_slice( $GLOBALS['sql_errors'], 0, 3 ) ) );
+
+
+/* ── 1.42.0: 🎯 Резултати на лендъра — track() с лендър/вход/докосване + Lander_Report::build ── */
+$T = function ( $d ) { return Insights::track( array_merge( array( 'dev' => 'mobile' ), $d ) ); };
+$_SERVER['REMOTE_ADDR'] = '10.9.9.9';
+/* L1: реклама → новият лендър → продукт → checkout → поръчка 51 */
+$T( array( 'sid' => 'sessL1000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'qs' => 'utm_source=facebook&utm_medium=paid&utm_campaign=THYROZEN&adset_name=A1&ad_name=V1&utm_content=thyro', 'eref' => 'https://l.facebook.com/', 'tqs' => 'utm_source=facebook&utm_medium=paid&utm_campaign=THYROZEN&adset_name=A1&ad_name=V1&utm_content=thyro', 'tref' => 'https://l.facebook.com/', 'at' => '2026-10-20 10:00:00' ) );
+$T( array( 'sid' => 'sessL1000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'at' => '2026-10-20 10:00:05' ) ); /* презареждане — не е ново отваряне */
+$T( array( 'sid' => 'sessL1000', 'ev' => 'item', 'variant' => 'flow', 'k' => 'thyro', 'n' => 1, 'at' => '2026-10-20 10:01:00' ) );
+$T( array( 'sid' => 'sessL1000', 'ev' => 'add', 'variant' => 'flow', 'n' => 5, 'at' => '2026-10-20 10:02:00' ) );
+$GLOBALS['orders'][51] = new FakeOrder( 51, array( 'sid' => 'sessL1000', 'box' => 'l', 'variant' => 'flow', 'count' => 5, 'cosm' => array( 'status' => 'reserved' ) ), '2026-10-20 10:03:00', '', '10.9.9.9', 'processing', 100 );
+$T( array( 'sid' => 'sessL1000', 'ev' => 'created', 'k' => '51', 'variant' => 'flow', 'order_id' => 51, 'at' => '2026-10-20 10:03:00' ) );
+$row = $wpdb->get_row( "SELECT * FROM wp_ansa_promo_sessions WHERE sid = 'sessL1000'" );
+$ok( 'track: landers = new, lander_at, entry_qs/entry_ref, touch_qs/touch_ref, src от докосването', 'new' === $row['landers'] && '2026-10-20 10:00:00' === $row['lander_at'] && false !== strpos( $row['entry_qs'], 'adset_name=A1' ) && 'https://l.facebook.com/' === $row['entry_ref'] && false !== strpos( $row['touch_qs'], 'THYROZEN' ) && 'facebook' === $row['src'] && 'THYROZEN' === $row['camp'], json_encode( $row, JSON_UNESCAPED_UNICODE ) );
+$ok( 'track: view веднъж на лендър (презареждането не добавя събитие); k = new', 1 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM wp_ansa_promo_events WHERE sid = 'sessL1000' AND ev = 'view'" ) && 'new' === $wpdb->get_var( "SELECT k FROM wp_ansa_promo_events WHERE sid = 'sessL1000' AND ev = 'view'" ) );
+/* L2: реклама → продуктова страница (Shrine картата) → попъпът → новият лендър → продукт, без поръчка */
+$T( array( 'sid' => 'sessL2000', 'ev' => 'sh_view', 'k' => 'sakura', 'src' => 'Facebook', 'med' => 'Instagram_Feed', 'camp' => 'SAKURA SKINTONIC', 'ref' => 'http://m.facebook.com/', 'at' => '2026-10-20 11:00:00' ) );
+$T( array( 'sid' => 'sessL2000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'qs' => 'utm_content=sakura&box=l&ap_entry=popup&ap_pop=product-sakura&ap_from=%2Fproduct%2Fsakura-skintonic', 'eref' => 'https://www.ansa.bg/product/sakura-skintonic/', 'tqs' => 'utm_source=Facebook&utm_medium=Instagram_Feed&utm_campaign=SAKURA+SKINTONIC', 'tref' => 'http://m.facebook.com/', 'at' => '2026-10-20 11:01:00' ) );
+$T( array( 'sid' => 'sessL2000', 'ev' => 'item', 'variant' => 'flow', 'k' => 'sakura', 'n' => 1, 'at' => '2026-10-20 11:02:00' ) );
+$row = $wpdb->get_row( "SELECT * FROM wp_ansa_promo_sessions WHERE sid = 'sessL2000'" );
+$ok( 'track: сесия, започнала на продуктова страница — src от Shrine бийкъна остава, входът е попъпът, докосването е рекламата', 'Facebook' === $row['src'] && false !== strpos( $row['entry_qs'], 'ap_pop=product-sakura' ) && false !== strpos( $row['touch_qs'], 'SAKURA' ) && 'new' === $row['landers'], json_encode( $row, JSON_UNESCAPED_UNICODE ) );
+/* L3: старият лендър → кутия → поръчка 52 */
+$T( array( 'sid' => 'sessL3000', 'ev' => 'view', 'lander' => 'old', 'qs' => 'utm_source=newsletter&utm_medium=email&utm_campaign=E1', 'eref' => '', 'tqs' => 'utm_source=newsletter&utm_medium=email&utm_campaign=E1', 'tref' => '', 'at' => '2026-10-20 12:00:00' ) );
+$T( array( 'sid' => 'sessL3000', 'ev' => 'box', 'box' => 'm', 'at' => '2026-10-20 12:01:00' ) );
+$GLOBALS['orders'][52] = new FakeOrder( 52, array( 'sid' => 'sessL3000', 'box' => 'm', 'variant' => '', 'count' => 3 ), '2026-10-20 12:05:00', '', '10.9.9.9', 'processing', 60 );
+$T( array( 'sid' => 'sessL3000', 'ev' => 'created', 'k' => '52', 'order_id' => 52, 'at' => '2026-10-20 12:05:00' ) );
+/* L4: новият, после старият лендър → checkout → поръчка 53 (приписва се на стария — последният отворен преди checkout) */
+$T( array( 'sid' => 'sessL4000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'at' => '2026-10-20 13:00:00' ) );
+$T( array( 'sid' => 'sessL4000', 'ev' => 'view', 'lander' => 'old', 'at' => '2026-10-20 13:02:00' ) );
+$T( array( 'sid' => 'sessL4000', 'ev' => 'add', 'at' => '2026-10-20 13:03:00' ) );
+$GLOBALS['orders'][53] = new FakeOrder( 53, array( 'sid' => 'sessL4000', 'box' => 'l', 'variant' => '', 'count' => 5 ), '2026-10-20 13:04:00', '', '10.9.9.9', 'processing', 120 );
+$T( array( 'sid' => 'sessL4000', 'ev' => 'created', 'k' => '53', 'order_id' => 53, 'at' => '2026-10-20 13:04:00' ) );
+$ok( 'track: втори лендър в същата сесия = второ view (k = old), landers = new,old', 2 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM wp_ansa_promo_events WHERE sid = 'sessL4000' AND ev = 'view'" ) && 'new,old' === $wpdb->get_var( "SELECT landers FROM wp_ansa_promo_sessions WHERE sid = 'sessL4000'" ) );
+/* L5: вътрешен трафик — не влиза */
+$T( array( 'sid' => 'sessL5000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'internal' => 1, 'at' => '2026-10-20 14:00:00' ) );
+/* L6: новият лендър → две поръчки (54, 55) в една сесия */
+$T( array( 'sid' => 'sessL6000', 'ev' => 'view', 'variant' => 'flow', 'lander' => 'new', 'at' => '2026-10-20 15:00:00' ) );
+$GLOBALS['orders'][54] = new FakeOrder( 54, array( 'sid' => 'sessL6000', 'box' => 's', 'variant' => 'flow', 'count' => 1 ), '2026-10-20 15:05:00', '', '10.9.9.9', 'processing', 30 );
+$GLOBALS['orders'][55] = new FakeOrder( 55, array( 'sid' => 'sessL6000', 'box' => 's', 'variant' => 'flow', 'count' => 2 ), '2026-10-20 15:09:00', '', '10.9.9.9', 'cancelled', 40 );
+$T( array( 'sid' => 'sessL6000', 'ev' => 'created', 'k' => '54', 'variant' => 'flow', 'order_id' => 54, 'at' => '2026-10-20 15:05:00' ) );
+$T( array( 'sid' => 'sessL6000', 'ev' => 'created', 'k' => '55', 'variant' => 'flow', 'order_id' => 55, 'at' => '2026-10-20 15:09:00' ) );
+$T( array( 'sid' => 'sessL6000', 'ev' => 'created', 'k' => '55', 'variant' => 'flow', 'order_id' => 55, 'at' => '2026-10-20 15:09:00' ) ); /* повторение на същата поръчка */
+$ok( 'track: две поръчки = две created събития (k = номерът), повторението не се брои', 2 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM wp_ansa_promo_events WHERE sid = 'sessL6000' AND ev = 'created'" ) );
+/* поръчка 56 без проследима връзка (сесия order-56, без view) */
+$GLOBALS['orders'][56] = new FakeOrder( 56, array( 'sid' => '', 'box' => 'l', 'variant' => 'flow', 'count' => 5 ), '2026-10-20 16:00:00', '', '10.9.9.9', 'processing', 90 );
+$T( array( 'sid' => 'order-56', 'ev' => 'created', 'k' => '56', 'variant' => 'flow', 'order_id' => 56, 'at' => '2026-10-20 16:00:00' ) );
+/* подстраница /info — не е лендър */
+$T( array( 'sid' => 'sessL7000', 'ev' => 'view', 'lander' => 'sub', 'at' => '2026-10-20 17:00:00' ) );
+$ok( 'track: подстраницата не записва landers', '' === (string) $wpdb->get_var( "SELECT landers FROM wp_ansa_promo_sessions WHERE sid = 'sessL7000'" ) );
+
+$rg = array( 'from' => '2026-10-20', 'to' => '2026-10-20' );
+$d = Lander_Report::build( 'new', $rg );
+$ok( 'лендър new: 4 сесии (L1, L2, L4, L6; L5 е вътрешна, L7 е подстраница), 1 и на двата', 4 === $d['sessions'] && 1 === $d['both'], json_encode( array( $d['sessions'], $d['both'] ) ) );
+$ok( 'лендър new: стъпки view 4 · добавили продукт 3 (L1, L2, L6) · checkout 2 · поръчка 2; L4 отива към стария', 4 === $d['steps']['view'] && 3 === $d['steps']['item'] && 2 === $d['steps']['add'] && 2 === $d['steps']['created'], json_encode( $d['steps'] ) );
+$ok( 'лендър new: сесии с поръчка 2, брой поръчки 3 (51, 54, 55), стойност 170 €, средна 56,67 €', 2 === $d['created_sessions'] && 3 === $d['orders_n'] && 170.0 === $d['value'] && abs( $d['aov'] - 170 / 3 ) < 0.01, json_encode( array( $d['created_sessions'], $d['orders_n'], $d['value'] ) ) );
+$ok( 'лендър new: статус — в път 2 (51, 54), отказани 1 (55)', 2 === $d['status']['open']['n'] && 1 === $d['status']['lost']['n'] );
+$ent = $d['tree']['entry']; $ext = $d['tree']['ext'];
+$ok( 'вход към лендъра: реклама 1 (THYROZEN → A1 → V1), попъп 1 (/product/sakura-skintonic → product-sakura), директно 2', 1 === ( $ent['meta']['m']['n'] ?? 0 ) && isset( $ent['meta']['ch']['THYROZEN']['ch']['A1']['ch']['V1'] ) && 1 === ( $ent['popup']['m']['n'] ?? 0 ) && isset( $ent['popup']['ch']['/product/sakura-skintonic']['ch']['product-sakura'] ) && 2 === ( $ent['direct']['m']['n'] ?? 0 ), json_encode( array_keys( $ent ) ) );
+$ok( 'външен източник: реклама 2 (THYROZEN с поръчка, SAKURA SKINTONIC без), директно 2 — попъпът не е външен източник', 2 === ( $ext['meta']['m']['n'] ?? 0 ) && 1 === ( $ext['meta']['ch']['THYROZEN']['m']['created'] ?? 0 ) && 1 === ( $ext['meta']['ch']['SAKURA SKINTONIC']['m']['n'] ?? 0 ) && ! isset( $ext['popup'] ), json_encode( $ext, JSON_UNESCAPED_UNICODE ) );
+$ok( 'лендър new: поръчки, създадени в периода — 4 (51, 54, 55 + 56 без проследима връзка)', 4 === $d['period_orders']['n'] && 1 === $d['period_orders']['untracked_n'] && 90.0 === $d['period_orders']['untracked_total'], json_encode( $d['period_orders'] ) );
+$ok( 'лендър new: какво купуват — 5+ опаковки 1, 1 опаковка 1, 2 опаковки 1, сетът резервиран 1', 1 === ( $d['buy']['packs']['5+'] ?? 0 ) && 1 === ( $d['buy']['packs']['1'] ?? 0 ) && 1 === ( $d['buy']['packs']['2'] ?? 0 ) && 1 === $d['buy']['cosm_yes'], json_encode( $d['buy'] ) );
+$ok( 'лендър new: по устройство — mobile 4; по ден 20.10 → 4 сесии, 2 с поръчка', 4 === ( $d['by_dev']['mobile']['n'] ?? 0 ) && 2 === ( $d['by_day']['2026-10-20']['created'] ?? 0 ) );
+$d2 = Lander_Report::build( 'old', $rg );
+$ok( 'лендър old: 2 сесии (L3, L4), 2 с поръчка (52, 53 — последният отворен преди checkout), стойност 180 €, 1 и на двата', 2 === $d2['sessions'] && 2 === $d2['created_sessions'] && 180.0 === $d2['value'] && 1 === $d2['both'], json_encode( array( $d2['sessions'], $d2['created_sessions'], $d2['value'], $d2['both'] ) ) );
+$ok( 'лендър old: входът — имейл E1 (L3) и директно (L4)', 1 === ( $d2['tree']['entry']['email']['m']['n'] ?? 0 ) && isset( $d2['tree']['entry']['email']['ch']['E1'] ) );
+$ok( 'лендър old: томболата — 2 поръчки, 0 билети (няма издадени)', 2 === $d2['tombola']['orders'] && 0 === $d2['tombola']['paid'] );
+$d3 = Lander_Report::build( 'new', $rg, array( 'internal' => true ) ); $ok( 'с вътрешен трафик: 5 сесии', 5 === $d3['sessions'] );
+$d4 = Lander_Report::build( 'new', $rg, array( 'cutoff' => '12:00:00' ) ); $ok( 'часов отрязък до 12:00: само L1 и L2', 2 === $d4['sessions'] && 1 === $d4['created_sessions'] );
+$d0 = Lander_Report::build( 'sx', $rg ); $ok( 'лендър без сесии: празен отчет без грешки', 0 === $d0['sessions'] && 0 === $d0['orders_n'] );
+$_GET = array( 'view' => 'overview', 'from' => '2026-10-20', 'to' => '2026-10-20', 'lander' => 'new' ); ob_start(); Insights::render( 30 ); $h = ob_get_clean();
+$ok( 'екранът 🎯: контекст, четирите числа, таблицата по вход (разгъваема), фунията на новия поток, разбивките, „какво купуват“, сигналите, речникът', false !== strpos( $h, '1 · Какъв е резултатът?' ) && false !== strpos( $h, 'Сесии в лендъра' ) && false !== strpos( $h, 'Вход към лендъра' ) && false !== strpos( $h, 'data-p="' ) && false !== strpos( $h, 'Добавили продукт' ) && false === strpos( $h, 'Избрали кутия' ) && false !== strpos( $h, '5 · При кои посетители?' ) && false !== strpos( $h, '🧺 Какво купуват' ) && false === strpos( $h, '🎟️ Томболата' ) && false !== strpos( $h, '6 · Какво проверяваме след това?' ) && false !== strpos( $h, '📖 Как се смята' ) );
+$ok( 'екранът 🎯: лендърът е в чиповете с адреса, новият е избран', false !== strpos( $h, 'ansa.bg/sezonut-na-ansa-b' ) && (bool) preg_match( '/ap-chip ap-ld on"[^>]*><b>Нов — основен/u', $h ) );
+$_GET = array( 'view' => 'overview', 'from' => '2026-10-20', 'to' => '2026-10-20', 'lander' => 'old', 'mode' => 'ext' ); ob_start(); Insights::render( 30 ); $h = ob_get_clean();
+$ok( 'екранът 🎯 за стария лендър: фунията с кутиите, томболата е отделен отчет, режимът „Външен източник“ е избран', false !== strpos( $h, 'Избрали кутия' ) && false !== strpos( $h, '🎟️ Томболата (след покупката)' ) && (bool) preg_match( '/ap-chip on"[^>]*>Външен източник/u', $h ) );
+$ids = array_map( function ( $x ) { return $x['sid']; }, Insights::feed( 50, array( 'from' => '2026-10-20', 'to' => '2026-10-20', 'lander' => 'old', 'sort' => 'started' ) ) ); sort( $ids );
+$ok( 'сесиите с филтър лендър old: L3 и L4 (не L1)', array( 'sessL3000', 'sessL4000' ) === $ids, json_encode( $ids ) );
+$_GET = array( 'view' => 'sessions', 'from' => '2026-10-20', 'to' => '2026-10-20', 'lander' => 'old' ); ob_start(); Insights::render( 30 ); $h = ob_get_clean();
+$ok( 'екранът 🧾 Сесии: чипът „лендър“ със стар избран', (bool) preg_match( '/ap-chip on"[^>]*>стар</u', $h ) );
+$_GET = array();
 
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

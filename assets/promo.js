@@ -216,12 +216,15 @@
   function sid(){try{var v=sessionStorage.getItem('ansa_promo_sid');if(!v){v='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);sessionStorage.setItem('ansa_promo_sid',v)}return v}catch(e){return S._sid||(S._sid='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))}}
   /* 1.28.0: посетител (vid) — 30 дни в localStorage; Insights брои уникалните по него, не по IP (офис/мобилен оператор сливат хора, WiFi/4G ги удвоява) */
   function vid(){try{var o=JSON.parse(localStorage.getItem('ansa_promo_vid')||'null'),now=Date.now();if(!o||!o.v||!o.t||now-o.t>30*864e5){o={v:'v'+now.toString(36)+Math.random().toString(36).slice(2,12),t:now};localStorage.setItem('ansa_promo_vid',JSON.stringify(o))}return o.v}catch(e){return ''}}
+  /* 1.42.0 (Insights 4): лендърът — old (ansa.bg/sezonut-na-ansa-b, кутиите), sx (/kozmetichen-set-promo), sub (/info, /kozmetika — подстраница, не е лендър); „view“ носи адреса (qs), referrer-а (eref) и първото докосване на сайта в този таб (tqs/tref) */
+  function LANDER(){return A.mode==='sx'?'sx':(A.mode==='info'||A.mode==='li')?'sub':'old'}
+  function touch(fd){try{var t=JSON.parse(sessionStorage.getItem('ansa_promo_touch')||'null');if(t){fd.append('tqs',String(t.q||'').slice(0,700));fd.append('tref',String(t.r||'').slice(0,191))}}catch(e){}}
   function beacon(step,k){
-    if(!A.ajax||A.editor||A.draft)return;var key='ansa_promo_bc_'+A.id+'_'+step+(k?'_'+k:'')+(step==='box'?'_'+(S.box!==null&&BX()?BX().id:''):'');try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1')}catch(e){}
+    if(!A.ajax||A.editor||A.draft)return;var key='ansa_promo_bc_'+A.id+'_'+step+(step==='view'?'_'+LANDER():'')+(k?'_'+k:'')+(step==='box'?'_'+(S.box!==null&&BX()?BX().id:''):'');try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1')}catch(e){}
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);
     if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);if(S._op)fd.append('op','1'); /* 1.29.0: операторът по телефона е вътрешен трафик */
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(S.slots.filter(Boolean)));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop')}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER());fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -1162,7 +1165,7 @@
   }
   function refreshRuntime(){
     if(!A.ajax||A.editor||A.draft||!(A.refresh||S._op))return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&page='+LANDER()+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce;
       if(d.op&&S._op&&!S._opDone){S._opDone=true;applyOp(d.op)} /* 1.29.0: количката на клиента за оператора */ /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       /* v1.18.2 (човекът: „натиснах изключи на попъпа и пак се появява“): кешираната страница носи стария gate.enabled — свежият решава;
@@ -1250,7 +1253,7 @@
 
   /* ── старт ── */
   if(A.mode==='li'){root.classList.add('info');root.classList.add('li');S.emailDone=true;A.editorNoGate=true;renderLi();refreshRuntime();return} /* 1.24.20: /kozmetika — като /info */
-  if(A.mode==='sx'){root.classList.add('info');root.classList.add('sx');S.emailDone=true;A.editorNoGate=true;renderSx();refreshRuntime();return} /* 1.31.0: /kozmetichen-set-promo — като /kozmetika */
+  if(A.mode==='sx'){root.classList.add('info');root.classList.add('sx');S.emailDone=true;A.editorNoGate=true;renderSx();refreshRuntime();if(!A.editor&&(A.live||A.draft))beacon('view');return} /* 1.31.0: /kozmetichen-set-promo — като /kozmetika; 1.42.0: лендър sx със свое „view“ (вход + докосване) */
   if(A.mode==='info'){root.classList.add('info');S.emailDone=true;A.editorNoGate=true;renderInfo();refreshRuntime();return} /* v1.8.0: /info — без gate, без beacon, без сесия */
   if(!A.live&&!A.draft){go(1);return}
   try{var qq=new URLSearchParams(location.search),qop=qq.get('ansa_op');if(qop){S._op=qop;S._opBonusPre=qq.get('ansa_bonus')||'';try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){} /* 1.29.0: 📞 обаждане — чисто състояние, количката идва от сървъра; 1.30.1: &ansa_bonus=pct|gift — изборът от Insights */
