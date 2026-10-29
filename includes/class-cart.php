@@ -51,6 +51,12 @@ final class Cart {
 		add_filter( 'woocommerce_checkout_get_value', array( __CLASS__, 'prefill_email' ), 10, 2 );
 		add_action( 'woocommerce_review_order_after_cart_contents', array( __CLASS__, 'checkout_rewards_row' ) );
 		add_action( 'woocommerce_review_order_before_submit', array( __CLASS__, 'checkout_cosm_consent' ) );
+		/* 1.43.0 (човекът): сетът вече не е „плащаш при получаване“ — €{cosm_pay} се ДОБАВЯ към днешната поръчка като такса, освен ако клиентката не
+		   махне отметката (в потока или в чекаута); през януари плаща само доставката на отделната пратка. Отметката в чекаута обновява
+		   сумите (update_checkout → ctx → таксата), а при „Поръчай“ POST-ът печели, преди WC да преизчисли количката. */
+		add_action( 'woocommerce_cart_calculate_fees', array( __CLASS__, 'cosm_fee' ), 20 );
+		add_action( 'woocommerce_checkout_update_order_review', array( __CLASS__, 'sync_cosm_review' ) );
+		add_action( 'woocommerce_checkout_process', array( __CLASS__, 'sync_cosm_post' ) );
 		add_action( 'woocommerce_checkout_create_order', array( __CLASS__, 'order_meta' ), 20, 2 );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( __CLASS__, 'order_meta_store_api' ), 20, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( __CLASS__, 'line_meta' ), 10, 4 );
@@ -464,6 +470,33 @@ final class Cart {
 		$ctx = self::ctx(); if ( ! empty( $ctx['repriced'] ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.reprice', array( 'pct' => self::fmt( $ctx['repriced']['to'] ), 'pct_old' => self::fmt( $ctx['repriced']['from'] ) ) ) ), 'notice' ); unset( $ctx['repriced'] ); self::set_ctx( $ctx ); } /* v1.19.0 */
 	}
 
+	/* ═══ СЕТЪТ ЗА €1 — ТАКСА В ДНЕШНАТА ПОРЪЧКА (1.43.0) ═══ */
+	/** Дали сетът е запазен в контекста (по подразбиране да — opt-out, не opt-in). */
+	public static function cosm_on( $ctx = null ) { $ctx = null === $ctx ? self::ctx() : (array) $ctx; return ! isset( $ctx['cosm'] ) || (bool) $ctx['cosm']; }
+	/** Сумата, която сетът добавя към днешната поръчка: cosm_pay на кутията при валидна група и запазен сет, иначе 0. */
+	public static function cosm_due( $cart = null ) {
+		$g = self::group( $cart ); if ( ! $g || ! self::group_valid( $g ) ) { return 0.0; }
+		$box = self::box_of( self::cfg(), $g ); if ( ! $box || null === $box['cosm_pay'] || (float) $box['cosm_pay'] <= 0 ) { return 0.0; }
+		return self::cosm_on() ? round( (float) $box['cosm_pay'], 2 ) : 0.0;
+	}
+	/** woocommerce_cart_calculate_fees: „🌸 Козметичен сет — резервация“ за €{cosm_pay}. Не е облагаема отделно — обещаното е точно €1,
+	 *  цените на сайта са с включено ДДС (таксите в WC иначе се облагат отгоре). Пада сама, щом кутията стане непълна или отметката е махната. */
+	public static function cosm_fee( $cart ) {
+		if ( self::$mutating || ! is_object( $cart ) || ! method_exists( $cart, 'add_fee' ) ) { return; }
+		$due = self::cosm_due( $cart ); if ( $due <= 0 ) { return; }
+		$g = self::group( $cart ); $cfg = self::cfg(); $box = self::box_of( $cfg, $g );
+		$cart->add_fee( wp_strip_all_tags( self::copy( 'co.cosm.fee', self::vars( $cfg, $box, (int) $g['sum'] ) ) ), $due, false );
+	}
+	/** Отметката в чекаута → ctx['cosm'] (hidden „seen“ казва, че полето е било на екрана; небутнат чекбокс не се праща). */
+	private static function sync_cosm( $d ) {
+		if ( ! is_array( $d ) || ! isset( $d['ansa_promo_cosm_seen'] ) ) { return; }
+		$on = isset( $d['ansa_promo_cosm'] ) && '1' === (string) $d['ansa_promo_cosm'];
+		$ctx = self::ctx(); if ( ! $ctx || self::cosm_on( $ctx ) === $on ) { return; }
+		$ctx['cosm'] = $on; self::set_ctx( $ctx );
+	}
+	public static function sync_cosm_review( $post_data ) { parse_str( (string) $post_data, $d ); self::sync_cosm( $d ); }
+	public static function sync_cosm_post() { self::sync_cosm( $_POST ); }
+
 	/* ═══ ДОСТАВКА · КУПОНИ · ИМЕЙЛ ═══ */
 	public static function free_shipping( $rates, $package ) {
 		$g = self::group(); if ( ! $g || ! $g['ship'] || ! self::group_valid( $g ) ) { return $rates; }
@@ -509,10 +542,11 @@ final class Cart {
 		$v = self::vars( $cfg, $box, (int) $g['sum'] ); $ctx = self::ctx();
 		/* v1.5.0: картичка — чекбокс | икона | текст, подравнено вляво; !important, защото FunnelKit/reskin-ът центрират и презаписват label-ите.
 		   v1.5.4: цената е отделен ред „<s>€129</s> €1“ (co.cosm.price), винаги от PHP — не зависи от това дали co.cosm.label е редактиран
-		   в редактора; стар текст/override, завършващ на „за €1“ или „за <s>€129</s> <b>€1</b>“, се подрязва, за да не излиза два пъти. */
+		   в редактора; стар текст/override, завършващ на „за €1“ или „за <s>€129</s> <b>€1</b>“, се подрязва, за да не излиза два пъти.
+		   1.43.0: update_totals_on_change — смяната на отметката праща update_checkout и таксата „сет“ се добавя/пада веднага (sync_cosm_review). */
 		$label = self::copy( 'co.cosm.label', $v );
 		$label = preg_replace( '~\s*(за\s*)?(<s>[^<]*</s>\s*)?(<b>|<strong>)?€\s*' . preg_quote( $v['cosm_pay'], '~' ) . '(</b>|</strong>)?[\s.]*$~u', '', $label );
-		echo '<div class="ansa-promo-cosm-wrap" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><span class="ansa-promo-cosm__check"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '></span><span class="ansa-promo-cosm__ic">' . esc_html( self::copy( 'co.cosm.ic' ) ) . '</span><span class="ansa-promo-cosm__txt"><span class="ansa-promo-cosm__h">' . wp_kses_post( $label ) . '</span><span class="ansa-promo-cosm__price">' . wp_kses_post( self::copy( 'co.cosm.price', $v ) ) . '</span><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label></div>';
+		echo '<div class="ansa-promo-cosm-wrap update_totals_on_change" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><input type="hidden" name="ansa_promo_cosm_seen" value="1"><label class="ansa-promo-cosm"><span class="ansa-promo-cosm__check"><input type="checkbox" name="ansa_promo_cosm" value="1"' . ( isset( $ctx['cosm'] ) && ! $ctx['cosm'] ? '' : ' checked' ) . '></span><span class="ansa-promo-cosm__ic">' . esc_html( self::copy( 'co.cosm.ic' ) ) . '</span><span class="ansa-promo-cosm__txt"><span class="ansa-promo-cosm__h">' . wp_kses_post( $label ) . '</span><span class="ansa-promo-cosm__price">' . wp_kses_post( self::copy( 'co.cosm.price', $v ) ) . '</span><small>' . wp_kses_post( self::copy( 'co.cosm.sub', $v ) ) . '</small></span></label></div>';
 		self::checkout_css();
 	}
 	private static function checkout_css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-promo-co-css">'
@@ -559,7 +593,7 @@ final class Cart {
 			'promo' => $cfg['id'], 'group' => $g['group'], 'box' => $box['id'], 'packs' => $g['packs'], 'count' => (int) $g['sum'], 'pct' => $g['pct'], 'week' => (int) ( $g['week'] ?? 0 ), 'valid' => $valid, /* 1.10.0 count: реалният брой опаковки (≥ packs) */
 			'tickets' => array( 'allowance' => $valid ? Config::tickets_for( $box, (int) $g['sum'] ) : 0, 'partner' => false, 'issued' => array() ), /* 1.12.0: + tix_extra за всяка опаковка над packs */
 			'book' => in_array( 'book', $box['rw'], true ) ? array( 'product_id' => (int) $cfg['rewards']['book']['product_id'] ) : null,
-			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on ) : null,
+			'cosm' => null !== $box['cosm_pay'] ? array( 'pay' => (float) $box['cosm_pay'], 'value' => (float) $cfg['rewards']['cosm']['value'], 'status' => $cosm_on ? 'reserved' : 'declined', 'consent' => $cosm_on, 'paid' => $cosm_on ? round( (float) $box['cosm_pay'], 2 ) : 0.0 ) : null, /* 1.43.0 paid: сумата, добавена към тази поръчка (таксата cosm_fee); при получаване през януари — само доставката */
 			'ship_free' => $g['ship'], 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 			'secret' => array_values( array_map( function ( $it ) { return (int) $it['product_id']; }, $g['secret'] ) ),
 			'phone_order' => ! empty( $ctx['op'] ) && is_array( $ctx['op'] ) ? array( 'by' => (string) ( $ctx['op']['by'] ?? '' ), 'src' => (string) ( $ctx['op']['src'] ?? '' ), 'label' => (string) ( $ctx['op']['label'] ?? '' ), 'bonus' => (string) ( $ctx['op']['bonus'] ?? '' ), 'bonus_pct' => (float) ( $ctx['op']['bonus_pct'] ?? 0 ), 'bonus_amount' => 'pct' === (string) ( $ctx['op']['bonus'] ?? '' ) ? Phone_Orders::bonus_amount() : 0.0, 'gift' => 'gift' === (string) ( $ctx['op']['bonus'] ?? '' ) && ( $gp = Phone_Orders::gift_product() ) ? $gp['name'] : '' ) : null, /* 1.29.0: 📞; 1.30.0: бонусът */
@@ -599,7 +633,7 @@ final class Cart {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) ) { return; }
 		if ( ! empty( $m['lead_id'] ) ) { Leads::convert( (int) $m['lead_id'], $order->get_id() ); }
 		if ( empty( $m['valid'] ) ) { $order->add_order_note( 'ansa™ Промо: кутията е била непълна при поръчката — цените са регулярни, без награди.' ); }
-		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · %d опак. · −%s%% · %d билет(а)%s%s', $m['box'], (int) ( $m['count'] ?? $m['packs'] ), self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] : '', ( $m['ship_free'] ? ' · безплатна доставка' : '' ) . ( ! empty( $m['week'] ) ? ' · седмица ' . (int) $m['week'] : '' ) ) ); }
+		else { $order->add_order_note( sprintf( 'ansa™ Промо: %s кутия · %d опак. · −%s%% · %d билет(а)%s%s', $m['box'], (int) ( $m['count'] ?? $m['packs'] ), self::fmt( $m['pct'] ), (int) $m['tickets']['allowance'], $m['cosm'] ? ' · сет: ' . $m['cosm']['status'] . ( ! empty( $m['cosm']['paid'] ) ? ' (€' . self::fmt( $m['cosm']['paid'] ) . ' в поръчката, през януари само доставката)' : '' ) : '', ( $m['ship_free'] ? ' · безплатна доставка' : '' ) . ( ! empty( $m['week'] ) ? ' · седмица ' . (int) $m['week'] : '' ) ) ); }
 		do_action( 'ansa_promo_order_created', $order, $m );
 	}
 	public static function order_label( $name, $item ) {

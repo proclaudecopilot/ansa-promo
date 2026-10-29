@@ -46,6 +46,23 @@ ok( ! empty( $r['ok'] ) && 'l' === $r['box'], '(3) 5 → голяма: ' . json_
 $g = grp(); ok( 5 === (int) $g['sum'] && 40.0 === (float) $g['pct'] && $g['book'] && 1 === $books(), '(3) −40 % + книга' );
 $m = Cart::build_meta( true ); ok( 5 === (int) $m['tickets']['allowance'] && $m['book'] && $m['cosm'] && 'reserved' === $m['cosm']['status'], '(3) meta: 5 билета, книга, сетът резервиран' );
 WC()->cart->calculate_totals(); ok( WC()->cart->get_cart_item( $g['book'] )['data']->get_price() == 0, '(3) книгата е €0' );
+/* 1.43.0 (човекът): €1 за сета се тегли с днешната поръчка (такса), освен при махната отметка; през януари — само доставката */
+$prod = round( 43.90 * 0.6, 2 ) * 3 + round( 49.90 * 0.6, 2 ) + round( 39.90 * 0.6, 2 );
+ok( abs( WC()->cart->get_total() - ( $prod + 1 ) ) < 0.01 && 1 === count( WC()->cart->get_fees() ) && 1.0 === (float) WC()->cart->get_fees()[0]->amount, '(3) общо = продуктите −40 % + €1 такса за сета: ' . WC()->cart->get_total() );
+ok( 1.0 === (float) $m['cosm']['paid'] && 1.0 === Cart::cosm_due(), '(3) meta cosm.paid = 1 · cosm_due = 1' );
+$r = $flow( array( 100, 100, 100, 200, 300 ), array( 'cosm' => false ) ); $g = grp(); WC()->cart->calculate_totals();
+ok( ! empty( $r['ok'] ) && 0 === count( WC()->cart->get_fees() ) && abs( WC()->cart->get_total() - $prod ) < 0.01 && 0.0 === Cart::cosm_due(), '(3) махната отметка → без такса, общо само продуктите: ' . WC()->cart->get_total() );
+$m = Cart::build_meta( null ); ok( $m && $m['cosm'] && 'declined' === $m['cosm']['status'] && 0.0 === (float) $m['cosm']['paid'], '(3) meta: сетът declined, paid 0' );
+$m = Cart::build_meta( true ); ok( 'reserved' === $m['cosm']['status'] && 1.0 === (float) $m['cosm']['paid'], '(3) чекбоксът в чекаута (POST) печели над ctx: reserved, paid 1' );
+/* отметката в чекаута → ctx → таксата (sync_cosm_post чете $_POST с hidden „seen“) */
+$_POST = array( 'ansa_promo_cosm_seen' => '1', 'ansa_promo_cosm' => '1' ); Cart::sync_cosm_post(); WC()->cart->calculate_totals();
+ok( Cart::cosm_on() && 1 === count( WC()->cart->get_fees() ), '(3) чекаут: отметката сложена → ctx cosm=1, таксата се връща' );
+$_POST = array( 'ansa_promo_cosm_seen' => '1' ); Cart::sync_cosm_post(); WC()->cart->calculate_totals();
+ok( ! Cart::cosm_on() && 0 === count( WC()->cart->get_fees() ), '(3) чекаут: отметката махната → ctx cosm=0, без такса' );
+$_POST = array(); Cart::sync_cosm_post(); ok( ! Cart::cosm_on(), '(3) POST без „seen“ (полето не е било на екрана) не пипа ctx' );
+Cart::sync_cosm_review( 'billing_email=a%40b.bg&ansa_promo_cosm_seen=1&ansa_promo_cosm=1' ); WC()->cart->calculate_totals();
+ok( Cart::cosm_on() && 1 === count( WC()->cart->get_fees() ), '(3) update_order_review (сериализираната форма) → cosm=1, таксата е там' );
+$_POST = array();
 
 /* (4) 7 опаковки → голяма, 7 билета (1 опаковка = 1 билет) */
 $r = $flow( array( 100, 100, 100, 200, 200, 300, 300 ) );

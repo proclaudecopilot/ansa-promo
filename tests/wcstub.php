@@ -10,7 +10,7 @@ function get_post_meta( $id, $k = '', $single = false ) { return ''; } function 
 function wp_unslash( $v ) { return $v; } function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF-8' ); } function esc_url( $u ) { return (string) $u; }
 function wp_kses_post( $s ) { return (string) $s; } function home_url( $p = '' ) { return 'http://x' . $p; } function number_format_i18n( $n, $d = 0 ) { return number_format( (float) $n, $d ); }
 function wp_create_nonce( $a ) { return 'n'; } function get_transient( $k ) { return $GLOBALS['tr'][ $k ] ?? false; } function set_transient( $k, $v, $t = 0 ) { $GLOBALS['tr'][ $k ] = $v; return true; }
-function wp_date( $f, $t = null ) { return date( $f, $t ?? time() ); } function get_post_status( $id ) { return 'publish'; }
+function wp_date( $f, $t = null ) { return date( $f, $t ?? time() ); } function date_i18n( $f, $t = null ) { return date( $f, $t ?? time() ); } function get_post_status( $id ) { return 'publish'; }
 
 class FakeProduct {
 	public $id, $parent, $type, $reg, $price, $children, $name;
@@ -29,7 +29,9 @@ addp( 100, 43.90, 'ansa Greens' ); addp( 200, 49.90, 'ansa Sakura' ); addp( 300,
 
 class FakeSession { private $d = array(); function get( $k, $d = null ) { return $this->d[ $k ] ?? $d; } function set( $k, $v ) { $this->d[ $k ] = $v; } }
 class FakeCart {
-	public $cart_contents = array();
+	public $cart_contents = array(); public $fees = array();
+	/* 1.43.0: таксите (сетът за €1 — Cart::cosm_fee) — add_fee/get_fees както в WC_Cart; calculate_totals ги изчиства и смята наново */
+	function add_fee( $name, $amount, $taxable = false, $tax_class = '' ) { $this->fees[] = (object) array( 'name' => $name, 'amount' => (float) $amount, 'taxable' => $taxable ); } function get_fees() { return $this->fees; }
 	function add_to_cart( $pid, $q = 1, $vid = 0, $attrs = array(), $data = array() ) {
 		$src = wc_get_product( $vid ?: $pid ); if ( ! $src ) { return false; }
 		$key = md5( $pid . '|' . $vid . '|' . json_encode( $data ) );
@@ -40,8 +42,8 @@ class FakeCart {
 	function get_cart() { return $this->cart_contents; } function get_cart_item( $k ) { return $this->cart_contents[ $k ] ?? null; }
 	function remove_cart_item( $k ) { unset( $this->cart_contents[ $k ] ); return true; } function set_quantity( $k, $q, $refresh = true ) { if ( isset( $this->cart_contents[ $k ] ) ) { $this->cart_contents[ $k ]['quantity'] = (int) $q; } return true; }
 	function empty_cart() { $this->cart_contents = array(); }
-	function calculate_totals() { Cart::apply_pricing( $this ); foreach ( $this->cart_contents as $k => $it ) { $this->cart_contents[ $k ]['line_subtotal'] = $it['data']->get_price() * $it['quantity']; $this->cart_contents[ $k ]['line_total'] = $this->cart_contents[ $k ]['line_subtotal']; } }
-	function set_session() {} function get_total( $c = '' ) { $t = 0; foreach ( $this->cart_contents as $it ) { $t += $it['line_total']; } return round( $t, 2 ); } function get_cart_hash() { return md5( json_encode( array_keys( $this->cart_contents ) ) ); }
+	function calculate_totals() { Cart::apply_pricing( $this ); foreach ( $this->cart_contents as $k => $it ) { $this->cart_contents[ $k ]['line_subtotal'] = $it['data']->get_price() * $it['quantity']; $this->cart_contents[ $k ]['line_total'] = $this->cart_contents[ $k ]['line_subtotal']; } $this->fees = array(); Cart::cosm_fee( $this ); }
+	function set_session() {} function get_total( $c = '' ) { $t = 0; foreach ( $this->cart_contents as $it ) { $t += $it['line_total']; } foreach ( $this->fees as $f ) { $t += $f->amount; } return round( $t, 2 ); } function get_cart_hash() { return md5( json_encode( array_keys( $this->cart_contents ) ) ); }
 }
 class FakeWC { public $cart; public $session; function __construct() { $this->cart = new FakeCart(); $this->session = new FakeSession(); } }
 $GLOBALS['WC'] = new FakeWC();

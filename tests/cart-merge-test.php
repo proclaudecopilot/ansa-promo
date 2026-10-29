@@ -25,7 +25,9 @@ $g1 = $g['group'];
 WC()->cart->calculate_totals();
 foreach ( $g['base'] as $it ) { ok( abs( WC()->cart->get_cart_item( $it['key'] )['data']->get_price() - 43.90 * 0.6 ) < 0.01, '(1) цената на реда е −40%' ); }
 ok( WC()->cart->get_cart_item( $g['book'] )['data']->get_price() == 0, '(1) книгата е €0' );
-ok( abs( WC()->cart->get_total() - 131.70 ) < 0.01, '(1) общо €131,70, е ' . WC()->cart->get_total() );
+/* 1.43.0: + €1 за сета като такса в днешната поръчка (Cart::cosm_fee), щом Голямата кутия е валидна и сетът е запазен */
+ok( abs( WC()->cart->get_total() - 132.70 ) < 0.01, '(1) общо €131,70 + €1 за сета = €132,70, е ' . WC()->cart->get_total() );
+$fees = WC()->cart->get_fees(); ok( 1 === count( $fees ) && 1.0 === (float) $fees[0]->amount && false !== mb_stripos( $fees[0]->name, 'сет' ), '(1) таксата „сет“ е €1: ' . json_encode( $fees, JSON_UNESCAPED_UNICODE ) );
 $ctx = Cart::ctx(); ok( $ctx['group'] === $g1 && 'x' === $ctx['utm'] && 's1' === $ctx['sid'], '(1) ctx: group/utm/sid' );
 
 /* (2) чужд платен ред + merge с 5× Sakura → същата група, 10 опаковки, една книга, чуждият остава на регулярна цена */
@@ -42,7 +44,7 @@ $bl = Config::box( Config::get_published(), 'l' ); ok( (int) $r['tickets'] === C
 ok( in_array( $fk, foreign_keys(), true ), '(2) чуждият платен ред остава' );
 WC()->cart->calculate_totals();
 ok( WC()->cart->get_cart_item( $fk )['data']->get_price() == 25.00, '(2) чуждият ред е на регулярна цена' );
-ok( abs( WC()->cart->get_total() - ( 43.90 * 5 * 0.6 + 49.90 * 5 * 0.6 + 50 ) ) < 0.01, '(2) общо = двете кутии −40% + чуждия: ' . WC()->cart->get_total() );
+ok( abs( WC()->cart->get_total() - ( 43.90 * 5 * 0.6 + 49.90 * 5 * 0.6 + 50 + 1 ) ) < 0.01, '(2) общо = двете кутии −40% + чуждия + €1 за сета (веднъж): ' . WC()->cart->get_total() );
 $ctx = Cart::ctx(); ok( 'x' === $ctx['utm'] && 's1' === $ctx['sid'], '(2) ctx пази utm/sid от първото добавяне' );
 $meta = Cart::build_meta( true ); ok( $meta && 10 === (int) $meta['count'] && 'l' === $meta['box'] && (int) $meta['tickets']['allowance'] === Config::tickets_for( $bl, 10 ) && $meta['book'] && $meta['cosm'] && 'reserved' === $meta['cosm']['status'], '(2) order meta: една кутия, сет веднъж, книга, билети: ' . json_encode( $meta ) );
 
@@ -69,7 +71,7 @@ ok( ! empty( $r['ok'] ) && 'l' === $r['box'] && 6 === (int) $r['count'], '(5) s 
 $g = grp(); ok( 'l' === $g['box'] && 40.0 === (float) $g['pct'] && $g['book'] && base_counts( $g ) === array( 100 => 5, 300 => 1 ), '(5) групата е l/−40% с книга: ' . json_encode( array( $g['box'], $g['pct'], (bool) $g['book'], base_counts( $g ) ) ) );
 foreach ( $g['base'] as $it ) { ok( 'l' === $it[ Cart::META ]['box'] && 40.0 === (float) $it[ Cart::META ]['ppct'], '(5) редът ' . $it['product_id'] . ' е на l/40' ); }
 WC()->cart->calculate_totals();
-ok( abs( WC()->cart->get_total() - ( 43.90 * 5 * 0.6 + 39.90 * 0.6 ) ) < 0.01, '(5) общо: ' . WC()->cart->get_total() );
+ok( abs( WC()->cart->get_total() - ( 43.90 * 5 * 0.6 + 39.90 * 0.6 + 1 ) ) < 0.01, '(5) общо (+ €1 за сета): ' . WC()->cart->get_total() );
 
 /* (6) таван max_packs (20): 6 + 5 + 5 = 16 ок, + 5 = 21 → грешка max, нищо не се добавя */
 ok( ! empty( $merge( 200 )['ok'] ) && ! empty( $merge( 300 )['ok'] ) && 16 === (int) grp()['sum'], '(6) 16 опаковки' );
@@ -82,7 +84,7 @@ $r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 100 ),
 $g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
 ok( ! empty( $r['ok'] ) && 45.0 === ( $pp[100] ?? 0 ), '(7) ppct 45 е записан в реда: ' . json_encode( $pp ) );
 WC()->cart->calculate_totals();
-ok( abs( WC()->cart->get_total() - round( 43.90 * 0.55, 2 ) * 5 ) < 0.01, '(7) цената е −45% (закръглена на опаковка): ' . WC()->cart->get_total() );
+ok( abs( WC()->cart->get_total() - ( round( 43.90 * 0.55, 2 ) * 5 + 1 ) ) < 0.01, '(7) цената е −45% (закръглена на опаковка) + €1 за сета: ' . WC()->cart->get_total() );
 $r = Cart::perform_add( array( 'box' => 'l', 'items' => array_fill( 0, 5, 200 ), 'pay' => 'card', 'merge' => true, 'ppct' => 30 ) );
 $g = grp(); $pp = array(); foreach ( $g['base'] as $it ) { $pp[ (int) $it['product_id'] ] = (float) $it[ Cart::META ]['ppct']; }
 ok( ! empty( $r['ok'] ) && 40.0 === ( $pp[200] ?? 0 ) && 45.0 === ( $pp[100] ?? 0 ), '(7) ppct 30 не сваля под конфига (40), старият ред пази 45: ' . json_encode( $pp ) );
@@ -120,7 +122,7 @@ WC()->cart->empty_cart(); WC()->session->set( Cart::CTX, null );
 $r = \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'sakura', 'l', 'sx1', 'sakura' );
 ok( ! empty( $r['ok'] ) && empty( $r['merged'] ) && 'l' === $r['box'] && 'http://x/checkout/' === $r['checkoutUrl'], '(10) direct_add: ' . json_encode( $r, JSON_UNESCAPED_UNICODE ) );
 $g = grp(); ok( Cart::group_valid( $g ) && 'l' === $g['box'] && base_counts( $g ) === array( 200 => 5 ) && $g['book'] && ! foreign_keys(), '(10) 5× Sakura в Голямата + книга: ' . json_encode( $g ? base_counts( $g ) : null ) );
-WC()->cart->calculate_totals(); ok( abs( WC()->cart->get_total() - 49.90 * 5 * 0.6 ) < 0.01, '(10) общо = 5 × 49,90 −40%: ' . WC()->cart->get_total() );
+WC()->cart->calculate_totals(); ok( abs( WC()->cart->get_total() - ( 49.90 * 5 * 0.6 + 1 ) ) < 0.01, '(10) общо = 5 × 49,90 −40% + €1 за сета: ' . WC()->cart->get_total() );
 $ctx = Cart::ctx(); ok( 'sakura' === $ctx['utm'] && 'sx1' === $ctx['sid'] && $ctx['cosm'] && 'card' === $ctx['pay'] && '' === $ctx['email'], '(10) ctx: utm sakura, sid, сетът, карта, без имейл: ' . json_encode( $ctx ) );
 $meta = Cart::build_meta( true ); ok( $meta && 5 === (int) $meta['count'] && $meta['cosm'] && 'reserved' === $meta['cosm']['status'] && 5 === (int) $meta['tickets']['allowance'], '(10) order meta: 5 опаковки, сетът, 5 билета: ' . json_encode( $meta ) );
 $r2 = \AnsaPromo\Sakura_Page::direct_add( Config::get_published(), 'sakura', 'l', 'sx1', 'sakura' ); ok( ! empty( $r2['ok'] ) && ! empty( $r2['idempotent'] ) && base_counts( grp() ) === array( 200 => 5 ), '(10) второ кацане → идемпотентно' );
