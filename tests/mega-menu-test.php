@@ -69,6 +69,7 @@ $ok( 'listed_keys съдържа d3k2 и ashwagandha', in_array( 'd3k2', Mega_Me
 /* ── shortcode: десктоп ── */
 $h = Mega_Menu::shortcode();
 $card = function ( $key ) use ( $h, $P ) { /* картата по името (SHORT или името на продукта) */ $name = preg_quote( htmlspecialchars( constant( 'AnsaPromo\\Mega_Menu::SHORT' )[ $key ] ?? $P[ $key ]['name'], ENT_QUOTES, 'UTF-8' ), '~' ); return preg_match( '~<a class="amm-card" data-c="([^"]*)"[^>]*>(?:(?!</a>).)*?<span class="amm-cat">([^<]*)</span><b>' . $name . '</b>~su', $h, $m ) ? array( 'c' => $m[1], 'cat' => $m[2] ) : null; };
+$ok( '1.42.3: редът със заглавието носи страниците ‹ › (скрити, докато JS не ги включи)', false !== strpos( $h, '<span class="amm-pager" hidden><button type="button" class="amm-pg amm-prev"' ) && false !== strpos( $h, 'class="amm-pg amm-next"' ) );
 $ok( 'бутонът Менопауза брои 5 продукта', false !== strpos( $h, 'data-n="meno" type="button"><span class="amm-ic">🌷</span><span>Менопауза<small>5 продукта</small>' ), $h );
 $c = $card( 'omega-3' ); $ok( 'картата Omega-3: филтри meno+general, категория „Общо здраве“', $c && 'meno general' === $c['c'] && 'Общо здраве' === $c['cat'], json_encode( $c, JSON_UNESCAPED_UNICODE ) );
 $c = $card( 'red' );     $ok( 'картата Red Routine: филтри meno+sleep, категория „Сън и стрес“', $c && 'meno sleep' === $c['c'] && 'Сън и стрес' === $c['cat'], json_encode( $c, JSON_UNESCAPED_UNICODE ) );
