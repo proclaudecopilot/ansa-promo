@@ -13,6 +13,10 @@
  *    (Омега 3 си е „Общо здраве“, Red Routine „Сън и стрес“), не „Менопауза“;
  *  - продукт, изброен в нуждите, но скрит от каталога (D3K2 е exclude-from-catalog), се взема по slug: публикуван, наличен, с цена;
  *  - продукт от промото се води под slug-а си в магазина, когато нуждите изброяват slug-а, а не ключа от промото (ashwa → ashwagandha).
+ * 1.42.3 (човекът: „да сложим някакъв максимум на контейнера, за да няма скрол, и просто да има втора страница“): на десктоп решетката
+ *  с картите е на страници — JS мери колко реда влизат в панела (max-height = екранът − 140px) без скрол и показва толкова карти
+ *  (колони × редове); останалите са на следваща страница с ‹ › в реда със заглавието („Менопауза · 5 продукта · 1–4“, „1 / 2“).
+ *  Преизчислява се при отваряне на панела, при смяна на нуждата и при resize; скрит панел (0px) не се мери — тогава всичко е видимо.
  *
  * @package AnsaPromo
  * @since 1.40.0
@@ -168,7 +172,7 @@ final class Mega_Menu {
 		}
 		$out = '<div class="amm" data-amm="' . self::VER . '">'
 			. '<div class="amm-needs"><div class="amm-t">По нужда</div>' . $needs . '</div>'
-			. '<div class="amm-grid"><div class="amm-t amm-gt"><b class="amm-title">Всички продукти</b><span class="amm-cnt">' . self::plural( $counts['all'] ) . '</span></div><div class="amm-cards all' . ( count( $P ) > 10 ? ' six' : '' ) . '">' . $cards . '</div>'
+			. '<div class="amm-grid"><div class="amm-t amm-gt"><b class="amm-title">Всички продукти</b><span class="amm-cnt">' . self::plural( $counts['all'] ) . '</span><span class="amm-pager" hidden><button type="button" class="amm-pg amm-prev" aria-label="Предишни продукти">‹</button><span class="amm-pgn">1 / 1</span><button type="button" class="amm-pg amm-next" aria-label="Следващи продукти">›</button></span></div><div class="amm-cards all' . ( count( $P ) > 10 ? ' six' : '' ) . '">' . $cards . '</div>'
 			. '<div class="amm-foot"><a href="' . $L['shop'] . '">Всички продукти</a><a href="' . $L['quiz'] . '">Как да избера</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . $L['about'] . '">За ansa</a></div></div>'
 			. '<div class="amm-aside">'
 			. '<a class="amm-promo" href="' . esc_url( Cart::promo_url() ) . '"><span class="amm-ey">Сезонът на ANSA · нашият Черен петък</span><strong>До −40% + козметичен сет за 1 €</strong><span class="amm-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −40%, сетът и книгата с рецепти.</span><span class="amm-cta">Избери продуктите →</span></a>'
@@ -211,9 +215,14 @@ final class Mega_Menu {
 .amm-need i{color:#c9ad9c;font-style:normal;font-weight:900}
 .amm-need:hover,.amm-need.on{background:#fff;box-shadow:0 2px 8px #5b3e2412}.amm-need.on{color:var(--amm-deep)}.amm-need.on i{color:var(--amm-coral)}
 .amm-grid{padding:22px 26px;display:flex;flex-direction:column;min-width:0}
-.amm-gt{display:flex;align-items:baseline;gap:8px;margin-left:0}.amm-gt b{color:var(--amm-ink);text-transform:none;letter-spacing:0;font-size:15px;font-weight:900}.amm-gt .amm-cnt{text-transform:none;letter-spacing:0;font-weight:700;color:#9a8474;font-size:12px}
+.amm-gt{display:flex;align-items:center;gap:8px;margin-left:0;min-height:28px}
+.amm-pager{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#9a8474;text-transform:none;letter-spacing:0}.amm-pager[hidden]{display:none}
+.amm-pg{width:28px;height:28px;border-radius:9px;border:1px solid var(--amm-line);background:#fff;color:var(--amm-deep);font:inherit;font-size:18px;font-weight:900;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;transition:background .15s}.amm-pg:hover{background:#fff4ec}.amm-pg:disabled{opacity:.35;cursor:default;background:#fff}.amm-gt b{color:var(--amm-ink);text-transform:none;letter-spacing:0;font-size:15px;font-weight:900}.amm-gt .amm-cnt{text-transform:none;letter-spacing:0;font-weight:700;color:#9a8474;font-size:12px}
 .amm-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .amm-cards.all{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.amm-cards.all.six{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.amm-cards.all.six .amm-card b{font-size:12.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;min-height:2.3em}
+.amm-cards.c5{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.amm-cards.c6{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.amm-cards.c6 .amm-card b,.amm-cards.c5 .amm-card b{font-size:12.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15}
+.amm-cards.all.c7{grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.amm-cards.compact .amm-pic{aspect-ratio:4/3}.amm-cards.compact .amm-card{padding:8px;gap:2px}.amm-cards.compact .amm-price{margin-top:2px}
 .amm-card{display:flex;flex-direction:column;gap:3px;min-width:0;background:#fff;border:1px solid var(--amm-line);border-radius:16px;padding:10px;transition:box-shadow .15s,transform .15s}
 .amm-card:hover{box-shadow:0 10px 24px #5b3e2418;transform:translateY(-2px)}
 .amm-card[hidden]{display:none}
@@ -275,17 +284,26 @@ body:has(.elementskit-menu-offcanvas-elements.active) #fkcart-floating-toggler{o
 .amm-mquiz b{display:block;font-size:14px;font-weight:900}.amm-mquiz small{display:block;font-size:12px;color:var(--amm-muted);line-height:1.35}.amm-mquiz i{font-style:normal;font-weight:900;color:var(--amm-deep);font-size:22px;line-height:1}
 .amm-mtrust{margin:14px 0 0;text-align:center;font-size:11.5px;font-weight:700;color:#8a7266;line-height:1.6}
 }
+@media (min-width:1025px) and (max-height:760px){.amm-needs{padding:14px 6px 14px 12px}.amm .amm-t{margin-bottom:6px}.amm-need{padding:4px 10px;font-size:13px}.amm-need .amm-ic{width:28px;height:28px;font-size:14px}.amm-need small{display:none}.amm-aside{gap:8px}.amm-trust{display:none}.amm-promo{padding:14px}.amm-promo strong{font-size:16px}.amm-promo .amm-p{margin-bottom:8px}.amm-quiz{padding:10px 14px 10px 50px}.amm-quiz small{margin:2px 0 4px}}
 @media (min-width:1025px) and (max-width:1500px){.amm{grid-template-columns:214px minmax(0,1fr) 244px}.amm-needs{padding:18px 6px 18px 12px}.amm-grid{padding:18px 16px}.amm-aside{padding:18px 16px 18px 0}.amm-need{font-size:13px;padding:7px 10px}.amm-cards.all .amm-card b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;min-height:2.3em}.amm-promo strong{font-size:17px}}
 CSS;
 		$js = <<<'JS'
-(function(){function init(root){if(root.dataset.ammInit)return;root.dataset.ammInit='1';var cards=root.querySelectorAll('.amm-card'),title=root.querySelector('.amm-title'),cnt=root.querySelector('.amm-cnt'),grid=root.querySelector('.amm-cards');
-function pick(n,label){var k=0;for(var i=0;i<cards.length;i++){var c=cards[i],h=n!=='all'&&(' '+c.getAttribute('data-c')+' ').indexOf(' '+n+' ')<0;c.hidden=h;if(!h)k++}if(grid)grid.classList.toggle('all',n==='all');if(title)title.textContent=label;if(cnt)cnt.textContent=k===1?'1 продукт':k+' продукта'}
-var needs=root.querySelectorAll('.amm-need');for(var j=0;j<needs.length;j++){(function(b){var go=function(){for(var x=0;x<needs.length;x++)needs[x].classList.toggle('on',needs[x]===b);pick(b.getAttribute('data-n'),b.querySelector('span:nth-child(2)').childNodes[0].textContent.trim())};b.addEventListener('mouseenter',go);b.addEventListener('click',function(e){e.preventDefault();go()});b.addEventListener('focus',go)})(needs[j])}}
+(function(){function init(root){if(root.dataset.ammInit)return;root.dataset.ammInit='1';var cards=[].slice.call(root.querySelectorAll('.amm-card')),title=root.querySelector('.amm-title'),cnt=root.querySelector('.amm-cnt'),grid=root.querySelector('.amm-cards'),foot=root.querySelector('.amm-foot'),pager=root.querySelector('.amm-pager'),pgn=root.querySelector('.amm-pgn'),prev=root.querySelector('.amm-prev'),next=root.querySelector('.amm-next');
+var list=cards,page=0;
+/* 1.42.3: колко карти влизат без скрол — колони от решетката × редове по измерената височина на картата; 0 = панелът е скрит (не се мери) или телефон */
+function fits(compact,c7){if(window.innerWidth<=1024||!grid||!list.length)return 0;grid.classList.toggle('compact',!!compact);grid.classList.toggle('c7',!!c7);for(var i=0;i<cards.length;i++)cards[i].hidden=list.indexOf(cards[i])<0;var ch=list[0].offsetHeight;if(ch<40)return 0;var cs=getComputedStyle(grid),cols=(cs.gridTemplateColumns||'').split(' ').filter(Boolean).length||1,gap=parseFloat(cs.rowGap)||parseFloat(cs.gap)||10;var maxH=parseFloat(getComputedStyle(root).maxHeight);if(!(maxH>0))maxH=window.innerHeight-140;var top=grid.getBoundingClientRect().top-root.getBoundingClientRect().top+root.scrollTop,fh=foot?foot.offsetHeight+18:0,avail=maxH-top-fh-22,rows=Math.max(1,Math.floor((avail+gap)/(ch+gap)));return cols*rows}
+/* компактните карти (снимка 4:3) и 7-та колона (само „Всички“, широк екран) се ползват само когато дават по-малко страници */
+function show(){var n=list.length,opts=[[0,0],[1,0]];if(grid&&grid.classList.contains('all')&&window.innerWidth>=1500)opts.push([1,1]);var per=0,pages=1e9,pick_=opts[0];for(var o=0;o<opts.length;o++){var f=fits(opts[o][0],opts[o][1]),pg=f?Math.ceil(n/f):1;if(f&&pg<pages){pages=pg;per=f;pick_=opts[o]}}if(per)fits(pick_[0],pick_[1]);else fits(0,0);pages=per?Math.max(1,Math.ceil(n/per)):1;if(page>=pages)page=pages-1;if(page<0)page=0;var a=per?page*per:0,b=per?a+per:n;for(var i=0;i<cards.length;i++){var k=list.indexOf(cards[i]);cards[i].hidden=k<0||k<a||k>=b}if(cnt)cnt.textContent=(n===1?'1 продукт':n+' продукта')+(pages>1?' · '+(a+1)+'–'+Math.min(b,n):'');if(pager){pager.hidden=pages<2;if(pgn)pgn.textContent=(page+1)+' / '+pages;if(prev)prev.disabled=page===0;if(next)next.disabled=page>=pages-1}root.scrollTop=0}
+function pick(n,label){page=0;list=n==='all'?cards:cards.filter(function(c){return(' '+c.getAttribute('data-c')+' ').indexOf(' '+n+' ')>=0});if(grid){grid.classList.toggle('all',n==='all');grid.classList.toggle('c5',n!=='all'&&list.length===5);grid.classList.toggle('c6',n!=='all'&&list.length>=6)}if(title)title.textContent=label;show()}
+if(prev)prev.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();page--;show()});if(next)next.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();page++;show()});
+var needs=root.querySelectorAll('.amm-need');for(var j=0;j<needs.length;j++){(function(b){var go=function(){for(var x=0;x<needs.length;x++)needs[x].classList.toggle('on',needs[x]===b);pick(b.getAttribute('data-n'),b.querySelector('span:nth-child(2)').childNodes[0].textContent.trim())};b.addEventListener('mouseenter',go);b.addEventListener('click',function(e){e.preventDefault();go()});b.addEventListener('focus',go)})(needs[j])}
+root.ammRelayout=show;var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(show,120)});show()}
 var bd=null;function backdrop(){if(bd)return bd;bd=document.createElement('div');bd.className='amm-backdrop';document.body.appendChild(bd);return bd}
-function hookItem(root){var li=root.closest('li.elementskit-megamenu-has,li.menu-item');if(!li||li.dataset.ammBd)return;li.dataset.ammBd='1';var show=function(){if(window.innerWidth>1024)backdrop().classList.add('on')},hide=function(){if(bd)bd.classList.remove('on')};li.addEventListener('mouseenter',show);li.addEventListener('mouseleave',hide);li.addEventListener('focusin',show);li.addEventListener('focusout',function(e){if(!li.contains(e.relatedTarget))hide()})}
+function relayout(root){if(root.ammRelayout){requestAnimationFrame(root.ammRelayout);setTimeout(root.ammRelayout,80)}}
+function hookItem(root){var li=root.closest('li.elementskit-megamenu-has,li.menu-item');if(!li||li.dataset.ammBd)return;li.dataset.ammBd='1';var show=function(){if(window.innerWidth>1024)backdrop().classList.add('on');relayout(root)},hide=function(){if(bd)bd.classList.remove('on')};li.addEventListener('mouseenter',show);li.addEventListener('mouseleave',hide);li.addEventListener('focusin',show);li.addEventListener('focusout',function(e){if(!li.contains(e.relatedTarget))hide()})}
 function go(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey)return;var a=e.target.closest&&e.target.closest('.amm a[href]');if(!a||a.target==='_blank')return;a.classList.add('amm-go')}
 document.addEventListener('click',go,true);window.addEventListener('pageshow',function(){var g=document.querySelectorAll('.amm-go');for(var i=0;i<g.length;i++)g[i].classList.remove('amm-go')});
-function all(){var r=document.querySelectorAll('.amm');for(var i=0;i<r.length;i++){init(r[i]);hookItem(r[i])}}
+function all(){var r=document.querySelectorAll('.amm');for(var i=0;i<r.length;i++){init(r[i]);hookItem(r[i]);relayout(r[i])}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();document.addEventListener('ekit-megamenu-open',all);setTimeout(all,1500)})();
 JS;
 		return '<style id="amm-css">' . $css . '</style><script id="amm-js">' . $js . '</script>';
