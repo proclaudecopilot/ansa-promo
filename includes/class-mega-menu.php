@@ -8,6 +8,11 @@
  *  - на телефон (≤1024px) групи по нужда с продукти и цени; на десктоп страницата отзад се замъглява (.amm-backdrop).
  *  - хапчето „Сезонът на ANSA −40%“ в навигацията (wp_nav_menu_items, след „Продукти“, преди елемент 15391), докато кампанията е активна и срокът ѝ не е минал.
  * Снимка за менюто по продукт: option ansa_mega_menu_images [ключ → attachment id или URL] (сменя се без код).
+ * 1.42.2 (човекът: „в менопауза има Утера — грешно, трябва Омега 3, Ашваганда, Ред Рутин, Д3К2 като допълнителни продукти; Д3К2 липсва изцяло“):
+ *  - EXTRA: допълнителни продукти към нужда — влизат във филтъра и в групата на телефона, но етикетът на картата им остава основната нужда
+ *    (Омега 3 си е „Общо здраве“, Red Routine „Сън и стрес“), не „Менопауза“;
+ *  - продукт, изброен в нуждите, но скрит от каталога (D3K2 е exclude-from-catalog), се взема по slug: публикуван, наличен, с цена;
+ *  - продукт от промото се води под slug-а си в магазина, когато нуждите изброяват slug-а, а не ключа от промото (ashwa → ashwagandha).
  *
  * @package AnsaPromo
  * @since 1.40.0
@@ -22,13 +27,17 @@ final class Mega_Menu {
 	const NEEDS = array(
 		'gut'    => array( 'Храносмилане', '🥬', array( 'greens', 'yoni' ) ),
 		'skin'   => array( 'Кожа и красота', '🌸', array( 'sakura', 'eyefresh-hidrogelni', 'collamask' ) ),
-		'meno'   => array( 'Менопауза', '🌷', array( 'meno', 'utera-za' ) ),
+		'meno'   => array( 'Менопауза', '🌷', array( 'meno' ) ),
 		'weight' => array( 'Тегло и метаболизъм', '🫐', array( 'berber', 'greens' ) ),
 		'sleep'  => array( 'Сън и стрес', '🌙', array( 'red', 'ashwagandha' ) ),
 		'thyro'  => array( 'Щитовидна жлеза', '🦋', array( 'thyro' ) ),
 		'intim'  => array( 'Интимно здраве', '💗', array( 'yoni', 'utera-za' ) ),
 		'general' => array( 'Общо здраве', '💛', array( 'omega-3', 'd3k2', 'no-ache' ) ),
 		'new'    => array( 'Нови', '✨', array( 'utera-za', 'eyefresh-hidrogelni' ) ),
+	);
+	/** 1.42.2: допълнителни продукти към нужда (ключ или slug) — във филтъра и в групата, но категорията на картата остава основната им нужда. */
+	const EXTRA = array(
+		'meno' => array( 'omega-3', 'ashwagandha', 'red', 'd3k2' ),
 	);
 	const SHORT = array( 'utera-za' => 'Utera+', 'eyefresh-hidrogelni' => 'EyeFresh пачове', 'ashwagandha' => 'Ashwagandha + Mg + B6', 'omega-3' => 'Omega-3', 'collamask' => 'CollaMask', 'd3k2' => 'D3K2', 'no-ache' => 'No Ache' );
 	/** Кратко описание за продуктите извън промото (иначе първото изречение от краткото описание в магазина). */
@@ -77,8 +86,11 @@ final class Mega_Menu {
 					$id = (int) ( $p['id'] ?? 0 ); if ( ! $id ) { continue; }
 					$wc = function_exists( 'wc_get_product' ) ? wc_get_product( $id ) : null;
 					$price = isset( $p['price'] ) ? (float) $p['price'] : ( $wc ? (float) $wc->get_price() : 0 );
-					$out[ (string) $p['key'] ] = array(
-						'key' => (string) $p['key'], 'id' => $id, 'name' => (string) ( $p['name'] ?? ( $wc ? $wc->get_name() : '' ) ), 'ds' => (string) ( $p['ds'] ?? '' ),
+					/* 1.42.2: нуждите изброяват slug-а от магазина, не ключа от промото (ashwa → ashwagandha) → продуктът се води под slug-а */
+					$key = (string) $p['key']; $slug = $wc ? (string) $wc->get_slug() : '';
+					if ( '' !== $slug && $slug !== $key && self::listed( $slug ) && ! self::listed( $key ) ) { $key = $slug; }
+					$out[ $key ] = array(
+						'key' => $key, 'id' => $id, 'name' => (string) ( $p['name'] ?? ( $wc ? $wc->get_name() : '' ) ), 'ds' => (string) ( $p['ds'] ?? '' ),
 						'img' => self::image( (string) $p['key'], $id, (string) ( $p['img'] ?? '' ) ), 'price' => $price, 'url' => get_permalink( $id ) ?: self::LINKS['shop'],
 					);
 				}
@@ -97,9 +109,25 @@ final class Mega_Menu {
 					$have[ $id ] = 1;
 				}
 			} catch ( \Throwable $e ) { /* магазинът не отговаря — само продуктите от промото */ }
+			/* 1.42.2 (човекът: „Д3К2 липсва изцяло“): изброен в нуждите, но скрит от каталога (exclude-from-catalog) → по slug, щом е публикуван, наличен и с цена */
+			foreach ( self::listed_keys() as $key ) {
+				if ( isset( $out[ $key ] ) || ! function_exists( 'get_page_by_path' ) ) { continue; }
+				try {
+					$post = get_page_by_path( $key, OBJECT, 'product' ); $wc = $post ? wc_get_product( (int) $post->ID ) : null;
+					if ( ! $wc || isset( $have[ (int) $wc->get_id() ] ) || 'publish' !== $wc->get_status() || ! $wc->is_in_stock() || (float) $wc->get_price() <= 0 ) { continue; }
+					$id = (int) $wc->get_id(); $img = wp_get_attachment_image_url( (int) $wc->get_image_id(), 'medium_large' );
+					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => (float) $wc->get_price(), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
+					$have[ $id ] = 1;
+				} catch ( \Throwable $e ) { /* продуктът не се чете — остава без него */ }
+			}
 		}
 		return $out;
 	}
+	/** 1.42.2: продуктите на нужда — основните + допълнителните (EXTRA). */
+	public static function list_of( $k ) { return array_values( array_unique( array_merge( (array) ( self::NEEDS[ $k ][2] ?? array() ), (array) ( self::EXTRA[ $k ] ?? array() ) ) ) ); }
+	/** Всички ключове/slug-ове, изброени в нуждите. */
+	public static function listed_keys() { $o = array(); foreach ( self::NEEDS as $k => $n ) { foreach ( self::list_of( $k ) as $x ) { $o[ $x ] = 1; } } return array_keys( $o ); }
+	private static function listed( $key ) { return in_array( $key, self::listed_keys(), true ); }
 
 	/** 1.1.0: снимката за менюто: option ansa_mega_menu_images [ключ → attachment id или URL] (сменя се без код) → основната снимка на продукта в магазина (medium_large) → снимката от промото. */
 	public static function image( $key, $id, $fallback = '' ) {
@@ -112,14 +140,15 @@ final class Mega_Menu {
 	private static function short_name( $n ) { $n = preg_replace( '/^\s*ansa(™|\x{2122})?\s*[-–—]\s*/u', '', (string) $n ); $n = preg_split( '/\s+[-–—|]\s+/u', $n )[0]; return trim( $n ); }
 	private static function first_sentence( $t ) { $t = trim( preg_replace( '/\s+/', ' ', (string) $t ) ); $parts = preg_split( '/(?<=[.!?])\s+/u', $t ); $f = trim( (string) ( $parts[0] ?? $t ), " .\n" ); return mb_strlen( $f ) > 70 ? mb_substr( $f, 0, 68 ) . '…' : $f; }
 	private static function need_of( $key ) { foreach ( self::NEEDS as $k => $n ) { if ( 'new' !== $k && in_array( $key, $n[2], true ) ) { return $n[0]; } } return 'Нови'; }
-	private static function needs_of( $key ) { $o = array(); foreach ( self::NEEDS as $k => $n ) { if ( in_array( $key, $n[2], true ) ) { $o[] = $k; } } return $o ?: array( 'new' ); }
+	/** Всички нужди, в които продуктът се показва (основни + EXTRA); категорията на картата (need_of) е само основната. */
+	private static function needs_of( $key ) { $o = array(); foreach ( self::NEEDS as $k => $n ) { if ( in_array( $key, self::list_of( $k ), true ) ) { $o[] = $k; } } return $o ?: array( 'new' ); }
 	private static function money( $v ) { return '€ ' . number_format( (float) $v, 2, ',', ' ' ); }
 	private static function plural( $n ) { return 1 === (int) $n ? '1 продукт' : (int) $n . ' продукта'; }
 
 	public static function shortcode() {
 		$P = self::products(); if ( ! $P ) { return ''; }
 		$h = esc_url( home_url( '/' ) ); $L = array(); foreach ( self::LINKS as $k => $v ) { $L[ $k ] = esc_url( home_url( $v ) ); }
-		$counts = array( 'all' => count( $P ) ); foreach ( self::NEEDS as $k => $n ) { $counts[ $k ] = count( array_filter( $n[2], function ( $x ) use ( $P ) { return isset( $P[ $x ] ); } ) ); }
+		$counts = array( 'all' => count( $P ) ); foreach ( self::NEEDS as $k => $n ) { $counts[ $k ] = count( array_filter( self::list_of( $k ), function ( $x ) use ( $P ) { return isset( $P[ $x ] ); } ) ); }
 		$needs = '<button class="amm-need on" data-n="all" type="button"><span class="amm-ic">🌿</span><span>Всички продукти<small>' . self::plural( $counts['all'] ) . '</small></span><i>›</i></button>';
 		foreach ( self::NEEDS as $k => $n ) { if ( ! $counts[ $k ] ) { continue; } $needs .= '<button class="amm-need" data-n="' . esc_attr( $k ) . '" type="button"><span class="amm-ic">' . $n[1] . '</span><span>' . esc_html( $n[0] ) . '<small>' . self::plural( $counts[ $k ] ) . '</small></span><i>›</i></button>'; }
 		$cards = '';
@@ -133,7 +162,7 @@ final class Mega_Menu {
 		foreach ( self::NEEDS as $k => $n ) {
 			if ( 'new' === $k || ! $counts[ $k ] ) { continue; }
 			$rows = '';
-			foreach ( $n[2] as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
+			foreach ( self::list_of( $k ) as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
 			$acc .= '<details><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows"><div class="amm-acc-cap">' . esc_html( $n[0] ) . ' · ' . self::plural( $counts[ $k ] ) . '</div>' . $rows . '</div></details>';
 			$first = false;
 		}
