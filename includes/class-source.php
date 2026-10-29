@@ -58,14 +58,26 @@ final class Source {
 		parse_str( $qs, $raw ); $out = array();
 		foreach ( (array) $raw as $k => $v ) {
 			if ( ! is_scalar( $v ) ) { continue; }
-			$k = strtolower( trim( (string) $k ) ); $v = trim( preg_replace( '/[\x00-\x1f\x7f]/', '', (string) $v ) );
+			$k = strtolower( trim( (string) $k ) ); $v = (string) $v;
+			/* 1.42.1: Meta понякога кодира параметрите на рекламата два пъти (utm_campaign=Season%2B%257C…) — декодираме, докато има %XX; отрязаните
+			   (191 знака referrer) последователности оставят невалиден UTF-8 → чистим го, иначе preg с /u връща null и името се губи */
+			for ( $i = 0; $i < 2 && preg_match( '/%[0-9a-f]{2}/i', $v ); $i++ ) { $v = urldecode( $v ); }
+			$v = self::utf8( preg_replace( '/%[0-9a-f]?$/i', '', $v ) ); $v = trim( preg_replace( '/[\x00-\x1f\x7f]/', '', $v ) ); /* отрязано „%D“ накрая пада */
 			if ( '' === $k ) { continue; }
 			$out[ $k ] = $v;
 		}
 		return $out;
 	}
 	private static function g( $p, $keys, $len = 128 ) { foreach ( (array) $keys as $k ) { if ( isset( $p[ $k ] ) && '' !== $p[ $k ] ) { return self::cut( $p[ $k ], $len ); } } return ''; }
-	private static function cut( $v, $len ) { $v = trim( preg_replace( '/\s+/u', ' ', (string) $v ) ); return function_exists( 'mb_substr' ) ? mb_substr( $v, 0, $len ) : substr( $v, 0, $len ); }
+	private static function cut( $v, $len ) { $v = self::utf8( (string) $v ); $r = preg_replace( '/\s+/u', ' ', $v ); $v = trim( null === $r ? $v : $r ); return function_exists( 'mb_substr' ) ? mb_substr( $v, 0, $len ) : substr( $v, 0, $len ); }
+	/** Само валиден UTF-8 (невалидните байтове падат); чист PHP — без mb, ако го няма. */
+	public static function utf8( $v ) {
+		$v = (string) $v; if ( '' === $v || preg_match( '//u', $v ) ) { return $v; }
+		$c = false;
+		if ( function_exists( 'mb_convert_encoding' ) && function_exists( 'mb_substitute_character' ) ) { $old = mb_substitute_character(); mb_substitute_character( 'none' ); $c = @mb_convert_encoding( $v, 'UTF-8', 'UTF-8' ); mb_substitute_character( $old ); }
+		if ( ! is_string( $c ) && function_exists( 'iconv' ) ) { $c = @iconv( 'UTF-8', 'UTF-8//IGNORE', $v ); }
+		return is_string( $c ) && preg_match( '//u', $c ) ? $c : preg_replace( '/[\x80-\xff]+/', '', $v );
+	}
 	private static function has( $p, $k ) { return isset( $p[ $k ] ); }
 
 	/** Хостът на referrer-а без www/m/l/lm и пътят му (без завършваща наклонена черта). */
@@ -157,6 +169,8 @@ final class Source {
 		$tq = (string) ( $r['touch_qs'] ?? '' ); $tr = (string) ( $r['touch_ref'] ?? '' );
 		if ( '' === $tq && '' === $tr ) { $tq = self::legacy_qs( $r ); $tr = (string) ( $r['ref'] ?? '' ); }
 		$ext = self::classify( $tq, $tr, $home );
+		/* 1.42.1: стари сесии от runtime ajax-а имат за referrer самия лендър (без UTM) — това не е „вътрешен линк“, а неустановен произход */
+		if ( 'internal' === $ext['k'] && '' === (string) ( $r['touch_qs'] ?? '' ) && '' === (string) ( $r['touch_ref'] ?? '' ) && isset( $ext['path'][0] ) && preg_match( '#^/(sezonut-na-ansa(-b)?|kozmetichen-set-promo)$#', $ext['path'][0] ) ) { $ext = self::classify( '', '', $home ); }
 		$eq = (string) ( $r['entry_qs'] ?? '' ); $er = (string) ( $r['entry_ref'] ?? '' );
 		if ( '' === $eq && '' === $er ) { $entry = $ext; $entry['legacy'] = true; }
 		else {
