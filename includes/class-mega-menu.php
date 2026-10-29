@@ -13,6 +13,10 @@
  *    (Омега 3 си е „Общо здраве“, Red Routine „Сън и стрес“), не „Менопауза“;
  *  - продукт, изброен в нуждите, но скрит от каталога (D3K2 е exclude-from-catalog), се взема по slug: публикуван, наличен, с цена;
  *  - продукт от промото се води под slug-а си в магазина, когато нуждите изброяват slug-а, а не ключа от промото (ashwa → ashwagandha).
+ * 1.42.4 (човекът: „бъркаш «Започва от». Най-ниската цена за EyeFresh е 1 кутия и е 15,90, а не 50 и нещо; важи за всички продукти“):
+ *  „от“ цената е най-ниската текуща цена сред вариациите на продукта (get_variation_prices → min; обикновен продукт → get_price), не цената
+ *  от промото (вариацията по SKU — за EyeFresh хващаше 3-та кутия на редовна цена 53,92) и не _price на родителя (на сайта не е синхронизиран:
+ *  ashwagandha 65,90 при 1 кутия 27,90).
  * 1.42.3 (човекът: „да сложим някакъв максимум на контейнера, за да няма скрол, и просто да има втора страница“): на десктоп решетката
  *  с картите е на страници — JS мери колко реда влизат в панела (max-height = екранът − 140px) без скрол и показва толкова карти
  *  (колони × редове); останалите са на следваща страница с ‹ › в реда със заглавието („Менопауза · 5 продукта · 1–4“, „1 / 2“).
@@ -95,7 +99,7 @@ final class Mega_Menu {
 					if ( '' !== $slug && $slug !== $key && self::listed( $slug ) && ! self::listed( $key ) ) { $key = $slug; }
 					$out[ $key ] = array(
 						'key' => $key, 'id' => $id, 'name' => (string) ( $p['name'] ?? ( $wc ? $wc->get_name() : '' ) ), 'ds' => (string) ( $p['ds'] ?? '' ),
-						'img' => self::image( (string) $p['key'], $id, (string) ( $p['img'] ?? '' ) ), 'price' => $price, 'url' => get_permalink( $id ) ?: self::LINKS['shop'],
+						'img' => self::image( (string) $p['key'], $id, (string) ( $p['img'] ?? '' ) ), 'price' => self::from_price( $wc, $price ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'],
 					);
 				}
 			} catch ( \Throwable $e ) { $out = array(); }
@@ -109,7 +113,7 @@ final class Mega_Menu {
 					if ( ! $wc->is_visible() || ! $wc->is_in_stock() || (float) $wc->get_price() <= 0 ) { continue; }
 					$t = mb_strtolower( $wc->get_name() ); if ( false !== mb_strpos( $t, 'ваучер' ) || false !== mb_strpos( $t, 'voucher' ) || false !== mb_strpos( $t, 'персонал' ) ) { continue; }
 					$key = (string) $wc->get_slug(); $img = wp_get_attachment_image_url( (int) $wc->get_image_id(), 'medium_large' );
-					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => (float) $wc->get_price(), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
+					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
 					$have[ $id ] = 1;
 				}
 			} catch ( \Throwable $e ) { /* магазинът не отговаря — само продуктите от промото */ }
@@ -120,12 +124,25 @@ final class Mega_Menu {
 					$post = get_page_by_path( $key, OBJECT, 'product' ); $wc = $post ? wc_get_product( (int) $post->ID ) : null;
 					if ( ! $wc || isset( $have[ (int) $wc->get_id() ] ) || 'publish' !== $wc->get_status() || ! $wc->is_in_stock() || (float) $wc->get_price() <= 0 ) { continue; }
 					$id = (int) $wc->get_id(); $img = wp_get_attachment_image_url( (int) $wc->get_image_id(), 'medium_large' );
-					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => (float) $wc->get_price(), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
+					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
 					$have[ $id ] = 1;
 				} catch ( \Throwable $e ) { /* продуктът не се чете — остава без него */ }
 			}
 		}
 		return $out;
+	}
+	/** 1.42.4: „от“ цената — най-ниската текуща цена сред вариациите (1 кутия), иначе цената на продукта; $fallback при липса. */
+	public static function from_price( $wc, $fallback = 0 ) {
+		try {
+			if ( $wc && method_exists( $wc, 'is_type' ) && $wc->is_type( 'variation' ) && function_exists( 'wc_get_product' ) ) { $wc = wc_get_product( (int) $wc->get_parent_id() ) ?: $wc; }
+			if ( $wc && method_exists( $wc, 'get_variation_prices' ) && $wc->is_type( 'variable' ) ) {
+				$pr = (array) $wc->get_variation_prices( false ); $ps = array();
+				foreach ( (array) ( $pr['price'] ?? array() ) as $v ) { if ( '' !== $v && null !== $v && (float) $v > 0 ) { $ps[] = (float) $v; } }
+				if ( $ps ) { return min( $ps ); }
+			}
+			if ( $wc && method_exists( $wc, 'get_price' ) ) { $v = (float) $wc->get_price(); if ( $v > 0 ) { return $v; } }
+		} catch ( \Throwable $e ) {}
+		return (float) $fallback;
 	}
 	/** 1.42.2: продуктите на нужда — основните + допълнителните (EXTRA). */
 	public static function list_of( $k ) { return array_values( array_unique( array_merge( (array) ( self::NEEDS[ $k ][2] ?? array() ), (array) ( self::EXTRA[ $k ] ?? array() ) ) ) ); }

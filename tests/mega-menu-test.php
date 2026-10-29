@@ -15,10 +15,10 @@ function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF
 function get_post_thumbnail_id( $id ) { return 0; }
 class MMProduct extends FakeProduct {
 	public $slug = '', $visible = true, $instock = true, $status = 'publish';
-	function get_slug() { return $this->slug; } function is_visible() { return $this->visible; } function is_in_stock() { return $this->instock; } function get_status() { return $this->status; }
+	public $vprices = array(); function get_variation_prices( $d = false ) { return array( 'price' => $this->vprices ); } function get_slug() { return $this->slug; } function is_visible() { return $this->visible; } function is_in_stock() { return $this->instock; } function get_status() { return $this->status; }
 }
 function mmp( $id, $price, $name, $slug, $visible = true, $instock = true, $type = 'simple' ) { $p = new MMProduct( $id, $price, $type, 0, array(), $name ); $p->slug = $slug; $p->visible = $visible; $p->instock = $instock; $GLOBALS['products'][ $id ] = $p; return $p; }
-function mmv( $id, $price, $name, $slug ) { /* variable родител + вариация „1 кутия“ (както в промото) */ $p = mmp( $id, $price, $name, $slug, true, true, 'variable' ); $p->children = array( $id + 1 ); $v = new MMProduct( $id + 1, $price, 'variation', $id, array(), $name . ' - 1 кутия' ); $GLOBALS['products'][ $id + 1 ] = $v; }
+function mmv( $id, $price, $name, $slug, $vprices = array() ) { /* variable родител + вариация „1 кутия“ (както в промото); $vprices = цените на вариациите (1.42.4) */ $p = mmp( $id, $price, $name, $slug, true, true, 'variable' ); $p->children = array( $id + 1 ); $p->vprices = $vprices ?: array( $id + 1 => $price ); $v = new MMProduct( $id + 1, $price, 'variation', $id, array(), $name . ' - 1 кутия' ); $GLOBALS['products'][ $id + 1 ] = $v; }
 $GLOBALS['products'] = array();
 mmv( 100, 43.90, 'ansa Greens', 'daily-greens' ); mmv( 200, 49.90, 'ansa Sakura', 'sakura-skintonic' );
 mmv( 300, 49.90, 'ansa™ – Омега 3 - Пречистено рибено масло', 'omega-3' );      /* в промото под ключ „omega“, в магазина slug omega-3 */
@@ -29,6 +29,9 @@ mmp( 700, 19.90, 'ansa™ – D3K2 с Ретинол, Шафран и Вечер
 mmp( 800, 30.67, 'ansa™ - No Ache - добавка за стави', 'no-ache', false, false );        /* скрит и изчерпан → не влиза */
 mmp( 900, 39.90, 'ansa™ – Utera+ За здрава репродуктивна система', 'utera-plus' );
 mmp( 950, 0.0, 'Подарък - КОЛЕДЕН ВАУЧЕР', 'koleden-voucher', false, true );
+mmv( 1000, 53.92, 'ansa™ – eyeFresh Хидрогелни Пачове за очи', 'eye-fresh', array( 1001 => '15.90', 1002 => '27.90', 1003 => '35.90' ) ); /* 1.42.4: промото/родителят казват 53,92, 1 кутия е 15,90 */
+$GLOBALS['products'][600]->vprices = array(); $GLOBALS['products'][600]->price = 27.90; /* simple: get_price */
+mmv( 1100, 65.90, 'ansa™ - Тест стар parent _price', 'stale-parent', array( 1101 => '27.90', 1102 => '49.90', 1103 => '65.90' ) );
 function wc_get_products( $args = array() ) { $o = array(); foreach ( $GLOBALS['products'] as $p ) { if ( $p instanceof MMProduct && 'variation' !== $p->type ) { $o[] = clone $p; } } return $o; }
 function get_page_by_path( $slug, $output = OBJECT, $type = 'post' ) { foreach ( $GLOBALS['products'] as $p ) { if ( $p instanceof MMProduct && $p->slug === $slug && 'variation' !== $p->type ) { return (object) array( 'ID' => $p->id ); } } return null; }
 
@@ -41,6 +44,7 @@ $def['products'] = array(
 	array( 'key' => 'red',    'product_id' => 400, 'enabled' => true ),
 	array( 'key' => 'meno',   'product_id' => 500, 'enabled' => true ),
 	array( 'key' => 'ashwa',  'product_id' => 0,   'enabled' => true ),
+	array( 'key' => 'eyefresh-hidrogelni', 'product_id' => 1000, 'enabled' => true ),
 );
 $def = Config::normalize( $def ); $store['published'] = $def; $store['draft'] = $def; $GLOBALS['opts']['ansa_promo_store'] = $store;
 
@@ -49,7 +53,12 @@ set_error_handler( function ( $no, $msg, $file, $line ) { throw new ErrorExcepti
 
 /* ── products() ── */
 $P = Mega_Menu::products(); $keys = array_keys( $P );
-$ok( 'продуктите от промото са първи', array( 'greens', 'sakura', 'omega-3', 'red', 'meno' ) === array_slice( $keys, 0, 5 ), implode( ',', $keys ) );
+$ok( 'продуктите от промото са първи', array( 'greens', 'sakura', 'omega-3', 'red', 'meno', 'eyefresh-hidrogelni' ) === array_slice( $keys, 0, 6 ), implode( ',', $keys ) );
+/* 1.42.4: „от“ цената = най-ниската вариация */
+$ok( 'EyeFresh от промото: „от“ 15,90 (1 кутия), не 53,92', isset( $P['eyefresh-hidrogelni'] ) && 15.9 === $P['eyefresh-hidrogelni']['price'], json_encode( $P['eyefresh-hidrogelni']['price'] ?? null ) );
+$ok( 'продукт от магазина със стар parent _price 65,90: „от“ 27,90', isset( $P['stale-parent'] ) && 27.9 === $P['stale-parent']['price'], json_encode( $P['stale-parent']['price'] ?? null ) );
+$ok( 'обикновен продукт: get_price (Ашваганда 27,90)', 27.9 === $P['ashwagandha']['price'] );
+$ok( 'from_price: без продукт → fallback', 5.0 === Mega_Menu::from_price( null, 5 ) );
 $ok( 'omega от промото се води под slug-а omega-3 (изброен в нуждите)', isset( $P['omega-3'] ) && ! isset( $P['omega'] ) && 300 === $P['omega-3']['id'] );
 $ok( 'red остава red (slug-ът red-routine не е изброен)', isset( $P['red'] ) && ! isset( $P['red-routine'] ) );
 $ok( 'ashwagandha идва от магазина', isset( $P['ashwagandha'] ) && 600 === $P['ashwagandha']['id'] );
