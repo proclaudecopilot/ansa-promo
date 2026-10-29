@@ -8,7 +8,7 @@ use AnsaPromo\Mega_Menu; use AnsaPromo\Config;
 if ( ! defined( 'OBJECT' ) ) { define( 'OBJECT', 'OBJECT' ); }
 function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF-8' ); }
 function get_post_thumbnail_id( $id ) { return 0; }
-class MMProduct extends FakeProduct { public $slug = '', $visible = true, $instock = true; function get_slug() { return $this->slug; } function is_visible() { return $this->visible; } function is_in_stock() { return $this->instock; } }
+class MMProduct extends FakeProduct { public $slug = '', $visible = true, $instock = true; public $vprices = array(); function get_variation_prices( $d = false ) { return array( 'price' => $this->vprices ); } function get_slug() { return $this->slug; } function is_visible() { return $this->visible; } function is_in_stock() { return $this->instock; } }
 function mmp( $id, $price, $name, $slug, $visible = true, $type = 'simple' ) { $p = new MMProduct( $id, $price, $type, 0, array(), $name ); $p->slug = $slug; $p->visible = $visible; $GLOBALS['products'][ $id ] = $p; if ( 'variable' === $type ) { $p->children = array( $id + 1 ); $v = new MMProduct( $id + 1, $price, 'variation', $id, array(), $name . ' - 1 кутия' ); $GLOBALS['products'][ $id + 1 ] = $v; } }
 $GLOBALS['products'] = array();
 mmp( 100, 49.50, 'ansa Sakura', 'sakura-skintonic', true, 'variable' ); mmp( 200, 43.90, 'ansa Daily Greens', 'daily-greens', true, 'variable' ); mmp( 300, 39.90, 'ansa MenoStop', 'menostop', true, 'variable' );
