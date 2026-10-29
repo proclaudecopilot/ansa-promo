@@ -7,7 +7,8 @@
  * (стигнала най-голямата кутия) → order (цъкнала „Продължи към плащане“) → add (сървърът прие).
  * v5 (1.35.0): категориите са падащ списък, подсказка „Още продукти“ над каталога, офертата е „Спестяваш X“ + лента с 5 деления,
  * плочка на сета със снимки (заключен/отключен/запазен), на десктоп панелът носи избраните продукти и сумите; сетът влиза в
- * сравнението „редовно / с офертата“ само след резервация; логото е снимка (runtime.logo), иначе думата „ansa™“. */
+ * сравнението „редовно / с офертата“ само след резервация; логото е снимка (runtime.logo), иначе думата „ansa™“.
+ * 1.43.0 (човекът, десктоп): панелът е с тъмна глава + бяло тяло (.dock-body), празен показва стъпките „Как се добавя“ (fl.how.*); сетът „го вземаш за €1“. */
 (function(){
   'use strict';
   var A=window.AnsaPromoRuntime;if(!A)return;
@@ -97,7 +98,7 @@
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('variant','flow');
     fd.append('box',t.box?t.box.id:'');fd.append('utm',S.utm||'');fd.append('n',t.count);if(k)fd.append('k',k);
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(items()));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER);fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER);fd.append('path',location.pathname.slice(0,120));fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -134,14 +135,14 @@
       +'<button class="scroll-more" id="flScrollMore" type="button" aria-controls="flCatalog" aria-label="Покажи още продукти надолу" hidden><span>'+TT('fl.more')+'</span>'+icon('down')+'</button></div>'
       +'<section class="reward-dock" id="flDock" aria-label="Твоята отстъпка и поръчка">'
       +'<div class="desktop-offer-heading desktop-only"><span class="offer-bag">'+icon('bag')+'</span><div><h2>'+TT('fl.offer.h')+'</h2><p>'+TT('fl.offer.s')+'</p></div></div>'
-      +'<div class="offer-status"><button class="selection-link" type="button" data-open="cart"><span id="flSelectedCount"></span>'+icon('chevron')+'</button><span class="current-discount is-empty" id="flDiscount"></span></div>'
+      +'<div class="dock-body"><div class="offer-status"><button class="selection-link" type="button" data-open="cart"><span id="flSelectedCount"></span>'+icon('chevron')+'</button><span class="current-discount is-empty" id="flDiscount"></span></div>'
       +'<div class="offer-message"><div class="offer-text"><h2 class="offer-headline" id="flHeadline"></h2><p class="offer-description" id="flDesc"></p></div><span class="offer-pill" id="flPill"></span></div>'
       +'<div class="offer-progress" id="flProgress"><div class="progress-rail" role="progressbar" aria-label="Напредък към подаръците" aria-valuemin="0" aria-valuemax="'+BIG.packs+'" aria-valuenow="0" id="flRail"><div class="progress-fill" id="flFill"></div></div><div class="progress-caption"><span id="flProgCap"></span><span>'+TT('fl.prog.r')+'</span></div></div>'
       +'<div class="desktop-selection desktop-only" id="flSelection" aria-label="Избрани продукти"></div>'
       +(cosmOn()?'<button class="benefit-preview is-locked" id="flGift" type="button" data-reward-state="locked"><span class="benefit-thumbs" aria-hidden="true">'+thumbs()+'<span class="reward-state-icon" id="flGiftState">'+icon('lock')+'</span></span><span class="benefit-copy"><strong class="benefit-title" id="flGiftTitle"></strong><small class="benefit-detail" id="flGiftSub"></small><span class="book-benefit">'+icon('book')+'<span id="flGiftBook"></span></span></span><span class="benefit-action" data-open="gifts" role="link"><span id="flGiftAction"></span>'+icon('chevron')+'</span></button>':'')
       +'<div class="desktop-amounts desktop-only" id="flAmounts" hidden></div>'
       +'<button class="checkout-button" id="flCheckout" type="button" data-open="cart" disabled><span class="checkout-main"><span id="flCheckoutLabel"></span><span class="checkout-prices" id="flPrices" hidden><s class="checkout-original" id="flOriginal"></s><strong class="checkout-total" id="flTotal"></strong></span></span>'+icon('arrow')+'</button>'
-      +'<p class="dock-foot" id="flFoot"></p></section>'
+      +'<p class="dock-foot" id="flFoot"></p></div></section>'
       +'<div class="toast" id="flToast" aria-hidden="true"></div><div class="sr-only" id="flStatus" aria-live="polite" aria-atomic="true"></div>'
       +'<div class="drawer-layer" id="flLayer" hidden><section class="drawer" id="flDrawer" role="dialog" aria-modal="true" aria-labelledby="flDrawerTitle" tabindex="-1"><div class="drawer-top"><div class="drawer-handle"></div><div class="drawer-title-row"><h2 id="flDrawerTitle"></h2><button class="close-drawer" id="flClose" type="button" aria-label="Затвори">'+icon('close')+'</button></div></div><div class="drawer-content" id="flDrawerContent"></div></section></div>';
     root.removeAttribute('aria-busy');
@@ -186,7 +187,7 @@
   }
   function renderSelection(t){
     var o=offer(t);
-    $('flSelection').innerHTML=t.count?ORDER.filter(function(k){return S.qty[k]}).map(function(k){var p=PROD[k];return '<div class="selected-item" data-selected-id="'+esc(k)+'">'+picture(p,'sel-pic')+'<div class="selected-item-info"><strong>'+esc(p.name)+'</strong><small>'+TT('fl.sel.unit',{unit:money(unit(p,pctOf(p,t.disp)))})+'</small></div>'+stepper(p)+'</div>'}).join(''):'<p class="empty-selection">'+TT('fl.sel.empty')+'</p>';
+    $('flSelection').innerHTML=t.count?ORDER.filter(function(k){return S.qty[k]}).map(function(k){var p=PROD[k];return '<div class="selected-item" data-selected-id="'+esc(k)+'">'+picture(p,'sel-pic')+'<div class="selected-item-info"><strong>'+esc(p.name)+'</strong><small>'+TT('fl.sel.unit',{unit:money(unit(p,pctOf(p,t.disp)))})+'</small></div>'+stepper(p)+'</div>'}).join(''):'<div class="how-add"><strong>'+TT('fl.how.h')+'</strong><ol><li><span>1</span><div>'+T('fl.how.1')+'</div></li><li><span>2</span><div>'+T('fl.how.2',{add:'<b>'+icon('plus')+TT('fl.add')+'</b>'})+'</div></li><li><span>3</span><div>'+T('fl.how.3')+'</div></li></ol></div>';
     $('flAmounts').hidden=!t.count;
     $('flAmounts').innerHTML=t.count?'<div><span>'+TT('fl.amt.reg')+'</span><span>'+money(t.original)+'</span></div>'+(o.hasSet?'<div><span>'+TT('fl.amt.set')+'</span><span>'+money(cents(COSM_VAL))+'</span></div>':'')+'<div class="saved-amount"><span>'+TT('fl.amt.save')+'</span><b>−'+money(o.saving)+'</b></div>':'';
   }
@@ -334,7 +335,7 @@
   /* ── свеж runtime (цени, nonce, седмица) + „view“ в Insights; кешираната страница носи стар JSON ── */
   function refresh(){
     if(!A.ajax||A.editor||A.draft||A.refresh===false)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER,{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER+'&path='+encodeURIComponent(location.pathname.slice(0,120)),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data)return;var d=r.data;
       ['products','order','boxes','max_packs','rewards','nonce','season','deadline','deadline_ts','draw','tombola_url','cosm_reserved','copy','live','checkout','bgn','li_items','version','logo'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});
       bind();if(!BIG||!ORDER.length)return;var q={};for(var k in S.qty){if(PROD[k])q[k]=S.qty[k]}S.qty=q;

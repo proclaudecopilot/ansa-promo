@@ -224,7 +224,7 @@
     var fd=new FormData();fd.append('action','ansa_promo_beacon');fd.append('nonce',A.nonce||'');fd.append('ev',step);fd.append('step',step);fd.append('sid',sid());fd.append('vid',vid());fd.append('box',S.box!==null&&BX()?BX().id:'');fd.append('utm',S.utm||'');fd.append('lead',S.lead||0);
     if(k)fd.append('k',k);fd.append('n',S.slots.filter(Boolean).length);if(S._op)fd.append('op','1'); /* 1.29.0: операторът по телефона е вътрешен трафик */
     if(step==='full'||step==='order'||step==='add')fd.append('items',JSON.stringify(S.slots.filter(Boolean)));
-    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER());fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
+    if(step==='view'){try{var q=new URLSearchParams(location.search);fd.append('src',q.get('utm_source')||'');fd.append('med',q.get('utm_medium')||'');fd.append('camp',q.get('utm_campaign')||'');fd.append('ref',document.referrer||'');fd.append('dev',MOB()?'mobile':'desktop');fd.append('lander',LANDER());fd.append('path',location.pathname.slice(0,120));fd.append('qs',location.search.replace(/^\?/,'').slice(0,700));fd.append('eref',document.referrer||'');touch(fd)}catch(e){}}
     try{if(navigator.sendBeacon&&step==='add'){navigator.sendBeacon(A.ajax,fd);return}}catch(e){}
     fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin',keepalive:true}).catch(function(){});
   }
@@ -1165,7 +1165,7 @@
   }
   function refreshRuntime(){
     if(!A.ajax||A.editor||A.draft||!(A.refresh||S._op))return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&page='+LANDER()+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&page='+LANDER()+'&path='+encodeURIComponent(location.pathname.slice(0,120))+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data||!r.data.products)return;var d=r.data,changed=false;if(d.nonce)A.nonce=d.nonce;
       if(d.op&&S._op&&!S._opDone){S._opDone=true;applyOp(d.op)} /* 1.29.0: количката на клиента за оператора */ /* v1.1.0: кеширана страница носи стар nonce — свежият идва оттук */
       /* v1.18.2 (човекът: „натиснах изключи на попъпа и пак се появява“): кешираната страница носи стария gate.enabled — свежият решава;
