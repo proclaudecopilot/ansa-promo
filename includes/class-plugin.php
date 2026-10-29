@@ -59,6 +59,7 @@ final class Plugin {
 		Merge::register(); /* v1.8.2: merge tags за имейлите (FunnelKit Automations + шорткодове) */
 		Probe::register();
 		Mega_Menu::register(); /* 1.40.0: мега менюто „Продукти“ + хапчето „Сезонът на ANSA −40%“ в навигацията */
+		Shop::register(); /* 1.44.0: страницата /shop/ „Всички продукти“ — същите продукти, нужди и „от“ цени като в менюто */
 		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( Config::FLIP_HOOK, array( 'AnsaPromo\\Config', 'on_flip' ) ); /* v1.19.0: смяната на седмицата чисти кеша */
