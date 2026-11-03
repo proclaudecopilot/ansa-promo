@@ -343,17 +343,15 @@ function vSignup(){
         ${bonusBtn('v5', S.coldBonus, '🎟️', 'Ваучер 5 €', 'в портфейла ти веднага, за следващите 30 минути')}
         ${bonusBtn('p10', S.coldBonus, '%', '−10 % на поръчката', 'върху всичко в количката, за следващите 30 минути')}
       </div>
-      ${emailForm('Вземи подаръка и влез<small>'+(live?'важи още <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span> · без задължение за покупка':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
+      ${emailForm('Вземи подаръка и влез<small>'+(live?'важи още <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span>':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
       <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта. Без спам.</div>
     </div>
     <div class="k2">Защо днес, а не на Black Friday</div>
     <p class="lead" style="margin:0 0 10px">Не чакай промото. Искаме най-добрата грижа за теб да започне още днес — затова ти даваме подарък за следващите 30 минути. По-голямата поръчка запази за <b>${DATE_EARLY}</b>, когато ще имаш най-изгодните оферти. Запиши си датата.</p>
     <div class="steps">
-      <div class="st o"><i>днес</i><div>Малка поръчка с подаръка от днес<small>опитваш продукта, доставка в 1–2 дни</small></div></div>
-      <div class="st o"><i>${DATE_EARLY}</i><div>Ранен достъп: всяка опаковка = 1 подарък по избор<small>48 часа преди всички, по имейл</small></div></div>
+      <div class="st o"><i>1</i><div><b>Днес:</b> малка поръчка с подаръка от днес<small>опитваш продукта, доставка в 1–2 дни</small></div></div>
+      <div class="st o"><i>2</i><div><b>${DATE_EARLY}:</b> ранен достъп — всяка опаковка = 1 подарък по избор<small>48 часа преди всички, личен линк по имейл</small></div></div>
     </div>
-    <div class="k2">4 нови продукта — първо за теб</div>
-    <div class="gridp">${P.filter(p=>p.isNew).map(p=>`<div class="gp"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${esc(p.s)}</small></div>`).join('')}</div>
     <div class="footnote">ansa™ · От жени за жени · Подаръкът за днес важи еднократно, 30 минути след записването. Пълни условия на ansa.bg/bf</div>
   </div></div>`;
 }
@@ -419,10 +417,10 @@ function vWallet(){
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">👛 портфейл ${bonusLbl} · <b data-cd="walletExp">${mmss(S.walletExp-Date.now())}</b></span></div>
     <div class="h1">Вътре си. <em>${live?`${bonusLbl} са в портфейла ти.`:'Подаръкът за днес изтече.'}</em></div>
-    <p class="sub">${live?`Не чакай промото — започни още днес с нещо малко. Голямата поръчка запази за ${DATE_EARLY}: тогава всяка опаковка = 1 подарък по избор.`:`Записана си за ранния достъп на ${DATE_EARLY}. Можеш да поръчаш и сега на редовна цена.`}</p>
+    <p class="sub">${live?`Не чакай промото — започни още днес с нещо малко. Ако ти хареса, се готви за ${DATE_EARLY}: тогава всяка поръчана опаковка = 1 опаковка подарък от продукт по избор.`:`Записана си за ранния достъп на ${DATE_EARLY}. Можеш да поръчаш и сега на редовна цена.`}</p>
   </div>
   <div class="wrap" style="padding-top:10px">
-    <div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">📅 ${DATE_EARLY}, 10:00</b><small>ранен достъп · запиши си датата</small></span><button class="addb soft" data-act="toast" data-id="В реалния сайт: .ics файл за календара">Добави в календара</button></div>
+    <div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">📅 ${DATE_EARLY}, 10:00</b><small>ранен достъп · ще ти пратим имейл точно в 10:00</small></span><span class="pillg">записана си ✔</span></div>
     <div class="k2">Избери нещо за днес</div>
     ${chips()}
     ${list.map(p=>productTile(p,'buy')).join('')}
@@ -522,7 +520,7 @@ function vDone(){
         <div class="st o"><i>${DATE_EARLY}</i><div>Ранен достъп, 10:00<small>всяка опаковка = 1 подарък по избор + 10 € ваучер · личен линк по имейл</small></div></div>
       </div>
     </div>
-    <button class="cta soft" data-act="toast" data-id="В реалния сайт: .ics файл за календара">Запиши си ${DATE_EARLY} в календара</button>
+    <div class="trust">Ще ти напомним по имейл 2 дни преди старта и точно в 10:00 на ${DATE_EARLY}.</div>
     <div class="trust" style="margin-top:12px"><button class="more" data-act="go" data-id="early">Напред към ранния достъп →</button></div>
   </div></div>`;
   return `<div class="scroll"><div class="done">
