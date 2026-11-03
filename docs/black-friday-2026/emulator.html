@@ -29,7 +29,7 @@ button{font-family:inherit;cursor:pointer}
 .bar .sum{display:none;margin-left:auto;align-items:center;gap:6px;border:1.5px solid var(--bar-line);background:transparent;color:var(--fg);font-weight:800;font-size:11.5px;border-radius:8px;padding:5px 8px;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:480px){.bar .reset{margin-left:0}.bar .sum{display:inline-flex}}
 /* small phones: tighter hero and footer so products stay above the fold */
-@media (max-height:720px){.shopnote{display:none}.hero{padding:8px 14px 10px}.eq{padding:7px 6px;margin-top:2px}.eq-note{display:none}.bxs{height:16px;margin-bottom:3px}.bx{width:16px;height:16px}.bx:after{top:5px}.bx.g:before{left:6.5px}.stepsbar{margin-bottom:6px}.foot{padding:8px 12px 10px}.cta{padding:12px 14px;font-size:15px}.tile{padding:8px}.tile img{width:56px;height:56px}.tile{grid-template-columns:56px 1fr auto}}
+@media (max-height:720px){.hero{padding:8px 14px 10px}.eq{padding:7px 6px;margin-top:2px}.eq-note{display:none}.bxs{height:16px;margin-bottom:3px}.bx{width:16px;height:16px}.bx:after{top:5px}.bx.g:before{left:6.5px}.stepsbar{margin-bottom:6px}.foot{padding:8px 12px 10px}.cta{padding:12px 14px;font-size:15px}.tile{padding:8px}.tile img{width:56px;height:56px}.tile{grid-template-columns:56px 1fr auto}}
 @media (max-width:360px){.bar .reset .rl{display:none}.bar{gap:6px}.stepsbar div{font-size:9px;letter-spacing:0}.sline .ok{font-size:11.5px}.hrow{flex-wrap:wrap}.tpill{font-size:11px;padding:4px 8px}.eq-side b{font-size:14px}.eq-side small{white-space:normal}.sline{font-size:12px}.tile .n{font-size:13.5px}.addb{padding:8px 10px;font-size:12.5px}.vch .va{font-size:36px}.h1{font-size:20px}.em-body{padding:14px 14px}.wrap{padding:10px 12px 14px}}
 .cta{white-space:normal}
 .cta.sm{font-size:14px;padding:13px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -90,11 +90,11 @@ button{font-family:inherit;cursor:pointer}
 .chip{flex:none;font-size:12.5px;font-weight:800;border-radius:999px;padding:6px 11px;background:#fff;border:1.5px solid var(--ol);color:var(--ink)}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .chip.o{background:var(--os);color:var(--od)}
-.selwrap{position:relative;margin-bottom:10px}
-.selwrap label{position:absolute;left:12px;top:5px;font-size:10px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.07em;pointer-events:none}
-.selwrap select{width:100%;appearance:none;-webkit-appearance:none;border:1.5px solid var(--ol);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:900;font-size:15px;padding:18px 40px 8px 12px;outline:none}
+.selwrap{position:relative;flex:none}
+.selwrap label{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden;left:12px;top:5px;font-size:10px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.07em;pointer-events:none}
+.selwrap select{width:100%;appearance:none;-webkit-appearance:none;border:1.5px solid var(--ol);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:800;font-size:12.5px;padding:6px 26px 6px 10px;outline:none;max-width:150px}
 .selwrap select:focus-visible{outline:3px solid rgba(232,114,42,.5)}
-.selwrap .selarr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--o);font-weight:900;pointer-events:none}
+.selwrap .selarr{position:absolute;right:9px;font-size:12px;top:50%;transform:translateY(-50%);color:var(--o);font-weight:900;pointer-events:none}
 .strip.live{border-color:var(--g);background:#fbfff9}
 .eq{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;margin-top:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 8px}
 .eq-side{text-align:center;min-width:0}
@@ -157,6 +157,11 @@ button{font-family:inherit;cursor:pointer}
 .hc-steps div:nth-child(2) i{background:var(--g)}.hc-steps div:nth-child(3) i{background:var(--o)}
 @media (max-width:360px){.hc-im{width:40px;height:40px}.hc-col b{font-size:14px}.hc-steps div{font-size:10.5px}.hc-sum{font-size:12px}.hc-sum>b{font-size:13.5px}}
 .hc-sum span{white-space:nowrap}
+.k2row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 8px;flex-wrap:wrap}
+.k2row .k2{margin:0;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.info{border:1.5px solid var(--ol);background:#fff;color:var(--od);font-weight:800;font-size:11px;border-radius:999px;padding:3px 8px;text-transform:none;letter-spacing:0;white-space:nowrap}
+.info.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.exbox{font-size:12.5px;font-weight:600;color:var(--ink2);background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;line-height:1.4}
 .affnote{font-size:12px;font-weight:700;color:#fff;background:rgba(232,114,42,.18);border:1px solid rgba(232,114,42,.45);border-radius:10px;padding:7px 10px;margin:0 0 8px}
 .affnote b{color:var(--o2)}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
@@ -492,8 +497,7 @@ function vWallet(){
   <div class="wrap" style="padding-top:10px">
     ${live?voucherCard({locked:false, cd:'walletExp'}):''}
     <div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">📅 ${DATE_EARLY}, 10:00</b><small>ранен достъп · ще ти пратим имейл точно в 10:00</small></span><span class="pillg">записана си ✔</span></div>
-    <div class="k2">Избери нещо за днес</div>
-    ${chips(pool)}
+    <div class="k2row"><span class="k2">Избери нещо за днес</span>${chips(pool)}</div>
     ${list.map(p=>productTile(p,'buy')).join('')}
     <div class="footnote">Цените са редовни. Подаръкът от записването се приспада в количката.</div>
   </div></div>
@@ -514,9 +518,8 @@ function vShop(){
     <div class="eq-note" id="eqNote">${n?'Това е твоята количка. Подаръците ги избираш в стъпка 2.':'Колкото опаковки купиш, толкова подаръка си избираш.'}</div>
   </div>
   <div class="wrap" style="padding-top:10px">
-    <div class="k2" style="margin-top:4px">Стъпка 1 · Избери какво купуваш</div>
-    <div class="lead shopnote" style="margin:-4px 0 8px;font-size:12.5px">Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).</div>
-    ${chips()}
+    <div class="k2row"><span class="k2">Стъпка 1 · Избери какво купуваш <button class="info${S.ex?' on':''}" data-act="ex" aria-expanded="${!!S.ex}">ⓘ пример</button></span>${chips()}</div>
+    ${S.ex?'<div class="exbox">Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).</div>':''}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
     <div class="k2">Как работи · пример</div>
     <div class="howcard">
@@ -737,6 +740,7 @@ phone.addEventListener('click', e=>{
   else if(act==='gift+'){ if(giftCount()<paidCount()){ S.gifts[id]=(S.gifts[id]||0)+1; } S._keepScroll=!S.sheet; S.sheet=null; if(giftCount()===paidCount()) toast('Всички подаръци са избрани ✔'); }
   else if(act==='gift-'){ if(S.gifts[id]>1) S.gifts[id]--; else delete S.gifts[id]; S._keepScroll=true; }
   else if(act==='giftonly'){ S.sheet=null; if(paidCount()){ S.screen='gifts'; } else { toast('Новите продукти са само подаръци. Добави опаковка и го избери в стъпка 2.'); S._keepScroll=true; } }
+  else if(act==='ex'){ S.ex=!S.ex; S._keepScroll=true; }
   else if(act==='sheet'){ S.sheet=id||null; S.tab='desc'; S._keepScroll=true; }
   else if(act==='tab'){ S.tab=id; S._keepScroll=true; }
   else if(act==='screen'){ if(id==='gifts'&&!paidCount()) return; S.screen=id; }
