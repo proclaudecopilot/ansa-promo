@@ -81,7 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .selwrap select:focus-visible{outline:3px solid rgba(232,114,42,.5)}
 .selwrap .selarr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--o);font-weight:900;pointer-events:none}
 .strip.live{border-color:var(--g);background:#fbfff9}
-.eq{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;margin-top:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 8px}
+.eq{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;margin-top:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 8px}
 .eq-side{text-align:center;min-width:0}
 .eq-side b{display:block;font-size:16px;font-weight:900;color:#fff;line-height:1.1;white-space:nowrap}
 .eq-side small{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.65);margin-top:2px;white-space:nowrap}
@@ -100,7 +100,7 @@ button{font-family:inherit;cursor:pointer}
 @media (prefers-reduced-motion: reduce){.eq.pop .eq-side,.eq.pop .bx{animation:none}}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
 .stepsbar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0 0 10px}
-.stepsbar div{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.55);border-top:3px solid rgba(255,255,255,.2);padding-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stepsbar div{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:rgba(255,255,255,.55);border-top:3px solid rgba(255,255,255,.2);padding-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stepsbar div.on{color:#fff;border-top-color:var(--o2)}
 .stepsbar div.done{color:rgba(255,255,255,.8);border-top-color:var(--g)}
 .hdr .stepsbar{grid-column:1/-1;margin:8px 0 0}
@@ -306,7 +306,7 @@ function filtered(list){
 }
 function catCount(k){ return P.filter(p=>p.buy!==false).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
 function chips(){ return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${CATS.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
-function stepsBar(cur){ const L=['1 · Купуваш','2 · Подаръци','3 · Поръчка']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
+function stepsBar(cur){ const L=['1 · Продукти','2 · Подаръци','3 · Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
 function eqHtml(k, early){ const one=k===1; const bx=(c)=>Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${k} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${k} ${one?'подарък':'подаръка'}</b><small>по избор${early?` + ${k*VOUCHER} € ваучер${one?'':'и'}`:''}</small></div>`; }
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
@@ -379,13 +379,12 @@ function vShop(){
   const early=isEarly(), n=paidCount();
   const list=filtered(P.filter(p=>p.buy!==false));
   const foot = n
-    ? `<div class="sline"><span>${n} ${n===1?'опаковка':'опаковки'} · ${fmt(subtotal())}</span><span class="ok">= ${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${shipping()?' <span style="font-weight:600;color:var(--tan)">вкл. доставка</span>':''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta" disabled>Добави опаковка, за да избереш подарък</button>`;
   return `<div class="scroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
     ${stepsBar(1)}
-    <div class="h1">Купуваш 1, <em>получаваш 2.</em></div>
     <div class="eq pop" id="eq" data-n="${n||S.demoN||1}">${eqHtml(n||S.demoN||1, early)}</div>
     <div class="eq-note" id="eqNote">${n?'Това е твоята количка. Подаръците ги избираш в стъпка 2.':'Колкото опаковки купиш, толкова подаръка си избираш.'}</div>
   </div>
@@ -424,7 +423,7 @@ function vGifts(){
     <div style="height:8px"></div>
   </div></div>
   <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>
-    <div class="slots">${slots}<div class="lab">${left>0?`Още ${left} ${left===1?'подарък':'подаръка'} по избор.`:'Всички подаръци са избрани ✔'}</div></div>
+    <div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}</span></div><div class="slots">${slots}<div class="lab">${left>0?`Още ${left} ${left===1?'подарък':'подаръка'} по избор.`:'Всички подаръци са избрани ✔'}</div></div>
     ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
   </div>`;
 }
@@ -436,7 +435,7 @@ function vCheckout(){
     + (S.bonus==='eye'&&S.email?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от записването</small></div><div class="p free">0 €</div></div>`:'')
     + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
     + `<div class="tot"><div>Общо<small>стойност на пратката ${fmt(subtotal()+giftValue())}</small></div><div>${fmt(total())}</div></div>`;
-  return `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${n}, получаваш ${n*2}.${early?` Плюс ${n*VOUCHER} € ваучери за 2027.`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>
+  return `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${fmt(total())} · ${n} платени + ${n} ${n===1?'подарък':'подаръка'}${early?` + ${n*VOUCHER} € ваучери`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>
   <div class="scroll"><div class="wrap" style="padding-top:12px">
     <div class="rows">${rows}</div>
     <div class="trust" style="margin:10px 0 6px">Подаръците пътуват в същата пратка.${early?' Ваучерите за 2027 — по имейл.':''}</div>
