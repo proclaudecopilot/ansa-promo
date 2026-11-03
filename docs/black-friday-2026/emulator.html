@@ -1,0 +1,548 @@
+<title>ansa Black Friday емулатор</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Layout: a demo bar on top (phase, emails, reset) and one phone-sized app below; the app inside keeps the ansa™ Промо look (cream, orange, Nunito) in both themes. */
+:root{--bg:#ece6df;--fg:#1a1a2e;--bar:#ffffff;--bar-line:rgba(232,114,42,.25);--muted:#6b5f58;--accent:#e8722a;--accent-d:#c2410c;
+  --o:#e8722a;--o2:#f59e0b;--od:#c2410c;--os:rgba(232,114,42,.07);--ol:rgba(232,114,42,.28);--cream:#faf3ec;--ink:#1a1a2e;--ink2:#2d2d3f;--tan:#8a6a55;--tan2:#a88a75;--mut:#6b5f58;--g:#16a34a;--gd:#15803d;--gs:rgba(34,197,94,.08);--gold:#f0b429;--goldd:#b45309;--bf:#0f0f1a;
+  --font:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17141a;--fg:#f3ede6;--bar:#221e25;--bar-line:rgba(232,114,42,.35);--muted:#b8aca3;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17141a;--fg:#f3ede6;--bar:#221e25;--bar-line:rgba(232,114,42,.35);--muted:#b8aca3;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);display:flex;flex-direction:column;min-height:100%}
+*{box-sizing:border-box}
+button{font-family:inherit;cursor:pointer}
+/* demo bar */
+.bar{background:var(--bar);border-bottom:1px solid var(--bar-line);padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;position:sticky;top:env(safe-area-inset-top,0px);z-index:50}
+.bar .t{font-weight:900;font-size:14px;letter-spacing:.02em;margin-right:4px}
+.bar .t small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.seg{display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:3px}
+.seg button{border:none;background:transparent;color:var(--fg);font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.seg button.on{background:var(--accent);color:#fff}
+.bar .reset{margin-left:auto;border:1.5px solid var(--bar-line);background:transparent;color:var(--fg);font-weight:800;font-size:12px;border-radius:8px;padding:6px 10px}
+.stage{flex:1;min-height:0;display:flex;justify-content:center;align-items:stretch;padding-block:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.phone{width:390px;max-width:100%;height:100%;max-height:844px;background:var(--cream);color:var(--ink);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);position:relative;display:flex;flex-direction:column;font-size:15px;line-height:1.4}
+@media (max-width:480px){.stage{padding:0}.phone{border-radius:0;max-height:none;width:100%;box-shadow:none}.bar{padding-block:6px;gap:6px}.bar .t{font-size:12.5px}.bar .t small{display:none}.seg{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}.seg button{padding:5px 8px;font-size:12px}.bar .reset{font-size:11px;padding:5px 8px}}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
+.foot{background:#fffdfb;border-top:1.5px solid var(--ol);box-shadow:0 -4px 20px rgba(0,0,0,.08);padding:10px 14px 14px;position:relative;flex:none}
+/* brand pieces */
+.logo{height:24px;width:auto;display:block}
+.hero{background:var(--bf);color:#fff;padding:12px 16px 14px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(232,114,42,.55),transparent 65%)}
+.hero>*{position:relative}
+.hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.tpill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;color:#fff;white-space:nowrap}
+.tpill b{font-variant-numeric:tabular-nums;font-size:13px}
+.tpill.hot{background:var(--o);border-color:var(--o)}
+.eyebrow{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--o2);margin-bottom:8px}
+.h1{font-size:22px;font-weight:900;line-height:1.12;text-wrap:balance}
+.h1 em{font-style:normal;color:var(--o2)}
+.sub{font-size:13.5px;color:rgba(255,255,255,.8);font-weight:600;margin-top:6px;line-height:1.45}
+.wrap{padding:12px 16px 16px}
+.h2{font-size:17px;font-weight:900;line-height:1.2;margin-bottom:8px}
+.lead{font-size:13.5px;color:var(--mut);font-weight:600;margin:4px 0 10px}
+.k2{font-size:11px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px}
+.card{background:#fff;border:1.5px solid var(--ol);border-radius:16px;padding:14px;box-shadow:0 6px 24px rgba(232,114,42,.10)}
+.cta{display:block;width:100%;border:none;border-radius:14px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:16px;font-weight:900;padding:14px 16px;text-align:center;box-shadow:0 6px 18px rgba(232,114,42,.35)}
+.cta:disabled{background:#f6c9a6;box-shadow:none;cursor:not-allowed}
+.cta.dark{background:var(--bf);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.cta.soft{background:#fff;color:var(--od);border:2px solid var(--o);box-shadow:none}
+.cta small{display:block;font-size:12px;font-weight:700;opacity:.85;margin-top:2px}
+.cta:focus-visible,.addb:focus-visible,.chip:focus-visible,button:focus-visible{outline:3px solid rgba(232,114,42,.5);outline-offset:2px}
+.trust{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin-top:8px}
+.input{display:flex;align-items:center;gap:8px;border:1.5px solid var(--ol);border-radius:12px;padding:0 12px;background:#fff;margin:10px 0}
+.input input{flex:1;border:none;background:transparent;font:inherit;font-weight:600;font-size:15px;padding:12px 0;color:var(--ink);min-width:0;outline:none}
+.input.err{border-color:#dc2626}
+.bonus{display:grid;gap:8px;margin:8px 0 4px}
+.bo{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:2px solid var(--ol);border-radius:14px;padding:9px 12px;background:#fff;text-align:left;width:100%;font:inherit;color:inherit}
+.bo.on{border-color:var(--g);background:#fbfff9;box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.bo .ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--os);overflow:hidden}
+.bo .ic img{width:42px;height:42px;object-fit:cover}
+.bo b{font-size:14.5px;font-weight:900;display:block;line-height:1.15}
+.bo small{font-size:12px;color:var(--tan);font-weight:600}
+.bo .r{width:22px;height:22px;border-radius:50%;border:2px solid var(--ol);position:relative}
+.bo.on .r{border-color:var(--g);background:var(--g)}
+.bo.on .r:after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.strip{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:8px 10px;font-size:13px;font-weight:800;margin-bottom:10px;text-align:center}
+.strip b{font-size:18px;font-weight:900}.strip .g{color:var(--gd)}.strip .eq{color:var(--o)}
+.strip small{font-size:11px;font-weight:700;color:var(--tan);display:block;line-height:1.1}
+.eqchips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.eqchips div{background:#fff;border:1.5px solid var(--ol);border-radius:10px;padding:6px 4px;text-align:center;font-size:12px;font-weight:800;color:var(--tan)}
+.eqchips div b{display:block;font-size:16px;color:var(--ink)}.eqchips div b i{font-style:normal;color:var(--gd)}
+.eqchips div.on{border-color:var(--o);background:var(--os)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;font-size:12.5px;font-weight:800;border-radius:999px;padding:6px 11px;background:#fff;border:1.5px solid var(--ol);color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.o{background:var(--os);color:var(--od)}
+.tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07)}
+.tile>div{min-width:0}
+.tile img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f5efe8}
+.tile .n{font-size:14.5px;font-weight:900;line-height:1.15}
+.tile .n small{display:block;font-size:11.5px;color:var(--tan);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .pr{font-size:14px;font-weight:800;color:var(--o);margin-top:3px}
+.tile .pr s{font-size:11px;color:var(--tan2);font-weight:500;margin-right:4px}
+.tile .pr.free{color:var(--gd)}
+.tile.on{border-color:var(--g);background:#fbfff9}
+.tile .nb{font-size:9.5px;font-weight:900;color:#fff;background:var(--o);border-radius:5px;padding:2px 5px;margin-right:5px;vertical-align:1px;letter-spacing:.06em}
+.more{border:none;background:none;padding:0;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px;display:inline-block}
+.addb{border:none;border-radius:11px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:13px;font-weight:800;padding:9px 12px;white-space:nowrap}
+.addb:disabled{background:#f6c9a6;cursor:not-allowed}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(232,114,42,.35);background:#fff;color:var(--o);font-weight:900;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+.step button:disabled{opacity:.35;cursor:not-allowed}
+.step b{min-width:20px;text-align:center;font-size:16px}
+.sline{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;margin-bottom:8px;gap:8px}
+.sline b{color:var(--o)}.sline .ok{color:var(--gd);text-align:right}
+.slots{display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.slot{flex:none;width:48px;height:48px;border:2px dashed var(--ol);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--tan2);font-size:13px;background:#fff;overflow:hidden}
+.slot.f{border:2px solid var(--g);padding:0}
+.slot.f img{width:100%;height:100%;object-fit:cover}
+.slot.next{border-color:var(--o);box-shadow:0 0 0 3px rgba(232,114,42,.15)}
+.slots .lab{font-size:12.5px;font-weight:700;color:var(--tan);margin-left:4px;flex:1;min-width:120px}
+.bar2{height:6px;background:var(--os);border-radius:99px;overflow:hidden;margin:4px 0 10px}.bar2 i{display:block;height:100%;background:linear-gradient(90deg,var(--o),var(--o2));border-radius:99px;transition:width .3s}
+.morepill{position:absolute;left:50%;transform:translateX(-50%);top:-18px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:7px 13px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:5;border:none}
+.fade{position:absolute;left:0;right:0;top:-46px;height:46px;background:linear-gradient(180deg,rgba(250,243,236,0),rgba(250,243,236,.95));pointer-events:none}
+.rows{background:#fff;border:1.5px solid var(--ol);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(232,114,42,.14);font-size:14px;font-weight:700}
+.row>div{min-width:0}
+.row:last-child{border-bottom:none}.row img{width:40px;height:40px;border-radius:8px;object-fit:cover}
+.row .p{font-weight:800;white-space:nowrap}.row .p.free{color:var(--gd)}.row .p s{font-size:11px;color:var(--tan2);font-weight:500;margin-right:4px}
+.row small{display:block;font-size:11.5px;color:var(--tan);font-weight:600}
+.row.gift{background:var(--gs)}.row.v{background:#fff8e6}
+.row .ic{width:40px;height:40px;border-radius:8px;background:#fff3cc;display:flex;align-items:center;justify-content:center;font-size:20px}
+.tot{display:flex;justify-content:space-between;padding:12px;font-size:16px;font-weight:900;border-top:2px solid var(--ol)}
+.tot small{display:block;font-size:12px;color:var(--gd);font-weight:800}
+.steps{display:grid;gap:8px}
+.st{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;font-size:14px;font-weight:700}
+.st i{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;font-size:12px}
+.st.o i{background:var(--o)}
+.st small{display:block;font-size:12.5px;color:var(--mut);font-weight:600}
+.gridp{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.gp{background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:8px;text-align:center}
+.gp img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:#f5efe8;max-width:100%}
+.gp b{display:block;font-size:13px;font-weight:900;margin-top:6px;line-height:1.15}
+.gp small{display:block;font-size:11.5px;color:var(--tan);font-weight:600}
+.hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;padding:12px 16px;gap:8px;flex:none}
+.hdr b{font-size:17px;font-weight:900;display:block}.hdr small{display:block;font-size:12.5px;font-weight:700;opacity:.9}
+.hdr .x{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:900;border:none;color:#fff;font-size:15px;flex:none}
+.hdr.dark{background:var(--bf)}
+.pick{width:30px;height:30px;border-radius:50%;border:2px solid var(--ol);display:flex;align-items:center;justify-content:center;background:#fff}
+.pick.on{background:var(--g);border-color:var(--g);color:#fff;font-weight:900;font-size:14px}
+.faq{border-top:1px solid var(--ol);padding:10px 0;font-size:13.5px;font-weight:800;display:flex;justify-content:space-between;gap:8px;background:none;border-left:none;border-right:none;border-bottom:none;width:100%;text-align:left;color:var(--ink);font-family:inherit}
+.faq span{color:var(--tan)}
+.faqa{font-size:13px;font-weight:600;color:var(--mut);padding:0 0 10px;line-height:1.45}
+.footnote{font-size:11px;color:var(--tan);text-align:center;padding:14px 20px 20px;line-height:1.5}
+.pillo{display:inline-block;font-size:11.5px;font-weight:800;border-radius:8px;padding:4px 8px;background:var(--os);color:var(--od);border:1px solid var(--ol)}
+.pillg{display:inline-block;font-size:11.5px;font-weight:800;border-radius:8px;padding:4px 8px;background:var(--gs);color:var(--gd);border:1px solid rgba(34,197,94,.25)}
+.timer{display:flex;gap:6px;justify-content:center}
+.timer div{background:#fff;border:1.5px solid var(--ol);border-radius:10px;min-width:62px;padding:6px 4px;text-align:center}
+.timer b{display:block;font-size:22px;font-weight:900;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+.timer small{font-size:10px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.06em}
+.hero .timer div,.em-hero .timer div{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}.hero .timer b,.em-hero .timer b{color:#fff}.hero .timer small,.em-hero .timer small{color:rgba(255,255,255,.6)}
+/* sheet */
+.dim{position:absolute;inset:0;background:rgba(26,26,46,.55);z-index:20;border:none;padding:0;width:100%}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:88%;display:flex;flex-direction:column;animation:up .25s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.sheet{animation:none}.bar2 i{transition:none}}
+.sheet .grab{width:40px;height:5px;border-radius:99px;background:var(--ol);margin:10px auto 6px;flex:none}
+.sheet .sbody{padding:6px 16px 8px;overflow-y:auto;min-height:0}
+.sheet .ph{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center;margin-bottom:10px}
+.sheet .ph img{width:84px;height:84px;border-radius:14px;object-fit:cover}
+.sheet .ph .n{font-size:18px;font-weight:900;line-height:1.15}.sheet .ph .n small{display:block;font-size:12.5px;color:var(--tan);font-weight:600;margin-top:2px}
+.sheet .ph .pr{font-size:16px;font-weight:900;color:var(--o);margin-top:4px}
+.stars{font-size:12.5px;font-weight:700;color:var(--mut)}.stars b{color:var(--gold)}
+.tabs{display:flex;gap:6px;margin:8px 0 10px;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:none;font-size:12.5px;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid var(--ol);color:var(--tan);background:#fff}
+.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sheet p{font-size:13.5px;line-height:1.45;color:var(--ink2);font-weight:600;margin:0 0 8px}
+.sheet ul{padding-left:18px;font-size:13.5px;font-weight:600;color:var(--ink2);margin:0 0 8px}.sheet li{margin-bottom:3px}
+.sheet .sfoot{padding:10px 16px 16px;border-top:1.5px solid var(--ol);background:#fff;flex:none}
+/* email */
+.email{background:#fff}
+.em-top{background:#f3ede6;padding:8px 14px;font-size:12px;color:var(--mut);font-weight:600;display:grid;gap:3px}
+.em-top b{color:var(--ink);font-size:13.5px;font-weight:900}
+.em-top .pre{color:var(--tan2)}
+.em-body{padding:18px 20px}
+.em-body p{font-size:15px;line-height:1.5;margin:0 0 12px;font-weight:600;color:var(--ink2)}
+.em-body p.big{font-size:21px;font-weight:900;line-height:1.2;color:var(--ink);margin-bottom:14px;text-wrap:balance}
+.em-body p.big em{font-style:normal;color:var(--o)}
+.em-hero{background:var(--bf);color:#fff;padding:20px;border-radius:16px;margin-bottom:16px;text-align:center}
+.em-hero .eyebrow{margin-bottom:6px}
+.em-hero .h1{font-size:23px}
+.em-hero p{color:rgba(255,255,255,.8);font-size:13.5px;margin:8px 0 0}
+.em-list{display:grid;gap:8px;margin:0 0 14px}
+.em-list .it{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;background:var(--cream);border:1px solid var(--ol);border-radius:12px;padding:8px}
+.em-list img{width:52px;height:52px;border-radius:9px;object-fit:cover}
+.em-list b{font-size:14.5px;font-weight:900;display:block}.em-list small{font-size:12px;color:var(--tan);font-weight:600}
+.calc{background:var(--cream);border:1.5px solid var(--ol);border-radius:14px;padding:12px;margin:0 0 14px}
+.calc .l{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:14px;font-weight:800;padding:5px 0;border-bottom:1px dashed var(--ol)}
+.calc .l:last-child{border-bottom:none;color:var(--gd);font-size:15px}
+.calc .l span{color:var(--mut);font-weight:700;text-align:right}
+.badge216{display:inline-block;background:var(--os);color:var(--od);border:1px solid var(--ol);border-radius:999px;padding:3px 9px;font-size:12.5px;font-weight:900}
+.em-foot{padding:14px 20px 22px;font-size:11px;color:var(--tan);line-height:1.5;border-top:1px solid var(--ol);text-align:center}
+.emtabs{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:var(--cream);border-bottom:1px solid var(--ol);scrollbar-width:none;flex:none}
+.emtabs button{flex:none;font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid var(--ol);background:#fff;color:var(--tan)}
+.emtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.toast{position:absolute;left:16px;right:16px;bottom:90px;background:var(--ink);color:#fff;font-weight:800;font-size:13px;border-radius:12px;padding:10px 14px;z-index:40;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.done{text-align:center;padding:26px 16px 16px}
+.done .big{font-size:54px;line-height:1}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;color:var(--od);background:var(--os);border:1px dashed var(--ol);border-radius:8px;padding:3px 8px;font-size:13px}
+.closed{padding:30px 20px;text-align:center}
+</style>
+
+<div class="bar">
+  <div class="t">ansa™ Black Friday · емулатор<small>кликаем прототип, текстовете и датите са примерни</small></div>
+  <div class="seg" id="phaseSeg">
+    <button data-phase="prep">Подготовка</button>
+    <button data-phase="emails">Имейли</button>
+    <button data-phase="early">Ранен достъп</button>
+    <button data-phase="public">Публичен BF</button>
+  </div>
+  <button class="reset" id="resetBtn">↺ Отначало</button>
+</div>
+<div class="stage"><div class="phone" id="phone"></div></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- data (prices from ansa.bg, 03.11.2026) ---------- */
+const P = [
+ {id:'greens',  n:'Daily Greens',     s:'чревно здраве и лекота',        pr:43.90, img:'img/greens.jpg',  cat:'stomach', fav:true,  desc:'Най-продаваната зелена напитка в България: 69 суперхрани в едно саше на ден. За подуване, тежест и енергия през деня.', ing:'спирулина, хлорела, пшенична трева, ябълков пектин, пробиотици, храносмилателни ензими', how:'1 саше в 250 мл вода сутрин, преди или с храна. 30 сашета = 30 дни.', who:'За всеки с подуване след хранене, нередовен стомах или нужда от повече зеленчуци в деня.', rt:'4,9', rv:'15 300'},
+ {id:'berberin',n:'ДихидроБерберин',  s:'апетит и кръвна захар',         pr:59.00, img:'img/berberin.jpg',cat:'weight',  fav:true,  desc:'Оригиналният дихидроберберин №1 в България: по-малко апетит и стабилна кръвна захар, без тежките стомашни ефекти на обикновения берберин.', ing:'дихидроберберин 200 мг, хром, канела в DRcaps капсули', how:'1 капсула преди основно хранене, до 2 на ден.', who:'За хора с глад за сладко, скокове на захарта и бавно отслабване.', rt:'4,8', rv:'3 900'},
+ {id:'sakura',  n:'Sakura SkinTonic', s:'кожа, тен и фини линии',        pr:49.50, img:'img/sakura.jpg',  cat:'skin',    fav:true,  desc:'Японска напитка с вишна и нар за кожата след 40: колаген, хиалуронова киселина и екстракт от сакура.', ing:'морски колаген 5 г, хиалуронова киселина, вишна, нар, витамин C', how:'1 саше дневно, разтворено във вода. Вкус на вишна.', who:'За суха кожа, фини линии и изгубен блясък.', rt:'4,9', rv:'2 100'},
+ {id:'kera',    n:'KeraTonica',       s:'коса, мигли и вежди',           pr:45.00, img:'img/kera.jpg',    cat:'skin',    isNew:true, desc:'Косопад след стрес, раждане или 40+, редки мигли и вежди, чуплива коса. KeraTonica работи от корена в една напитка с вкус на праскова.', ing:'биотин, колагенови пептиди, цинк, японска камелия, MSM', how:'1 саше дневно. Първи видим ефект след 6–8 седмици.', who:'За косопад, тънка коса, редки мигли и вежди.', rt:'4,9', rv:'112'},
+ {id:'alivia',  n:'Alivia',           s:'скованост, дискомфорт',         pr:45.00, img:'img/alivia.jpg',  cat:'body',    isNew:true, desc:'При сутрешна скованост, хроничен дискомфорт в стави и мускули. Куркумин с висока усвоимост, босвелия и PEA.', ing:'куркумин фитозом, босвелия, PEA, джинджифил', how:'2 капсули дневно с храна.', who:'За скованост сутрин, дискомфорт след натоварване, 45+.', rt:'нов', rv:'0'},
+ {id:'veno',    n:'VenoTonus',        s:'здрави кръвоносни съдове',      pr:45.00, img:'img/veno.jpg',    cat:'body',    isNew:true, desc:'За тежки крака, видими капиляри и отоци към края на деня. Диосмин, конски кестен и рутин.', ing:'диосмин, хесперидин, конски кестен, рутин', how:'1 капсула сутрин и 1 вечер.', who:'За тежки крака, дълго стоене прав, разширени вени в семейството.', rt:'нов', rv:'0'},
+ {id:'ahcc',    n:'AHCC-Бета',        s:'имунитет, гъбен комплекс',      pr:45.00, img:'img/ahcc.jpg',    cat:'body',    isNew:true, desc:'Двоен гъбен комплекс за имунитет: AHCC (шийтаке) и бета-глюкани за сезона на вирусите.', ing:'AHCC 500 мг, бета-глюкан 1,3/1,6, витамин D3, цинк', how:'2 капсули дневно, 3 месеца през зимата.', who:'За чести настинки, бавно възстановяване, есен и зима.', rt:'нов', rv:'0'},
+ {id:'yoni',    n:'YoniBiotic 3в1',   s:'пробиотик за жени',             pr:34.90, img:'img/yoni.jpg',    cat:'women',   fav:true,  desc:'12 щама пробиотик за интимната флора, стомаха и имунитета.', ing:'12 щама, 20 млрд. CFU, D-маноза, клюква', how:'1 капсула дневно.', who:'За повтарящи се инфекции, след антибиотик, за баланс.', rt:'4,8', rv:'1 800'},
+ {id:'reds',    n:'Red Routine',      s:'плодова добавка за сън',        pr:39.90, img:'img/reds.jpg',    cat:'sleep',   fav:true,  desc:'Вечерна плодова напитка за спокоен сън и възстановяване.', ing:'вишна, магнезий, L-теанин, ашваганда', how:'1 саше 30 мин преди сън.', who:'За трудно заспиване и събуждане уморен.', rt:'4,8', rv:'2 400'},
+ {id:'meno',    n:'MenoStop',         s:'дневна и нощна капсула',        pr:39.90, img:'img/meno.jpg',    cat:'women',   fav:false, desc:'Дневна и нощна капсула за горещи вълни, настроение и сън по време на менопауза.', ing:'червена детелина, маточина, шафран, витамин B6', how:'дневна сутрин, нощна преди сън.', who:'За симптоми на менопауза.', rt:'4,7', rv:'900'},
+ {id:'utera',   n:'Utera+',           s:'репродуктивна система и ПМС',   pr:39.90, img:'img/utera.jpg',   cat:'women',   fav:false, desc:'За здрава репродуктивна система, болезнен и нередовен цикъл.', ing:'мио-инозитол, витекс, фолат, магнезий', how:'1 саше дневно.', who:'За ПМС, нередовен цикъл, планиране на бременност.', rt:'4,8', rv:'600'},
+ {id:'d3k2',    n:'D3K2 с Ретинол',   s:'витамини за зимата',            pr:19.90, img:'img/d3k2.jpg',    cat:'body',    fav:false, buy:false, desc:'Витамин D3 + K2 с ретинол, шафран и вечерна иглика.', ing:'D3 4000 IU, K2 MK-7, ретинол, шафран', how:'1 капсула дневно с храна.', who:'За всеки през зимата.', rt:'4,9', rv:'3 100'},
+ {id:'eye',     n:'eyeFresh пачове',  s:'хидрогелни пачове за очи',      pr:15.90, img:'img/eye.jpg',     cat:'skin',    fav:false, buy:false, desc:'Хидрогелни пачове за подпухнали очи и тъмни кръгове.', ing:'хиалурон, колаген, кофеин', how:'15 минути под очите, сутрин.', who:'За подпухнали очи и умора.', rt:'4,7', rv:'1 400'}
+];
+const CATS=[['all','Всички'],['fav','Любими'],['new','Нови 4'],['skin','Кожа'],['stomach','Стомах'],['sleep','Сън'],['women','За жени'],['body','Тяло']];
+const VOUCHER=10, FREE_SHIP_FROM=2, SHIP=2.55;
+const byId = id => P.find(p=>p.id===id);
+const fmt = n => n.toFixed(2).replace('.',',')+' €';
+
+/* ---------- state ---------- */
+const S0 = () => ({phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
+let S = S0();
+try{ const raw=sessionStorage.getItem('ansa_bf_emu'); if(raw){ const o=JSON.parse(raw); if(o && o.cart) S=Object.assign(S0(),o); } }catch(e){}
+function save(){ try{ sessionStorage.setItem('ansa_bf_emu', JSON.stringify(S)); }catch(e){} }
+
+const phone = document.getElementById('phone');
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT=null;
+function toast(msg){ let t=phone.querySelector('.toast'); if(!t){ t=document.createElement('div'); t.className='toast'; phone.appendChild(t);} t.textContent=msg; clearTimeout(toastT); toastT=setTimeout(()=>{ t.remove(); },1600); }
+
+/* ---------- derived ---------- */
+const paidCount = () => Object.values(S.cart).reduce((a,b)=>a+b,0);
+const giftCount = () => Object.values(S.gifts).reduce((a,b)=>a+b,0);
+const subtotal = () => Object.entries(S.cart).reduce((a,[id,q])=>a+byId(id).pr*q,0);
+const giftValue = () => Object.entries(S.gifts).reduce((a,[id,q])=>a+byId(id).pr*q,0);
+const isEarly = () => S.phase==='early';
+const shipping = () => paidCount()>=FREE_SHIP_FROM ? 0 : SHIP;
+const total = () => subtotal()+shipping();
+
+/* ---------- timer ---------- */
+function hms(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600e3), m=Math.floor(ms%3600e3/60e3), s=Math.floor(ms%60e3/1e3); return [h,m,s].map(x=>String(x).padStart(2,'0')); }
+setInterval(()=>{ const el=phone.querySelector('[data-timer]'); if(el){ const [h,m,s]=hms(S.deadline-Date.now()); el.textContent=`${h}:${m}:${s}`; } const t2=phone.querySelectorAll('[data-timer2]'); if(t2.length){ const [h,m,s]=hms(S.deadline-Date.now()); t2[0].textContent=h; if(t2[1]) t2[1].textContent=m; if(t2[2]) t2[2].textContent=s; } },1000);
+
+/* ---------- views ---------- */
+function productTile(p, mode){
+  const q = mode==='gift' ? (S.gifts[p.id]||0) : (S.cart[p.id]||0);
+  const free = mode==='gift';
+  const right = mode==='gift'
+    ? (q ? `<div class="step"><button data-act="gift-" data-id="${p.id}" aria-label="минус">−</button><b>${q}</b><button data-act="gift+" data-id="${p.id}" ${giftCount()>=paidCount()?'disabled':''} aria-label="плюс">+</button></div>`
+         : `<button class="addb${giftCount()>=paidCount()?'':''}" data-act="gift+" data-id="${p.id}" ${giftCount()>=paidCount()?'disabled':''}>🎁 Избирам</button>`)
+    : (q ? `<div class="step"><button data-act="cart-" data-id="${p.id}" aria-label="минус">−</button><b>${q}</b><button data-act="cart+" data-id="${p.id}" aria-label="плюс">+</button></div>`
+         : `<button class="addb" data-act="cart+" data-id="${p.id}">＋ Добави</button>`);
+  return `<div class="tile${q?' on':''}">
+    <img src="${p.img}" alt="">
+    <div><div class="n">${p.isNew?'<span class="nb">НОВО</span>':''}${esc(p.n)}<small>${esc(p.s)}</small></div>
+      <div class="pr${free?' free':''}">${free?`<s>${fmt(p.pr)}</s>подарък`:fmt(p.pr)}</div>
+      <button class="more" data-act="sheet" data-id="${p.id}">Повече ▾</button></div>
+    ${right}</div>`;
+}
+function filtered(list){
+  const f=S.filter;
+  return list.filter(p => f==='all' || (f==='fav'&&p.fav) || (f==='new'&&p.isNew) || p.cat===f);
+}
+function chips(){ return `<div class="chips">${CATS.map(([k,l])=>`<button class="chip${S.filter===k?' on':''}${k==='new'&&S.filter!==k?' o':''}" data-act="filter" data-id="${k}">${l}</button>`).join('')}</div>`; }
+function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
+
+function vSignup(){
+  const b=S.bonus;
+  return `<div class="scroll">
+  <div class="hero">
+    <img class="logo" src="img/logo-white.png" alt="ansa" style="margin-bottom:12px">
+    <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
+    <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
+    <p class="sub">Запиши се за ранен достъп и избери своя подарък.</p>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="h2">Избери своя подарък</div>
+      <div class="bonus">
+        <button class="bo${b==='voucher'?' on':''}" data-act="bonus" data-id="voucher"><span class="ic">🎟️</span><span><b>Ваучер 5 €</b><small>получаваш го веднага, важи в целия магазин</small></span><span class="r"></span></button>
+        <button class="bo${b==='eye'?' on':''}" data-act="bonus" data-id="eye"><span class="ic"><img src="img/eye.jpg" alt=""></span><span><b>eyeFresh пачове за очи</b><small>в пратката на първата ти поръчка · 15,90 €</small></span><span class="r"></span></button>
+        <button class="bo${b==='tombola'?' on':''}" data-act="bonus" data-id="tombola"><span class="ic">🏝️</span><span><b>Томбола за почивка</b><small>1 билет за 5 дни с яхта в Гърция</small></span><span class="r"></span></button>
+      </div>
+      <form id="signupForm">
+      <div class="input${S.emailErr?' err':''}">✉️ <input id="emailIn" type="email" placeholder="твоят имейл" value="${esc(S.email)}" autocomplete="email"></div>
+      ${S.emailErr?'<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">Въведи валиден имейл, за да ти пратим подаръка.</div>':''}
+      <button class="cta" type="submit">Запиши ме и вземи подаръка<small>безплатно · без задължение за покупка</small></button>
+      </form>
+      <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта.</div>
+    </div>
+    <div class="k2">Какво ще получиш в ранния достъп</div>
+    <div class="steps">
+      <div class="st o"><i>48h</i><div>Пазаруваш 48 часа преди всички<small>Сряда, 25.11, 10:00 — точният час ще го получиш по имейл.</small></div></div>
+      <div class="st o"><i>1=2</i><div>Всяка опаковка ти носи още една — по избор<small>Купуваш Грийнс, избираш си подарък. Може и втори Грийнс.</small></div></div>
+      <div class="st o"><i>+</i><div>И нещо допълнително само за първите 48 часа<small>Ще го научиш в стартовия имейл.</small></div></div>
+    </div>
+    <div class="k2">4 нови продукта — първо за теб</div>
+    <div class="gridp">
+      ${P.filter(p=>p.isNew).map(p=>`<div class="gp"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${esc(p.s)}</small></div>`).join('')}
+    </div>
+    <div class="lead" style="margin-top:10px">Разработвахме ги 216 дни. Да, броихме ги. Ще ти ги покажем 7 дни преди старта.</div>
+    <div class="k2">Въпроси</div>
+    ${[['Трябва ли да купя нещо, за да получа подаръка?','Ваучерът 5 € го получаваш веднага и важи в целия магазин. eyeFresh и билетът за томболата идват с първата ти поръчка.'],['Кога точно започва ранният достъп?','Сряда, 25.11, 10:00. Продължава 48 часа. Ще получиш имейл в 10:00 с личен линк.'],['Какво става, ако изчакам публичния Black Friday?','Офертата „1 опаковка = 1 подарък по избор“ остава същата. Допълнителното за първите 48 часа го няма.']].map(([q,a],i)=>`<button class="faq" data-act="faq" data-id="${i}">${q}<span>${S.faq===i?'▴':'▾'}</span></button>${S.faq===i?`<div class="faqa">${a}</div>`:''}`).join('')}
+    <div class="footnote">ansa™ · От жени за жени · Ваучерът 5 € важи веднага, еднократно, в целия магазин. Пълни условия на ansa.bg/bf</div>
+  </div></div>`;
+}
+function vSignupDone(){
+  const bonusTxt = {voucher:`<b>Ваучер 5 € · код <span class="code">ANSA5-M7K2</span></b><small>важи веднага, в целия магазин, до 31.12</small>`, eye:`<b>eyeFresh пачове за очи</b><small>ще ги сложим в пратката на първата ти поръчка</small>`, tombola:`<b>Билет за томболата</b><small>5 дни с яхта в Гърция · теглене 25.01.2027</small>`}[S.bonus];
+  const ic = {voucher:'🎟️',eye:'👁️',tombola:'🏝️'}[S.bonus];
+  return `<div class="scroll"><div class="done">
+    <div class="big">🎉</div>
+    <div class="h1" style="color:var(--ink);font-size:24px;margin:10px 0 6px">Вътре си.</div>
+    <div class="lead">Записахме <b>${esc(S.email)}</b> за ранния достъп.</div>
+    <div class="card" style="text-align:left;margin:14px 0">
+      <div class="k2" style="margin-top:0">Твоят подарък</div>
+      <div class="bo on"><span class="ic">${ic}</span><span>${bonusTxt}</span><span class="r"></span></div>
+      ${S.bonus==='voucher'?`<button class="cta" style="margin-top:10px" data-act="copy" data-id="ANSA5-M7K2">Копирай кода · пазарувай сега</button><div class="trust">Промо офертата още не е активна — ваучерът важи и преди нея.</div>`:''}
+      <div class="k2">Какво следва</div>
+      <div class="steps">
+        <div class="st"><i>1</i><div>18.11 — показваме ти 4-те нови продукта<small>и как работи „1 опаковка = 1 подарък по избор“</small></div></div>
+        <div class="st"><i>2</i><div>23.11 — напомняне с точния час<small>и списък с участващите продукти, за да си избереш</small></div></div>
+        <div class="st o"><i>3</i><div>25.11, 10:00 — ранният достъп отваря<small>48 часа само за теб и списъка</small></div></div>
+      </div>
+    </div>
+    <button class="cta soft" data-act="toast" data-id="В реалния сайт: .ics файл за календара">Добави в календара 📅</button>
+    <div class="trust" style="margin-top:12px">Сподели с приятелка — тя също ще получи ранен достъп и подарък.</div>
+    <button class="cta dark" style="margin-top:8px" data-act="toast" data-id="В реалния сайт: споделяне на личен линк">Изпрати покана</button>
+    <div class="trust" style="margin-top:16px"><button class="more" data-act="go" data-id="emails">Виж имейлите, които ще получиш →</button></div>
+  </div></div>`;
+}
+function vShop(){
+  const early=isEarly(), n=paidCount();
+  const list=filtered(P.filter(p=>p.buy!==false));
+  const foot = n
+    ? `<div class="sline"><span>${n} ${n===1?'опаковка':'опаковки'} · ${fmt(subtotal())}</span><span class="ok">→ ${n} ${n===1?'подарък':'подаръка'}${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">всяка опаковка = 1 подарък</span></div><button class="cta" disabled>Добави поне 1 опаковка</button>`;
+  return `<div class="scroll">
+  <div class="hero">
+    <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
+    ${early?`<div class="h1">Избери <em>своите подаръци.</em></div><p class="sub">48 часа: всяка опаковка ти носи още една по избор + ваучер 10 € за 2027.</p>`
+           :`<div class="h1">Всяка опаковка = <em>една подарък по избор.</em></div><p class="sub">Плащаш 1, получаваш 2. Второто го избираш ти — може и същото.</p>`}
+  </div>
+  <div class="wrap" style="padding-top:10px">
+    ${early?`<div class="strip"><span><b>1</b><small>опаковка</small></span><span class="eq">=</span><span class="g"><b>+1</b><small>подарък по избор</small></span><span class="eq">+</span><span><b>10 €</b><small>ваучер 2027</small></span></div>`
+           :`<div class="eqchips">${[1,2,3].map(k=>`<div class="${n===k||(k===3&&n>=3)?'on':''}">плащаш ${k}<b>получаваш <i>${k*2}</i></b></div>`).join('')}</div>`}
+    ${chips()}
+    ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
+    <div class="k2">Как работи</div>
+    <div class="steps">
+      <div class="st"><i>1</i><div>Избираш какво купуваш</div></div>
+      <div class="st"><i>2</i><div>Виждаш колко подаръка ти се полагат</div></div>
+      <div class="st"><i>3</i><div>Избираш подаръците — може и същия продукт</div></div>
+      <div class="st"><i>4</i><div>Завършваш поръчката.${early?' Ваучерите идват по имейл.':''}</div></div>
+    </div>
+    <div class="footnote">Цените са от ansa.bg към 03.11.2026. Участват само единични опаковки на редовна цена.</div>
+  </div></div>
+  <div class="foot">${foot}</div>`;
+}
+function vGifts(){
+  const n=paidCount(), g=giftCount(), left=n-g;
+  const news=P.filter(p=>p.isNew), favs=P.filter(p=>!p.isNew);
+  const slots = Array.from({length:n},(_,i)=>{ const picked=[]; Object.entries(S.gifts).forEach(([id,q])=>{for(let k=0;k<q;k++)picked.push(id);}); const id=picked[i]; return id?`<div class="slot f"><img src="${byId(id).img}" alt=""></div>`:`<div class="slot${i===g?' next':''}">${i+1}</div>`; }).join('');
+  return `<div class="hdr"><div><b>Избери ${n} ${n===1?'подарък':'подаръка'}</b><small>${P.length} продукта за избор. Може и еднакви.</small></div><button class="x" data-act="screen" data-id="shop" aria-label="затвори">✕</button></div>
+  <div class="scroll" id="giftScroll"><div class="wrap" style="padding-top:12px">
+    <div class="bar2"><i style="width:${n?Math.round(g/n*100):0}%"></i></div>
+    <div class="sline"><span>Избрани <b>${g} от ${n}</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">↺ промени поръчката</button></div>
+    <div class="k2" style="margin-top:6px">Новите 4 · 216 дни разработка</div>
+    ${news.map(p=>productTile(p,'gift')).join('')}
+    <div class="k2">Любимите ти · ${favs.length}</div>
+    ${favs.map(p=>productTile(p,'gift')).join('')}
+    <div style="height:8px"></div>
+  </div></div>
+  <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>↓ още подаръци по-долу</button>
+    <div class="slots">${slots}<div class="lab">${left>0?`Още ${left} ${left===1?'подарък':'подаръка'} по избор.`:'Всички подаръци са избрани ✔'}</div></div>
+    ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
+  </div>`;
+}
+function vCheckout(){
+  const early=isEarly(), n=paidCount();
+  const rows = Object.entries(S.cart).map(([id,q])=>{const p=byId(id);return `<div class="row"><img src="${p.img}" alt=""><div>${esc(p.n)} × ${q}<small>платени опаковки</small></div><div class="p">${fmt(p.pr*q)}</div></div>`;}).join('')
+    + Object.entries(S.gifts).map(([id,q])=>{const p=byId(id);return `<div class="row gift"><img src="${p.img}" alt=""><div>🎁 ${esc(p.n)}${q>1?' × '+q:''}<small>подарък по избор</small></div><div class="p free"><s>${fmt(p.pr*q)}</s>0 €</div></div>`;}).join('')
+    + (early?`<div class="row v"><div class="ic">🎟️</div><div>${n} × ваучер 10 € за 2027<small>пристигат по имейл след доставката</small></div><div class="p" style="color:var(--goldd)">${n*VOUCHER} €</div></div>`:'')
+    + (S.bonus==='eye'&&S.email?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от записването</small></div><div class="p free">0 €</div></div>`:'')
+    + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
+    + `<div class="tot"><div>Общо<small>стойност на пратката ${fmt(subtotal()+giftValue())}</small></div><div>${fmt(total())}</div></div>`;
+  return `<div class="hdr dark"><div><b>Твоята поръчка</b><small>Плащаш ${n}, получаваш ${n*2}.${early?` Плюс ${n*VOUCHER} € ваучери за 2027.`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button></div>
+  <div class="scroll"><div class="wrap" style="padding-top:12px">
+    <div class="rows">${rows}</div>
+    <div class="trust" style="margin:10px 0 6px">Подаръците пътуват в същата пратка.${early?' Ваучерите за 2027 — по имейл.':''}</div>
+    <div class="k2">Данни за доставка</div>
+    <div class="input">👤 <input id="nameIn" placeholder="Име и фамилия" value="Мария Иванова"></div>
+    <div class="input">📱 <input id="phoneIn" placeholder="Телефон" value="0888 123 456"></div>
+    <div class="input">📍 <input id="addrIn" placeholder="Офис на Еконт / Спиди или адрес" value="Еконт — София, Младост 1"></div>
+    <div class="k2">Плащане</div>
+    <div class="chips"><button class="chip${S.pay==='card'?' on':''}" data-act="pay" data-id="card">💳 С карта</button><button class="chip${S.pay==='cod'?' on':''}" data-act="pay" data-id="cod">💵 Наложен платеж</button></div>
+  </div></div>
+  <div class="foot"><button class="cta" data-act="order">Завърши поръчката · ${fmt(total())}</button><div class="trust">🔒 Сигурно плащане · 14 дни право на връщане</div></div>`;
+}
+function vDone(){
+  const early=isEarly(), n=paidCount();
+  return `<div class="scroll"><div class="done">
+    <div class="big">🎁</div>
+    <div class="h1" style="color:var(--ink);font-size:24px;margin:10px 0 6px">Честито! Поръчка №BF-${String(1000+Math.floor(total()*7)%9000)}</div>
+    <div class="lead">${n} платени + ${n} подаръка пътуват към теб${S.pay==='cod'?' с наложен платеж':''}.</div>
+    <div class="card" style="text-align:left;margin:14px 0">
+      <div class="k2" style="margin-top:0">Какво следва</div>
+      <div class="steps">
+        <div class="st"><i>1</i><div>Потвърждение по имейл<small>до ${esc(S.email||'имейла от поръчката')}</small></div></div>
+        <div class="st"><i>2</i><div>Доставка в 1–2 работни дни<small>подаръците са в същата пратка</small></div></div>
+        ${early?`<div class="st o"><i>3</i><div>${n} ваучера по 10 € за 2027<small>по имейл след доставката · по един на поръчка · януари–март</small></div></div>`:''}
+        ${S.bonus==='tombola'&&S.email?`<div class="st o"><i>🏝️</i><div>Билетът ти за томболата е активен<small>теглене 25.01.2027</small></div></div>`:''}
+      </div>
+    </div>
+    <button class="cta soft" data-act="again">Нова поръчка</button>
+  </div></div>`;
+}
+function vClosed(){
+  return `<div class="scroll"><div class="hero"><div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"></div><div class="h1">Ранният достъп още не е отворен.</div><p class="sub">Сряда, 25.11, 10:00. Записалите се получават личен линк по имейл.</p></div>
+  <div class="closed"><div class="lead">В емулатора: превключи на „Ранен достъп“ или „Публичен BF“ от лентата горе, или се запиши тук.</div><button class="cta" data-act="screen" data-id="signup">Запиши ме за ранен достъп</button></div></div>`;
+}
+/* emails */
+function emailShell(top, body){ return `<div class="email"><div class="em-top">${top}</div><div class="em-body"><img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">${body}</div><div class="em-foot">Отпиши се · Условия</div></div>`; }
+const newList = () => `<div class="em-list">${P.filter(p=>p.isNew).map(p=>`<div class="it"><img src="${p.img}" alt=""><div><b>${esc(p.n)}</b><small>${esc(p.s)}</small></div></div>`).join('')}</div>`;
+const EMAILS = {
+ e7old: {t:'7 дни · стар клиент', html:()=>emailShell(`<b>Любимият ти Грийнс скоро ще дойде с подарък 🎁</b><span>ansa™ · до мен</span><span class="pre">И този път ти избираш какъв. 4 нови продукта, 216 дни работа…</span>`,
+  `<p class="big">Любимият ти Грийнс скоро ще дойде с подарък. <em>И този път ти избираш какъв.</em></p>
+   <p>Ти обичаш Грийнс. Сега той ти подарява 1 продукт по избор от новите ни попълнения, които разработваме от <span class="badge216">216 дни</span>. Да, броихме ги.</p>
+   <p><b>Ето какво разработихме за 216 дни:</b></p>${newList()}
+   <p><b>Ето и проста сметка:</b></p><div class="calc"><div class="l">1 кутия Грийнс <span>43,90 €</span></div><div class="l">+ 1 продукт подарък по избор <span>0 €</span></div><div class="l">3 кутии Грийнс → 3 подаръка по избор <span>6 опаковки</span></div></div>
+   <p>Ще ти пишем след седмица — <b>25.11 в 10:00</b> — когато можеш да се възползваш от офертата преди всички. Тъй като ще си от първите, в онзи имейл има и нещо допълнително.</p>
+   <button class="cta" data-act="email-cta" data-id="preview">Виж новите продукти</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Поръчката не е възможна преди 25.11, 10:00. Сега само разглеждаш.</p>`)},
+ e7new: {t:'7 дни · нов записал се', html:()=>emailShell(`<b>След седмица опитваш повече от ANSA 🎁</b><span>ansa™ · до мен</span><span class="pre">Една опаковка подарък за всяка опаковка, която поръчаш.</span>`,
+  `<p class="big">След седмица ще можеш да опиташ повече от ANSA — <em>с една опаковка подарък за всяка опаковка, която поръчаш.</em></p>
+   <p>Записа се за ранния достъп и избра <b>ваучер 5 €</b> — той вече важи в магазина, ако още не си го ползвала. Ранният достъп отваря на <b>25.11 в 10:00</b>.</p>
+   <p><b>Какво е ранният достъп:</b></p><div class="steps" style="margin-bottom:14px"><div class="st o"><i>1</i><div>Избираш какво да поръчаш<small>Грийнс, Берберин, Sakura… или някой от 4-те нови</small></div></div><div class="st o"><i>2</i><div>За всяка опаковка избираш подарък<small>Може да е същият продукт или нещо ново за пробване</small></div></div><div class="st o"><i>3</i><div>Завършваш поръчката — подаръците пътуват в същата пратка<small>48 часа преди всички останали</small></div></div></div>
+   <p><b>Новите 4, с които да започнеш</b> — разработвахме ги <span class="badge216">216 дни</span>:</p>${newList()}
+   <div class="em-hero"><div class="eyebrow">Отгоре на всичко — за нови клиенти</div><div class="h1">Козметичният сет на ansa™ в първата ти поръчка</div><p>5 продукта за кожата. Или допълнителен подарък по избор — ти решаваш в количката.</p></div>
+   <button class="cta" data-act="email-cta" data-id="preview">Разгледай участващите продукти</button>`)},
+ e2: {t:'2 дни преди', html:()=>emailShell(`<b>След два дни отваряме ранния достъп ⏰</b><span>ansa™ · до мен</span><span class="pre">Помисли какво искаш да заредиш — и какво ти се иска да опиташ подарък.</span>`,
+  `<div class="em-hero"><div class="eyebrow">Ранен достъп</div><div class="h1">Сряда, 25.11 · 10:00</div><div class="timer" style="margin-top:12px"><div><b>1</b><small>ден</small></div><div><b>22</b><small>часа</small></div><div><b>40</b><small>мин</small></div></div><p>48 часа. Само за теб и списъка.</p></div>
+   <p class="big">След два дни отваряме ранния достъп. <em>Помисли какво искаш да заредиш — и какво ти се иска да опиташ подарък.</em></p>
+   <p><b>Ето как работи, с пример:</b></p><div class="calc"><div class="l">2 кутии Грийнс <span>87,80 €</span></div><div class="l">+ KeraTonica + Alivia (подарък по избор) <span>0 €</span></div><div class="l">+ 2 ваучера по 10 € за 2027 г. <span>20 €</span></div></div>
+   <p><b>Участващи продукти</b> — разгледай ги сега, за да знаеш какво искаш в 10:00:</p>
+   <div class="gridp" style="margin-bottom:14px">${['greens','berberin','kera','sakura'].map(id=>{const p=byId(id);return `<div class="gp"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${fmt(p.pr)}${p.isNew?' · ново':''}</small></div>`;}).join('')}</div>
+   <button class="cta" data-act="email-cta" data-id="preview">Виж всички участващи продукти</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Избери си сега. В сряда само добавяш.</p>`)},
+ estart: {t:'Старт (CTA)', html:()=>emailShell(`<b>Отворено е. Избери си подаръците 🎁 + 10 € за 2027</b><span>ansa™ · до мен</span><span class="pre">48 часа само за теб: всяка опаковка = подарък по избор + ваучер.</span>`,
+  `<p class="big">Вече можеш да избереш <em>своите подаръци.</em></p>
+   <p>През следващите 48 часа всяка опаковка, която поръчаш, ти носи още една подарък — и ваучер за следващата година.</p>
+   <div class="em-hero"><div class="eyebrow">Само за първите · до петък 10:00</div><div class="h1">+ ваучер 10 € за 2027 за всяка опаковка</div><div class="timer" style="margin-top:12px"><div><b data-timer2>47</b><small>часа</small></div><div><b data-timer2>12</b><small>мин</small></div><div><b data-timer2>09</b><small>сек</small></div></div><p>В публичния Black Friday ваучерите ги няма.</p></div>
+   <p><b>Ето и проста сметка:</b></p><div class="calc"><div class="l">3 кутии Грийнс <span>131,70 €</span></div><div class="l">+ 3 продукта подарък по избор <span>0 €</span></div><div class="l">+ 3 ваучера по 10 € за 2027 <span>30 €</span></div><div class="l">6 опаковки + 30 € за догодина <span>плащаш 131,70 €</span></div></div>
+   <button class="cta" data-act="email-cta" data-id="early">Избери подаръците си →</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Линкът е личен — води направо в ранния достъп.</p>`)},
+ e12: {t:'12 ч. преди края', html:()=>emailShell(`<b>Още 12 часа: подаръците ти + ваучерите за 2027 ⏳</b><span>ansa™ · до мен</span><span class="pre">След това офертата става публична — без ваучерите.</span>`,
+  `<div class="em-hero"><div class="eyebrow">Ранният достъп затваря</div><div class="h1">Петък, 27.11 · 10:00</div><div class="timer" style="margin-top:12px"><div><b>11</b><small>часа</small></div><div><b>58</b><small>мин</small></div></div></div>
+   <p class="big">Все още не си избрала подаръците си. <em>Имаш 12 часа.</em></p>
+   <p>След 10:00 в петък офертата „1 опаковка = 1 подарък по избор“ отваря за всички. Но <b>ваучерите по 10 € за 2027 г.</b> са само за ранния достъп — и изчезват с него.</p>
+   <button class="cta" data-act="email-cta" data-id="early">Избери подаръците си сега</button>`)},
+ epub: {t:'Публичен старт', html:()=>emailShell(`<b>Black Friday: всяка опаковка = една подарък по избор 🖤</b><span>ansa™ · до всички</span><span class="pre">72 часа. Плащаш 1, получаваш 2. Плащаш 2, получаваш 4.</span>`,
+  `<div class="em-hero"><div class="eyebrow">Black Friday · 72 часа</div><div class="h1">Всяка закупена опаковка = една опаковка подарък по избор.</div><p>Плащаш 1, получаваш 2. Плащаш 2, получаваш 4. Плащаш 3, получаваш 6.</p></div>
+   <p>Избираш какво купуваш. Виждаш колко подаръка ти се полагат. Избираш ги. Завършваш поръчката.</p>
+   <button class="cta" data-act="email-cta" data-id="public">Избери подаръка си →</button>`)}
+};
+function vEmails(){
+  return `<div class="emtabs">${Object.entries(EMAILS).map(([k,e])=>`<button class="${S.emailView===k?'on':''}" data-act="emailview" data-id="${k}">${e.t}</button>`).join('')}</div><div class="scroll">${EMAILS[S.emailView].html()}</div>`;
+}
+function vSheet(){
+  const p=byId(S.sheet); if(!p) return '';
+  const tabs=[['desc','За какво'],['ing','Състав'],['how','Как се приема'],['who','За кого']];
+  const body = {desc:`<p>${esc(p.desc)}</p>`, ing:`<p>${esc(p.ing)}</p>`, how:`<p>${esc(p.how)}</p>`, who:`<p>${esc(p.who)}</p>`}[S.tab];
+  const inGifts = S.screen==='gifts';
+  const canGift = giftCount()<paidCount();
+  return `<button class="dim" data-act="sheet" data-id="" aria-label="затвори"></button><div class="sheet" role="dialog" aria-label="${esc(p.n)}">
+    <div class="grab"></div>
+    <div class="sbody">
+      <div class="ph"><img src="${p.img}" alt=""><div><div class="n">${esc(p.n)} ${p.isNew?'<span class="pillo">НОВО</span>':''}<small>${esc(p.s)} · 1 месец</small></div><div class="pr">${fmt(p.pr)} <span style="font-size:12px;color:var(--tan);font-weight:700">/ кутия</span></div></div></div>
+      <div class="stars"><b>★★★★★</b> ${p.rv==='0'?'нов продукт · 216 дни разработка':p.rt+' · '+p.rv+' мнения'}</div>
+      <div class="tabs">${tabs.map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-id="${k}">${l}</button>`).join('')}</div>
+      ${body}
+      <p style="color:var(--tan);font-size:12.5px">${inGifts?'Избери го като подарък — не струва нищо.':'Подходящ и като подарък по избор към всяка опаковка.'}</p>
+    </div>
+    <div class="sfoot">${inGifts?`<button class="cta" data-act="gift+" data-id="${p.id}" ${canGift?'':'disabled'}>🎁 Избирам го като подарък</button>`:`<button class="cta" data-act="cart+" data-id="${p.id}">＋ Добави · ${fmt(p.pr)}</button><div class="trust">или го избери като подарък в следващата стъпка</div>`}</div>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+function screenFor(){
+  if(S.phase==='emails') return 'emails';
+  if(S.phase==='prep') return (S.screen==='signup'||S.screen==='done')?S.screen:'signup';
+  if(S.screen==='signup'||S.screen==='done'||S.screen==='emails') return 'shop';
+  return S.screen;
+}
+function render(){
+  const sc=screenFor();
+  const prevScroll = phone.querySelector('.scroll'); const keep = prevScroll && S._keepScroll ? prevScroll.scrollTop : 0; S._keepScroll=false;
+  let html='';
+  if(sc==='signup') html=vSignup(); else if(sc==='done') html=vSignupDone(); else if(sc==='emails') html=vEmails(); else if(sc==='shop') html=vShop(); else if(sc==='gifts') html=vGifts(); else if(sc==='checkout') html=vCheckout(); else if(sc==='ordered') html=vDone(); else if(sc==='closed') html=vClosed();
+  if(S.sheet) html+=vSheet();
+  phone.innerHTML=html;
+  const scr=phone.querySelector('.scroll'); if(scr && keep) scr.scrollTop=keep;
+  document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
+  const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen='done';save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
+  const gs=document.getElementById('giftScroll'); if(gs){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`↓ още ${below} ${below===1?'подарък':'подаръка'} по-долу`; } }; gs.addEventListener('scroll',upd); upd(); }
+  try{ const h='#'+S.phase; if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
+  save();
+}
+
+/* ---------- actions ---------- */
+phone.addEventListener('click', e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const act=b.dataset.act, id=b.dataset.id;
+  if(act==='bonus'){ S.bonus=id; }
+  else if(act==='faq'){ S.faq = S.faq===+id ? null : +id; S._keepScroll=true; }
+  else if(act==='filter'){ S.filter=id; S._keepScroll=true; }
+  else if(act==='cart+'){ S.cart[id]=(S.cart[id]||0)+1; S._keepScroll=!S.sheet; if(S.sheet){S.sheet=null;} toast(`${byId(id).n} добавен · ${paidCount()} ${paidCount()===1?'подарък':'подаръка'} по избор`); }
+  else if(act==='cart-'){ if(S.cart[id]>1) S.cart[id]--; else delete S.cart[id]; trimGifts(); S._keepScroll=true; }
+  else if(act==='gift+'){ if(giftCount()<paidCount()){ S.gifts[id]=(S.gifts[id]||0)+1; } S._keepScroll=!S.sheet; S.sheet=null; if(giftCount()===paidCount()) toast('Всички подаръци са избрани ✔'); }
+  else if(act==='gift-'){ if(S.gifts[id]>1) S.gifts[id]--; else delete S.gifts[id]; S._keepScroll=true; }
+  else if(act==='sheet'){ S.sheet=id||null; S.tab='desc'; S._keepScroll=true; }
+  else if(act==='tab'){ S.tab=id; S._keepScroll=true; }
+  else if(act==='screen'){ if(id==='gifts'&&!paidCount()) return; S.screen=id; }
+  else if(act==='pay'){ S.pay=id; S._keepScroll=true; }
+  else if(act==='order'){ S.screen='ordered'; }
+  else if(act==='again'){ S.cart={}; S.gifts={}; S.screen='shop'; }
+  else if(act==='go'){ setPhase(id); return; }
+  else if(act==='emailview'){ S.emailView=id; }
+  else if(act==='email-cta'){ if(id==='preview'){ toast('Преди старта линкът води към страница само за разглеждане'); S.phase='early'; S.screen='shop'; } else { setPhase(id); return; } }
+  else if(act==='toast'){ toast(id); return; }
+  else if(act==='copy'){ const code=id; const done=()=>toast('Кодът '+code+' е копиран'); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done).catch(()=>toast('Кодът: '+code)); } else toast('Кодът: '+code); return; }
+  else if(act==='scrolldown'){ const gs=document.getElementById('giftScroll'); if(gs) gs.scrollBy({top:gs.clientHeight*0.8,behavior:'smooth'}); return; }
+  render();
+});
+function trimGifts(){ let over=giftCount()-paidCount(); if(over<=0) return; for(const id of Object.keys(S.gifts).reverse()){ while(over>0&&S.gifts[id]>0){S.gifts[id]--;over--;} if(!S.gifts[id]) delete S.gifts[id]; if(over<=0) break; } }
+function setPhase(ph){ S.phase=ph; if(ph==='prep'){ S.screen = S.email&&S.screen==='done'?'done':'signup'; } else if(ph==='early'||ph==='public'){ if(!['shop','gifts','checkout','ordered'].includes(S.screen)) S.screen='shop'; if(ph==='public'&&S.screen==='shop'){} } render(); }
+document.getElementById('phaseSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setPhase(b.dataset.phase); });
+document.getElementById('resetBtn').addEventListener('click',()=>{ S=S0(); try{sessionStorage.removeItem('ansa_bf_emu');}catch(e){} render(); });
+window.addEventListener('hashchange',()=>{ const h=location.hash.replace('#',''); if(['prep','emails','early','public'].includes(h)&&h!==S.phase) setPhase(h); });
+(function boot(){ const h=location.hash.replace('#',''); if(['prep','emails','early','public'].includes(h)) S.phase=h; render(); })();
+})();
+</script>
