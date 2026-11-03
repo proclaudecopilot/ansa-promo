@@ -98,6 +98,22 @@ button{font-family:inherit;cursor:pointer}
 @keyframes eqpop{0%{transform:scale(.92);opacity:.4}100%{transform:none;opacity:1}}
 @keyframes bxin{0%{transform:translateY(8px) scale(.6);opacity:0}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){.eq.pop .eq-side,.eq.pop .bx{animation:none}}
+.vch{position:relative;background:linear-gradient(135deg,#e8722a 0%,#f59e0b 100%);color:#fff;border-radius:16px;padding:16px 18px 14px;box-shadow:0 10px 30px rgba(232,114,42,.35);overflow:hidden;margin:4px 0 12px}
+.vch:before,.vch:after{content:"";position:absolute;top:50%;width:26px;height:26px;border-radius:50%;background:#fff;transform:translateY(-50%)}
+.vch:before{left:-13px}.vch:after{right:-13px}
+.vch .vt{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+.vch .va{font-size:44px;font-weight:900;line-height:1;margin:6px 0 2px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.vch .va small{font-size:18px;font-weight:800;vertical-align:top;margin-left:2px}
+.vch .vs{font-size:12.5px;font-weight:700;opacity:.92}
+.vch .vl{border-top:2px dashed rgba(255,255,255,.55);margin:12px 0 10px}
+.vch .vb{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:800}
+.vch .vcode{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;background:rgba(255,255,255,.18);border:1px dashed rgba(255,255,255,.6);border-radius:8px;padding:5px 9px}
+.vch .vcode.lock{filter:blur(3px);user-select:none}
+.vch .vtm{background:rgba(15,15,26,.35);border-radius:999px;padding:5px 10px;white-space:nowrap}
+.vch .vtm b{font-variant-numeric:tabular-nums}
+.vch .stamp{position:absolute;right:14px;top:12px;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;border:2px solid rgba(255,255,255,.8);border-radius:6px;padding:3px 6px;transform:rotate(8deg);opacity:.95}
+.vch.ok{background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 10px 30px rgba(22,163,74,.3)}
+.vch .vlogo{height:18px;position:absolute;left:18px;top:14px;opacity:.95}
 .affnote{font-size:12px;font-weight:700;color:#fff;background:rgba(232,114,42,.18);border:1px solid rgba(232,114,42,.45);border-radius:10px;padding:7px 10px;margin:0 0 8px}
 .affnote b{color:var(--o2)}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
@@ -290,7 +306,7 @@ const isEarly = () => S.phase==='early';
 const shipping = () => paidCount()>=FREE_SHIP_FROM ? 0 : SHIP;
 const inPre = () => ['wallet','precheckout','predone'].includes(S.screen);
 const walletLive = () => S.walletExp && S.walletExp>Date.now();
-const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return S.coldBonus==='p10' ? Math.round(subtotal()*0.1*100)/100 : Math.min(6.5, subtotal()); };
+const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return Math.min(6.5, subtotal()); };
 const affDiscount = () => (isEarly()&&isAff()&&S.email&&S.affBonus==='v10'&&paidCount()) ? Math.min(10, subtotal()) : 0;
 const total = () => Math.max(0, subtotal()-walletDiscount()-affDiscount()+shipping());
 
@@ -332,6 +348,7 @@ function eqHtml(k, early){ const one=k===1; const bx=(c)=>Array.from({length:Mat
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
 
+function voucherCard(opts){ const o=Object.assign({amount:'6,50',locked:true,code:'ANSA650',cd:'coldExp',note:'важи 30 минути след отключването'},opts||{}); return `<div class="vch${o.locked?'':' ok'}"><img class="vlogo" src="img/logo-white.png" alt="ansa"><div class="stamp">${o.locked?'🔒 заключен':'✔ отключен'}</div><div class="vt" style="margin-top:14px">Твоят ваучер за</div><div class="va">${o.amount}<small>€</small></div><div class="vs">${o.locked?'за всичко в ansa.bg · '+o.note:'в портфейла ти · за всичко в ansa.bg'}</div><div class="vl"></div><div class="vb"><span class="vcode${o.locked?' lock':''}">${o.code}</span><span class="vtm">${o.locked?'изтича след':'важи още'} <b data-cd="${o.cd}">${mmss(S[o.cd]-Date.now())}</b></span></div></div>`; }
 function bonusBtn(id, cur, ic, title, sub){ return `<button class="bo${cur===id?' on':''}" data-act="bonus" data-id="${id}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="r"></span></button>`; }
 function emailForm(cta){ return `<form id="signupForm"><div class="input${S.emailErr?' err':''}">✉️ <input id="emailIn" type="email" placeholder="твоят имейл" value="${esc(S.email)}" autocomplete="email"></div>${S.emailErr?'<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">Въведи валиден имейл, за да ти пратим подаръка.</div>':''}<button class="cta" type="submit">${cta}</button></form>`; }
 function vSignup(){
@@ -343,25 +360,22 @@ function vSignup(){
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">${live?'подаръкът важи още':'изтече'} · <b data-cd="coldExp">${mmss(S.coldExp-Date.now())}</b></span></div>
     <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
     <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
-    <p class="sub">Запиши се за ранен достъп и вземи подарък за днес — не за след три седмици.</p>
+    <p class="sub">Запиши се за ранен достъп и вземи ваучер за днес — не за след три седмици.</p>
   </div>
   <div class="wrap">
-    <div class="card">
-      <div class="h2">Избери подаръка си за днес</div>
-      <div class="bonus">
-        ${bonusBtn('v5', S.coldBonus, '🎟️', 'Ваучер 6,50 €', 'в портфейла ти веднага, за следващите 30 минути')}
-        ${bonusBtn('p10', S.coldBonus, '%', '−10 % на поръчката', 'върху всичко в количката, за следващите 30 минути')}
-      </div>
-      ${emailForm('Вземи подаръка и влез<small>'+(live?'важи още <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span>':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
+    <div class="card" style="padding-top:10px">
+      ${voucherCard({locked:true, cd:'coldExp'})}
+      <div class="h2" style="font-size:16px;text-align:center">Въведи имейла си, за да го отключиш</div>
+      ${emailForm('Отключи ваучера<small>'+(live?'изтича след <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span>':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
       <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта. Без спам.</div>
     </div>
     <div class="k2">Защо днес, а не на Black Friday</div>
-    <p class="lead" style="margin:0 0 10px">Не чакай промото. Искаме най-добрата грижа за теб да започне още днес — затова ти даваме подарък за следващите 30 минути. По-голямата поръчка запази за <b>${DATE_EARLY}</b>, когато ще имаш най-изгодните оферти. Запиши си датата.</p>
+    <p class="lead" style="margin:0 0 10px">Не чакай промото. Искаме най-добрата грижа за теб да започне още днес — затова ти даваме ваучер за следващите 30 минути. По-голямата поръчка запази за <b>${DATE_EARLY}</b>, когато ще имаш най-изгодните оферти. Запиши си датата.</p>
     <div class="steps">
-      <div class="st o"><i>1</i><div><b>Днес:</b> малка поръчка с подаръка от днес<small>опитваш продукта, доставка в 1–2 дни</small></div></div>
+      <div class="st o"><i>1</i><div><b>Днес:</b> малка поръчка с ваучера<small>опитваш продукта, доставка в 1–2 дни</small></div></div>
       <div class="st o"><i>2</i><div><b>${DATE_EARLY}:</b> ранен достъп — всяка опаковка = 1 подарък по избор<small>48 часа преди всички, личен линк по имейл</small></div></div>
     </div>
-    <div class="footnote">ansa™ · От жени за жени · Подаръкът за днес важи еднократно, 30 минути след записването. Пълни условия на ansa.bg/bf</div>
+    <div class="footnote">ansa™ · От жени за жени · Ваучерът важи еднократно, 30 минути след отключването. Пълни условия на ansa.bg/bf</div>
   </div></div>`;
 }
 function vSignupAff(){
@@ -417,18 +431,19 @@ function vSignupDone(){
 function vWallet(){
   if(!S.walletExp) S.walletExp=Date.now()+30*60e3;
   const live=walletLive(), n=paidCount();
-  const bonusLbl = S.coldBonus==='p10' ? '−10 %' : '6,50 €';
+  const bonusLbl = '6,50 €';
   const pool=P.filter(p=>p.buy!==false&&!giftOnly(p)), list=filtered(pool);
   const foot = n
-    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${walletDiscount()?`−${fmt(walletDiscount())} от портфейла`:(live?'':'подаръкът изтече')}</span></div><button class="cta" data-act="screen" data-id="precheckout">Бърза поръчка →</button>`
-    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">${live?`${bonusLbl} те чакат в портфейла`:''}</span></div><button class="cta" disabled>Добави нещо за днес</button>`;
+    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${walletDiscount()?`−${fmt(walletDiscount())} с ваучера`:(live?'':'ваучерът изтече')}</span></div><button class="cta" data-act="screen" data-id="precheckout">Бърза поръчка →</button>`
+    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">${live?`ваучер ${bonusLbl} в портфейла`:''}</span></div><button class="cta" disabled>Добави нещо за днес</button>`;
   return `<div class="scroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">👛 портфейл ${bonusLbl} · <b data-cd="walletExp">${mmss(S.walletExp-Date.now())}</b></span></div>
-    <div class="h1">Вътре си. <em>${live?`${bonusLbl} са в портфейла ти.`:'Подаръкът за днес изтече.'}</em></div>
+    <div class="h1">Вътре си. <em>${live?'Ваучерът е отключен.':'Ваучерът за днес изтече.'}</em></div>
     <p class="sub">${live?`Не чакай промото — започни още днес с нещо малко. Ако ти хареса, се готви за ${DATE_EARLY}: тогава всяка поръчана опаковка = 1 опаковка подарък от продукт по избор.`:`Записана си за ранния достъп на ${DATE_EARLY}. Можеш да поръчаш и сега на редовна цена.`}</p>
   </div>
   <div class="wrap" style="padding-top:10px">
+    ${live?voucherCard({locked:false, cd:'walletExp'}):''}
     <div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">📅 ${DATE_EARLY}, 10:00</b><small>ранен достъп · ще ти пратим имейл точно в 10:00</small></span><span class="pillg">записана си ✔</span></div>
     <div class="k2">Избери нещо за днес</div>
     ${chips(pool)}
@@ -496,7 +511,7 @@ function vCheckout(){
   const rows = Object.entries(S.cart).map(([id,q])=>{const p=byId(id);return `<div class="row"><img src="${p.img}" alt=""><div>${esc(p.n)} × ${q}<small>платени опаковки</small></div><div class="p">${fmt(p.pr*q)}</div></div>`;}).join('')
     + (pre?'':Object.entries(S.gifts).map(([id,q])=>{const p=byId(id);return `<div class="row gift"><img src="${p.img}" alt=""><div>🎁 ${esc(p.n)}${q>1?' × '+q:''}<small>подарък по избор</small></div><div class="p free"><s>${fmt(p.pr*q)}</s>0 €</div></div>`;}).join(''))
     + (early&&!pre?`<div class="row v"><div class="ic">🎟️</div><div>${n} × ваучер 10 € за 2027<small>пристигат по имейл след доставката</small></div><div class="p" style="color:var(--goldd)">${n*VOUCHER} €</div></div>`:'')
-    + (walletDiscount()?`<div class="row v"><div class="ic">👛</div><div>Подаръкът ти за днес${S.coldBonus==='p10'?' · −10 %':' · ваучер 6,50 €'}<small>от портфейла · важи още <span data-cd="walletExp">${mmss(S.walletExp-Date.now())}</span></small></div><div class="p" style="color:var(--goldd)">−${fmt(walletDiscount())}</div></div>`:'')
+    + (walletDiscount()?`<div class="row v"><div class="ic">👛</div><div>Ваучер 6,50 € · ANSA650<small>от портфейла · важи още <span data-cd="walletExp">${mmss(S.walletExp-Date.now())}</span></small></div><div class="p" style="color:var(--goldd)">−${fmt(walletDiscount())}</div></div>`:'')
     + (affDiscount()?`<div class="row v"><div class="ic">🎟️</div><div>Ваучер 10 € от ${AFF.name}<small>подаръкът ти от записването</small></div><div class="p" style="color:var(--goldd)">−${fmt(affDiscount())}</div></div>`:'')
     + (early&&isAff()&&S.email&&S.affBonus==='eye'?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от ${AFF.name}</small></div><div class="p free"><s>15,90 €</s>0 €</div></div>`:'')
     + (S.phase==='public'&&isAff()?`<div class="row gift"><div class="ic" style="background:var(--gs)">🎭</div><div>CollaMask колагенова маска<small>подарък от ${AFF.name} · код MASK01, добавен автоматично</small></div><div class="p free"><s>29,90 €</s>0 €</div></div>`:'')
