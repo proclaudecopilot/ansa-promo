@@ -196,7 +196,7 @@ button{font-family:inherit;cursor:pointer}
 .sline{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;margin-bottom:8px;gap:8px}
 .sline>span:first-child{white-space:nowrap}
 .sline b{color:var(--o)}.sline .ok{color:var(--gd);text-align:right}
-.slots{display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.slots{display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
 .slot{flex:none;width:48px;height:48px;border:2px dashed var(--ol);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--tan2);font-size:13px;background:#fff;overflow:hidden}
 .slot.f{border:2px solid var(--g);padding:0}
 .slot.f img{width:100%;height:100%;object-fit:cover}
@@ -561,7 +561,7 @@ function vGifts(){
     <div style="height:8px"></div>
   </div></div>
   <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>
-    <div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}${isEarly()?` + ${n*VOUCHER} € ваучери`:''}</span></div><div class="slots">${slots}<div class="lab">${left>0?`Още ${left} ${left===1?'подарък':'подаръка'} по избор.`:'Всички подаръци са избрани ✔'}</div></div>
+    <div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}${isEarly()?` + ${n*VOUCHER} € ваучери`:''}</span></div><div class="slots">${slots}</div>
     ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
   </div>`;
 }
