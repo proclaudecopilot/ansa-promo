@@ -32,6 +32,8 @@ button{font-family:inherit;cursor:pointer}
 @media (max-height:720px){.shopnote{display:none}.hero{padding:8px 14px 10px}.eq{padding:7px 6px;margin-top:2px}.eq-note{display:none}.bxs{height:16px;margin-bottom:3px}.bx{width:16px;height:16px}.bx:after{top:5px}.bx.g:before{left:6.5px}.stepsbar{margin-bottom:6px}.foot{padding:8px 12px 10px}.cta{padding:12px 14px;font-size:15px}.tile{padding:8px}.tile img{width:56px;height:56px}.tile{grid-template-columns:56px 1fr auto}}
 @media (max-width:360px){.bar .reset .rl{display:none}.bar{gap:6px}.stepsbar div{font-size:9px;letter-spacing:0}.sline .ok{font-size:11.5px}.hrow{flex-wrap:wrap}.tpill{font-size:11px;padding:4px 8px}.eq-side b{font-size:14px}.eq-side small{white-space:normal}.sline{font-size:12px}.tile .n{font-size:13.5px}.addb{padding:8px 10px;font-size:12.5px}.vch .va{font-size:36px}.h1{font-size:20px}.em-body{padding:14px 14px}.wrap{padding:10px 12px 14px}}
 .cta{white-space:normal}
+.cta.sm{font-size:14px;padding:13px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:360px){.cta.sm{font-size:12.5px;padding:12px 8px}}
 .tpill{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .eq-side small{white-space:normal}
 .hdr>div:first-child{min-width:0}
@@ -473,7 +475,7 @@ function vShop(){
   const list=filtered(P.filter(p=>p.buy!==false&&!giftOnly(p)));
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 € от ${AFF.name})</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
-    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta" disabled>Добави опаковка, за да избереш подарък</button>`;
+    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta sm" disabled>Добави нещо, за да избереш подарък</button>`;
   return `<div class="scroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
@@ -562,7 +564,7 @@ function vDone(){
       </div>
     </div>
     <div class="trust">Ще ти напомним по имейл 2 дни преди старта и точно в 10:00 на ${DATE_EARLY}.</div>
-    <div class="trust" style="margin-top:12px"><button class="more" data-act="go" data-id="early">Напред към ранния достъп →</button></div>
+    <div class="trust" style="margin-top:12px">Линкът за ранния достъп идва само по имейл на ${DATE_EARLY} в 10:00.</div>
   </div></div>`;
   return `<div class="scroll"><div class="done">
     <div class="big">🎁</div>
