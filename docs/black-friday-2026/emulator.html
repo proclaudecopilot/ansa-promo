@@ -129,6 +129,34 @@ button{font-family:inherit;cursor:pointer}
 .vch .stamp{position:absolute;right:14px;top:12px;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;border:2px solid rgba(255,255,255,.8);border-radius:6px;padding:3px 6px;transform:rotate(8deg);opacity:.95}
 .vch.ok{background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 10px 30px rgba(22,163,74,.3)}
 .vch .vlogo{height:18px;position:absolute;left:18px;top:14px;opacity:.95}
+.howcard{background:#fff;border:1.5px solid var(--ol);border-radius:18px;padding:14px 12px 12px;box-shadow:0 6px 24px rgba(232,114,42,.10);overflow:hidden}
+.hc-row{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:stretch}
+.hc-col{background:var(--cream);border:1.5px solid var(--ol);border-radius:14px;padding:10px 6px 8px;text-align:center;min-width:0;display:flex;flex-direction:column;align-items:center}
+.hc-col em{margin-top:auto!important;padding-top:0}
+.hc-col small{margin-bottom:6px}
+.hc-col.g{background:#f3fbf5;border-color:rgba(34,197,94,.35)}
+.hc-col b{display:block;font-size:15px;font-weight:900;line-height:1.1;margin-top:6px}
+.hc-col.g b{color:var(--gd)}
+.hc-col small{display:block;font-size:11px;font-weight:700;color:var(--tan);line-height:1.2;margin-top:2px}
+.hc-col em{display:inline-block;font-style:normal;font-size:12px;font-weight:900;color:var(--ink);background:#fff;border:1px solid var(--ol);border-radius:999px;padding:2px 8px;margin-top:6px}
+.hc-col.g em{color:var(--gd);border-color:rgba(34,197,94,.35)}
+.hc-imgs{display:flex;justify-content:center;gap:4px}
+.hc-im{position:relative;width:46px;height:46px;border-radius:10px;overflow:hidden;border:2px solid var(--o);background:#fff;flex:none}
+.hc-im img{width:100%;height:100%;object-fit:cover;display:block}
+.hc-im.g{border-color:var(--g)}
+.hc-im i{position:absolute;right:-3px;bottom:-3px;font-size:11px;font-style:normal;background:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.hc-arr{display:flex;align-items:center}
+.hc-arr span{width:26px;height:26px;border-radius:50%;background:var(--o);color:#fff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(232,114,42,.35)}
+.hc-v{margin-top:8px;font-size:12px;font-weight:800;color:var(--goldd);background:#fff8e6;border:1px solid rgba(240,180,41,.5);border-radius:10px;padding:7px 10px;text-align:center}
+.hc-sum{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:var(--bf);color:#fff;border-radius:12px;font-size:13px;font-weight:700}
+.hc-sum b{font-weight:900;color:#4ade80}.hc-sum>b{color:#fff;font-size:15px;white-space:nowrap}
+.hc-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;position:relative}
+.hc-steps:before{content:"";position:absolute;left:16%;right:16%;top:13px;height:2px;background:var(--ol)}
+.hc-steps div{position:relative;text-align:center;font-size:11px;font-weight:700;color:var(--ink2);line-height:1.2}
+.hc-steps i{display:flex;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-style:normal;font-weight:900;font-size:12px;align-items:center;justify-content:center;margin:0 auto 5px;border:3px solid #fff;box-sizing:content-box}
+.hc-steps div:nth-child(2) i{background:var(--g)}.hc-steps div:nth-child(3) i{background:var(--o)}
+@media (max-width:360px){.hc-im{width:40px;height:40px}.hc-col b{font-size:14px}.hc-steps div{font-size:10.5px}.hc-sum{font-size:12px}.hc-sum>b{font-size:13.5px}}
+.hc-sum span{white-space:nowrap}
 .affnote{font-size:12px;font-weight:700;color:#fff;background:rgba(232,114,42,.18);border:1px solid rgba(232,114,42,.45);border-radius:10px;padding:7px 10px;margin:0 0 8px}
 .affnote b{color:var(--o2)}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
@@ -490,17 +518,26 @@ function vShop(){
     <div class="lead shopnote" style="margin:-4px 0 8px;font-size:12.5px">Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).</div>
     ${chips()}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
-    <div class="k2">Как работи, с пример</div>
-    <div class="calc">
-      <div class="l">Купуваш 2 кутии Грийнс <span>87,80 €</span></div>
-      <div class="l">Избираш си 2 подаръка — напр. KeraTonica и Берберин <span>0 €</span></div>
-      ${early?'<div class="l">Получаваш и 2 ваучера по 10 € за 2027 <span>20 €</span></div>':''}
-      <div class="l">Вкъщи пристигат 4 кутии <span>плащаш 87,80 €</span></div>
-    </div>
-    <div class="steps">
-      <div class="st"><i>1</i><div>Избираш какво купуваш</div></div>
-      <div class="st"><i>2</i><div>Избираш толкова подаръка, колкото опаковки си купил<small>може и същия продукт</small></div></div>
-      <div class="st"><i>3</i><div>Завършваш поръчката.${early?' Ваучерите идват по имейл.':''}</div></div>
+    <div class="k2">Как работи · пример</div>
+    <div class="howcard">
+      <div class="hc-row">
+        <div class="hc-col">
+          <div class="hc-imgs"><span class="hc-im"><img src="img/greens.jpg" alt=""></span><span class="hc-im"><img src="img/greens.jpg" alt=""></span></div>
+          <b>Купуваш 2</b><small>Daily Greens</small><em>87,80 €</em>
+        </div>
+        <div class="hc-arr"><span>→</span></div>
+        <div class="hc-col g">
+          <div class="hc-imgs"><span class="hc-im g"><img src="img/kera.jpg" alt=""><i>🎁</i></span><span class="hc-im g"><img src="img/berberin.jpg" alt=""><i>🎁</i></span></div>
+          <b>Избираш 2</b><small>напр. KeraTonica + Берберин</small><em>0 €</em>
+        </div>
+      </div>
+      ${early?'<div class="hc-v">🎟️ + 2 ваучера по 10 € за 2027 — идват по имейл</div>':''}
+      <div class="hc-sum"><span>Вкъщи пристигат <b>4 кутии</b></span><b>плащаш 87,80 €</b></div>
+      <div class="hc-steps">
+        <div><i>1</i>Избираш какво купуваш</div>
+        <div><i>2</i>Избираш толкова подаръка, колкото опаковки</div>
+        <div><i>3</i>Завършваш поръчката</div>
+      </div>
     </div>
     <div class="footnote">Цените са от ansa.bg към 03.11.2026. Участват само единични опаковки на редовна цена.</div>
   </div></div>
