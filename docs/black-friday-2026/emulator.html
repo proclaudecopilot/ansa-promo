@@ -113,8 +113,8 @@ button{font-family:inherit;cursor:pointer}
 @keyframes eqpop{0%{transform:scale(.92);opacity:.4}100%{transform:none;opacity:1}}
 @keyframes bxin{0%{transform:translateY(8px) scale(.6);opacity:0}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){.eq.pop .eq-side,.eq.pop .bx{animation:none}}
-.vch{position:relative;background:linear-gradient(135deg,#e8722a 0%,#f59e0b 100%);color:#fff;border-radius:16px;padding:16px 18px 14px;box-shadow:0 10px 30px rgba(232,114,42,.35);overflow:hidden;margin:4px 0 12px}
-.vch:before,.vch:after{content:"";position:absolute;top:50%;width:26px;height:26px;border-radius:50%;background:#fff;transform:translateY(-50%)}
+.vch{position:relative;background:linear-gradient(135deg,#e8722a 0%,#f59e0b 100%);color:#fff;border-radius:16px;padding:16px 18px 14px;box-shadow:0 10px 30px rgba(232,114,42,.35);overflow:hidden;margin:0 0 12px}
+.vch:before,.vch:after{content:"";position:absolute;top:50%;width:26px;height:26px;border-radius:50%;background:var(--cream);transform:translateY(-50%)}
 .vch:before{left:-13px}.vch:after{right:-13px}
 .vch .vt{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
 .vch .va{font-size:44px;font-weight:900;line-height:1;margin:6px 0 2px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
@@ -381,8 +381,8 @@ function vSignup(){
     <p class="sub">Запиши се за ранен достъп и вземи ваучер за днес — не за след три седмици.</p>
   </div>
   <div class="wrap">
-    <div class="card" style="padding-top:10px">
-      ${voucherCard({locked:true, cd:'coldExp'})}
+    ${voucherCard({locked:true, cd:'coldExp'})}
+    <div class="card">
       <div class="h2" style="font-size:16px;text-align:center">Въведи имейла си, за да го отключиш</div>
       ${emailForm('Отключи ваучера<small>'+(live?'изтича след <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span>':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
       <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта. Без спам.</div>
