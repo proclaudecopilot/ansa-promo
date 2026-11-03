@@ -16,13 +16,26 @@ button{font-family:inherit;cursor:pointer}
 .bar{background:var(--bar);border-bottom:1px solid var(--bar-line);padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;position:sticky;top:env(safe-area-inset-top,0px);z-index:50}
 .bar .t{font-weight:900;font-size:14px;letter-spacing:.02em;margin-right:4px}
 .bar .t small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.bar .t .short{display:none}
+@media (max-width:480px){.bar .t .long{display:none}.bar .t .short{display:inline}}
 .seg{display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:3px}
 .seg button{border:none;background:transparent;color:var(--fg);font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:8px;white-space:nowrap}
 .seg button.on{background:var(--accent);color:#fff}
 .bar .reset{margin-left:auto;border:1.5px solid var(--bar-line);background:transparent;color:var(--fg);font-weight:800;font-size:12px;border-radius:8px;padding:6px 10px}
 .stage{flex:1;min-height:0;display:flex;justify-content:center;align-items:stretch;padding-block:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .phone{width:390px;max-width:100%;height:100%;max-height:844px;background:var(--cream);color:var(--ink);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);position:relative;display:flex;flex-direction:column;font-size:15px;line-height:1.4}
-@media (max-width:480px){.stage{padding:0}.phone{border-radius:0;max-height:none;width:100%;box-shadow:none}.bar{padding-block:6px;gap:6px}.bar .t{font-size:12.5px}.bar .t small{display:none}.seg{order:3;width:100%;display:flex}.seg.src{order:4}.seg button{flex:1;padding:6px 4px;font-size:11.5px}.bar .reset{font-size:11px;padding:5px 8px}}
+@media (max-width:480px){.stage{padding:0}.phone{border-radius:0;max-height:none;width:100%;box-shadow:none}.bar{padding-block:6px;gap:6px}.bar .t{font-size:12.5px}.bar .t small{display:none}.seg{order:3;width:100%;display:flex}.seg.src{order:4}.seg button{flex:1;padding:6px 4px;font-size:11.5px}.bar .reset{font-size:11px;padding:5px 8px}
+  .bar.collapsed .seg{display:none}}
+.bar .sum{display:none;margin-left:auto;align-items:center;gap:6px;border:1.5px solid var(--bar-line);background:transparent;color:var(--fg);font-weight:800;font-size:11.5px;border-radius:8px;padding:5px 8px;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){.bar .reset{margin-left:0}.bar .sum{display:inline-flex}}
+/* small phones: tighter hero and footer so products stay above the fold */
+@media (max-height:720px){.shopnote{display:none}.hero{padding:8px 14px 10px}.eq{padding:7px 6px;margin-top:2px}.eq-note{display:none}.bxs{height:16px;margin-bottom:3px}.bx{width:16px;height:16px}.bx:after{top:5px}.bx.g:before{left:6.5px}.stepsbar{margin-bottom:6px}.foot{padding:8px 12px 10px}.cta{padding:12px 14px;font-size:15px}.tile{padding:8px}.tile img{width:56px;height:56px}.tile{grid-template-columns:56px 1fr auto}}
+@media (max-width:360px){.bar .reset .rl{display:none}.bar{gap:6px}.stepsbar div{font-size:9px;letter-spacing:0}.sline .ok{font-size:11.5px}.hrow{flex-wrap:wrap}.tpill{font-size:11px;padding:4px 8px}.eq-side b{font-size:14px}.eq-side small{white-space:normal}.sline{font-size:12px}.tile .n{font-size:13.5px}.addb{padding:8px 10px;font-size:12.5px}.vch .va{font-size:36px}.h1{font-size:20px}.em-body{padding:14px 14px}.wrap{padding:10px 12px 14px}}
+.cta{white-space:normal}
+.tpill{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.eq-side small{white-space:normal}
+.hdr>div:first-child{min-width:0}
+.hdr b,.hdr small{overflow-wrap:anywhere}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
 .foot{background:#fffdfb;border-top:1.5px solid var(--ol);box-shadow:0 -4px 20px rgba(0,0,0,.08);padding:10px 14px 14px;position:relative;flex:none}
 /* brand pieces */
@@ -121,7 +134,9 @@ button{font-family:inherit;cursor:pointer}
 .stepsbar div{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:rgba(255,255,255,.55);border-top:3px solid rgba(255,255,255,.2);padding-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stepsbar div.on{color:#fff;border-top-color:var(--o2)}
 .stepsbar div.done{color:rgba(255,255,255,.8);border-top-color:var(--g)}
-.hdr .stepsbar{grid-column:1/-1;margin:8px 0 0}
+.hdr .stepsbar{flex:0 0 100%;margin:8px 0 0}
+.hdr>div:first-child{flex:1 1 0}
+.hdr .x{flex:none}
 .tile .gl{display:inline-block;font-size:11.5px;font-weight:800;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 7px;margin-top:4px}
 .strip-hint{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin:-6px 0 10px}
 .tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07)}
@@ -244,7 +259,7 @@ button{font-family:inherit;cursor:pointer}
 </style>
 
 <div class="bar">
-  <div class="t">ansa™ Black Friday · емулатор<small>кликаем прототип, текстовете и датите са примерни</small></div>
+  <div class="t"><span class="long">ansa™ Black Friday · емулатор</span><span class="short">BF емулатор</span><small>кликаем прототип, текстовете и датите са примерни</small></div>
   <div class="seg" id="phaseSeg">
     <button data-phase="prep">Подготовка</button>
     <button data-phase="emails">Имейли</button>
@@ -255,7 +270,8 @@ button{font-family:inherit;cursor:pointer}
     <button data-src="ad">📣 От реклама</button>
     <button data-src="aff">🔗 ?ref=RADINA</button>
   </div>
-  <button class="reset" id="resetBtn">↺ Отначало</button>
+  <button class="sum" id="barSum" aria-expanded="false" title="Смени фаза / източник">Подготовка · 📣 ▾</button>
+  <button class="reset" id="resetBtn" title="Отначало">↺<span class="rl"> Отначало</span></button>
 </div>
 <div class="stage"><div class="phone" id="phone"></div></div>
 
@@ -468,7 +484,7 @@ function vShop(){
   </div>
   <div class="wrap" style="padding-top:10px">
     <div class="k2" style="margin-top:4px">Стъпка 1 · Избери какво купуваш</div>
-    <div class="lead" style="margin:-4px 0 8px;font-size:12.5px">Новите 4 продукта (KeraTonica, Alivia, VenoTonus, AHCC-Бета) ги получаваш само като подарък — избираш ги в стъпка 2.</div>
+    <div class="lead shopnote" style="margin:-4px 0 8px;font-size:12.5px">Новите 4 продукта (KeraTonica, Alivia, VenoTonus, AHCC-Бета) ги получаваш само като подарък — избираш ги в стъпка 2.</div>
     ${chips()}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
     <div class="k2">Как работи, с пример</div>
@@ -661,6 +677,7 @@ function render(){
   const scr=phone.querySelector('.scroll'); if(scr && keep) scr.scrollTop=keep;
   document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.src===S.src));
+  const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
   const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
   const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
   const gs=document.getElementById('giftScroll'); if(gs){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
@@ -696,7 +713,9 @@ phone.addEventListener('click', e=>{
 });
 function trimGifts(){ let over=giftCount()-paidCount(); if(over<=0) return; for(const id of Object.keys(S.gifts).reverse()){ while(over>0&&S.gifts[id]>0){S.gifts[id]--;over--;} if(!S.gifts[id]) delete S.gifts[id]; if(over<=0) break; } }
 function setPhase(ph){ if(ph==='aff'){ S.src='aff'; ph='prep'; } S.phase=ph; if(ph==='prep'){ if(!['signup','done','wallet','precheckout','predone'].includes(S.screen)) S.screen = S.email ? (isAff()?'done':'wallet') : 'signup'; if(isAff()&&['wallet','precheckout','predone'].includes(S.screen)) S.screen=S.email?'done':'signup'; if(!isAff()&&S.screen==='done') S.screen='wallet'; S.cart={}; S.gifts={}; } else if(ph==='early'||ph==='public'){ if(!['shop','gifts','checkout','ordered'].includes(S.screen)) S.screen='shop'; if(ph==='public'&&S.screen==='shop'){} } render(); }
-document.getElementById('phaseSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setPhase(b.dataset.phase); });
+document.getElementById('phaseSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setPhase(b.dataset.phase); if(window.matchMedia('(max-width:480px)').matches) barEl.classList.add('collapsed'); } });
+const barEl=document.querySelector('.bar'); barEl.classList.add('collapsed');
+document.getElementById('barSum').addEventListener('click',()=>{ const c=barEl.classList.toggle('collapsed'); document.getElementById('barSum').setAttribute('aria-expanded', String(!c)); });
 document.getElementById('srcSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; S.src=b.dataset.src; if(S.phase==='prep'){ S.screen = S.email ? (isAff()?'done':'wallet') : 'signup'; S.cart={}; } render(); });
 document.getElementById('resetBtn').addEventListener('click',()=>{ S=S0(); try{sessionStorage.removeItem('ansa_bf_emu');}catch(e){} render(); });
 window.addEventListener('hashchange',()=>{ const h=location.hash.replace('#',''); if(h==='aff'){ if(!(S.src==='aff'&&S.phase==='prep')) setPhase('aff'); return; } if(['prep','emails','early','public'].includes(h)&&h!==S.phase) setPhase(h); });
