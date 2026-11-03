@@ -145,7 +145,7 @@ button{font-family:inherit;cursor:pointer}
 .tile>div{min-width:0}
 .tile img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f5efe8}
 .tile .n{font-size:14.5px;font-weight:900;line-height:1.15}
-.tile .n small{display:block;font-size:11.5px;color:var(--tan);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .n small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:11.5px;color:var(--tan);font-weight:600;margin-top:2px;overflow:hidden;line-height:1.25}
 .tile .pr{font-size:14px;font-weight:800;color:var(--o);margin-top:3px}
 .tile .pr s{font-size:11px;color:var(--tan2);font-weight:500;margin-right:4px}
 .tile .pr.free{color:var(--gd)}
@@ -203,7 +203,7 @@ button{font-family:inherit;cursor:pointer}
 .faqa{font-size:13px;font-weight:600;color:var(--mut);padding:0 0 10px;line-height:1.45}
 .footnote{font-size:11px;color:var(--tan);text-align:center;padding:14px 20px 20px;line-height:1.5}
 .pillo{display:inline-block;font-size:11.5px;font-weight:800;border-radius:8px;padding:4px 8px;background:var(--os);color:var(--od);border:1px solid var(--ol)}
-.pillg{display:inline-block;font-size:11.5px;font-weight:800;border-radius:8px;padding:4px 8px;background:var(--gs);color:var(--gd);border:1px solid rgba(34,197,94,.25)}
+.pillg{display:inline-block;white-space:nowrap;font-size:11.5px;font-weight:800;border-radius:8px;padding:4px 8px;background:var(--gs);color:var(--gd);border:1px solid rgba(34,197,94,.25)}
 .timer{display:flex;gap:6px;justify-content:center}
 .timer div{background:#fff;border:1.5px solid var(--ol);border-radius:10px;min-width:62px;padding:6px 4px;text-align:center}
 .timer b{display:block;font-size:22px;font-weight:900;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
@@ -211,9 +211,10 @@ button{font-family:inherit;cursor:pointer}
 .hero .timer div,.em-hero .timer div{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}.hero .timer b,.em-hero .timer b{color:#fff}.hero .timer small,.em-hero .timer small{color:rgba(255,255,255,.6)}
 /* sheet */
 .dim{position:absolute;inset:0;background:rgba(26,26,46,.55);z-index:20;border:none;padding:0;width:100%}
-.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:88%;display:flex;flex-direction:column;animation:up .25s ease-out}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:82%;display:flex;flex-direction:column;animation:up .25s ease-out}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){.sheet{animation:none}.bar2 i{transition:none}}
+.sheet .shx{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;border:none;background:var(--os);color:var(--od);font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center}
 .sheet .grab{width:40px;height:5px;border-radius:99px;background:var(--ol);margin:10px auto 6px;flex:none}
 .sheet .sbody{padding:6px 16px 8px;overflow-y:auto;min-height:0}
 .sheet .ph{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center;margin-bottom:10px}
@@ -250,7 +251,7 @@ button{font-family:inherit;cursor:pointer}
 .calc .l span{color:var(--mut);font-weight:700;text-align:right}
 .badge216{display:inline-block;background:var(--os);color:var(--od);border:1px solid var(--ol);border-radius:999px;padding:3px 9px;font-size:12.5px;font-weight:900}
 .em-foot{padding:14px 20px 22px;font-size:11px;color:var(--tan);line-height:1.5;border-top:1px solid var(--ol);text-align:center}
-.emtabs{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:var(--cream);border-bottom:1px solid var(--ol);scrollbar-width:none;flex:none}
+.emtabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:var(--cream);border-bottom:1px solid var(--ol);flex:none}
 .emtabs button{flex:none;font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid var(--ol);background:#fff;color:var(--tan)}
 .emtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .toast{position:absolute;left:16px;right:16px;bottom:90px;background:var(--ink);color:#fff;font-weight:800;font-size:13px;border-radius:12px;padding:10px 14px;z-index:40;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
@@ -361,7 +362,7 @@ function filtered(list){
 }
 function catCount(k, pool){ return (pool||P.filter(p=>p.buy!==false&&!giftOnly(p))).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
 function chips(pool){ const cats=CATS.filter(([k])=>catCount(k,pool)>0); if(!cats.some(([k])=>k===S.filter)) S.filter='all'; return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${cats.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k,pool)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
-function stepsBar(cur){ const L=['1 · Продукти','2 · Подаръци','3 · Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
+function stepsBar(cur){ const L=['Продукти','Подаръци','Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
 function eqHtml(k, early){ const one=k===1; const bx=(c)=>Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${k} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${k} ${one?'подарък':'подаръка'}</b><small>по избор${early?` + ${k*VOUCHER} € ваучер${one?'':'и'}`:''}</small></div>`; }
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
@@ -442,7 +443,7 @@ function vSignupDone(){
         <div class="st o"><i>3</i><div>${DATE_EARLY}, 10:00 — ранният достъп отваря<small>48 часа · всяка опаковка = 1 подарък по избор + 10 € ваучер</small></div></div>
       </div>
     </div>
-    <button class="cta" data-act="email-cta" data-id="preview">Разгледай продуктите преди старта</button>
+    <button class="cta" data-act="email-cta" data-id="preview">Разгледай продуктите</button>
     <div class="trust" style="margin-top:12px"><button class="more" data-act="go" data-id="emails">Виж имейлите и сторитата →</button></div>
   </div></div>`;
 }
@@ -474,7 +475,7 @@ function vShop(){
   const early=isEarly(), n=paidCount();
   const list=filtered(P.filter(p=>p.buy!==false&&!giftOnly(p)));
   const foot = n
-    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 € от ${AFF.name})</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 €)</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta sm" disabled>Добави нещо, за да избереш подарък</button>`;
   return `<div class="scroll" id="listScroll">
   <div class="hero">
@@ -633,7 +634,7 @@ function vStories(){
     <div class="h2">Сторита на партньора (${AFF.name})</div>
     <p class="lead">Какво публикува афилиейтът и къде води линкът му. Кликни бутона, за да видиш страницата, която отваря последователят.</p>
     ${story('По време на ранния достъп · 2–3 сторита','Предварителен достъп + гарантиран подарък','С моя линк имате предварителен достъп до Черния петък на ANSA, с гарантиран подарък — влезте сега и разгледайте продуктите преди официалния старт.','Отвори страницата от линка →','go','aff')}
-    ${story('По време на публичния старт · 1–2 сторита','Купуваш 1, получаваш 2 — и маска от мен','ANSA стартира тридневна промоция до изчерпване на количествата: купуваш 1, получаваш 2; купуваш 2, получаваш 4 — и така до безкрай. Имат и 4 нови продукта, влез и виж. С моя линк имаш допълнителен подарък — колагенова маска се добавя автоматично.','Отвори публичния BF с линка →','go','public-aff')}
+    ${story('По време на публичния старт · 1–2 сторита','Купуваш 1, получаваш 2 — и маска от мен','ANSA стартира тридневна промоция до изчерпване на количествата: купуваш 1, получаваш 2; купуваш 2, получаваш 4 — и така до безкрай. Имат и 4 нови продукта, влез и виж. С моя линк имаш допълнителен подарък — колагенова маска се добавя автоматично.','Отвори публичния BF →','go','public-aff')}
     <div class="footnote">Партньорът получава комисионата си по правилата на ANSA Partner (?ref=КОД, атрибуция при поръчка). Маската е купон MASK01, който се прилага автоматично за ref-трафик.</div>
   </div></div>`;
 }
@@ -648,7 +649,7 @@ function vSheet(){
   const inGifts = S.screen==='gifts';
   const canGift = giftCount()<paidCount();
   return `<button class="dim" data-act="sheet" data-id="" aria-label="затвори"></button><div class="sheet" role="dialog" aria-label="${esc(p.n)}">
-    <div class="grab"></div>
+    <div class="grab"></div><button class="shx" data-act="sheet" data-id="" aria-label="затвори">✕</button>
     <div class="sbody">
       <div class="ph"><img src="${p.img}" alt=""><div><div class="n">${esc(p.n)} ${p.isNew?'<span class="pillo">НОВО</span>':''}<small>${esc(p.s)} · 1 месец</small></div><div class="pr">${fmt(p.pr)} <span style="font-size:12px;color:var(--tan);font-weight:700">/ кутия</span></div></div></div>
       <div class="stars"><b>★★★★★</b> ${p.rv==='0'?'нов продукт · 216 дни разработка':p.rt+' · '+p.rv+' мнения'}</div>
