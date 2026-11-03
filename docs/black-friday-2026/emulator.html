@@ -454,11 +454,11 @@ function vWallet(){
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${walletDiscount()?`−${fmt(walletDiscount())} с ваучера`:(live?'':'ваучерът изтече')}</span></div><button class="cta" data-act="screen" data-id="precheckout">Бърза поръчка →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">${live?`ваучер ${bonusLbl} в портфейла`:''}</span></div><button class="cta" disabled>Добави нещо за днес</button>`;
-  return `<div class="scroll">
+  return `<div class="scroll" id="listScroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">👛 портфейл ${bonusLbl} · <b data-cd="walletExp">${mmss(S.walletExp-Date.now())}</b></span></div>
     <div class="h1">Вътре си. <em>${live?'Ваучерът е отключен.':'Ваучерът за днес изтече.'}</em></div>
-    <p class="sub">${live?`Не чакай промото — започни още днес с нещо малко. Ако ти хареса, се готви за ${DATE_EARLY}: тогава всяка поръчана опаковка = 1 опаковка подарък от продукт по избор.`:`Записана си за ранния достъп на ${DATE_EARLY}. Можеш да поръчаш и сега на редовна цена.`}</p>
+    <p class="sub">${live?`Не чакай промото — започни още днес с нещо малко. Ще ти хареса, та със сигурност се готви за ${DATE_EARLY}: тогава всяка поръчана опаковка = 1 опаковка подарък от продукт по избор.`:`Записана си за ранния достъп на ${DATE_EARLY}. Можеш да поръчаш и сега на редовна цена.`}</p>
   </div>
   <div class="wrap" style="padding-top:10px">
     ${live?voucherCard({locked:false, cd:'walletExp'}):''}
@@ -468,7 +468,7 @@ function vWallet(){
     ${list.map(p=>productTile(p,'buy')).join('')}
     <div class="footnote">Цените са редовни. Подаръкът от записването се приспада в количката.</div>
   </div></div>
-  <div class="foot">${foot}</div>`;
+  <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>${foot}</div>`;
 }
 function vShop(){
   const early=isEarly(), n=paidCount();
@@ -476,7 +476,7 @@ function vShop(){
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 € от ${AFF.name})</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta sm" disabled>Добави нещо, за да избереш подарък</button>`;
-  return `<div class="scroll">
+  return `<div class="scroll" id="listScroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
     ${stepsBar(1)}
@@ -503,7 +503,7 @@ function vShop(){
     </div>
     <div class="footnote">Цените са от ansa.bg към 03.11.2026. Участват само единични опаковки на редовна цена.</div>
   </div></div>
-  <div class="foot">${foot}</div>`;
+  <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>${foot}</div>`;
 }
 function vGifts(){
   const n=paidCount(), g=giftCount(), left=n-g;
@@ -682,7 +682,7 @@ function render(){
   const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
   const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
   const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
-  const gs=document.getElementById('giftScroll'); if(gs){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
+  const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs&&document.getElementById('morePill')){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
   try{ const h='#'+((S.phase==='prep'&&isAff())?'aff':S.phase); if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
   save();
 }
@@ -710,7 +710,7 @@ phone.addEventListener('click', e=>{
   else if(act==='email-cta'){ if(id==='preview'){ toast('Преди старта линкът води към страница само за разглеждане'); S.phase='early'; S.screen='shop'; } else { setPhase(id); return; } }
   else if(act==='toast'){ toast(id); return; }
   else if(act==='copy'){ const code=id; const done=()=>toast('Кодът '+code+' е копиран'); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done).catch(()=>toast('Кодът: '+code)); } else toast('Кодът: '+code); return; }
-  else if(act==='scrolldown'){ const gs=document.getElementById('giftScroll'); if(gs) gs.scrollBy({top:gs.clientHeight*0.8,behavior:'smooth'}); return; }
+  else if(act==='scrolldown'){ const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs) gs.scrollBy({top:gs.clientHeight*0.8,behavior:'smooth'}); return; }
   render();
 });
 function trimGifts(){ let over=giftCount()-paidCount(); if(over<=0) return; for(const id of Object.keys(S.gifts).reverse()){ while(over>0&&S.gifts[id]>0){S.gifts[id]--;over--;} if(!S.gifts[id]) delete S.gifts[id]; if(over<=0) break; } }
