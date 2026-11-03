@@ -117,10 +117,12 @@ button{font-family:inherit;cursor:pointer}
 .tile .pr s{font-size:11px;color:var(--tan2);font-weight:500;margin-right:4px}
 .tile .pr.free{color:var(--gd)}
 .tile.on{border-color:var(--g);background:#fbfff9}
+.tile.go{border-style:dashed;background:#fffdf9}
 .tile .nb{font-size:9.5px;font-weight:900;color:#fff;background:var(--o);border-radius:5px;padding:2px 5px;margin-right:5px;vertical-align:1px;letter-spacing:.06em}
 .more{border:none;background:none;padding:0;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px;display:inline-block}
 .addb{border:none;border-radius:11px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:13px;font-weight:800;padding:9px 12px;white-space:nowrap}
 .addb:disabled{background:#f6c9a6;cursor:not-allowed}
+.addb.soft{background:#fff;color:var(--od);border:1.5px solid var(--o)}
 .step{display:flex;align-items:center;gap:6px}
 .step button{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(232,114,42,.35);background:#fff;color:var(--o);font-weight:900;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .step button:disabled{opacity:.35;cursor:not-allowed}
@@ -249,10 +251,10 @@ const P = [
  {id:'greens',  n:'Daily Greens',     s:'чревно здраве и лекота',        pr:43.90, img:'img/greens.jpg',  cat:'stomach', fav:true,  desc:'Най-продаваната зелена напитка в България: 69 суперхрани в едно саше на ден. За подуване, тежест и енергия през деня.', ing:'спирулина, хлорела, пшенична трева, ябълков пектин, пробиотици, храносмилателни ензими', how:'1 саше в 250 мл вода сутрин, преди или с храна. 30 сашета = 30 дни.', who:'За всеки с подуване след хранене, нередовен стомах или нужда от повече зеленчуци в деня.', rt:'4,9', rv:'15 300'},
  {id:'berberin',n:'ДихидроБерберин',  s:'апетит и кръвна захар',         pr:59.00, img:'img/berberin.jpg',cat:'weight',  fav:true,  desc:'Оригиналният дихидроберберин №1 в България: по-малко апетит и стабилна кръвна захар, без тежките стомашни ефекти на обикновения берберин.', ing:'дихидроберберин 200 мг, хром, канела в DRcaps капсули', how:'1 капсула преди основно хранене, до 2 на ден.', who:'За хора с глад за сладко, скокове на захарта и бавно отслабване.', rt:'4,8', rv:'3 900'},
  {id:'sakura',  n:'Sakura SkinTonic', s:'кожа, тен и фини линии',        pr:49.50, img:'img/sakura.jpg',  cat:'skin',    fav:true,  desc:'Японска напитка с вишна и нар за кожата след 40: колаген, хиалуронова киселина и екстракт от сакура.', ing:'морски колаген 5 г, хиалуронова киселина, вишна, нар, витамин C', how:'1 саше дневно, разтворено във вода. Вкус на вишна.', who:'За суха кожа, фини линии и изгубен блясък.', rt:'4,9', rv:'2 100'},
- {id:'kera',    n:'KeraTonica',       s:'коса, мигли и вежди',           pr:45.00, img:'img/kera.jpg',    cat:'skin',    isNew:true, desc:'Косопад след стрес, раждане или 40+, редки мигли и вежди, чуплива коса. KeraTonica работи от корена в една напитка с вкус на праскова.', ing:'биотин, колагенови пептиди, цинк, японска камелия, MSM', how:'1 саше дневно. Първи видим ефект след 6–8 седмици.', who:'За косопад, тънка коса, редки мигли и вежди.', rt:'4,9', rv:'112'},
- {id:'alivia',  n:'Alivia',           s:'скованост, дискомфорт',         pr:45.00, img:'img/alivia.jpg',  cat:'body',    isNew:true, desc:'При сутрешна скованост, хроничен дискомфорт в стави и мускули. Куркумин с висока усвоимост, босвелия и PEA.', ing:'куркумин фитозом, босвелия, PEA, джинджифил', how:'2 капсули дневно с храна.', who:'За скованост сутрин, дискомфорт след натоварване, 45+.', rt:'нов', rv:'0'},
- {id:'veno',    n:'VenoTonus',        s:'здрави кръвоносни съдове',      pr:45.00, img:'img/veno.jpg',    cat:'body',    isNew:true, desc:'За тежки крака, видими капиляри и отоци към края на деня. Диосмин, конски кестен и рутин.', ing:'диосмин, хесперидин, конски кестен, рутин', how:'1 капсула сутрин и 1 вечер.', who:'За тежки крака, дълго стоене прав, разширени вени в семейството.', rt:'нов', rv:'0'},
- {id:'ahcc',    n:'AHCC-Бета',        s:'имунитет, гъбен комплекс',      pr:45.00, img:'img/ahcc.jpg',    cat:'body',    isNew:true, desc:'Двоен гъбен комплекс за имунитет: AHCC (шийтаке) и бета-глюкани за сезона на вирусите.', ing:'AHCC 500 мг, бета-глюкан 1,3/1,6, витамин D3, цинк', how:'2 капсули дневно, 3 месеца през зимата.', who:'За чести настинки, бавно възстановяване, есен и зима.', rt:'нов', rv:'0'},
+ {id:'kera',    n:'KeraTonica',       s:'коса, мигли и вежди',           pr:45.00, img:'img/kera.jpg', giftOnly:true,    cat:'skin',    isNew:true, desc:'Косопад след стрес, раждане или 40+, редки мигли и вежди, чуплива коса. KeraTonica работи от корена в една напитка с вкус на праскова.', ing:'биотин, колагенови пептиди, цинк, японска камелия, MSM', how:'1 саше дневно. Първи видим ефект след 6–8 седмици.', who:'За косопад, тънка коса, редки мигли и вежди.', rt:'4,9', rv:'112'},
+ {id:'alivia',  n:'Alivia',           s:'скованост, дискомфорт',         pr:45.00, img:'img/alivia.jpg', giftOnly:true,  cat:'body',    isNew:true, desc:'При сутрешна скованост, хроничен дискомфорт в стави и мускули. Куркумин с висока усвоимост, босвелия и PEA.', ing:'куркумин фитозом, босвелия, PEA, джинджифил', how:'2 капсули дневно с храна.', who:'За скованост сутрин, дискомфорт след натоварване, 45+.', rt:'нов', rv:'0'},
+ {id:'veno',    n:'VenoTonus',        s:'здрави кръвоносни съдове',      pr:45.00, img:'img/veno.jpg', giftOnly:true,    cat:'body',    isNew:true, desc:'За тежки крака, видими капиляри и отоци към края на деня. Диосмин, конски кестен и рутин.', ing:'диосмин, хесперидин, конски кестен, рутин', how:'1 капсула сутрин и 1 вечер.', who:'За тежки крака, дълго стоене прав, разширени вени в семейството.', rt:'нов', rv:'0'},
+ {id:'ahcc',    n:'AHCC-Бета',        s:'имунитет, гъбен комплекс',      pr:45.00, img:'img/ahcc.jpg', giftOnly:true,    cat:'body',    isNew:true, desc:'Двоен гъбен комплекс за имунитет: AHCC (шийтаке) и бета-глюкани за сезона на вирусите.', ing:'AHCC 500 мг, бета-глюкан 1,3/1,6, витамин D3, цинк', how:'2 капсули дневно, 3 месеца през зимата.', who:'За чести настинки, бавно възстановяване, есен и зима.', rt:'нов', rv:'0'},
  {id:'yoni',    n:'YoniBiotic 3в1',   s:'пробиотик за жени',             pr:34.90, img:'img/yoni.jpg',    cat:'women',   fav:true,  desc:'12 щама пробиотик за интимната флора, стомаха и имунитета.', ing:'12 щама, 20 млрд. CFU, D-маноза, клюква', how:'1 капсула дневно.', who:'За повтарящи се инфекции, след антибиотик, за баланс.', rt:'4,8', rv:'1 800'},
  {id:'reds',    n:'Red Routine',      s:'плодова добавка за сън',        pr:39.90, img:'img/reds.jpg',    cat:'sleep',   fav:true,  desc:'Вечерна плодова напитка за спокоен сън и възстановяване.', ing:'вишна, магнезий, L-теанин, ашваганда', how:'1 саше 30 мин преди сън.', who:'За трудно заспиване и събуждане уморен.', rt:'4,8', rv:'2 400'},
  {id:'meno',    n:'MenoStop',         s:'дневна и нощна капсула',        pr:39.90, img:'img/meno.jpg',    cat:'women',   fav:false, desc:'Дневна и нощна капсула за горещи вълни, настроение и сън по време на менопауза.', ing:'червена детелина, маточина, шафран, витамин B6', how:'дневна сутрин, нощна преди сън.', who:'За симптоми на менопауза.', rt:'4,7', rv:'900'},
@@ -264,6 +266,7 @@ const CATS=[['all','Всички'],['fav','Любими'],['new','Нови 4'],[
 const VOUCHER=10, FREE_SHIP_FROM=2, SHIP=2.55, DATE_EARLY='25.11', AFF={code:'RADINA', name:'Радина'};
 const mmss = ms => { ms=Math.max(0,ms); const m=Math.floor(ms/60e3), s=Math.floor(ms%60e3/1e3); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); };
 const isAff = () => S.src==='aff';
+const giftOnly = p => !!p.giftOnly;
 const byId = id => P.find(p=>p.id===id);
 const fmt = n => n.toFixed(2).replace('.',',')+' €';
 
@@ -299,6 +302,12 @@ setInterval(()=>{ phone.querySelectorAll('[data-cd]').forEach(el=>{ const ms=S[e
 function productTile(p, mode){
   const q = mode==='gift' ? (S.gifts[p.id]||0) : (S.cart[p.id]||0);
   const free = mode==='gift';
+  if(mode==='buy' && giftOnly(p)) return `<div class="tile go">
+    <img src="${p.img}" alt="">
+    <div><div class="n"><span class="nb">НОВО</span>${esc(p.n)}<small>${esc(p.s)}</small></div>
+      <div class="pr free">само като подарък <s style="margin-left:4px">${fmt(p.pr)}</s></div>
+      <button class="more" data-act="sheet" data-id="${p.id}">Прочети повече ▾</button></div>
+    <button class="addb soft" data-act="giftonly" data-id="${p.id}">🎁 Подарък</button></div>`;
   const right = mode==='gift'
     ? (q ? `<div class="step"><button data-act="gift-" data-id="${p.id}" aria-label="минус">−</button><b>${q}</b><button data-act="gift+" data-id="${p.id}" ${giftCount()>=paidCount()?'disabled':''} aria-label="плюс">+</button></div>`
          : `<button class="addb${giftCount()>=paidCount()?'':''}" data-act="gift+" data-id="${p.id}" ${giftCount()>=paidCount()?'disabled':''}>🎁 Избирам</button>`)
@@ -316,8 +325,8 @@ function filtered(list){
   const f=S.filter;
   return list.filter(p => f==='all' || (f==='fav'&&p.fav) || (f==='new'&&p.isNew) || p.cat===f);
 }
-function catCount(k){ return P.filter(p=>p.buy!==false).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
-function chips(){ return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${CATS.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
+function catCount(k, pool){ return (pool||P.filter(p=>p.buy!==false||giftOnly(p))).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
+function chips(pool){ const cats=CATS.filter(([k])=>catCount(k,pool)>0); if(!cats.some(([k])=>k===S.filter)) S.filter='all'; return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${cats.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k,pool)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
 function stepsBar(cur){ const L=['1 · Продукти','2 · Подаръци','3 · Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
 function eqHtml(k, early){ const one=k===1; const bx=(c)=>Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${k} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${k} ${one?'подарък':'подаръка'}</b><small>по избор${early?` + ${k*VOUCHER} € ваучер${one?'':'и'}`:''}</small></div>`; }
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
@@ -409,7 +418,7 @@ function vWallet(){
   if(!S.walletExp) S.walletExp=Date.now()+30*60e3;
   const live=walletLive(), n=paidCount();
   const bonusLbl = S.coldBonus==='p10' ? '−10 %' : '5 €';
-  const list=filtered(P.filter(p=>p.buy!==false));
+  const pool=P.filter(p=>p.buy!==false&&!giftOnly(p)), list=filtered(pool);
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${walletDiscount()?`−${fmt(walletDiscount())} от портфейла`:(live?'':'подаръкът изтече')}</span></div><button class="cta" data-act="screen" data-id="precheckout">Бърза поръчка →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">${live?`${bonusLbl} те чакат в портфейла`:''}</span></div><button class="cta" disabled>Добави нещо за днес</button>`;
@@ -422,7 +431,7 @@ function vWallet(){
   <div class="wrap" style="padding-top:10px">
     <div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">📅 ${DATE_EARLY}, 10:00</b><small>ранен достъп · ще ти пратим имейл точно в 10:00</small></span><span class="pillg">записана си ✔</span></div>
     <div class="k2">Избери нещо за днес</div>
-    ${chips()}
+    ${chips(pool)}
     ${list.map(p=>productTile(p,'buy')).join('')}
     <div class="footnote">Цените са редовни. Подаръкът от записването се приспада в количката.</div>
   </div></div>
@@ -430,7 +439,7 @@ function vWallet(){
 }
 function vShop(){
   const early=isEarly(), n=paidCount();
-  const list=filtered(P.filter(p=>p.buy!==false));
+  const list=filtered(P.filter(p=>p.buy!==false||giftOnly(p)));
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 € от ${AFF.name})</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta" disabled>Добави опаковка, за да избереш подарък</button>`;
@@ -444,6 +453,7 @@ function vShop(){
   </div>
   <div class="wrap" style="padding-top:10px">
     <div class="k2" style="margin-top:4px">Стъпка 1 · Избери какво купуваш</div>
+    <div class="lead" style="margin:-4px 0 8px;font-size:12.5px">Новите 4 продукта са само подаръци — купи опаковка от любимите си и си ги избери в стъпка 2.</div>
     ${chips()}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
     <div class="k2">Как работи, с пример</div>
@@ -611,9 +621,9 @@ function vSheet(){
       <div class="stars"><b>★★★★★</b> ${p.rv==='0'?'нов продукт · 216 дни разработка':p.rt+' · '+p.rv+' мнения'}</div>
       <div class="tabs">${tabs.map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-id="${k}">${l}</button>`).join('')}</div>
       ${body}
-      <p style="color:var(--tan);font-size:12.5px">${inGifts?'Избери го като подарък — не струва нищо.':'Подходящ и като подарък по избор към всяка опаковка.'}</p>
+      <p style="color:var(--tan);font-size:12.5px">${inGifts?'Избери го като подарък — не струва нищо.':(giftOnly(p)?'През Black Friday го получаваш само като подарък към опаковка.':'Подходящ и като подарък по избор към всяка опаковка.')}</p>
     </div>
-    <div class="sfoot">${inGifts?`<button class="cta" data-act="gift+" data-id="${p.id}" ${canGift?'':'disabled'}>🎁 Избирам го като подарък</button>`:`<button class="cta" data-act="cart+" data-id="${p.id}">＋ Добави · ${fmt(p.pr)}</button><div class="trust">или го избери като подарък в следващата стъпка</div>`}</div>
+    <div class="sfoot">${inGifts?`<button class="cta" data-act="gift+" data-id="${p.id}" ${canGift?'':'disabled'}>🎁 Избирам го като подарък</button>`:(giftOnly(p)?`<button class="cta" data-act="giftonly" data-id="${p.id}">🎁 Само като подарък · ${paidCount()?'избери го в стъпка 2':'първо добави опаковка'}</button><div class="trust">Новите продукти не се продават отделно през промото.</div>`:`<button class="cta" data-act="cart+" data-id="${p.id}">＋ Добави · ${fmt(p.pr)}</button><div class="trust">или го избери като подарък в следващата стъпка</div>`)}</div>
   </div>`;
 }
 
@@ -654,6 +664,7 @@ phone.addEventListener('click', e=>{
   else if(act==='cart-'){ if(S.cart[id]>1) S.cart[id]--; else delete S.cart[id]; trimGifts(); S._keepScroll=true; }
   else if(act==='gift+'){ if(giftCount()<paidCount()){ S.gifts[id]=(S.gifts[id]||0)+1; } S._keepScroll=!S.sheet; S.sheet=null; if(giftCount()===paidCount()) toast('Всички подаръци са избрани ✔'); }
   else if(act==='gift-'){ if(S.gifts[id]>1) S.gifts[id]--; else delete S.gifts[id]; S._keepScroll=true; }
+  else if(act==='giftonly'){ S.sheet=null; if(paidCount()){ S.screen='gifts'; } else { toast('Новите продукти са само подаръци. Добави опаковка и го избери в стъпка 2.'); S._keepScroll=true; } }
   else if(act==='sheet'){ S.sheet=id||null; S.tab='desc'; S._keepScroll=true; }
   else if(act==='tab'){ S.tab=id; S._keepScroll=true; }
   else if(act==='screen'){ if(id==='gifts'&&!paidCount()) return; S.screen=id; }
