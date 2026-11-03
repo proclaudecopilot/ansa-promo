@@ -170,8 +170,8 @@ button{font-family:inherit;cursor:pointer}
 .slot.next{border-color:var(--o);box-shadow:0 0 0 3px rgba(232,114,42,.15)}
 .slots .lab{font-size:12.5px;font-weight:700;color:var(--tan);margin-left:4px;flex:1;min-width:120px}
 .bar2{height:6px;background:var(--os);border-radius:99px;overflow:hidden;margin:4px 0 10px}.bar2 i{display:block;height:100%;background:linear-gradient(90deg,var(--o),var(--o2));border-radius:99px;transition:width .3s}
-.morepill{position:absolute;left:50%;transform:translateX(-50%);top:-18px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:7px 13px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:5;border:none}
-.fade{position:absolute;left:0;right:0;top:-46px;height:46px;background:linear-gradient(180deg,rgba(250,243,236,0),rgba(250,243,236,.95));pointer-events:none}
+.morepill{display:block;width:calc(100% + 28px);margin:-10px -14px 8px;background:var(--ink);color:#fff;font-size:11.5px;font-weight:800;padding:6px 10px;white-space:nowrap;border:none;text-align:center;letter-spacing:.02em}
+.fade{display:none}
 .rows{background:#fff;border:1.5px solid var(--ol);border-radius:14px;overflow:hidden}
 .row{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(232,114,42,.14);font-size:14px;font-weight:700}
 .row>div{min-width:0}
@@ -683,7 +683,7 @@ function render(){
   const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
   const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
   const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
-  const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs&&document.getElementById('morePill')){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
+  const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs&&document.getElementById('morePill')){ const pill=document.getElementById('morePill'); const upd=()=>{ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; const more=below>0 && gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
   try{ const h='#'+((S.phase==='prep'&&isAff())?'aff':S.phase); if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
   save();
 }
