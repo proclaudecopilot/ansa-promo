@@ -22,7 +22,7 @@ button{font-family:inherit;cursor:pointer}
 .bar .reset{margin-left:auto;border:1.5px solid var(--bar-line);background:transparent;color:var(--fg);font-weight:800;font-size:12px;border-radius:8px;padding:6px 10px}
 .stage{flex:1;min-height:0;display:flex;justify-content:center;align-items:stretch;padding-block:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .phone{width:390px;max-width:100%;height:100%;max-height:844px;background:var(--cream);color:var(--ink);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);position:relative;display:flex;flex-direction:column;font-size:15px;line-height:1.4}
-@media (max-width:480px){.stage{padding:0}.phone{border-radius:0;max-height:none;width:100%;box-shadow:none}.bar{padding-block:6px;gap:6px}.bar .t{font-size:12.5px}.bar .t small{display:none}.seg{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}.seg button{padding:5px 8px;font-size:12px}.bar .reset{font-size:11px;padding:5px 8px}}
+@media (max-width:480px){.stage{padding:0}.phone{border-radius:0;max-height:none;width:100%;box-shadow:none}.bar{padding-block:6px;gap:6px}.bar .t{font-size:12.5px}.bar .t small{display:none}.seg{order:3;width:100%;display:flex}.seg button{flex:1;padding:6px 4px;font-size:11.5px}.bar .reset{font-size:11px;padding:5px 8px}}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
 .foot{background:#fffdfb;border-top:1.5px solid var(--ol);box-shadow:0 -4px 20px rgba(0,0,0,.08);padding:10px 14px 14px;position:relative;flex:none}
 /* brand pieces */
@@ -81,6 +81,21 @@ button{font-family:inherit;cursor:pointer}
 .selwrap select:focus-visible{outline:3px solid rgba(232,114,42,.5)}
 .selwrap .selarr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--o);font-weight:900;pointer-events:none}
 .strip.live{border-color:var(--g);background:#fbfff9}
+.stepsbar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0 0 10px}
+.stepsbar div{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.55);border-top:3px solid rgba(255,255,255,.2);padding-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stepsbar div.on{color:#fff;border-top-color:var(--o2)}
+.stepsbar div.done{color:rgba(255,255,255,.8);border-top-color:var(--g)}
+.hdr .stepsbar{grid-column:1/-1;margin:8px 0 0}
+.ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.ladder div{background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:7px 4px;text-align:center;font-size:11px;font-weight:800;color:var(--tan);line-height:1.15;display:flex;flex-direction:column;align-items:center;gap:1px}
+.ladder div b{font-size:17px;font-weight:900;color:var(--ink)}
+.ladder div i{font-style:normal;font-size:12px;color:var(--o);font-weight:900;line-height:1}
+.ladder div em{font-style:normal;font-size:17px;font-weight:900;color:var(--gd)}
+.ladder div small{font-size:10px;font-weight:800;color:var(--goldd);margin-top:2px}
+.ladder div.on{border-color:var(--g);background:#fbfff9;box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.ladder-t{font-size:12.5px;font-weight:700;color:var(--ink);margin:0 0 6px;text-align:center}
+.ladder-t b{color:var(--gd)}
+.tile .gl{display:inline-block;font-size:11.5px;font-weight:800;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 7px;margin-top:4px}
 .strip-hint{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin:-6px 0 10px}
 .tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07)}
 .tile>div{min-width:0}
@@ -99,7 +114,8 @@ button{font-family:inherit;cursor:pointer}
 .step button{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(232,114,42,.35);background:#fff;color:var(--o);font-weight:900;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .step button:disabled{opacity:.35;cursor:not-allowed}
 .step b{min-width:20px;text-align:center;font-size:16px}
-.sline{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;margin-bottom:8px;gap:8px}
+.sline{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;margin-bottom:8px;gap:8px}
+.sline>span:first-child{white-space:nowrap}
 .sline b{color:var(--o)}.sline .ok{color:var(--gd);text-align:right}
 .slots{display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
 .slot{flex:none;width:48px;height:48px;border:2px dashed var(--ol);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--tan2);font-size:13px;background:#fff;overflow:hidden}
@@ -271,6 +287,7 @@ function productTile(p, mode){
     <img src="${p.img}" alt="">
     <div><div class="n">${p.isNew?'<span class="nb">НОВО</span>':''}${esc(p.n)}<small>${esc(p.s)}</small></div>
       <div class="pr${free?' free':''}">${free?`<s>${fmt(p.pr)}</s>подарък`:fmt(p.pr)}</div>
+      ${(!free&&q)?`<div class="gl">🎁 носи ти +${q} ${q===1?'подарък':'подаръка'} по избор</div>`:''}
       <button class="more" data-act="sheet" data-id="${p.id}">Прочети повече ▾</button></div>
     ${right}</div>`;
 }
@@ -280,6 +297,8 @@ function filtered(list){
 }
 function catCount(k){ return P.filter(p=>p.buy!==false).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
 function chips(){ return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${CATS.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
+function stepsBar(cur){ const L=['1 · Купуваш','2 · Подаръци','3 · Поръчка']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
+function ladder(n, early){ const cur=Math.min(Math.max(n,1),3); return `<div class="ladder-t">${n?`Ти купуваш <b>${n}</b> → избираш си <b>${n}</b> ${n===1?'подарък':'подаръка'}${early?` + <b>${n*VOUCHER} €</b> ваучери`:''}`:'Колкото опаковки купиш, толкова подаръка си избираш:'}</div><div class="ladder">${[1,2,3].map(k=>`<div class="${n&&cur===k?'on':''}"><span><b>${k}</b> ${k===1?'опаковка':'опаковки'}</span><i>=</i><span><em>+${k}</em> ${k===1?'подарък':'подаръка'}</span>${early?`<small>+ ${k*VOUCHER} € ваучер${k>1?'и':''}</small>`:''}</div>`).join('')}</div>`; }
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
 
@@ -351,24 +370,31 @@ function vShop(){
   const early=isEarly(), n=paidCount();
   const list=filtered(P.filter(p=>p.buy!==false));
   const foot = n
-    ? `<div class="sline"><span>${n} ${n===1?'опаковка':'опаковки'} · ${fmt(subtotal())}</span><span class="ok">→ ${n} ${n===1?'подарък':'подаръка'}${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
-    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">всяка опаковка = 1 подарък</span></div><button class="cta" disabled>Добави поне 1 опаковка</button>`;
+    ? `<div class="sline"><span>${n} ${n===1?'опаковка':'опаковки'} · ${fmt(subtotal())}</span><span class="ok">= ${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Стъпка 2: избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta" disabled>Добави опаковка, за да избереш подарък</button>`;
   return `<div class="scroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
-    ${early?`<div class="h1">Избери <em>своите подаръци.</em></div><p class="sub">48 часа: всяка опаковка ти носи още една по избор + ваучер 10 € за 2027.</p>`
-           :`<div class="h1">Всяка опаковка = <em>една подарък по избор.</em></div><p class="sub">Плащаш 1, получаваш 2. Второто го избираш ти — може и същото.</p>`}
+    ${stepsBar(1)}
+    <div class="h1">Купуваш 1, <em>получаваш 2.</em></div>
+    <p class="sub">${early?'48 часа само за теб: всяка опаковка = 1 подарък по избор + ваучер 10 €.':'72 часа: всяка опаковка = 1 подарък по избор. Може и същият продукт.'}</p>
   </div>
   <div class="wrap" style="padding-top:10px">
-    ${mechStrip(n, early)}
+    ${ladder(n, early)}
+    <div class="k2" style="margin-top:4px">Стъпка 1 · Избери какво купуваш</div>
     ${chips()}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
-    <div class="k2">Как работи</div>
+    <div class="k2">Как работи, с пример</div>
+    <div class="calc">
+      <div class="l">Купуваш 2 кутии Грийнс <span>87,80 €</span></div>
+      <div class="l">Избираш си 2 подаръка — напр. KeraTonica и Берберин <span>0 €</span></div>
+      ${early?'<div class="l">Получаваш и 2 ваучера по 10 € за 2027 <span>20 €</span></div>':''}
+      <div class="l">Вкъщи пристигат 4 кутии <span>плащаш 87,80 €</span></div>
+    </div>
     <div class="steps">
       <div class="st"><i>1</i><div>Избираш какво купуваш</div></div>
-      <div class="st"><i>2</i><div>Виждаш колко подаръка ти се полагат</div></div>
-      <div class="st"><i>3</i><div>Избираш подаръците — може и същия продукт</div></div>
-      <div class="st"><i>4</i><div>Завършваш поръчката.${early?' Ваучерите идват по имейл.':''}</div></div>
+      <div class="st"><i>2</i><div>Избираш толкова подаръка, колкото опаковки си купил<small>може и същия продукт</small></div></div>
+      <div class="st"><i>3</i><div>Завършваш поръчката.${early?' Ваучерите идват по имейл.':''}</div></div>
     </div>
     <div class="footnote">Цените са от ansa.bg към 03.11.2026. Участват само единични опаковки на редовна цена.</div>
   </div></div>
@@ -378,7 +404,7 @@ function vGifts(){
   const n=paidCount(), g=giftCount(), left=n-g;
   const news=P.filter(p=>p.isNew), favs=P.filter(p=>!p.isNew);
   const slots = Array.from({length:n},(_,i)=>{ const picked=[]; Object.entries(S.gifts).forEach(([id,q])=>{for(let k=0;k<q;k++)picked.push(id);}); const id=picked[i]; return id?`<div class="slot f"><img src="${byId(id).img}" alt=""></div>`:`<div class="slot${i===g?' next':''}">${i+1}</div>`; }).join('');
-  return `<div class="hdr"><div><b>Избери ${n} ${n===1?'подарък':'подаръка'}</b><small>${P.length} продукта за избор. Може и еднакви.</small></div><button class="x" data-act="screen" data-id="shop" aria-label="затвори">✕</button></div>
+  return `<div class="hdr" style="flex-wrap:wrap"><div><b>Стъпка 2 · Избери ${n} ${n===1?'подарък':'подаръка'}</b><small>Купи ${n} → получаваш ${n} безплатно. Може и еднакви.</small></div><button class="x" data-act="screen" data-id="shop" aria-label="затвори">✕</button>${stepsBar(2)}</div>
   <div class="scroll" id="giftScroll"><div class="wrap" style="padding-top:12px">
     <div class="bar2"><i style="width:${n?Math.round(g/n*100):0}%"></i></div>
     <div class="sline"><span>Избрани <b>${g} от ${n}</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">↺ промени поръчката</button></div>
@@ -401,7 +427,7 @@ function vCheckout(){
     + (S.bonus==='eye'&&S.email?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от записването</small></div><div class="p free">0 €</div></div>`:'')
     + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
     + `<div class="tot"><div>Общо<small>стойност на пратката ${fmt(subtotal()+giftValue())}</small></div><div>${fmt(total())}</div></div>`;
-  return `<div class="hdr dark"><div><b>Твоята поръчка</b><small>Плащаш ${n}, получаваш ${n*2}.${early?` Плюс ${n*VOUCHER} € ваучери за 2027.`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button></div>
+  return `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${n}, получаваш ${n*2}.${early?` Плюс ${n*VOUCHER} € ваучери за 2027.`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>
   <div class="scroll"><div class="wrap" style="padding-top:12px">
     <div class="rows">${rows}</div>
     <div class="trust" style="margin:10px 0 6px">Подаръците пътуват в същата пратка.${early?' Ваучерите за 2027 — по имейл.':''}</div>
