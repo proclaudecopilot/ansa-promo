@@ -14,7 +14,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 .gallery{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
 .frame{width:390px;flex:none}
 .frame .lbl{font-size:12px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px 4px}
-.phone{width:390px;background:var(--cream);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.18);position:relative;font-size:15px}
+.phone{width:390px;position:relative;background:var(--cream);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.18);position:relative;font-size:15px}
 .phone.ad{width:540px;height:675px;border-radius:0}
 .sb{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:800;background:transparent}
 .sb.dark{color:#fff}
@@ -87,7 +87,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 .step b{min-width:20px;text-align:center;font-size:16px}
 .pick{width:30px;height:30px;border-radius:50%;border:2px solid var(--ol);display:flex;align-items:center;justify-content:center}
 .pick.on{background:var(--g);border-color:var(--g);color:#fff;font-weight:900;font-size:14px}
-.sticky{background:rgba(255,253,251,.98);border-top:1.5px solid var(--ol);box-shadow:0 -4px 20px rgba(0,0,0,.08);padding:10px 14px 14px}
+.sticky{background:#fffdfb;border-top:1.5px solid var(--ol);box-shadow:0 -4px 20px rgba(0,0,0,.08);padding:10px 14px 14px}
 .sline{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;margin-bottom:8px}
 .sline b{color:var(--o)}.sline .ok{color:var(--gd)}
 .slots{display:flex;gap:6px;margin-bottom:10px}
@@ -167,6 +167,45 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 .ad .eqs em{display:block;font-size:13px;font-weight:800;color:rgba(255,255,255,.6);font-style:normal;margin-top:6px;text-transform:uppercase;letter-spacing:.06em}
 .ad .eqs span{display:block;font-size:40px;font-weight:900;color:var(--o2);margin:4px 0}
 .ad .tag{position:absolute;top:36px;right:36px;background:var(--o);color:#fff;font-weight:900;font-size:13px;letter-spacing:.1em;text-transform:uppercase;border-radius:8px;padding:6px 10px}
+
+.logo{height:24px;width:auto;display:block}.logo.w{filter:none}
+.hero.compact{padding:10px 16px 14px}
+.hero.compact .h1{font-size:22px}
+.hero.compact .sub{font-size:13.5px;margin-top:6px}
+.hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tpill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;color:#fff;white-space:nowrap}
+.tpill b{font-variant-numeric:tabular-nums;font-size:13px}
+.strip{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:8px 10px;font-size:13px;font-weight:800;margin-bottom:10px}
+.strip b{font-size:18px;font-weight:900}.strip .g{color:var(--gd)}.strip .eq{color:var(--o)}
+.strip small{font-size:11px;font-weight:700;color:var(--tan);display:block;line-height:1.1}
+.eqchips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.eqchips div{background:#fff;border:1.5px solid var(--ol);border-radius:10px;padding:6px 4px;text-align:center;font-size:12px;font-weight:800;color:var(--tan)}
+.eqchips div b{display:block;font-size:16px;color:var(--ink)}.eqchips div b i{font-style:normal;color:var(--gd)}
+.eqchips div.on{border-color:var(--o);background:var(--os)}
+.tile .more{display:inline-block;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px}
+.tile .n small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.morepill{position:absolute;left:50%;transform:translateX(-50%);top:-18px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:7px 13px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:5}
+.sticky{position:relative}
+.fade{position:absolute;left:0;right:0;top:-46px;height:46px;background:linear-gradient(180deg,rgba(250,243,236,0),rgba(250,243,236,.95));pointer-events:none}
+.phone.fold{height:844px;overflow:hidden}
+.phone.fold .sticky{position:absolute;left:0;right:0;bottom:0}
+/* product sheet */
+.dim{position:absolute;inset:0;background:rgba(26,26,46,.55);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:88%;display:flex;flex-direction:column}
+.sheet .grab{width:40px;height:5px;border-radius:99px;background:var(--ol);margin:10px auto 6px}
+.sheet .sb-body{padding:6px 16px 0;overflow:hidden}
+.sheet .ph{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center;margin-bottom:10px}
+.sheet .ph img{width:84px;height:84px;border-radius:14px;object-fit:cover}
+.sheet .ph .n{font-size:18px;font-weight:900;line-height:1.15}.sheet .ph .n small{display:block;font-size:12.5px;color:var(--tan);font-weight:600;margin-top:2px}
+.sheet .ph .pr{font-size:16px;font-weight:900;color:var(--o);margin-top:4px}
+.stars{font-size:12.5px;font-weight:700;color:var(--muted)}.stars b{color:var(--gold)}
+.tabs{display:flex;gap:6px;margin:8px 0 10px}
+.tabs span{font-size:12.5px;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid var(--ol);color:var(--tan)}
+.tabs span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sheet p{font-size:13.5px;line-height:1.45;color:var(--ink2);font-weight:600;margin-bottom:8px}
+.sheet ul{padding-left:18px;font-size:13.5px;font-weight:600;color:var(--ink2);margin-bottom:8px}.sheet li{margin-bottom:3px}
+.sheet .sfoot{padding:10px 16px 16px;border-top:1.5px solid var(--ol);background:#fff}
+.bo.on b,.bo b{line-height:1.15}
 </style>
 </head>
 <body>
@@ -180,30 +219,29 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="phone">
   <div class="hero">
     <div class="sb dark"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
-    <div class="brand" style="color:#fff;margin-bottom:18px">ansa<b>™</b></div>
+    <img class="logo" src="img/logo-white.png" alt="ansa" style="margin-bottom:12px">
     <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
-    <div class="h1">Black Friday на ANSA започва <em>първо за теб.</em></div>
-    <p class="sub">Запиши се за ранен достъп и избери своя подарък. Ще пазаруваш 48 часа преди всички останали — с оферта, която после няма да е същата.</p>
+    <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
+    <p class="sub" style="margin-top:6px">Запиши се за ранен достъп и избери своя подарък.</p>
   </div>
   <div class="wrap">
     <div class="card">
-      <div class="h2">Избери своя подарък за записването</div>
-      <div class="lead">Получаваш го с първата си поръчка в ранния достъп.</div>
+      <div class="h2" style="font-size:17px">Избери своя подарък</div>
       <div class="bonus">
-        <div class="bo on"><div class="ic">🎟️</div><div><b>Ваучер 5 €</b><small>за ранния достъп, без минимална поръчка</small></div><div class="r"></div></div>
-        <div class="bo"><div class="ic"><img src="img/eye.jpg" alt=""></div><div><b>eyeFresh пачове за очи</b><small>подарък в пратката, стойност 15,90 €</small></div><div class="r"></div></div>
+        <div class="bo on"><div class="ic">🎟️</div><div><b>Ваучер 5 €</b><small>получаваш го веднага, важи в целия магазин</small></div><div class="r"></div></div>
+        <div class="bo"><div class="ic"><img src="img/eye.jpg" alt=""></div><div><b>eyeFresh пачове за очи</b><small>в пратката на първата ти поръчка · 15,90 €</small></div><div class="r"></div></div>
         <div class="bo"><div class="ic">🏝️</div><div><b>Томбола за почивка</b><small>1 билет за 5 дни с яхта в Гърция</small></div><div class="r"></div></div>
       </div>
       <div class="input">✉️ <span>твоят имейл</span></div>
-      <button class="cta">Запиши ме за ранен достъп<small>безплатно · без задължение за покупка</small></button>
-      <div class="trust">🔒 Само 1 имейл преди старта и 1 в деня на старта.</div>
+      <button class="cta">Запиши ме и вземи подаръка<small>безплатно · без задължение за покупка</small></button>
+      <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта.</div>
     </div>
 
     <div class="k2">Какво ще получиш в ранния достъп</div>
     <div class="steps">
       <div class="st o"><i>48h</i><div>Пазаруваш 48 часа преди всички<small>Сряда, 25.11, 10:00 — точният час ще го получиш по имейл.</small></div></div>
       <div class="st o"><i>1=2</i><div>Всяка опаковка ти носи още една — по избор<small>Купуваш Грийнс, избираш си подарък. Може и втори Грийнс.</small></div></div>
-      <div class="st o"><i>10€</i><div>+ ваучер 10 € за 2027 г. за всяка опаковка<small>Само в ранния достъп. В публичния Black Friday го няма.</small></div></div>
+      <div class="st o"><i>+</i><div>И нещо допълнително само за първите 48 часа<small>Ще го научиш в стартовия имейл.</small></div></div>
     </div>
 
     <div class="k2">4 нови продукта — първо за теб</div>
@@ -220,7 +258,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
     <div class="faq">Кога точно започва ранният достъп? <span>▾</span></div>
     <div class="faq">Какво става, ако изчакам публичния Black Friday? <span>▾</span></div>
   </div>
-  <div class="foot">ansa™ · От жени за жени · Ваучерът и подаръците важат с поръчка в ранния достъп. Пълни условия на ansa.bg/bf</div>
+  <div class="foot">ansa™ · От жени за жени · Ваучерът 5 € важи веднага, еднократно, в целия магазин. Пълни условия на ansa.bg/bf</div>
 </div>
 </div>
 
@@ -235,7 +273,9 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
     <div class="lead">Записахме <b>maria@…bg</b> за ранния достъп.</div>
     <div class="card" style="text-align:left;margin:14px 0">
       <div class="k2" style="margin-top:0">Твоят подарък</div>
-      <div class="bo on"><div class="ic">🎟️</div><div><b>Ваучер 5 €</b><small>ще го намериш в стартовия имейл</small></div><div class="r"></div></div>
+      <div class="bo on"><div class="ic">🎟️</div><div><b>Ваучер 5 € · код <span style="font-family:monospace;color:var(--od)">ANSA5-M7K2</span></b><small>важи веднага, в целия магазин, до 31.12</small></div><div class="r"></div></div>
+      <button class="cta" style="margin-top:10px">Пазарувай с ваучера сега</button>
+      <div class="trust">Промо офертата още не е активна — ваучерът важи и преди нея.</div>
       <div class="k2">Какво следва</div>
       <div class="steps">
         <div class="st"><i>1</i><div>18.11 — показваме ти 4-те нови продукта<small>и как работи „1 опаковка = 1 подарък по избор“</small></div></div>
@@ -257,7 +297,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
   <div class="sb"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
   <div class="em-top"><b>Любимият ти Грийнс скоро ще дойде с подарък 🎁</b><span>ansa™ · до мен</span><span class="pre">И този път ти избираш какъв. 4 нови продукта, 216 дни работа…</span></div>
   <div class="em-body">
-    <div class="brand" style="margin-bottom:14px">ansa<b>™</b></div>
+    <img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">
     <p class="big">Любимият ти Грийнс скоро ще дойде с подарък. <em>И този път ти избираш какъв.</em></p>
     <p>Ти обичаш Грийнс. Сега той ти подарява 1 продукт по избор от новите ни попълнения, които разработваме от <span class="badge216">216 дни</span>. Да, броихме ги.</p>
     <p><b>Ето какво разработихме за 216 дни:</b></p>
@@ -267,19 +307,13 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
       <div class="it"><img src="img/veno.jpg" alt=""><div><b>VenoTonus</b><small>за здрави кръвоносни съдове</small></div></div>
       <div class="it"><img src="img/ahcc.jpg" alt=""><div><b>AHCC-Бета</b><small>двоен гъбен комплекс за имунитет</small></div></div>
     </div>
-    <p>Ще ти пишем след седмица — <b>25.11 в 10:00</b> — когато можеш да се възползваш от офертата преди всички.</p>
-    <div class="em-hero">
-      <div class="eyebrow">Само за първите</div>
-      <div class="h1">+ ваучер 10 € за всяка опаковка</div>
-      <p>Ако се възползваш в 48-часовия срок, за всяка опаковка в количката ти подаряваме и ваучер за 2027 г.</p>
-    </div>
     <p><b>Ето и проста сметка:</b></p>
     <div class="calc">
-      <div class="l">3 кутии Грийнс <span>131,70 €</span></div>
-      <div class="l">+ 3 продукта подарък по избор <span>0 €</span></div>
-      <div class="l">+ 3 ваучера по 10 € за 2027 <span>30 €</span></div>
-      <div class="l">Получаваш 6 опаковки + 30 € за догодина <span>плащаш 131,70 €</span></div>
+      <div class="l">1 кутия Грийнс <span>43,90 €</span></div>
+      <div class="l">+ 1 продукт подарък по избор <span>0 €</span></div>
+      <div class="l">3 кутии Грийнс → 3 подаръка по избор <span>6 опаковки</span></div>
     </div>
+    <p>Ще ти пишем след седмица — <b>25.11 в 10:00</b> — когато можеш да се възползваш от офертата преди всички. Тъй като ще си от първите, в онзи имейл има и нещо допълнително.</p>
     <a class="cta" style="text-decoration:none">Виж новите продукти</a>
     <p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Поръчката не е възможна преди 25.11, 10:00. Сега само разглеждаш.</p>
   </div>
@@ -294,14 +328,14 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
   <div class="sb"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
   <div class="em-top"><b>След седмица опитваш повече от ANSA 🎁</b><span>ansa™ · до мен</span><span class="pre">Една опаковка подарък за всяка опаковка, която поръчаш. Плюс…</span></div>
   <div class="em-body">
-    <div class="brand" style="margin-bottom:14px">ansa<b>™</b></div>
+    <img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">
     <p class="big">След седмица ще можеш да опиташ повече от ANSA — <em>с една опаковка подарък за всяка опаковка, която поръчаш.</em></p>
-    <p>Записа се за ранния достъп и избра <b>ваучер 5 €</b>. Той те чака в стартовия имейл на <b>25.11 в 10:00</b>.</p>
+    <p>Записа се за ранния достъп и избра <b>ваучер 5 €</b> — той вече важи в магазина, ако още не си го ползвала. Ранният достъп отваря на <b>25.11 в 10:00</b>.</p>
     <p><b>Какво е ранният достъп:</b></p>
     <div class="steps" style="margin-bottom:14px">
       <div class="st o"><i>1</i><div>Избираш какво да поръчаш<small>Грийнс, Берберин, Sakura… или някой от 4-те нови</small></div></div>
       <div class="st o"><i>2</i><div>За всяка опаковка избираш подарък<small>Може да е същият продукт или нещо ново за пробване</small></div></div>
-      <div class="st o"><i>3</i><div>+ ваучер 10 € за 2027 за всяка опаковка<small>само в 48-те часа на ранния достъп</small></div></div>
+      <div class="st o"><i>3</i><div>Завършваш поръчката — подаръците пътуват в същата пратка<small>48 часа преди всички останали</small></div></div>
     </div>
     <p><b>Новите 4, с които да започнеш</b> — разработвахме ги <span class="badge216">216 дни</span>:</p>
     <div class="em-list">
@@ -326,7 +360,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
   <div class="sb"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
   <div class="em-top"><b>След два дни отваряме ранния достъп ⏰</b><span>ansa™ · до мен</span><span class="pre">Помисли какво искаш да заредиш — и какво ти се иска да опиташ подарък.</span></div>
   <div class="em-body">
-    <div class="brand" style="margin-bottom:14px">ansa<b>™</b></div>
+    <img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">
     <div class="em-hero">
       <div class="eyebrow">Ранен достъп</div>
       <div class="h1">Сряда, 25.11 · 10:00</div>
@@ -359,34 +393,64 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 </div>
 </div>
 
+<!-- ================= S4b: Стартов имейл — ранният достъп е отворен ================= -->
+<div class="frame" id="s4b">
+<div class="lbl">4b · Стартов имейл (call to action) — тук е ваучерът за 48-те часа</div>
+<div class="phone email">
+  <div class="sb"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
+  <div class="em-top"><b>Отворено е. Избери си подаръците 🎁 + 10 € за 2027</b><span>ansa™ · до мен</span><span class="pre">48 часа само за теб: всяка опаковка = подарък по избор + ваучер.</span></div>
+  <div class="em-body">
+    <img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">
+    <p class="big">Вече можеш да избереш <em>своите подаръци.</em></p>
+    <p>През следващите 48 часа всяка опаковка, която поръчаш, ти носи още една подарък — и ваучер за следващата година.</p>
+    <div class="em-hero">
+      <div class="eyebrow">Само за първите · до петък 10:00</div>
+      <div class="h1">+ ваучер 10 € за 2027 за всяка опаковка</div>
+      <div class="timer" style="margin-top:12px"><div><b>47</b><small>часа</small></div><div><b>12</b><small>мин</small></div></div>
+      <p>В публичния Black Friday ваучерите ги няма.</p>
+    </div>
+    <p><b>Ето и проста сметка:</b></p>
+    <div class="calc">
+      <div class="l">3 кутии Грийнс <span>131,70 €</span></div>
+      <div class="l">+ 3 продукта подарък по избор <span>0 €</span></div>
+      <div class="l">+ 3 ваучера по 10 € за 2027 <span>30 €</span></div>
+      <div class="l">6 опаковки + 30 € за догодина <span>плащаш 131,70 €</span></div>
+    </div>
+    <a class="cta" style="text-decoration:none">Избери подаръците си →</a>
+    <p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Линкът е личен — води направо в ранния достъп.</p>
+  </div>
+  <div class="em-foot">Отпиши се · Условия</div>
+</div>
+</div>
+
 <!-- ================= S5: Ранен достъп — страница при старт ================= -->
 <div class="frame" id="s5">
 <div class="lbl">5 · Ранен достъп — страница при старта (48 часа)</div>
 <div class="phone">
-  <div class="hero" style="padding-bottom:16px">
-    <div class="sb dark"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="brand" style="color:#fff">ansa<b>™</b></div><span class="pill o" style="background:rgba(232,114,42,.2);color:#fff;border-color:rgba(255,255,255,.2)">Ранен достъп · за теб</span></div>
-    <div class="h1" style="font-size:25px">Вече можеш да избереш <em>своите подаръци.</em></div>
-    <p class="sub">През следващите 48 часа всяка опаковка, която поръчаш, ти носи още една подарък и ваучер за следващата година.</p>
-    <div class="timer" style="margin-top:14px"><div><b>47</b><small>часа</small></div><div><b>12</b><small>мин</small></div><div><b>09</b><small>сек</small></div></div>
+  <div class="hero compact">
+    <div class="sb dark" style="padding:0;height:34px"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
+    <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill">⏳ ранен достъп · <b>47:12:09</b></span></div>
+    <div class="h1">Избери <em>своите подаръци.</em></div>
+    <p class="sub">48 часа: всяка опаковка ти носи още една по избор + ваучер 10 € за 2027.</p>
   </div>
-  <div class="wrap" style="padding-top:12px">
-    <div class="mech">
-      <div class="c"><em>1 опаковка</em><b>1</b><small>купуваш</small></div>
-      <div class="eq">=</div>
-      <div class="c get"><em>получаваш</em><b>+1</b><small>подарък по избор<br>+ 10 € ваучер за 2027</small></div>
-    </div>
-    <div class="trust">Твоят ваучер 5 € от записването е вече в количката ✔</div>
-
-    <div class="k2" style="display:flex;justify-content:space-between;align-items:center">Стъпка 1 · Избери какво зареждаш <span class="pill g">после избираш подаръците</span></div>
+  <div class="wrap" style="padding-top:10px">
+    <div class="strip"><span><b>1</b><small>опаковка</small></span><span class="eq">=</span><span class="g"><b>+1</b><small>подарък по избор</small></span><span class="eq">+</span><span><b>10 €</b><small>ваучер 2027</small></span></div>
     <div class="chips" style="margin-bottom:10px"><span class="chip on">Всички</span><span class="chip">Любими</span><span class="chip o">Нови 4</span><span class="chip">Кожа</span><span class="chip">Сън</span></div>
 
-    <div class="tile on"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>чревно здраве и лекота</small></div><div class="pr">43,90 € <span style="font-size:11px;color:var(--tan2);font-weight:600">/ кутия</span></div></div><div class="step"><button>−</button><b>2</b><button>+</button></div></div>
-    <div class="tile new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr">45 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr">59 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr">49,50 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile new"><img src="img/alivia.jpg" alt=""><div><div class="n">Alivia<small>скованост, дискомфорт</small></div><div class="pr">45 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile"><img src="img/yoni.jpg" alt=""><div><div class="n">YoniBiotic 3в1<small>пробиотик за жени</small></div><div class="pr">34,90 €</div></div><button class="addb">＋ Добави</button></div>
+    <div class="tile on"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>чревно здраве и лекота</small></div><div class="pr">43,90 €</div><span class="more">Повече ▾</span></div><div class="step"><button>−</button><b>2</b><button>+</button></div></div>
+    <div class="tile new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr">59 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr">49,50 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile new"><img src="img/alivia.jpg" alt=""><div><div class="n">Alivia<small>скованост, дискомфорт</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/yoni.jpg" alt=""><div><div class="n">YoniBiotic 3в1<small>пробиотик за жени</small></div><div class="pr">34,90 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile new"><img src="img/veno.jpg" alt=""><div><div class="n">VenoTonus<small>здрави кръвоносни съдове</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="k2">Как работи</div>
+    <div class="steps">
+      <div class="st"><i>1</i><div>Избираш какво купуваш</div></div>
+      <div class="st"><i>2</i><div>Виждаш колко подаръка ти се полагат</div></div>
+      <div class="st"><i>3</i><div>Избираш подаръците — може и същия продукт</div></div>
+      <div class="st"><i>4</i><div>Завършваш поръчката. Ваучерите идват по имейл.</div></div>
+    </div>
   </div>
   <div class="sticky">
     <div class="sline"><span>2 опаковки · 87,80 €</span><span class="ok">→ 2 подаръка + 20 € ваучери</span></div>
@@ -395,29 +459,65 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 </div>
 </div>
 
+<!-- ================= S5b: Повече за продукта (bottom sheet) ================= -->
+<div class="frame" id="s5b">
+<div class="lbl">5b · „Повече“ — информация за продукта, отдолу нагоре</div>
+<div class="phone fold">
+  <div class="hero compact">
+    <div class="sb dark" style="padding:0;height:34px"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
+    <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill">⏳ ранен достъп · <b>47:12:09</b></span></div>
+    <div class="h1">Избери <em>своите подаръци.</em></div>
+    <p class="sub">48 часа: всяка опаковка ти носи още една по избор + ваучер 10 € за 2027.</p>
+  </div>
+  <div class="wrap" style="padding-top:10px">
+    <div class="strip"><span><b>1</b><small>опаковка</small></span><span class="eq">=</span><span class="g"><b>+1</b><small>подарък по избор</small></span><span class="eq">+</span><span><b>10 €</b><small>ваучер 2027</small></span></div>
+    <div class="tile on"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>чревно здраве и лекота</small></div><div class="pr">43,90 €</div><span class="more">Повече ▾</span></div><div class="step"><button>−</button><b>2</b><button>+</button></div></div>
+    <div class="tile new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr">59 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sb-body">
+      <div class="ph"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica <span class="pill o" style="font-size:10px;vertical-align:2px">НОВО</span><small>Напитка за коса, мигли и вежди · 30 сашета</small></div><div class="pr">45 € <span style="font-size:12px;color:var(--tan);font-weight:700">/ кутия · 1 месец</span></div></div></div>
+      <div class="stars"><b>★★★★★</b> 4,9 · 112 мнения от предпродажбата</div>
+      <div class="tabs"><span class="on">За какво</span><span>Състав</span><span>Как се приема</span><span>За кого</span></div>
+      <p>Косопад след стрес, раждане или 40+, редки мигли и вежди, чуплива коса. KeraTonica работи от корена: биотин, колагенови пептиди, цинк и японска камелия в една напитка с вкус на праскова.</p>
+      <ul><li>първи видим ефект след 6–8 седмици</li><li>без захар, без изкуствени оцветители</li><li>разработвана 216 дни заедно с трихолог</li></ul>
+      <p style="color:var(--tan);font-size:12.5px">Подходяща и като подарък по избор към всяка опаковка.</p>
+    </div>
+    <div class="sfoot">
+      <button class="cta">＋ Добави · 45 €</button>
+      <div class="trust">или я избери като подарък в следващата стъпка</div>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- ================= S6: Избор на подаръци ================= -->
 <div class="frame" id="s6">
 <div class="lbl">6 · Стъпка 2 — избираш подаръците (sheet)</div>
 <div class="phone">
-  <div class="hdr"><div><b>Избери 2 подаръка</b><small>За 2-те опаковки Грийнс. Може и еднакви.</small></div><div class="x">✕</div></div>
+  <div class="hdr"><div><b>Избери 2 подаръка</b><small>11 продукта за избор. Може и еднакви.</small></div><div class="x">✕</div></div>
   <div class="wrap" style="padding-top:12px">
     <div class="bar"><i style="width:50%"></i></div>
     <div class="sline"><span>Избрани <b>1 от 2</b></span><span style="color:var(--tan);font-weight:700">↺ промени поръчката</span></div>
 
     <div class="k2" style="margin-top:6px">Новите 4 · 216 дни разработка</div>
-    <div class="tile on new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr free"><s>45 €</s> подарък</div></div><div class="pick on">1</div></div>
-    <div class="tile new"><img src="img/alivia.jpg" alt=""><div><div class="n">Alivia<small>скованост, дискомфорт</small></div><div class="pr free"><s>45 €</s> подарък</div></div><div class="pick"></div></div>
-    <div class="tile new"><img src="img/veno.jpg" alt=""><div><div class="n">VenoTonus<small>здрави кръвоносни съдове</small></div><div class="pr free"><s>45 €</s> подарък</div></div><div class="pick"></div></div>
-    <div class="tile new"><img src="img/ahcc.jpg" alt=""><div><div class="n">AHCC-Бета<small>имунитет, двоен гъбен комплекс</small></div><div class="pr free"><s>45 €</s> подарък</div></div><div class="pick"></div></div>
+    <div class="tile on new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr free"><s>45 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick on">1</div></div>
+    <div class="tile new"><img src="img/alivia.jpg" alt=""><div><div class="n">Alivia<small>скованост, дискомфорт</small></div><div class="pr free"><s>45 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
+    <div class="tile new"><img src="img/veno.jpg" alt=""><div><div class="n">VenoTonus<small>здрави кръвоносни съдове</small></div><div class="pr free"><s>45 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
+    <div class="tile new"><img src="img/ahcc.jpg" alt=""><div><div class="n">AHCC-Бета<small>имунитет, гъбен комплекс</small></div><div class="pr free"><s>45 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
 
-    <div class="k2">Любимите ти</div>
-    <div class="tile"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>още една кутия за теб</small></div><div class="pr free"><s>43,90 €</s> подарък</div></div><div class="pick"></div></div>
-    <div class="tile"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr free"><s>59 €</s> подарък</div></div><div class="pick"></div></div>
-    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr free"><s>49,50 €</s> подарък</div></div><div class="pick"></div></div>
+    <div class="k2">Любимите ти · 7</div>
+    <div class="tile"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>още една кутия за теб</small></div><div class="pr free"><s>43,90 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
+    <div class="tile"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr free"><s>59 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
+    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr free"><s>49,50 €</s> подарък</div><span class="more">Повече ▾</span></div><div class="pick"></div></div>
   </div>
   <div class="sticky">
+    <div class="fade"></div><div class="morepill">↓ още 7 подаръка по-долу</div>
     <div class="slots" style="align-items:center"><div class="slot f"><img src="img/kera.jpg" alt=""></div><div class="slot next">2</div><div style="font-size:12.5px;font-weight:700;color:var(--tan);margin-left:4px">KeraTonica избран.<br>Още 1 подарък по избор.</div></div>
-    <button class="cta" style="opacity:.55">Избери още 1 подарък</button>
+    <button class="cta" style="background:#f6c9a6;box-shadow:none;color:#fff">Избери още 1 подарък</button>
   </div>
 </div>
 </div>
@@ -426,16 +526,15 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="frame" id="s7">
 <div class="lbl">7 · Стъпка 3 — завършваш поръчката (ранен достъп)</div>
 <div class="phone">
-  <div class="hdr dark"><div><b>Твоята поръчка</b><small>Плащаш 2, получаваш 4. Плюс 25 € ваучери.</small></div><div class="x">✕</div></div>
+  <div class="hdr dark"><div><b>Твоята поръчка</b><small>Плащаш 2, получаваш 4. Плюс 20 € ваучери за 2027.</small></div><div class="x">✕</div></div>
   <div class="wrap" style="padding-top:12px">
     <div class="rows">
       <div class="row"><img src="img/greens.jpg" alt=""><div>Daily Greens × 2<small>платени опаковки</small></div><div class="p">87,80 €</div></div>
       <div class="row gift"><img src="img/kera.jpg" alt=""><div>🎁 KeraTonica<small>подарък по избор</small></div><div class="p free"><s>45 €</s>0 €</div></div>
       <div class="row gift"><img src="img/alivia.jpg" alt=""><div>🎁 Alivia<small>подарък по избор</small></div><div class="p free"><s>45 €</s>0 €</div></div>
       <div class="row v"><div style="width:40px;height:40px;border-radius:8px;background:#fff3cc;display:flex;align-items:center;justify-content:center;font-size:20px">🎟️</div><div>2 × ваучер 10 € за 2027<small>пристигат по имейл след доставката</small></div><div class="p" style="color:var(--goldd)">20 €</div></div>
-      <div class="row v"><div style="width:40px;height:40px;border-radius:8px;background:#fff3cc;display:flex;align-items:center;justify-content:center;font-size:20px">🎟️</div><div>Ваучер 5 € от записването<small>приложен</small></div><div class="p" style="color:var(--goldd)">−5 €</div></div>
       <div class="row"><div style="width:40px;height:40px;border-radius:8px;background:var(--os);display:flex;align-items:center;justify-content:center;font-size:20px">🚚</div><div>Доставка<small>безплатна при 2+ опаковки</small></div><div class="p free">0 €</div></div>
-      <div class="tot"><div>Общо<small>стойност на пратката 177,80 €</small></div><div>82,80 €</div></div>
+      <div class="tot"><div>Общо<small>стойност на пратката 177,80 €</small></div><div>87,80 €</div></div>
     </div>
     <div class="trust" style="margin:10px 0 6px">Подаръците пътуват в същата пратка. Ваучерите за 2027 — по имейл.</div>
     <div class="k2">Данни за доставка</div>
@@ -446,7 +545,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
     <div class="chips" style="margin-bottom:6px"><span class="chip on">💳 С карта</span><span class="chip">💵 Наложен платеж</span></div>
   </div>
   <div class="sticky">
-    <button class="cta">Завърши поръчката · 82,80 €</button>
+    <button class="cta">Завърши поръчката · 87,80 €</button>
     <div class="trust">🔒 Сигурно плащане · 14 дни право на връщане</div>
   </div>
 </div>
@@ -459,7 +558,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
   <div class="sb"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
   <div class="em-top"><b>Още 12 часа: подаръците ти + ваучерите за 2027 ⏳</b><span>ansa™ · до мен</span><span class="pre">След това офертата става публична — без ваучерите.</span></div>
   <div class="em-body">
-    <div class="brand" style="margin-bottom:14px">ansa<b>™</b></div>
+    <img class="logo" src="img/logo.png" alt="ansa" style="margin-bottom:14px">
     <div class="em-hero">
       <div class="eyebrow">Ранният достъп затваря</div>
       <div class="h1">Петък, 27.11 · 10:00</div>
@@ -482,20 +581,21 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="frame" id="s9">
 <div class="lbl">9 · Публичен Black Friday — страница (72 часа, без ваучери)</div>
 <div class="phone">
-  <div class="hero" style="padding-bottom:18px">
-    <div class="sb dark"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="brand" style="color:#fff">ansa<b>™</b></div><span class="pill d" style="background:var(--o)">BLACK FRIDAY · 72 ч</span></div>
-    <div class="h1">Всяка закупена опаковка = <em>една опаковка подарък по избор.</em></div>
-    <div class="timer" style="margin-top:16px;justify-content:flex-start"><div><b>2</b><small>дни</small></div><div><b>14</b><small>часа</small></div><div><b>05</b><small>мин</small></div></div>
+  <div class="hero compact">
+    <div class="sb dark" style="padding:0;height:34px"><span>9:41</span><span class="sig">●●●● ▲ ▮</span></div>
+    <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill" style="background:var(--o);border-color:var(--o)">BLACK FRIDAY · <b>62:05:11</b></span></div>
+    <div class="h1">Всяка опаковка = <em>една подарък по избор.</em></div>
+    <p class="sub">Плащаш 1, получаваш 2. Второто го избираш ти — може и същото.</p>
   </div>
-  <div class="wrap" style="padding-top:12px">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:11px;font-weight:800;color:var(--tan);text-transform:uppercase">плащаш 1</div><div style="font-size:26px;font-weight:900;color:var(--gd)">2</div><div style="font-size:11.5px;font-weight:700;color:var(--muted)">получаваш</div></div>
-      <div class="card" style="padding:10px;text-align:center;border-color:var(--o)"><div style="font-size:11px;font-weight:800;color:var(--tan);text-transform:uppercase">плащаш 2</div><div style="font-size:26px;font-weight:900;color:var(--gd)">4</div><div style="font-size:11.5px;font-weight:700;color:var(--muted)">получаваш</div></div>
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:11px;font-weight:800;color:var(--tan);text-transform:uppercase">плащаш 3</div><div style="font-size:26px;font-weight:900;color:var(--gd)">6</div><div style="font-size:11.5px;font-weight:700;color:var(--muted)">получаваш</div></div>
-    </div>
-    <div class="trust" style="margin-top:8px">Второто винаги е по твой избор. Може да е същото. Може да е нещо ново.</div>
-
+  <div class="wrap" style="padding-top:10px">
+    <div class="eqchips"><div>плащаш 1<b>получаваш <i>2</i></b></div><div class="on">плащаш 2<b>получаваш <i>4</i></b></div><div>плащаш 3<b>получаваш <i>6</i></b></div></div>
+    <div class="chips" style="margin-bottom:10px"><span class="chip on">Всички</span><span class="chip o">Нови 4</span><span class="chip">Кожа</span><span class="chip">Сън</span><span class="chip">Стомах</span></div>
+    <div class="tile on"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr">59 €</div><span class="more">Повече ▾</span></div><div class="step"><button>−</button><b>1</b><button>+</button></div></div>
+    <div class="tile"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>чревно здраве и лекота</small></div><div class="pr">43,90 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr">49,50 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile new"><img src="img/alivia.jpg" alt=""><div><div class="n">Alivia<small>скованост, дискомфорт</small></div><div class="pr">45 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
+    <div class="tile"><img src="img/yoni.jpg" alt=""><div><div class="n">YoniBiotic 3в1<small>пробиотик за жени</small></div><div class="pr">34,90 €</div><span class="more">Повече ▾</span></div><button class="addb">＋ Добави</button></div>
     <div class="k2">Как става</div>
     <div class="steps">
       <div class="st"><i>1</i><div>Избираш какво купуваш</div></div>
@@ -503,13 +603,6 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
       <div class="st"><i>3</i><div>Избираш подаръците</div></div>
       <div class="st"><i>4</i><div>Завършваш поръчката</div></div>
     </div>
-
-    <div class="k2">Стъпка 1 · Избери какво купуваш</div>
-    <div class="chips" style="margin-bottom:10px"><span class="chip on">Всички</span><span class="chip o">Нови 4</span><span class="chip">Кожа</span><span class="chip">Сън</span><span class="chip">Стомах</span></div>
-    <div class="tile on"><img src="img/berberin.jpg" alt=""><div><div class="n">ДихидроБерберин<small>апетит и кръвна захар</small></div><div class="pr">59 €</div></div><div class="step"><button>−</button><b>1</b><button>+</button></div></div>
-    <div class="tile"><img src="img/greens.jpg" alt=""><div><div class="n">Daily Greens<small>чревно здраве и лекота</small></div><div class="pr">43,90 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile new"><img src="img/kera.jpg" alt=""><div><div class="n">KeraTonica<small>коса, мигли и вежди</small></div><div class="pr">45 €</div></div><button class="addb">＋ Добави</button></div>
-    <div class="tile"><img src="img/sakura.jpg" alt=""><div><div class="n">Sakura SkinTonic<small>кожа, тен и фини линии</small></div><div class="pr">49,50 €</div></div><button class="addb">＋ Добави</button></div>
   </div>
   <div class="sticky">
     <div class="sline"><span>1 опаковка · 59 €</span><span class="ok">→ 1 подарък по избор</span></div>
@@ -523,7 +616,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="lbl">10 · Meta подгряване — реклама 4:5 (Берберин)</div>
 <div class="phone ad"><div class="in">
   <div class="tag">Black Friday</div>
-  <div class="brand">ansa<b>™</b></div>
+  <img class="logo" src="img/logo-white.png" alt="ansa" style="height:40px">
   <div class="big">Поръчваш 1 Берберин.<br><em>Избираш 1 продукт подарък.</em></div>
   <div class="mid">Може да е втори Берберин. Може да е нещо ново. Влез и си избери какво.</div>
   <div class="pics" style="margin-top:40px">
@@ -539,7 +632,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="lbl">11 · Meta подгряване — реклама 4:5 (2 = 4)</div>
 <div class="phone ad"><div class="in">
   <div class="tag">Black Friday</div>
-  <div class="brand">ansa<b>™</b></div>
+  <img class="logo" src="img/logo-white.png" alt="ansa" style="height:40px">
   <div class="big">Поръчваш 2 опаковки.<br><em>Избираш 2 подаръка.</em></div>
   <div class="eqs">
     <div><b>1</b><em>плащаш</em><span>=</span><b>2</b><em>получаваш</em></div>
@@ -555,7 +648,7 @@ p.note{color:var(--muted);font-size:13px;margin-bottom:18px}
 <div class="lbl">12 · Meta — реклама за записване (Подготовка)</div>
 <div class="phone ad"><div class="in">
   <div class="tag">Ранен достъп</div>
-  <div class="brand">ansa<b>™</b></div>
+  <img class="logo" src="img/logo-white.png" alt="ansa" style="height:40px">
   <div class="big">Black Friday на ANSA започва <em>първо за теб.</em></div>
   <div class="mid">Запиши се за ранен достъп и избери своя подарък:</div>
   <div class="eqs" style="margin-top:22px">
