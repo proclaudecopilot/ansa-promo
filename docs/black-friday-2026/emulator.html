@@ -75,6 +75,13 @@ button{font-family:inherit;cursor:pointer}
 .chip{flex:none;font-size:12.5px;font-weight:800;border-radius:999px;padding:6px 11px;background:#fff;border:1.5px solid var(--ol);color:var(--ink)}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .chip.o{background:var(--os);color:var(--od)}
+.selwrap{position:relative;margin-bottom:10px}
+.selwrap label{position:absolute;left:12px;top:5px;font-size:10px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.07em;pointer-events:none}
+.selwrap select{width:100%;appearance:none;-webkit-appearance:none;border:1.5px solid var(--ol);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:900;font-size:15px;padding:18px 40px 8px 12px;outline:none}
+.selwrap select:focus-visible{outline:3px solid rgba(232,114,42,.5)}
+.selwrap .selarr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--o);font-weight:900;pointer-events:none}
+.strip.live{border-color:var(--g);background:#fbfff9}
+.strip-hint{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin:-6px 0 10px}
 .tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07)}
 .tile>div{min-width:0}
 .tile img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f5efe8}
@@ -264,14 +271,16 @@ function productTile(p, mode){
     <img src="${p.img}" alt="">
     <div><div class="n">${p.isNew?'<span class="nb">НОВО</span>':''}${esc(p.n)}<small>${esc(p.s)}</small></div>
       <div class="pr${free?' free':''}">${free?`<s>${fmt(p.pr)}</s>подарък`:fmt(p.pr)}</div>
-      <button class="more" data-act="sheet" data-id="${p.id}">Повече ▾</button></div>
+      <button class="more" data-act="sheet" data-id="${p.id}">Прочети повече ▾</button></div>
     ${right}</div>`;
 }
 function filtered(list){
   const f=S.filter;
   return list.filter(p => f==='all' || (f==='fav'&&p.fav) || (f==='new'&&p.isNew) || p.cat===f);
 }
-function chips(){ return `<div class="chips">${CATS.map(([k,l])=>`<button class="chip${S.filter===k?' on':''}${k==='new'&&S.filter!==k?' o':''}" data-act="filter" data-id="${k}">${l}</button>`).join('')}</div>`; }
+function catCount(k){ return P.filter(p=>p.buy!==false).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
+function chips(){ return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${CATS.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
+function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
 
 function vSignup(){
@@ -351,8 +360,7 @@ function vShop(){
            :`<div class="h1">Всяка опаковка = <em>една подарък по избор.</em></div><p class="sub">Плащаш 1, получаваш 2. Второто го избираш ти — може и същото.</p>`}
   </div>
   <div class="wrap" style="padding-top:10px">
-    ${early?`<div class="strip"><span><b>1</b><small>опаковка</small></span><span class="eq">=</span><span class="g"><b>+1</b><small>подарък по избор</small></span><span class="eq">+</span><span><b>10 €</b><small>ваучер 2027</small></span></div>`
-           :`<div class="eqchips">${[1,2,3].map(k=>`<div class="${n===k||(k===3&&n>=3)?'on':''}">плащаш ${k}<b>получаваш <i>${k*2}</i></b></div>`).join('')}</div>`}
+    ${mechStrip(n, early)}
     ${chips()}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
     <div class="k2">Как работи</div>
@@ -374,13 +382,13 @@ function vGifts(){
   <div class="scroll" id="giftScroll"><div class="wrap" style="padding-top:12px">
     <div class="bar2"><i style="width:${n?Math.round(g/n*100):0}%"></i></div>
     <div class="sline"><span>Избрани <b>${g} от ${n}</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">↺ промени поръчката</button></div>
-    <div class="k2" style="margin-top:6px">Новите 4 · 216 дни разработка</div>
+    <div class="k2" style="margin-top:6px">Новите 4 продукта на ansa</div>
     ${news.map(p=>productTile(p,'gift')).join('')}
     <div class="k2">Любимите ти · ${favs.length}</div>
     ${favs.map(p=>productTile(p,'gift')).join('')}
     <div style="height:8px"></div>
   </div></div>
-  <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>↓ още подаръци по-долу</button>
+  <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>
     <div class="slots">${slots}<div class="lab">${left>0?`Още ${left} ${left===1?'подарък':'подаръка'} по избор.`:'Всички подаръци са избрани ✔'}</div></div>
     ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
   </div>`;
@@ -508,7 +516,8 @@ function render(){
   const scr=phone.querySelector('.scroll'); if(scr && keep) scr.scrollTop=keep;
   document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
   const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen='done';save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
-  const gs=document.getElementById('giftScroll'); if(gs){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`↓ още ${below} ${below===1?'подарък':'подаръка'} по-долу`; } }; gs.addEventListener('scroll',upd); upd(); }
+  const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
+  const gs=document.getElementById('giftScroll'); if(gs){ const pill=document.getElementById('morePill'); const upd=()=>{ const more=gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
   try{ const h='#'+S.phase; if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
   save();
 }
