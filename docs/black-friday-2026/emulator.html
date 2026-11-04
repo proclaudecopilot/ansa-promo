@@ -53,6 +53,12 @@ button{font-family:inherit;cursor:pointer}
 .h1{font-size:22px;font-weight:900;line-height:1.12;text-wrap:balance}
 .h1 em{font-style:normal;color:var(--o2)}
 .sub{font-size:13.5px;color:rgba(255,255,255,.8);font-weight:600;margin-top:6px;line-height:1.45}
+.sub.big{font-size:16px;color:#fff;font-weight:800;line-height:1.35}
+.seats{margin-top:12px}
+.seats-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.seats-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--o),var(--o2));transition:width .6s}
+.seats-t{font-size:12px;font-weight:700;color:rgba(255,255,255,.75);margin-top:6px}
+.seats-t b{color:#fff;font-weight:900;font-variant-numeric:tabular-nums}
 .wrap{padding:12px 16px 16px}
 .h2{font-size:17px;font-weight:900;line-height:1.2;margin-bottom:8px}
 .lead{font-size:13.5px;color:var(--mut);font-weight:600;margin:4px 0 10px}
@@ -334,12 +340,13 @@ const CATS=[['all','Всички'],['fav','Любими'],['new','Нови 4'],[
 const VOUCHER=10, FREE_SHIP_FROM=2, SHIP=2.55, DATE_EARLY='25.11', AFF={code:'RADINA', name:'Радина'};
 const mmss = ms => { ms=Math.max(0,ms); const m=Math.floor(ms/60e3), s=Math.floor(ms%60e3/1e3); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); };
 const isAff = () => S.src==='aff';
+const nfmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 const giftOnly = p => !!p.giftOnly;
 const byId = id => P.find(p=>p.id===id);
 const fmt = n => n.toFixed(2).replace('.',',')+' €';
 
 /* ---------- state ---------- */
-const S0 = () => ({demoN:1, src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
+const S0 = () => ({demoN:1, seats:2190+Math.floor(Math.random()*741), src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
 let S = S0();
 try{ const raw=sessionStorage.getItem('ansa_bf_emu'); if(raw){ const o=JSON.parse(raw); if(o && o.cart) S=Object.assign(S0(),o); } }catch(e){}
 function save(){ try{ sessionStorage.setItem('ansa_bf_emu', JSON.stringify(S)); }catch(e){} }
@@ -412,7 +419,8 @@ function vSignup(){
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">${live?'подаръкът важи още':'изтече'} · <b data-cd="coldExp">${mmss(S.coldExp-Date.now())}</b></span></div>
     <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
     <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
-    <p class="sub">Запиши се за ранен достъп и вземи ваучер за днес — не за след три седмици.</p>
+    <p class="sub big">Получи първа достъп до най-добрите оферти за годината и грабни 6,50 € още днес!</p>
+    <div class="seats"><div class="seats-bar"><i style="width:${Math.round(S.seats/30)}%"></i></div><div class="seats-t"><b data-seats>${nfmt(S.seats)}</b> / 3 000 записани за ранен достъп</div></div>
   </div>
   <div class="wrap">
     ${voucherCard({locked:true, cd:'coldExp'})}
@@ -420,12 +428,6 @@ function vSignup(){
       <div class="h2" style="font-size:16px;text-align:center">Въведи имейла си, за да го отключиш</div>
       ${emailForm('Отключи ваучера<small>'+(live?'изтича след <span data-cd="coldExp">'+mmss(S.coldExp-Date.now())+'</span>':'срокът изтече — записването пак те вкарва в ранния достъп')+'</small>')}
       <div class="trust">🔒 2 имейла преди старта и 1 в деня на старта. Без спам.</div>
-    </div>
-    <div class="k2">Защо днес, а не на Black Friday</div>
-    <p class="lead" style="margin:0 0 10px">Не чакай промото. Искаме най-добрата грижа за теб да започне още днес — затова ти даваме ваучер за следващите 30 минути. По-голямата поръчка запази за <b>${DATE_EARLY}</b>, когато ще имаш най-изгодните оферти. Запиши си датата.</p>
-    <div class="steps">
-      <div class="st o"><i>1</i><div><b>Днес:</b> малка поръчка с ваучера<small>опитваш продукта, доставка в 1–2 дни</small></div></div>
-      <div class="st o"><i>2</i><div><b>${DATE_EARLY}:</b> ранен достъп — всяка опаковка = 1 подарък по избор<small>48 часа преди всички, личен линк по имейл</small></div></div>
     </div>
     <div class="footnote">ansa™ · От жени за жени · Ваучерът важи еднократно, 30 минути след отключването. Пълни условия на ansa.bg/bf</div>
   </div></div>`;
@@ -701,6 +703,8 @@ function vSheet(){
   </div>`;
 }
 
+/* записани: бавно расте, за да изглежда живо */
+setInterval(()=>{ if(Math.random()<0.5) return; S.seats=Math.min(2930,(S.seats||2190)+1); const el=phone.querySelector('[data-seats]'); if(el){ el.textContent=nfmt(S.seats); const bar=phone.querySelector('.seats-bar i'); if(bar) bar.style.width=Math.round(S.seats/30)+'%'; } },6000);
 /* demo cycle of the equation while the cart is empty */
 setInterval(()=>{ const eq=document.getElementById('eq'); if(!eq||paidCount()) return; S.demoN=(S.demoN||1)%6+1; eq.dataset.n=S.demoN; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML=eqHtml(S.demoN,isEarly()); eq.classList.add('pop'); },2200);
 /* ---------- render ---------- */
