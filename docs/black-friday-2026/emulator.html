@@ -176,6 +176,14 @@ button{font-family:inherit;cursor:pointer}
 .ns-it img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;border:2px solid var(--g);background:#fff}
 .ns-it b{display:block;font-size:11px;font-weight:900;margin-top:5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ns-it small{display:block;font-size:9.5px;font-weight:600;color:var(--tan);line-height:1.15;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.savebox{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border-radius:999px;padding:5px 12px 5px 12px;font-size:12.5px;font-weight:800;box-shadow:0 4px 14px rgba(22,163,74,.35)}
+.savebox b{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums}
+.savebox em{font-style:normal;background:#fff;color:#15803d;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:900}
+.savebox.hero{margin:8px auto 0;display:flex;width:max-content;max-width:100%}
+.savebox.row{display:flex;justify-content:space-between;border-radius:12px;padding:9px 12px;margin:8px 0 0}
+.savebox.row span{flex:1}
+.savebox.foot{width:100%;justify-content:center;margin-bottom:8px;padding:6px 10px}
+.savebox.done{display:flex;width:max-content;max-width:100%;margin:8px auto 0;font-size:14px}
 .affnote{font-size:12px;font-weight:700;color:#fff;background:rgba(232,114,42,.18);border:1px solid rgba(232,114,42,.45);border-radius:10px;padding:7px 10px;margin:0 0 8px}
 .affnote b{color:var(--o2)}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
@@ -376,6 +384,9 @@ const walletLive = () => S.walletExp && S.walletExp>Date.now();
 const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return Math.min(6.5, subtotal()); };
 const affDiscount = () => (isEarly()&&isAff()&&S.email&&S.affBonus==='v10'&&paidCount()) ? Math.min(10, subtotal()) : 0;
 const total = () => Math.max(0, subtotal()-walletDiscount()-affDiscount()+shipping());
+/* спестяване: подаръци (реални или очаквани на стойността на купеното), ваучери за 2027, ваучер от партньор, маска */
+function savings(){ const n=paidCount(); if(!n||inPre()) return null; const g=giftCount(), avg=subtotal()/n; const gifts=giftValue()+Math.max(0,n-g)*avg; const vouchers=isEarly()?n*VOUCHER:0; const aff=affDiscount(); const mask=(S.phase==='public'&&isAff())?29.9:0; const tot=gifts+vouchers+aff+mask; const full=subtotal()+gifts+mask+vouchers; return {gifts,vouchers,aff,mask,total:tot,pct:Math.round(tot/full*100),est:g<n}; }
+const saveLine = (cls) => { const sv=savings(); if(!sv) return ''; return `<div class="savebox ${cls||''}"><span>Спестяваш${sv.est?' поне':''}</span><b>${fmt(sv.total)}</b><em>−${sv.pct} %</em></div>`; };
 
 /* ---------- timer ---------- */
 function hms(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600e3), m=Math.floor(ms%3600e3/60e3), s=Math.floor(ms%60e3/1e3); return [h,m,s].map(x=>String(x).padStart(2,'0')); }
@@ -518,7 +529,7 @@ function vShop(){
   const early=isEarly(), n=paidCount();
   const list=filtered(P.filter(p=>p.buy!==false&&!giftOnly(p)));
   const foot = n
-    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 €)</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''}</span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 €)</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''} · <b style="color:var(--gd)">−${(savings()||{pct:0}).pct} %</b></span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta sm" disabled>Добави нещо, за да избереш подарък</button>`;
   return `<div class="scroll" id="listScroll">
   <div class="hero">
@@ -526,7 +537,7 @@ function vShop(){
     ${stepsBar(1)}
     ${isAff()?`<div class="affnote">🔗 Идваш от <b>${AFF.name}</b>: ${S.phase==='public'?'колагенова маска CollaMask се добавя автоматично към поръчката ти (MASK01).':(S.email?(S.affBonus==='v10'?'ваучерът ти 10 € се приспада в количката.':'eyeFresh пачове са добавени към поръчката ти.'):'въведи имейл на страницата за ранен достъп, за да вземеш подаръка ѝ.')}</div>`:''}
     <div class="eq pop" id="eq" data-n="${n||S.demoN||1}">${eqHtml(n||S.demoN||1, early)}</div>
-    <div class="eq-note" id="eqNote">${n?'Това е твоята количка. Подаръците ги избираш в стъпка 2.':'Колкото опаковки купиш, толкова подаръка си избираш.'}</div>
+    ${n?saveLine('hero'):'<div class="eq-note" id="eqNote">Колкото опаковки купиш, толкова подаръка си избираш.</div>'}
   </div>
   <div class="wrap" style="padding-top:10px">
     <div class="k2row"><span class="k2">Стъпка 1 · Избери какво купуваш <button class="info${S.ex?' on':''}" data-act="ex" aria-expanded="${!!S.ex}">ⓘ пример</button></span>${chips()}</div>
@@ -572,7 +583,7 @@ function vGifts(){
     <div style="height:8px"></div>
   </div></div>
   <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>
-    <div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}${isEarly()?` + ${n*VOUCHER} € ваучери`:''}</span></div><div class="slots">${slots}</div>
+    ${saveLine('foot')}<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}${isEarly()?` + ${n*VOUCHER} € ваучери`:''}</span></div><div class="slots">${slots}</div>
     ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
   </div>`;
 }
@@ -586,7 +597,8 @@ function vCheckout(){
     + (early&&isAff()&&S.email&&S.affBonus==='eye'?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от ${AFF.name}</small></div><div class="p free"><s>15,90 €</s>0 €</div></div>`:'')
     + (S.phase==='public'&&isAff()?`<div class="row gift"><div class="ic" style="background:var(--gs)">🎭</div><div>CollaMask колагенова маска<small>подарък от ${AFF.name} · код MASK01, добавен автоматично</small></div><div class="p free"><s>29,90 €</s>0 €</div></div>`:'')
     + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
-    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(S.phase==='public'&&isAff()?29.9:0))}`}</small></div><div>${fmt(total())}</div></div>`;
+    + (pre?'':`<div style="padding:10px 12px 0">${saveLine('row')}</div>`)
+    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(S.phase==='public'&&isAff()?29.9:0)+(isEarly()?n*VOUCHER:0))}`}</small></div><div>${fmt(total())}</div></div>`;
   return (pre
     ? `<div class="hdr dark"><div><b>Бърза поръчка</b><small>Плащаш ${fmt(total())}${walletDiscount()?` · с подаръка за днес`:''}</small></div><button class="x" data-act="screen" data-id="wallet" aria-label="назад">←</button></div>`
     : `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${fmt(total())} · ${n} платени + ${n} ${n===1?'подарък':'подаръка'}${early?` + ${n*VOUCHER} € ваучери`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>`) + `
@@ -622,6 +634,7 @@ function vDone(){
     <div class="big">🎁</div>
     <div class="h1" style="color:var(--ink);font-size:24px;margin:10px 0 6px">Честито! Поръчка №BF-${String(1000+Math.floor(total()*7)%9000)}</div>
     <div class="lead">${n} платени + ${n} подаръка пътуват към теб${S.pay==='cod'?' с наложен платеж':''}.</div>
+    ${saveLine('done')}
     <div class="card" style="text-align:left;margin:14px 0">
       <div class="k2" style="margin-top:0">Какво следва</div>
       <div class="steps">
