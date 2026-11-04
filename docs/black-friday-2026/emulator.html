@@ -168,6 +168,14 @@ button{font-family:inherit;cursor:pointer}
 .info{border:1.5px solid var(--ol);background:#fff;color:var(--od);font-weight:800;font-size:11px;border-radius:999px;padding:3px 8px;text-transform:none;letter-spacing:0;white-space:nowrap}
 .info.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .exbox{font-size:12.5px;font-weight:600;color:var(--ink2);background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;line-height:1.4}
+.nstrip{background:#fff;border:1.5px solid rgba(34,197,94,.35);border-radius:14px;padding:8px 10px 10px;margin:0 0 10px}
+.ns-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:800;color:var(--gd);margin-bottom:8px}
+.ns-h b{color:var(--ink)}.ns-h small{font-size:11px;font-weight:700;color:var(--tan);white-space:nowrap}
+.ns-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ns-it{border:none;background:var(--cream);border-radius:10px;padding:6px 4px;text-align:center;min-width:0;font-family:inherit;color:var(--ink)}
+.ns-it img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;border:2px solid var(--g);background:#fff}
+.ns-it b{display:block;font-size:11px;font-weight:900;margin-top:5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ns-it small{display:block;font-size:9.5px;font-weight:600;color:var(--tan);line-height:1.15;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .affnote{font-size:12px;font-weight:700;color:#fff;background:rgba(232,114,42,.18);border:1px solid rgba(232,114,42,.45);border-radius:10px;padding:7px 10px;margin:0 0 8px}
 .affnote b{color:var(--o2)}
 .eq-note{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-top:6px}
@@ -402,6 +410,7 @@ function filtered(list){
 }
 function catCount(k, pool){ return (pool||P.filter(p=>p.buy!==false&&!giftOnly(p))).filter(p => k==='all' || (k==='fav'&&p.fav) || (k==='new'&&p.isNew) || p.cat===k).length; }
 function chips(pool){ const cats=CATS.filter(([k])=>catCount(k,pool)>0); if(!cats.some(([k])=>k===S.filter)) S.filter='all'; return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${cats.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k,pool)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
+function newStrip(where){ if(where==='top'&&S.filter!=='all') return ''; if(where!=='top'&&S.filter==='all') return ''; return `<div class="nstrip"><div class="ns-h"><span>🎁 Подаръци по избор · <b>новите 4</b></span><small>избираш ги в стъпка 2</small></div><div class="ns-row">${P.filter(p=>p.isNew).map(p=>`<button class="ns-it" data-act="sheet" data-id="${p.id}"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${esc(p.s)}</small></button>`).join('')}</div></div>`; }
 function stepsBar(cur){ const L=['Продукти','Подаръци','Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
 function eqHtml(k, early){ const isX = k===6 && !paidCount(); const one=k===1; const bx=(c)=>isX ? Array.from({length:5},(_,i)=>`<i class="bx${c}" style="opacity:${(1-i*0.18).toFixed(2)}"></i>`).join('')+`<span style="color:#fff;font-weight:900;line-height:20px;margin-left:2px">…</span>` : Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); const lbl = isX ? 'X' : k; return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${lbl} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${lbl} ${one?'подарък':'подаръка'}</b><small>по избор${early?(isX?' + X×10 € ваучери':` + ${k*VOUCHER} € ваучер${one?'':'и'}`):''}</small></div>`; }
 function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
@@ -522,7 +531,9 @@ function vShop(){
   <div class="wrap" style="padding-top:10px">
     <div class="k2row"><span class="k2">Стъпка 1 · Избери какво купуваш <button class="info${S.ex?' on':''}" data-act="ex" aria-expanded="${!!S.ex}">ⓘ пример</button></span>${chips()}</div>
     ${S.ex?'<div class="exbox">Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).</div>':''}
+    ${newStrip('top')}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
+    ${newStrip()}
     <div class="k2">Как работи · пример</div>
     <div class="howcard">
       <div class="hc-row">
