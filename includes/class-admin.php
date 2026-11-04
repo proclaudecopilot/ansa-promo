@@ -50,6 +50,7 @@ final class Admin {
 			'orders'   => array( '🎟️', 'Поръчки',    'Промо поръчките, билетите, FunnelKit таговете' ),
 			'tombola'  => array( '🎲', 'Томбола',    'Участници, билети, препоръки, теглене' ),
 			'insights' => array( '📈', 'Insights',   '🎯 Лендър · 📊 Подробно · 🟢 На живо · 🧾 Сесии · 🛒 Колички · 💸 Разход · 📌 Отчети' ),
+			'bf'       => array( '🖤', 'Черен петък', 'Второто промо: /cheren-petak-2026 — фази, продукти, ваучери, лийдове, поръчки (1.45.0)' ),
 			'json'     => array( '{ }', 'JSON',      'Черновата като JSON — износ и внос' ),
 		);
 	}
@@ -285,6 +286,9 @@ final class Admin {
 					<?php foreach ( array( 'orders', 'tombola', 'insights' ) as $k ) : ?><a class="ap-nav__it<?php echo $k === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>"><span class="ic"><?php echo $scr[ $k ][0]; ?></span><?php echo esc_html( $scr[ $k ][1] ); ?></a>
 					<?php if ( 'insights' === $k && 'insights' === $tab ) : ?><div class="ap-nav__sub"><?php $iv = Insights::current_view(); foreach ( Insights::views() as $vk => $vl ) : ?><a class="<?php echo $vk === $iv ? 'on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'insights', 'view' => $vk ) ) ); ?>"><?php echo esc_html( $vl ); ?></a><?php endforeach; ?></div><?php endif; /* 1.21.0: подменю Преглед · На живо · История */ ?>
 					<?php endforeach; ?>
+					<div class="ap-nav__label">Черен петък 2026</div>
+					<a class="ap-nav__it<?php echo 'bf' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'bf' ) ) ); ?>"><span class="ic">🖤</span>Черен петък<?php $bfp = BF\Config::get_published(); ?><span class="n" title="фаза"><?php echo esc_html( array( 'prep' => 'подг.', 'early' => 'ранен', 'public' => 'публ.', 'over' => 'край' )[ BF\Config::phase_now( $bfp ) ] ?? '' ); ?></span></a>
+					<?php if ( 'bf' === $tab ) : ?><div class="ap-nav__sub"><?php $bv = BF\Admin::current_view(); foreach ( BF\Admin::views() as $vk => $vl ) : ?><a class="<?php echo $vk === $bv ? 'on' : ''; ?>" href="<?php echo esc_url( BF\Admin::url( $vk ) ); ?>"><?php echo esc_html( $vl ); ?></a><?php endforeach; ?></div><?php endif; ?>
 					<div class="ap-nav__label">Още</div>
 					<a class="ap-nav__it<?php echo 'json' === $tab ? ' on' : ''; ?>" href="<?php echo esc_url( self::url( array( 'tab' => 'json' ) ) ); ?>"><span class="ic">{ }</span>JSON</a>
 					<a class="ap-nav__it" href="<?php echo esc_url( admin_url( 'admin.php?page=pcc-github' ) ); ?>"><span class="ic">⬆️</span>GitHub ъпдейти<span class="ext">↗</span></a>
@@ -298,7 +302,7 @@ final class Admin {
 						<?php if ( 'status' === $tab ) : ?><?php self::form_open( 'purge' ); ?><button class="ap-btn ap-btn--secondary">🧹 Изчисти кеша</button></form><a class="ap-btn ap-btn--primary" href="<?php echo esc_url( Editor::url() ); ?>">✏️ Редактор</a><?php endif; ?>
 					</div><?php endif; ?>
 				</div><?php endif; ?>
-				<div class="ap-body"><div class="ap-body-inner<?php echo in_array( $tab, array( 'orders', 'tombola', 'insights', 'editor' ), true ) ? ' ap-body-inner--wide' : ''; ?>">
+				<div class="ap-body"><div class="ap-body-inner<?php echo in_array( $tab, array( 'orders', 'tombola', 'insights', 'editor', 'bf' ), true ) ? ' ap-body-inner--wide' : ''; ?>">
 			<?php if ( $msg && ! in_array( $tab, array( 'products', 'editor' ), true ) ) : ?><div class="ap-msg"><?php echo esc_html( $msg ); ?><button type="button" aria-label="затвори">✕</button></div><?php endif; ?>
 			<?php if ( 'status' === $tab ) : ?>
 				<?php $env = Doctor::env(); $nbad = count( array_filter( $env, function ( $r ) { return 'bad' === $r['level']; } ) ); $nwarn = count( array_filter( $env, function ( $r ) { return 'warn' === $r['level']; } ) ); $live_n = count( Frontend::products( $pub ) ); ?>
@@ -628,6 +632,8 @@ final class Admin {
 			<?php elseif ( 'insights' === $tab ) : ?>
 				<?php if ( Insights_Portal::enabled() ) : /* 1.27.0 */ ?><p class="description" style="margin:0 0 10px">📈 Отделният адрес за екипа по реклами (вход с парола, без wp-admin): <a href="<?php echo esc_url( Insights_Portal::url() ); ?>" target="_blank" rel="noopener"><code><?php echo esc_html( Insights_Portal::url() ); ?></code></a> · настройки в <a href="<?php echo esc_url( self::url( array( 'tab' => 'tools' ) ) ); ?>#s-insurl">🧰 → 📈 Insights URL</a></p><?php endif; ?>
 				<?php Insights::render( isset( $_GET['days'] ) ? (int) $_GET['days'] : 30 ); /* 1.17.0: Insights 2 — сесии, фуния; 1.21.0: ?view=overview|live|history (📊 Преглед · 🟢 На живо · 📜 История); рендира своите карти */ ?>
+			<?php elseif ( 'bf' === $tab ) : /* 1.45.0: второто промо */ ?>
+				<?php BF\Admin::render( (string) $msg ); ?>
 			<?php elseif ( 'json' === $tab ) : ?>
 				<div class="ap-sec"><div class="ap-sec__h"><span class="ap-sec__t">{ } Черновата като JSON</span></div><div class="ap-sec__b">
 				<?php self::form_open( 'import', 'json', ' style="display:block"' ); ?>

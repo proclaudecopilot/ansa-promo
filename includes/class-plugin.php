@@ -60,7 +60,8 @@ final class Plugin {
 		Probe::register();
 		Mega_Menu::register(); /* 1.40.0: мега менюто „Продукти“ + хапчето „Сезонът на ANSA −40%“ в навигацията */
 		Shop::register(); /* 1.44.0: страницата /shop/ „Всички продукти“ — същите продукти, нужди и „от“ цени като в менюто */
-		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ }
+		BF\Page::register(); BF\Cart::register(); BF\Leads::register(); /* 1.45.0: второто промо — Черен петък 2026 (/cheren-petak-2026): свой конфиг, количка, лийдове */
+		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ BF\Admin::register(); /* 1.45.0: 🖤 Черен петък */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( Config::FLIP_HOOK, array( 'AnsaPromo\\Config', 'on_flip' ) ); /* v1.19.0: смяната на седмицата чисти кеша */
 		add_action( Config::AFTER_HOOK, array( 'AnsaPromo\\Config', 'after_publish_slow' ) ); /* 1.24.33: purge-овете след публикуване, когато заявката не може да се затвори рано */
