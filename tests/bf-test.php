@@ -25,7 +25,9 @@ $ok( 'токенът се генерира сам (≥ 16 знака, [a-z0-9])'
 $ok( 'продуктите: 13 (9 за купуване + 4 само подарък и нови)', 13 === count( $d['products'] ) && 4 === count( array_filter( $d['products'], function ( $p ) { return $p['gift_only'] && $p['is_new']; } ) ) );
 $ok( 'ключовете на продуктите са уникални', count( $d['products'] ) === count( array_unique( array_column( $d['products'], 'key' ) ) ) );
 $ok( 'ваучер 10 € / 30 мин / 17 мин на страницата', 10.0 === (float) $d['cold']['voucher'] && 30 === (int) $d['cold']['minutes'] && 17 === (int) $d['cold']['landing_minutes'] );
-$ok( 'партньор: ваучер 5 €, маска MASK01', 5.0 === (float) $d['aff']['voucher'] && 'MASK01' === $d['aff']['mask_sku'] );
+$ok( 'партньор: ваучер 5 €, маската CollaMask „10 маски“ #11163', 5.0 === (float) $d['aff']['voucher'] && '' === $d['aff']['mask_sku'] && 11163 === (int) $d['aff']['mask_product_id'] );
+$ok( 'токенът по подразбиране е стабилен между две четения', Config::normalize( array() )['early']['token'] === Config::normalize( array() )['early']['token'] );
+$ok( '„Нов токен“ е различен и се пази при normalize', ( $t = Config::new_token() ) !== $d['early']['token'] && Config::normalize( array( 'early' => array( 'token' => $t ) ) )['early']['token'] === $t );
 
 /* фазите по датите */
 $ph = Config::phase_ts( $d );

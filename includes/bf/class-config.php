@@ -38,8 +38,8 @@ final class Config {
 			'cold'     => array( 'enabled' => true, 'voucher' => 10, 'minutes' => 30, 'landing_minutes' => 17, 'prefix' => 'BF' ),
 			/* броячът „записани жени“: start в ден 0 (from), клони към max без да го стига: n = max − (max − start)·e^(−d/k) */
 			'seats'    => array( 'enabled' => true, 'start' => 312, 'max' => 440, 'k' => 9, 'from' => '2026-11-04' ),
-			/* партньорският трафик (?ref=КОД на ansa Partner): подарък по избор в публичната промоция — ваучер или маската (CollaMask, SKU MASK01) */
-			'aff'      => array( 'enabled' => true, 'voucher' => 5, 'mask_sku' => 'MASK01', 'mask_product_id' => 0, 'cookie_days' => 7 ),
+			/* партньорският трафик (?ref=КОД на ansa Partner): подарък по избор в публичната промоция — ваучер или маската (CollaMask „10 маски“ #11163; SKU-то на продукта е MASK02) */
+			'aff'      => array( 'enabled' => true, 'voucher' => 5, 'mask_sku' => '', 'mask_product_id' => 11163, 'cookie_days' => 7 ), /* 1.45.1: CollaMask „10 маски“ (#11163, 29,90 €); SKU-то на продукта е MASK02 (вариациите: „MASK02;MASK02;…“), MASK01 няма */
 			/* ранният достъп: общ токен в линка от имейла (?ea=ТОКЕН → бисквитка); генерира се сам при първия запис */
 			'early'    => array( 'token' => '', 'cookie_days' => 7 ),
 			'ship'     => array( 'free_from' => 2, 'paid' => 2.55 ),
@@ -108,9 +108,9 @@ final class Config {
 		$s = is_array( $out['seats'] ?? null ) ? $out['seats'] : array(); $from = trim( (string) ( $s['from'] ?? '' ) );
 		$out['seats'] = array( 'enabled' => ! isset( $s['enabled'] ) || ! empty( $s['enabled'] ), 'start' => max( 0, (int) ( $s['start'] ?? 312 ) ), 'max' => max( 1, (int) ( $s['max'] ?? 440 ) ), 'k' => max( 0.5, (float) ( $s['k'] ?? 9 ) ), 'from' => preg_match( '/^\d{4}-\d{2}-\d{2}$/', $from ) ? $from : $d['seats']['from'] );
 		if ( $out['seats']['start'] >= $out['seats']['max'] ) { $out['seats']['start'] = max( 0, $out['seats']['max'] - 1 ); }
-		$a = is_array( $out['aff'] ?? null ) ? $out['aff'] : array(); $out['aff'] = array( 'enabled' => ! isset( $a['enabled'] ) || ! empty( $a['enabled'] ), 'voucher' => max( 0, round( (float) ( $a['voucher'] ?? 5 ), 2 ) ), 'mask_sku' => sanitize_text_field( (string) ( $a['mask_sku'] ?? 'MASK01' ) ), 'mask_product_id' => (int) ( $a['mask_product_id'] ?? 0 ), 'cookie_days' => max( 1, min( 60, (int) ( $a['cookie_days'] ?? 7 ) ) ) );
+		$a = is_array( $out['aff'] ?? null ) ? $out['aff'] : array(); $out['aff'] = array( 'enabled' => ! isset( $a['enabled'] ) || ! empty( $a['enabled'] ), 'voucher' => max( 0, round( (float) ( $a['voucher'] ?? 5 ), 2 ) ), 'mask_sku' => sanitize_text_field( (string) ( $a['mask_sku'] ?? '' ) ), 'mask_product_id' => (int) ( $a['mask_product_id'] ?? 0 ), 'cookie_days' => max( 1, min( 60, (int) ( $a['cookie_days'] ?? 7 ) ) ) );
 		$e = is_array( $out['early'] ?? null ) ? $out['early'] : array(); $tok = preg_replace( '/[^a-z0-9]/i', '', (string) ( $e['token'] ?? '' ) );
-		$out['early'] = array( 'token' => '' !== $tok ? $tok : self::new_token(), 'cookie_days' => max( 1, min( 60, (int) ( $e['cookie_days'] ?? 7 ) ) ) );
+		$out['early'] = array( 'token' => '' !== $tok ? $tok : self::default_token(), 'cookie_days' => max( 1, min( 60, (int) ( $e['cookie_days'] ?? 7 ) ) ) );
 		$out['ship'] = array( 'free_from' => max( 0, (int) ( $out['ship']['free_from'] ?? 2 ) ), 'paid' => round( (float) ( $out['ship']['paid'] ?? 2.55 ), 2 ) );
 		$out['checkout'] = array( 'card_gateway' => sanitize_key( (string) ( $out['checkout']['card_gateway'] ?? 'fkwcs_stripe' ) ), 'cod_gateway' => sanitize_key( (string) ( $out['checkout']['cod_gateway'] ?? 'cod' ) ), 'block_coupons' => ! isset( $out['checkout']['block_coupons'] ) || ! empty( $out['checkout']['block_coupons'] ) );
 		$l = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = array( 'fka' => ! isset( $l['fka'] ) || ! empty( $l['fka'] ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! isset( $l['untag_on_order'] ) || ! empty( $l['untag_on_order'] ) );
@@ -121,6 +121,9 @@ final class Config {
 		$out['copy'] = Copy::diff( is_array( $out['copy'] ?? null ) ? $out['copy'] : array() );
 		return $out;
 	}
+	/** 1.45.1: токенът по подразбиране е ЕДИН И СЪЩ при всяко четене (HMAC от salt-а на сайта), докато в store-а няма записан — иначе всяко normalize( defaults() )
+	 *  даваше нов случаен токен и линкът от „Състояние“/шорткода се менеше при всяко зареждане, преди първото „Запази“. „Нов токен“ записва случаен. */
+	public static function default_token() { $raw = function_exists( 'wp_salt' ) ? hash_hmac( 'sha256', 'ansa_bf_early_token', wp_salt( 'auth' ), true ) : random_bytes( 18 ); return substr( preg_replace( '/[^a-z0-9]/i', '', base64_encode( $raw ) ), 0, 20 ); }
 	public static function new_token() { return substr( str_replace( array( '+', '/', '=' ), '', base64_encode( random_bytes( 18 ) ) ), 0, 20 ); }
 	private static function merge( $base, $over ) {
 		if ( ! is_array( $over ) ) { return $base; }

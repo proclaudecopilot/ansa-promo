@@ -60,7 +60,7 @@ function ansa_bf_snippet1_report() {
 	$live = $Pg::products( $d, true );
 	$p( 'живи продукти в runtime', count( $live ) . ' (' . implode( ',', array_keys( $live ) ) . ')' );
 	$p( '  само подарък / нови', count( array_filter( $live, function ( $x ) { return $x['giftOnly']; } ) ) . ' / ' . count( array_filter( $live, function ( $x ) { return $x['isNew']; } ) ) . ' · без снимка: ' . count( array_filter( $live, function ( $x ) { return '' === $x['img']; } ) ) );
-	$m = $Pg::mask( $d ); $p( 'маска (' . $d['aff']['mask_sku'] . ')', $m ? '#' . $m['id'] . ' ' . $m['name'] . ' · ' . $m['price'] . ' € · stock=' . $yn( $m['stock'] ) : 'НЕ Е НАМЕРЕНА' );
+	$m = $Pg::mask( $d ); $p( 'маска (' . ( $d['aff']['mask_sku'] ?: '#' . $d['aff']['mask_product_id'] ) . ')', $m ? '#' . $m['id'] . ' ' . $m['name'] . ' · ' . $m['price'] . ' € · stock=' . $yn( $m['stock'] ) : 'НЕ Е НАМЕРЕНА' );
 	$p( 'лого', $Pg::logo( $d ) );
 
 	$h( 'Копи-регистър' );
@@ -93,8 +93,9 @@ function ansa_bf_snippet1_report() {
 	$h( 'ansa Partner (?ref=КОД)' );
 	$p( 'AP_Coupons / AP_Partners', $yn( class_exists( 'AP_Coupons' ) ) . ' / ' . $yn( class_exists( 'AP_Partners' ) ) );
 	if ( class_exists( 'AP_Coupons' ) ) {
-		$row = $wpdb->get_row( "SELECT c.code, c.partner_id FROM {$wpdb->prefix}ap_coupon_map c JOIN {$wpdb->prefix}ap_partners p ON p.id = c.partner_id WHERE c.active = 1 AND p.status = 'active' ORDER BY c.id ASC LIMIT 1", ARRAY_A );
-		if ( $row ) { $pt = $Pg::partner( $row['code'] ); $p( 'първият активен код ' . $row['code'], $pt ? 'OK → „' . $pt['name'] . '“ (partner ' . $pt['partner_id'] . ')' : 'Page::partner() НЕ ГО НАМИРА' ); } else { $p( 'активни кодове', 'няма редове в ap_coupon_map/ap_partners (или таблиците са с друго име)' ); }
+		$rows = $wpdb->get_results( "SELECT c.coupon_code, p.display_name FROM {$wpdb->prefix}ansa_partner_coupons c JOIN {$wpdb->prefix}ansa_partner_partners p ON p.partner_id = c.partner_id WHERE c.active = 1 AND p.status = 'active' ORDER BY c.partner_id ASC LIMIT 3", ARRAY_A );
+		$p( 'активни кодове', $rows ? count( $rows ) . '+ (' . implode( ', ', array_column( $rows, 'coupon_code' ) ) . ')' : 'няма' );
+		foreach ( (array) $rows as $row ) { $pt = $Pg::partner( $row['coupon_code'] ); $p( '  ' . $row['coupon_code'], $pt ? 'OK → „' . $pt['name'] . '“ (partner ' . $pt['partner_id'] . ', „' . $row['display_name'] . '“)' : 'Page::partner() НЕ ГО НАМИРА' ); }
 	}
 
 	$h( 'Фронтът (анонимни заявки към сайта)' );
@@ -114,14 +115,15 @@ function ansa_bf_snippet1_report() {
 	$p( 'ajax ansa_bf_add без nonce', is_wp_error( $add ) ? 'ГРЕШКА: ' . $add->get_error_message() : wp_remote_retrieve_response_code( $add ) . ' (очаква се 403) · ' . substr( (string) wp_remote_retrieve_body( $add ), 0, 80 ) );
 
 	$h( 'Поръчки' );
-	$orders = function_exists( 'wc_get_orders' ) ? wc_get_orders( array( 'limit' => 5, 'orderby' => 'date', 'order' => 'DESC', 'meta_query' => array( array( 'key' => '_ansa_bf_promo', 'compare' => 'EXISTS' ) ) ) ) : array();
+	$orders = class_exists( 'AnsaPromo\\BF\\Admin' ) ? AnsaPromo\BF\Admin::orders( 5 ) : array();
 	$p( 'последни BF поръчки', count( $orders ) );
 	foreach ( $orders as $o ) { $p( '  #' . $o->get_id(), $o->get_date_created()->date( 'd.m H:i' ) . ' · ' . $o->get_status() . ' · ' . $o->get_meta( '_ansa_bf_mode' ) . '/' . $o->get_meta( '_ansa_bf_phase' ) . '/' . $o->get_meta( '_ansa_bf_variant' ) . ' · платени ' . $o->get_meta( '_ansa_bf_paid' ) . ' + подаръци ' . $o->get_meta( '_ansa_bf_gifts' ) . ' · ' . $o->get_total() . ' € · ваучер ' . ( $o->get_meta( '_ansa_bf_voucher' ) ?: '—' ) . ' · ref ' . ( $o->get_meta( '_ansa_bf_ref' ) ?: '—' ) ); }
 
 	$h( 'Средата' );
 	$p( 'Сезонът (ansa_promo_store)', is_array( get_option( 'ansa_promo_store' ) ) ? 'има · live=' . $yn( AnsaPromo\Config::is_live( AnsaPromo\Config::get_published() ) ) : 'няма' );
 	$p( 'FlyingPress / FunnelKit checkout', $yn( class_exists( 'FlyingPress\\Purge' ) ) . ' / ' . $yn( class_exists( 'WFACP_Core' ) ) );
-	$p( 'гейтуей карта / cod', ( function_exists( 'WC' ) && isset( WC()->payment_gateways ) ? ( isset( WC()->payment_gateways->payment_gateways()[ $d['checkout']['card_gateway'] ] ) ? 'има' : 'НЯМА ' . $d['checkout']['card_gateway'] ) . ' / ' . ( isset( WC()->payment_gateways->payment_gateways()[ $d['checkout']['cod_gateway'] ] ) ? 'има' : 'НЯМА ' . $d['checkout']['cod_gateway'] ) : '—' ) );
+	$gws = function_exists( 'WC' ) && method_exists( WC(), 'payment_gateways' ) && WC()->payment_gateways() ? WC()->payment_gateways()->payment_gateways() : array();
+	$p( 'гейтуей карта / cod', $gws ? ( isset( $gws[ $d['checkout']['card_gateway'] ] ) ? 'има' : 'НЯМА ' . $d['checkout']['card_gateway'] ) . ' / ' . ( isset( $gws[ $d['checkout']['cod_gateway'] ] ) ? 'има' : 'НЯМА ' . $d['checkout']['cod_gateway'] ) . ' · всички: ' . implode( ',', array_keys( $gws ) ) : '—' );
 
 	return $cache = implode( "\n", $L );
 }
