@@ -431,7 +431,7 @@ function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class=
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
 
 function voucherCard(opts){ const o=Object.assign({amount:'10',locked:true,code:'ANSA10',cd:'coldExp',note:'важи 30 минути след отключването'},opts||{}); return `<div class="vch${o.locked?'':' ok'}"><img class="vlogo" src="img/logo-white.png" alt="ansa"><div class="stamp">${o.locked?'🔒 заключен':'✔ отключен'}</div><div class="vt" style="margin-top:14px">Твоят ваучер за</div><div class="va">${o.amount}<small>€</small></div><div class="vs">${o.locked?'за всичко в ansa.bg · '+o.note:'в портфейла ти · за всичко в ansa.bg'}</div><div class="vl"></div><div class="vb"><span class="vcode${o.locked?' lock':''}">${o.code}</span><span class="vtm">${o.locked?'изтича след':'важи още'} <b data-cd="${o.cd}">${mmss(S[o.cd]-Date.now())}</b></span></div></div>`; }
-function bonusBtn(id, cur, ic, title, sub){ return `<button class="bo${cur===id?' on':''}" data-act="bonus" data-id="${id}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="r"></span></button>`; }
+function bonusBtn(id, cur, ic, title, sub){ return `<button class="bo${cur===id?' on':''}" data-act="bonus" data-id="${id}"><span class="ic">${ic}</span><span><b>${title}</b>${sub?`<small>${sub}</small>`:''}</span><span class="r"></span></button>`; }
 function emailForm(cta){ return `<form id="signupForm"><div class="input${S.emailErr?' err':''}">✉️ <input id="emailIn" type="email" placeholder="твоят имейл" value="${esc(S.email)}" autocomplete="email"></div>${S.emailErr?'<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">Въведи валиден имейл, за да ти пратим подаръка.</div>':''}<button class="cta" type="submit">${cta}</button></form>`; }
 function vSignup(){
   if(isAff()) return vSignupAff();
@@ -467,8 +467,8 @@ function vSignupAff(){
     <div class="card">
       <div class="h2">Подаръкът от ${AFF.name} — избери</div>
       <div class="bonus">
-        ${bonusBtn('v5', S.affBonus, '🎟️', 'Ваучер 5 €', 'приспада се от поръчката ти в ранния достъп')}
-        ${bonusBtn('mask', S.affBonus, '<img src="img/mask.jpg" alt="">', 'Колагенова маска подарък', 'CollaMask · добавя се към поръчката ти в промото · 29,90 €')}
+        ${bonusBtn('v5', S.affBonus, '🎟️', 'Ваучер 5 €', '')}
+        ${bonusBtn('mask', S.affBonus, '<img src="img/mask.jpg" alt="">', 'Колагенова маска подарък', 'CollaMask · 29,90 €')}
       </div>
       ${emailForm('Отключи ранния достъп<small>подаръкът се пази за имейла ти</small>')}
       <div class="trust">🔒 Личен линк за старта на ${DATE_EARLY}, 10:00. Без спам.</div>
