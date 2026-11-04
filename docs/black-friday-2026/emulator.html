@@ -531,9 +531,7 @@ function vShop(){
   <div class="wrap" style="padding-top:10px">
     <div class="k2row"><span class="k2">Стъпка 1 · Избери какво купуваш <button class="info${S.ex?' on':''}" data-act="ex" aria-expanded="${!!S.ex}">ⓘ пример</button></span>${chips()}</div>
     ${S.ex?'<div class="exbox">Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).</div>':''}
-    ${newStrip('top')}
     ${list.length?list.map(p=>productTile(p,'buy')).join(''):'<div class="lead">Няма продукти в този филтър.</div>'}
-    ${newStrip()}
     <div class="k2">Как работи · пример</div>
     <div class="howcard">
       <div class="hc-row">
@@ -567,9 +565,9 @@ function vGifts(){
   <div class="scroll" id="giftScroll"><div class="wrap" style="padding-top:12px">
     <div class="bar2"><i style="width:${n?Math.round(g/n*100):0}%"></i></div>
     <div class="sline"><span>Избрани <b>${g} от ${n}</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">↺ промени поръчката</button></div>
-    <div class="k2" style="margin-top:6px">Новите 4 продукта на ansa</div>
+    <div class="k2" style="margin-top:6px">Нови продукти</div>
     ${news.map(p=>productTile(p,'gift')).join('')}
-    <div class="k2">Любимите ти · ${favs.length}</div>
+    <div class="k2">Най-продавани продукти</div>
     ${favs.map(p=>productTile(p,'gift')).join('')}
     <div style="height:8px"></div>
   </div></div>
