@@ -365,7 +365,7 @@ const byId = id => P.find(p=>p.id===id);
 const fmt = n => n.toFixed(2).replace('.',',')+' €';
 
 /* ---------- state ---------- */
-const S0 = () => ({demoN:1, src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
+const S0 = () => ({demoN:1, _exp:{}, src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
 let S = S0();
 try{ const raw=sessionStorage.getItem('ansa_bf_emu'); if(raw){ const o=JSON.parse(raw); if(o && o.cart) S=Object.assign(S0(),o); } }catch(e){}
 function save(){ try{ sessionStorage.setItem('ansa_bf_emu', JSON.stringify(S)); }catch(e){} }
@@ -393,7 +393,7 @@ const saveLine = (cls) => { const sv=savings(); if(!sv) return ''; return `<div 
 
 /* ---------- timer ---------- */
 function hms(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600e3), m=Math.floor(ms%3600e3/60e3), s=Math.floor(ms%60e3/1e3); return [h,m,s].map(x=>String(x).padStart(2,'0')); }
-setInterval(()=>{ phone.querySelectorAll('[data-cd]').forEach(el=>{ const ms=S[el.dataset.cd]-Date.now(); el.textContent=mmss(ms); if(ms<=0&&!el.dataset.done){ el.dataset.done='1'; render(); } }); const el=phone.querySelector('[data-timer]'); if(el){ const [h,m,s]=hms(S.deadline-Date.now()); el.textContent=`${h}:${m}:${s}`; } const t2=phone.querySelectorAll('[data-timer2]'); if(t2.length){ const [h,m,s]=hms(S.deadline-Date.now()); t2[0].textContent=h; if(t2[1]) t2[1].textContent=m; if(t2[2]) t2[2].textContent=s; } },1000);
+setInterval(()=>{ phone.querySelectorAll('[data-cd]').forEach(el=>{ const ms=S[el.dataset.cd]-Date.now(); el.textContent=mmss(ms); if(ms<=0){ S._exp=S._exp||{}; if(!S._exp[el.dataset.cd]){ S._exp[el.dataset.cd]=true; render(); } } }); const el=phone.querySelector('[data-timer]'); if(el){ const [h,m,s]=hms(S.deadline-Date.now()); el.textContent=`${h}:${m}:${s}`; } const t2=phone.querySelectorAll('[data-timer2]'); if(t2.length){ const [h,m,s]=hms(S.deadline-Date.now()); t2[0].textContent=h; if(t2[1]) t2[1].textContent=m; if(t2[2]) t2[2].textContent=s; } },1000);
 
 /* ---------- views ---------- */
 function productTile(p, mode){
@@ -745,9 +745,11 @@ function render(){
   let html='';
   if(sc==='signup') html=vSignup(); else if(sc==='done') html=vSignupDone(); else if(sc==='wallet') html=vWallet(); else if(sc==='emails') html=vEmails(); else if(sc==='shop') html=vShop(); else if(sc==='gifts') html=vGifts(); else if(sc==='checkout'||sc==='precheckout') html=vCheckout(); else if(sc==='ordered'||sc==='predone') html=vDone(); else if(sc==='closed') html=vClosed();
   if(S.sheet) html+=vSheet();
+  /* пази фокуса и курсора в поле, ако прерисуването го завари на фокус */
+  const act=document.activeElement; if(act && phone.contains(act) && act.id && (act.tagName==='INPUT'||act.tagName==='SELECT')){ S._refocus=act.id; try{ S._refocusSel=[act.selectionStart,act.selectionEnd]; }catch(e){ S._refocusSel=null; } }
   phone.innerHTML=html;
   const scr=phone.querySelector('.scroll'); if(scr && keep) scr.scrollTop=keep;
-  const ae=document.activeElement; if(S._refocus){ const el=document.getElementById(S._refocus); if(el){ el.focus({preventScroll:true}); try{ el.setSelectionRange(el.value.length, el.value.length); }catch(e){} } S._refocus=null; }
+  const ae=document.activeElement; if(S._refocus){ const el=document.getElementById(S._refocus); if(el){ el.focus({preventScroll:true}); try{ const sl=S._refocusSel; if(sl&&sl[0]!=null) el.setSelectionRange(sl[0], sl[1]); else el.setSelectionRange(el.value.length, el.value.length); }catch(e){} } S._refocus=null; S._refocusSel=null; }
   document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.src===S.src));
   const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
