@@ -357,13 +357,15 @@ const CATS=[['all','Всички'],['fav','Любими'],['new','Нови 4'],[
 const VOUCHER=10, FREE_SHIP_FROM=2, SHIP=2.55, DATE_EARLY='25.11', AFF={code:'RADINA', name:'Радина'};
 const mmss = ms => { ms=Math.max(0,ms); const m=Math.floor(ms/60e3), s=Math.floor(ms%60e3/1e3); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); };
 const isAff = () => S.src==='aff';
+const SEATS_START=new Date('2026-11-04T00:00:00+02:00'); /* първи ден на рекламите */
+const seatsNow = () => { const d=Math.max(0,(Date.now()-SEATS_START.getTime())/864e5); return Math.floor(440-128*Math.exp(-d/9)); }; /* 312 в ден 0, ~406 на 12-ия ден, ~413 на 14-ия, клони към 440 без да го стига */
 const nfmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 const giftOnly = p => !!p.giftOnly;
 const byId = id => P.find(p=>p.id===id);
 const fmt = n => n.toFixed(2).replace('.',',')+' €';
 
 /* ---------- state ---------- */
-const S0 = () => ({demoN:1, seats:318+Math.floor(Math.random()*85), src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
+const S0 = () => ({demoN:1, src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
 let S = S0();
 try{ const raw=sessionStorage.getItem('ansa_bf_emu'); if(raw){ const o=JSON.parse(raw); if(o && o.cart) S=Object.assign(S0(),o); } }catch(e){}
 function save(){ try{ sessionStorage.setItem('ansa_bf_emu', JSON.stringify(S)); }catch(e){} }
@@ -382,11 +384,11 @@ const isEarly = () => S.phase==='early';
 const shipping = () => paidCount()>=FREE_SHIP_FROM ? 0 : SHIP;
 const inPre = () => ['wallet','precheckout','predone'].includes(S.screen);
 const walletLive = () => S.walletExp && S.walletExp>Date.now();
-const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return Math.min(6.5, subtotal()); };
+const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return Math.min(10, subtotal()); };
 const affDiscount = () => (isEarly()&&isAff()&&S.email&&S.affBonus==='v10'&&paidCount()) ? Math.min(10, subtotal()) : 0;
 const total = () => Math.max(0, subtotal()-walletDiscount()-affDiscount()+shipping());
-/* спестяване: подаръци (реални или очаквани на стойността на купеното), ваучери за 2027, ваучер от партньор, маска */
-function savings(){ const n=paidCount(); if(!n||inPre()) return null; const g=giftCount(), avg=subtotal()/n; const gifts=giftValue()+Math.max(0,n-g)*avg; const vouchers=isEarly()?n*VOUCHER:0; const aff=affDiscount(); const mask=(S.phase==='public'&&isAff())?29.9:0; const tot=gifts+vouchers+aff+mask; const full=subtotal()+gifts+mask+vouchers; return {gifts,vouchers,aff,mask,total:tot,pct:Math.round(tot/full*100),est:g<n}; }
+/* спестяване: подаръци (реални или очаквани на стойността на купеното), ваучер от партньор, маска */
+function savings(){ const n=paidCount(); if(!n||inPre()) return null; const g=giftCount(), avg=subtotal()/n; const gifts=giftValue()+Math.max(0,n-g)*avg; const vouchers=0; const aff=affDiscount(); const mask=(S.phase==='public'&&isAff())?29.9:0; const tot=gifts+vouchers+aff+mask; const full=subtotal()+gifts+mask+vouchers; return {gifts,vouchers,aff,mask,total:tot,pct:Math.round(tot/full*100),est:g<n}; }
 const saveLine = (cls) => { const sv=savings(); if(!sv) return ''; return `<div class="savebox ${cls||''}"><span>Спестяваш${sv.est?' поне':''}</span><b>${fmt(sv.total)}</b><em>−${sv.pct} %</em></div>`; };
 
 /* ---------- timer ---------- */
@@ -424,11 +426,11 @@ function catCount(k, pool){ return (pool||P.filter(p=>p.buy!==false&&!giftOnly(p
 function chips(pool){ const cats=CATS.filter(([k])=>catCount(k,pool)>0); if(!cats.some(([k])=>k===S.filter)) S.filter='all'; return `<div class="selwrap"><label for="catSel">Покажи</label><select id="catSel">${cats.map(([k,l])=>`<option value="${k}"${S.filter===k?' selected':''}>${l} (${catCount(k,pool)})</option>`).join('')}</select><span class="selarr">▾</span></div>`; }
 function newStrip(where){ if(where==='top'&&S.filter!=='all') return ''; if(where!=='top'&&S.filter==='all') return ''; return `<div class="nstrip"><div class="ns-h"><span>🎁 Подаръци по избор · <b>новите 4</b></span><small>избираш ги в стъпка 2</small></div><div class="ns-row">${P.filter(p=>p.isNew).map(p=>`<button class="ns-it" data-act="sheet" data-id="${p.id}"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${esc(p.s)}</small></button>`).join('')}</div></div>`; }
 function stepsBar(cur){ const L=['Продукти','Подаръци','Финализиране']; return `<div class="stepsbar">${L.map((l,i)=>`<div class="${i+1===cur?'on':i+1<cur?'done':''}">${l}</div>`).join('')}</div>`; }
-function eqHtml(k, early){ const isX = k===6 && !paidCount(); const one=k===1; const bx=(c)=>isX ? Array.from({length:5},(_,i)=>`<i class="bx${c}" style="opacity:${(1-i*0.18).toFixed(2)}"></i>`).join('')+`<span style="color:#fff;font-weight:900;line-height:20px;margin-left:2px">…</span>` : Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); const lbl = isX ? 'X' : k; return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${lbl} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${lbl} ${one?'подарък':'подаръка'}</b><small>по избор${early?(isX?' + X×10 € ваучери':` + ${k*VOUCHER} € ваучер${one?'':'и'}`):''}</small></div>`; }
-function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span>${early?`<span class="eq">+</span><span><b>${one?'10 €':k+'×10 €'}</b><small>${one?'ваучер':'ваучери'} 2027</small></span>`:''}</div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
+function eqHtml(k, early){ const isX = k===6 && !paidCount(); const one=k===1; const bx=(c)=>isX ? Array.from({length:5},(_,i)=>`<i class="bx${c}" style="opacity:${(1-i*0.18).toFixed(2)}"></i>`).join('')+`<span style="color:#fff;font-weight:900;line-height:20px;margin-left:2px">…</span>` : Array.from({length:Math.min(k,5)},()=>`<i class="bx${c}"></i>`).join('')+(k>5?`<i class="bx${c}" style="opacity:.5"></i>`:''); const lbl = isX ? 'X' : k; return `<div class="eq-side"><div class="bxs">${bx('')}</div><b>${lbl} ${one?'опаковка':'опаковки'}</b><small>купуваш</small></div><div class="eq-sign">=</div><div class="eq-side g"><div class="bxs">${bx(' g')}</div><b>+${lbl} ${one?'подарък':'подаръка'}</b><small>по избор</small></div>`; }
+function mechStrip(n, early){ const k=n||1; const one=k===1; return `<div class="strip${n?' live':''}"><span><b>${k}</b><small>${one?'опаковка':'опаковки'}</small></span><span class="eq">=</span><span class="g"><b>+${k}</b><small>${one?'подарък':'подаръка'} по избор</small></span></div>${n?'':'<div class="strip-hint">Добави опаковки — сметката се обновява сама.</div>'}`; }
 function timerPill(){ const [h,m,s]=hms(S.deadline-Date.now()); return isEarly() ? `<span class="tpill">⏳ ранен достъп · <b data-timer>${h}:${m}:${s}</b></span>` : `<span class="tpill hot">BLACK FRIDAY · <b data-timer>${h}:${m}:${s}</b></span>`; }
 
-function voucherCard(opts){ const o=Object.assign({amount:'6,50',locked:true,code:'ANSA650',cd:'coldExp',note:'важи 30 минути след отключването'},opts||{}); return `<div class="vch${o.locked?'':' ok'}"><img class="vlogo" src="img/logo-white.png" alt="ansa"><div class="stamp">${o.locked?'🔒 заключен':'✔ отключен'}</div><div class="vt" style="margin-top:14px">Твоят ваучер за</div><div class="va">${o.amount}<small>€</small></div><div class="vs">${o.locked?'за всичко в ansa.bg · '+o.note:'в портфейла ти · за всичко в ansa.bg'}</div><div class="vl"></div><div class="vb"><span class="vcode${o.locked?' lock':''}">${o.code}</span><span class="vtm">${o.locked?'изтича след':'важи още'} <b data-cd="${o.cd}">${mmss(S[o.cd]-Date.now())}</b></span></div></div>`; }
+function voucherCard(opts){ const o=Object.assign({amount:'10',locked:true,code:'ANSA10',cd:'coldExp',note:'важи 30 минути след отключването'},opts||{}); return `<div class="vch${o.locked?'':' ok'}"><img class="vlogo" src="img/logo-white.png" alt="ansa"><div class="stamp">${o.locked?'🔒 заключен':'✔ отключен'}</div><div class="vt" style="margin-top:14px">Твоят ваучер за</div><div class="va">${o.amount}<small>€</small></div><div class="vs">${o.locked?'за всичко в ansa.bg · '+o.note:'в портфейла ти · за всичко в ansa.bg'}</div><div class="vl"></div><div class="vb"><span class="vcode${o.locked?' lock':''}">${o.code}</span><span class="vtm">${o.locked?'изтича след':'важи още'} <b data-cd="${o.cd}">${mmss(S[o.cd]-Date.now())}</b></span></div></div>`; }
 function bonusBtn(id, cur, ic, title, sub){ return `<button class="bo${cur===id?' on':''}" data-act="bonus" data-id="${id}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="r"></span></button>`; }
 function emailForm(cta){ return `<form id="signupForm"><div class="input${S.emailErr?' err':''}">✉️ <input id="emailIn" type="email" placeholder="твоят имейл" value="${esc(S.email)}" autocomplete="email"></div>${S.emailErr?'<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">Въведи валиден имейл, за да ти пратим подаръка.</div>':''}<button class="cta" type="submit">${cta}</button></form>`; }
 function vSignup(){
@@ -440,8 +442,8 @@ function vSignup(){
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill${live?' hot':''}">${live?'подаръкът важи още':'изтече'} · <b data-cd="coldExp">${mmss(S.coldExp-Date.now())}</b></span></div>
     <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
     <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
-    <p class="sub big">Получи първа достъп до най-добрите оферти за годината и грабни 6,50 € още днес!</p>
-    <div class="seats"><div class="seats-bar"><i style="width:${Math.round(S.seats/440*100)}%"></i></div><div class="seats-t"><b data-seats>${nfmt(S.seats)}</b> / 440 записани жени · остават <b>${440-S.seats}</b> места</div></div>
+    <p class="sub big">Получи първа достъп до най-добрите оферти за годината и грабни 10 € още днес!</p>
+    <div class="seats"><div class="seats-bar"><i style="width:${Math.round(seatsNow()/440*100)}%"></i></div><div class="seats-t"><b data-seats>${nfmt(seatsNow())}</b> / 440 записани жени · остават <b>${440-seatsNow()}</b> места</div></div>
   </div>
   <div class="wrap">
     ${voucherCard({locked:true, cd:'coldExp'})}
@@ -496,7 +498,7 @@ function vSignupDone(){
       <div class="steps">
         <div class="st"><i>1</i><div>Разгледай продуктите още сега<small>всичко, което участва, и 4-те нови</small></div></div>
         <div class="st"><i>2</i><div>23.11 — напомняне с точния час</div></div>
-        <div class="st o"><i>3</i><div>${DATE_EARLY}, 10:00 — ранният достъп отваря<small>48 часа · всяка опаковка = 1 подарък по избор + 10 € ваучер</small></div></div>
+        <div class="st o"><i>3</i><div>${DATE_EARLY}, 10:00 — ранният достъп отваря<small>48 часа · всяка опаковка = 1 подарък по избор</small></div></div>
       </div>
     </div>
     <button class="cta" data-act="email-cta" data-id="preview">Разгледай продуктите</button>
@@ -506,7 +508,7 @@ function vSignupDone(){
 function vWallet(){
   if(!S.walletExp) S.walletExp=Date.now()+30*60e3;
   const live=walletLive(), n=paidCount();
-  const bonusLbl = '6,50 €';
+  const bonusLbl = '10 €';
   const pool=P.filter(p=>p.buy!==false&&!giftOnly(p)), list=filtered(pool);
   const foot = n
     ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${walletDiscount()?`−${fmt(walletDiscount())} с ваучера`:(live?'':'ваучерът изтече')}</span></div><button class="cta" data-act="screen" data-id="precheckout">Бърза поръчка →</button>`
@@ -530,7 +532,7 @@ function vShop(){
   const early=isEarly(), n=paidCount();
   const list=filtered(P.filter(p=>p.buy!==false&&!giftOnly(p)));
   const foot = n
-    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 €)</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор${early?` + ${n*VOUCHER} € ваучер${n>1?'и':''}`:''} · <b style="color:var(--gd)">−${(savings()||{pct:0}).pct} %</b></span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
+    ? `<div class="sline"><span>Плащаш <b>${fmt(total())}</b>${affDiscount()?` <span style="font-weight:600;color:var(--tan)">(−10 €)</span>`:''}</span><span class="ok">${n} ${n===1?'подарък':'подаръка'} по избор · <b style="color:var(--gd)">−${(savings()||{pct:0}).pct} %</b></span></div><button class="cta" data-act="screen" data-id="gifts">Избери ${n===1?'подаръка си':n+'-те си подаръка'} →</button>`
     : `<div class="sline"><span style="color:var(--tan)">Количката е празна</span><span class="ok">1 опаковка = 1 подарък по избор</span></div><button class="cta sm" disabled>Добави нещо, за да избереш подарък</button>`;
   return `<div class="scroll" id="listScroll">
   <div class="hero">
@@ -557,7 +559,6 @@ function vShop(){
           <b>Избираш 2</b><small>напр. KeraTonica + Берберин</small><em>0 €</em>
         </div>
       </div>
-      ${early?'<div class="hc-v">🎟️ + 2 ваучера по 10 € за 2027 — идват по имейл</div>':''}
       <div class="hc-sum"><span>Вкъщи пристигат <b>4 кутии</b></span><b>плащаш 87,80 €</b></div>
       <div class="hc-steps">
         <div><i>1</i>Избираш какво купуваш</div>
@@ -584,7 +585,7 @@ function vGifts(){
     <div style="height:8px"></div>
   </div></div>
   <div class="foot"><div class="fade"></div><button class="morepill" id="morePill" data-act="scrolldown" hidden>Скролни за още продукти ↓</button>
-    ${saveLine('foot')}<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}${isEarly()?` + ${n*VOUCHER} € ваучери`:''}</span></div><div class="slots">${slots}</div>
+    ${saveLine('foot')}<div class="sline"><span>Плащаш <b>${fmt(total())}</b></span><span class="ok">${n} платени + ${n} ${n===1?'подарък':'подаръка'}</span></div><div class="slots">${slots}</div>
     ${left>0?`<button class="cta" disabled>Избери още ${left} ${left===1?'подарък':'подаръка'}</button>`:`<button class="cta" data-act="screen" data-id="checkout">Продължи към поръчката →</button>`}
   </div>`;
 }
@@ -592,17 +593,16 @@ function vCheckout(){
   const early=isEarly(), n=paidCount(), pre=inPre();
   const rows = Object.entries(S.cart).map(([id,q])=>{const p=byId(id);return `<div class="row"><img src="${p.img}" alt=""><div>${esc(p.n)} × ${q}<small>платени опаковки</small></div><div class="p">${fmt(p.pr*q)}</div></div>`;}).join('')
     + (pre?'':Object.entries(S.gifts).map(([id,q])=>{const p=byId(id);return `<div class="row gift"><img src="${p.img}" alt=""><div>🎁 ${esc(p.n)}${q>1?' × '+q:''}<small>подарък по избор</small></div><div class="p free"><s>${fmt(p.pr*q)}</s>0 €</div></div>`;}).join(''))
-    + (early&&!pre?`<div class="row v"><div class="ic">🎟️</div><div>${n} × ваучер 10 € за 2027<small>пристигат по имейл след доставката</small></div><div class="p" style="color:var(--goldd)">${n*VOUCHER} €</div></div>`:'')
-    + (walletDiscount()?`<div class="row v"><div class="ic">👛</div><div>Ваучер 6,50 € · ANSA650<small>от портфейла · важи още <span data-cd="walletExp">${mmss(S.walletExp-Date.now())}</span></small></div><div class="p" style="color:var(--goldd)">−${fmt(walletDiscount())}</div></div>`:'')
+    + (walletDiscount()?`<div class="row v"><div class="ic">👛</div><div>Ваучер 10 € · ANSA10<small>от портфейла · важи още <span data-cd="walletExp">${mmss(S.walletExp-Date.now())}</span></small></div><div class="p" style="color:var(--goldd)">−${fmt(walletDiscount())}</div></div>`:'')
     + (affDiscount()?`<div class="row v"><div class="ic">🎟️</div><div>Ваучер 10 € от ${AFF.name}<small>подаръкът ти от записването</small></div><div class="p" style="color:var(--goldd)">−${fmt(affDiscount())}</div></div>`:'')
     + (early&&isAff()&&S.email&&S.affBonus==='eye'?`<div class="row gift"><img src="img/eye.jpg" alt=""><div>eyeFresh пачове<small>подаръкът ти от ${AFF.name}</small></div><div class="p free"><s>15,90 €</s>0 €</div></div>`:'')
     + (S.phase==='public'&&isAff()?`<div class="row gift"><div class="ic" style="background:var(--gs)">🎭</div><div>CollaMask колагенова маска<small>подарък от ${AFF.name} · код MASK01, добавен автоматично</small></div><div class="p free"><s>29,90 €</s>0 €</div></div>`:'')
     + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
     + (pre?'':`<div style="padding:10px 12px 0">${saveLine('row')}</div>`)
-    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(S.phase==='public'&&isAff()?29.9:0)+(isEarly()?n*VOUCHER:0))}`}</small></div><div>${fmt(total())}</div></div>`;
+    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(S.phase==='public'&&isAff()?29.9:0))}`}</small></div><div>${fmt(total())}</div></div>`;
   return (pre
     ? `<div class="hdr dark"><div><b>Бърза поръчка</b><small>Плащаш ${fmt(total())}${walletDiscount()?` · с подаръка за днес`:''}</small></div><button class="x" data-act="screen" data-id="wallet" aria-label="назад">←</button></div>`
-    : `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${fmt(total())} · ${n} платени + ${n} ${n===1?'подарък':'подаръка'}${early?` + ${n*VOUCHER} € ваучери`:''}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>`) + `
+    : `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${fmt(total())} · ${n} платени + ${n} ${n===1?'подарък':'подаръка'}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>`) + `
   <div class="scroll"><div class="wrap" style="padding-top:12px">
     <div class="rows">${rows}</div>
     <div class="trust" style="margin:10px 0 6px">${pre?`Записана си и за ранния достъп на ${DATE_EARLY}.`:`Подаръците пътуват в същата пратка.${early?' Ваучерите за 2027 — по имейл.':''}`}</div>
@@ -625,7 +625,7 @@ function vDone(){
       <div class="k2" style="margin-top:0">Какво следва</div>
       <div class="steps">
         <div class="st"><i>1</i><div>Доставка в 1–2 работни дни</div></div>
-        <div class="st o"><i>${DATE_EARLY}</i><div>Ранен достъп, 10:00<small>всяка опаковка = 1 подарък по избор + 10 € ваучер · личен линк по имейл</small></div></div>
+        <div class="st o"><i>${DATE_EARLY}</i><div>Ранен достъп, 10:00<small>всяка опаковка = 1 подарък по избор · личен линк по имейл</small></div></div>
       </div>
     </div>
     <div class="trust">Ще ти напомним по имейл 2 дни преди старта и точно в 10:00 на ${DATE_EARLY}.</div>
@@ -641,7 +641,6 @@ function vDone(){
       <div class="steps">
         <div class="st"><i>1</i><div>Потвърждение по имейл<small>до ${esc(S.email||'имейла от поръчката')}</small></div></div>
         <div class="st"><i>2</i><div>Доставка в 1–2 работни дни<small>подаръците са в същата пратка</small></div></div>
-        ${early?`<div class="st o"><i>3</i><div>${n} ваучера по 10 € за 2027<small>по имейл след доставката · по един на поръчка · януари–март</small></div></div>`:''}
         ${S.bonus==='tombola'&&S.email?`<div class="st o"><i>🏝️</i><div>Билетът ти за томболата е активен<small>теглене 25.01.2027</small></div></div>`:''}
       </div>
     </div>
@@ -661,11 +660,11 @@ const EMAILS = {
    <p>Ти обичаш Грийнс. Сега той ти подарява 1 продукт по избор от новите ни попълнения, които разработваме от <span class="badge216">216 дни</span>. Да, броихме ги.</p>
    <p><b>Ето какво разработихме за 216 дни:</b></p>${newList()}
    <p><b>Ето и проста сметка:</b></p><div class="calc"><div class="l">1 кутия Грийнс <span>43,90 €</span></div><div class="l">+ 1 продукт подарък по избор <span>0 €</span></div><div class="l">3 кутии Грийнс → 3 подаръка по избор <span>6 опаковки</span></div></div>
-   <p>Ще ти пишем след седмица — <b>25.11 в 10:00</b> — когато можеш да се възползваш от офертата преди всички. Тъй като ще си от първите, в онзи имейл има и нещо допълнително.</p>
+   <p>Ще ти пишем след седмица — <b>25.11 в 10:00</b> — когато можеш да се възползваш от офертата преди всички. Ще си от първите — 48 часа преди всички останали.</p>
    <button class="cta" data-act="email-cta" data-id="preview">Виж новите продукти</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Поръчката не е възможна преди 25.11, 10:00. Сега само разглеждаш.</p>`)},
  e7new: {t:'7 дни · нов записал се', html:()=>emailShell(`<b>След седмица опитваш повече от ANSA 🎁</b><span>ansa™ · до мен</span><span class="pre">Една опаковка подарък за всяка опаковка, която поръчаш.</span>`,
   `<p class="big">След седмица ще можеш да опиташ повече от ANSA — <em>с една опаковка подарък за всяка опаковка, която поръчаш.</em></p>
-   <p>Записа се за ранния достъп и избра <b>ваучер 5 €</b> — той вече важи в магазина, ако още не си го ползвала. Ранният достъп отваря на <b>25.11 в 10:00</b>.</p>
+   <p>Записа се за ранния достъп и избра <b>ваучер 10 €</b> — той вече важи в магазина, ако още не си го ползвала. Ранният достъп отваря на <b>25.11 в 10:00</b>.</p>
    <p><b>Какво е ранният достъп:</b></p><div class="steps" style="margin-bottom:14px"><div class="st o"><i>1</i><div>Избираш какво да поръчаш<small>Грийнс, Берберин, Sakura… или някой от 4-те нови</small></div></div><div class="st o"><i>2</i><div>За всяка опаковка избираш подарък<small>Може да е същият продукт или нещо ново за пробване</small></div></div><div class="st o"><i>3</i><div>Завършваш поръчката — подаръците пътуват в същата пратка<small>48 часа преди всички останали</small></div></div></div>
    <p><b>Новите 4, с които да започнеш</b> — разработвахме ги <span class="badge216">216 дни</span>:</p>${newList()}
    <div class="em-hero"><div class="eyebrow">Отгоре на всичко — за нови клиенти</div><div class="h1">Козметичният сет на ansa™ в първата ти поръчка</div><p>5 продукта за кожата. Или допълнителен подарък по избор — ти решаваш в количката.</p></div>
@@ -673,20 +672,20 @@ const EMAILS = {
  e2: {t:'2 дни преди', html:()=>emailShell(`<b>След два дни отваряме ранния достъп ⏰</b><span>ansa™ · до мен</span><span class="pre">Помисли какво искаш да заредиш — и какво ти се иска да опиташ подарък.</span>`,
   `<div class="em-hero"><div class="eyebrow">Ранен достъп</div><div class="h1">Сряда, 25.11 · 10:00</div><div class="timer" style="margin-top:12px"><div><b>1</b><small>ден</small></div><div><b>22</b><small>часа</small></div><div><b>40</b><small>мин</small></div></div><p>48 часа. Само за теб и списъка.</p></div>
    <p class="big">След два дни отваряме ранния достъп. <em>Помисли какво искаш да заредиш — и какво ти се иска да опиташ подарък.</em></p>
-   <p><b>Ето как работи, с пример:</b></p><div class="calc"><div class="l">2 кутии Грийнс <span>87,80 €</span></div><div class="l">+ KeraTonica + Alivia (подарък по избор) <span>0 €</span></div><div class="l">+ 2 ваучера по 10 € за 2027 г. <span>20 €</span></div></div>
+   <p><b>Ето как работи, с пример:</b></p><div class="calc"><div class="l">2 кутии Грийнс <span>87,80 €</span></div><div class="l">+ KeraTonica + Alivia (подарък по избор) <span>0 €</span></div><div class="l">Вкъщи пристигат 4 кутии <span>плащаш 87,80 €</span></div></div>
    <p><b>Участващи продукти</b> — разгледай ги сега, за да знаеш какво искаш в 10:00:</p>
    <div class="gridp" style="margin-bottom:14px">${['greens','berberin','kera','sakura'].map(id=>{const p=byId(id);return `<div class="gp"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${fmt(p.pr)}${p.isNew?' · ново':''}</small></div>`;}).join('')}</div>
    <button class="cta" data-act="email-cta" data-id="preview">Виж всички участващи продукти</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Избери си сега. В сряда само добавяш.</p>`)},
- estart: {t:'Старт (CTA)', html:()=>emailShell(`<b>Отворено е. Избери си подаръците 🎁 + 10 € за 2027</b><span>ansa™ · до мен</span><span class="pre">48 часа само за теб: всяка опаковка = подарък по избор + ваучер.</span>`,
+ estart: {t:'Старт (CTA)', html:()=>emailShell(`<b>Отворено е. Избери си подаръците 🎁</b><span>ansa™ · до мен</span><span class="pre">48 часа само за теб: всяка опаковка = подарък по избор.</span>`,
   `<p class="big">Вече можеш да избереш <em>своите подаръци.</em></p>
-   <p>През следващите 48 часа всяка опаковка, която поръчаш, ти носи още една подарък — и ваучер за следващата година.</p>
-   <div class="em-hero"><div class="eyebrow">Само за първите · до петък 10:00</div><div class="h1">+ ваучер 10 € за 2027 за всяка опаковка</div><div class="timer" style="margin-top:12px"><div><b data-timer2>47</b><small>часа</small></div><div><b data-timer2>12</b><small>мин</small></div><div><b data-timer2>09</b><small>сек</small></div></div><p>В публичния Black Friday ваучерите ги няма.</p></div>
-   <p><b>Ето и проста сметка:</b></p><div class="calc"><div class="l">3 кутии Грийнс <span>131,70 €</span></div><div class="l">+ 3 продукта подарък по избор <span>0 €</span></div><div class="l">+ 3 ваучера по 10 € за 2027 <span>30 €</span></div><div class="l">6 опаковки + 30 € за догодина <span>плащаш 131,70 €</span></div></div>
+   <p>През следващите 48 часа всяка опаковка, която поръчаш, ти носи още една — подарък по твой избор. Може и същият продукт.</p>
+   <div class="em-hero"><div class="eyebrow">Само за първите · до петък 10:00</div><div class="h1">48 часа преди всички останали</div><div class="timer" style="margin-top:12px"><div><b data-timer2>47</b><small>часа</small></div><div><b data-timer2>12</b><small>мин</small></div><div><b data-timer2>09</b><small>сек</small></div></div><p>Най-търсените подаръци свършват първи. Избери си, докато всичко е налично.</p></div>
+   <p><b>Ето и проста сметка:</b></p><div class="calc"><div class="l">3 кутии Грийнс <span>131,70 €</span></div><div class="l">+ 3 продукта подарък по избор <span>0 €</span></div><div class="l">Вкъщи пристигат 6 опаковки <span>плащаш 131,70 €</span></div></div>
    <button class="cta" data-act="email-cta" data-id="early">Избери подаръците си →</button><p style="font-size:12.5px;color:var(--tan);text-align:center;margin-top:10px">Линкът е личен — води направо в ранния достъп.</p>`)},
- e12: {t:'12 ч. преди края', html:()=>emailShell(`<b>Още 12 часа: подаръците ти + ваучерите за 2027 ⏳</b><span>ansa™ · до мен</span><span class="pre">След това офертата става публична — без ваучерите.</span>`,
+ e12: {t:'12 ч. преди края', html:()=>emailShell(`<b>Още 12 часа: избери си подаръците ⏳</b><span>ansa™ · до мен</span><span class="pre">След това офертата отваря за всички и наличностите тръгват бързо.</span>`,
   `<div class="em-hero"><div class="eyebrow">Ранният достъп затваря</div><div class="h1">Петък, 27.11 · 10:00</div><div class="timer" style="margin-top:12px"><div><b>11</b><small>часа</small></div><div><b>58</b><small>мин</small></div></div></div>
    <p class="big">Все още не си избрала подаръците си. <em>Имаш 12 часа.</em></p>
-   <p>След 10:00 в петък офертата „1 опаковка = 1 подарък по избор“ отваря за всички. Но <b>ваучерите по 10 € за 2027 г.</b> са само за ранния достъп — и изчезват с него.</p>
+   <p>След 10:00 в петък офертата „1 опаковка = 1 подарък по избор“ отваря за всички. <b>Новите продукти и най-търсените подаръци свършват първи</b> — сега всичко е налично и ти избираш първа.</p>
    <button class="cta" data-act="email-cta" data-id="early">Избери подаръците си сега</button>`)},
  epub: {t:'Публичен старт', html:()=>emailShell(`<b>Black Friday: всяка опаковка = една подарък по избор 🖤</b><span>ansa™ · до всички</span><span class="pre">72 часа. Плащаш 1, получаваш 2. Плащаш 2, получаваш 4.</span>`,
   `<div class="em-hero"><div class="eyebrow">Black Friday · 72 часа</div><div class="h1">Всяка закупена опаковка = една опаковка подарък по избор.</div><p>Плащаш 1, получаваш 2. Плащаш 2, получаваш 4. Плащаш 3, получаваш 6.</p></div>
@@ -726,8 +725,8 @@ function vSheet(){
   </div>`;
 }
 
-/* записани: бавно расте, за да изглежда живо */
-setInterval(()=>{ if(Math.random()<0.5) return; S.seats=Math.min(428,(S.seats||318)+1); const el=phone.querySelector('[data-seats]'); if(el){ el.textContent=nfmt(S.seats); const left=el.parentElement.querySelectorAll('b')[1]; if(left) left.textContent=440-S.seats; const bar=phone.querySelector('.seats-bar i'); if(bar) bar.style.width=Math.round(S.seats/440*100)+'%'; } },6000);
+/* записани: по дата, обновява се на минута */
+setInterval(()=>{ const el=phone.querySelector('[data-seats]'); if(el){ const n=seatsNow(); el.textContent=nfmt(n); const left=el.parentElement.querySelectorAll('b')[1]; if(left) left.textContent=440-n; const bar=phone.querySelector('.seats-bar i'); if(bar) bar.style.width=Math.round(n/440*100)+'%'; } },60000);
 /* demo cycle of the equation while the cart is empty */
 setInterval(()=>{ const eq=document.getElementById('eq'); if(!eq||paidCount()) return; S.demoN=(S.demoN||1)%6+1; eq.dataset.n=S.demoN; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML=eqHtml(S.demoN,isEarly()); eq.classList.add('pop'); },2200);
 /* ---------- render ---------- */
