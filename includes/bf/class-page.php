@@ -42,8 +42,8 @@ final class Page {
 		foreach ( array( 'woocommerce_update_product', 'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status', 'woocommerce_update_product_variation', 'save_post_product' ) as $h ) { add_action( $h, array( __CLASS__, 'purge_runtime' ) ); }
 	}
 	public static function purge_runtime() { delete_transient( Config::runtime_key() ); }
-	public static function sc_early_url( $atts ) { return esc_url( self::sc_utm( Config::early_url(), $atts, 'bf_early' ) ); }
-	public static function sc_url( $atts ) { return esc_url( self::sc_utm( self::url(), $atts, 'bf_public' ) ); }
+	public static function sc_early_url( $atts ) { return esc_url_raw( self::sc_utm( Config::early_url(), $atts, 'bf_early' ) ); }
+	public static function sc_url( $atts ) { return esc_url_raw( self::sc_utm( self::url(), $atts, 'bf_public' ) ); }
 	private static function sc_utm( $url, $atts, $content ) {
 		$a = shortcode_atts( array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => $content ), is_array( $atts ) ? $atts : array() );
 		$q = array(); foreach ( $a as $k => $v ) { $v = sanitize_text_field( (string) $v ); if ( '' !== $v ) { $q[ $k ] = $v; } }

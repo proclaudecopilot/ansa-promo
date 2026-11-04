@@ -190,7 +190,7 @@ final class Admin {
 
 	public static function orders( $limit = 200 ) {
 		if ( ! function_exists( 'wc_get_orders' ) ) { return array(); }
-		try { $o = wc_get_orders( array( 'limit' => (int) $limit, 'orderby' => 'date', 'order' => 'DESC', 'meta_query' => array( array( 'key' => '_ansa_bf_promo', 'compare' => 'EXISTS' ) ) ) ); return is_array( $o ) ? $o : array(); } catch ( \Throwable $e ) { return array(); }
+		try { $o = wc_get_orders( array( 'limit' => (int) $limit, 'orderby' => 'date', 'order' => 'DESC', 'status' => array_keys( wc_get_order_statuses() ), 'meta_key' => '_ansa_bf_promo', 'meta_compare' => 'EXISTS' ) ); /* 1.45.1: както Insights за Сезона — meta_query тук се игнорираше и връщаше всички поръчки */ return is_array( $o ) ? $o : array(); } catch ( \Throwable $e ) { return array(); }
 	}
 	private static function v_orders() {
 		$orders = self::orders( 300 );
