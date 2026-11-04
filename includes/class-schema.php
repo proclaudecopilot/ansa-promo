@@ -3,7 +3,8 @@
  * ansa™ Промо — таблици.
  *
  * {prefix}ansa_promo_tickets — един ред на поръчка: код за QR, брой билети, статус.
- * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия; DB ver 4 (1.11.0): contact_id,
+ * {prefix}ansa_promo_leads   — имейлът от gate-а, UTM, коя кутия е видял, consent, конверсия; DB ver 10 (1.45.0): promo ('' = Сезонът, bf = Черен петък),
+ *                               kind (cold / aff), bonus (v5 / mask), ref_code (партньорът), voucher + voucher_exp (UTC) + voucher_order_id (студеният ваучер). DB ver 4 (1.11.0): contact_id,
  *                               fka (резултатът от синхронизацията с FunnelKit: „лист #1 · crm; таг #2 · crm“ / retry: … / no-consent), fka_at.
  * {prefix}ansa_promo_stats   — дневен rollup на фунията (day, step, box, utm, n) — Insights (DB ver 2).
  * {prefix}ansa_promo_sessions — Insights 2 (DB ver 5, 1.17.0): една сесия на посетител (sid от браузъра): кога, откъде (utm/src/med/camp/ref),
@@ -93,8 +94,17 @@ final class Schema {
   contact_id bigint(20) unsigned NULL,
   fka varchar(191) NOT NULL DEFAULT '',
   fka_at datetime NULL,
+  promo varchar(16) NOT NULL DEFAULT '',
+  kind varchar(16) NOT NULL DEFAULT '',
+  bonus varchar(16) NOT NULL DEFAULT '',
+  ref_code varchar(32) NOT NULL DEFAULT '',
+  voucher varchar(24) NOT NULL DEFAULT '',
+  voucher_exp datetime NULL,
+  voucher_order_id bigint(20) unsigned NULL,
   PRIMARY KEY  (id),
   KEY email (email),
+  KEY promo (promo),
+  KEY voucher (voucher),
   KEY fka (fka),
   KEY created_at (created_at),
   KEY converted_order_id (converted_order_id)
