@@ -363,7 +363,7 @@ const byId = id => P.find(p=>p.id===id);
 const fmt = n => n.toFixed(2).replace('.',',')+' €';
 
 /* ---------- state ---------- */
-const S0 = () => ({demoN:1, seats:2190+Math.floor(Math.random()*741), src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
+const S0 = () => ({demoN:1, seats:318+Math.floor(Math.random()*85), src:'ad', affBonus:'v10', coldBonus:'v5', coldExp:0, walletExp:0, phase:'prep', screen:'signup', email:'', bonus:'voucher', cart:{}, gifts:{}, filter:'all', sheet:null, tab:'desc', emailView:'e7old', faq:null, paid:false, pay:'card', deadline:Date.now()+47*3600e3+12*60e3+9e3});
 let S = S0();
 try{ const raw=sessionStorage.getItem('ansa_bf_emu'); if(raw){ const o=JSON.parse(raw); if(o && o.cart) S=Object.assign(S0(),o); } }catch(e){}
 function save(){ try{ sessionStorage.setItem('ansa_bf_emu', JSON.stringify(S)); }catch(e){} }
@@ -441,7 +441,7 @@ function vSignup(){
     <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
     <div class="h1" style="font-size:25px">Black Friday на ANSA започва <em>първо за теб.</em></div>
     <p class="sub big">Получи първа достъп до най-добрите оферти за годината и грабни 6,50 € още днес!</p>
-    <div class="seats"><div class="seats-bar"><i style="width:${Math.round(S.seats/30)}%"></i></div><div class="seats-t"><b data-seats>${nfmt(S.seats)}</b> / 3 000 записани за ранен достъп</div></div>
+    <div class="seats"><div class="seats-bar"><i style="width:${Math.round(S.seats/440*100)}%"></i></div><div class="seats-t"><b data-seats>${nfmt(S.seats)}</b> / 440 записани жени · остават <b>${440-S.seats}</b> места</div></div>
   </div>
   <div class="wrap">
     ${voucherCard({locked:true, cd:'coldExp'})}
@@ -727,7 +727,7 @@ function vSheet(){
 }
 
 /* записани: бавно расте, за да изглежда живо */
-setInterval(()=>{ if(Math.random()<0.5) return; S.seats=Math.min(2930,(S.seats||2190)+1); const el=phone.querySelector('[data-seats]'); if(el){ el.textContent=nfmt(S.seats); const bar=phone.querySelector('.seats-bar i'); if(bar) bar.style.width=Math.round(S.seats/30)+'%'; } },6000);
+setInterval(()=>{ if(Math.random()<0.5) return; S.seats=Math.min(428,(S.seats||318)+1); const el=phone.querySelector('[data-seats]'); if(el){ el.textContent=nfmt(S.seats); const left=el.parentElement.querySelectorAll('b')[1]; if(left) left.textContent=440-S.seats; const bar=phone.querySelector('.seats-bar i'); if(bar) bar.style.width=Math.round(S.seats/440*100)+'%'; } },6000);
 /* demo cycle of the equation while the cart is empty */
 setInterval(()=>{ const eq=document.getElementById('eq'); if(!eq||paidCount()) return; S.demoN=(S.demoN||1)%6+1; eq.dataset.n=S.demoN; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML=eqHtml(S.demoN,isEarly()); eq.classList.add('pop'); },2200);
 /* ---------- render ---------- */
