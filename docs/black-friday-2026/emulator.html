@@ -385,10 +385,11 @@ const shipping = () => paidCount()>=FREE_SHIP_FROM ? 0 : SHIP;
 const inPre = () => ['wallet','precheckout','predone'].includes(S.screen);
 const walletLive = () => S.walletExp && S.walletExp>Date.now();
 const walletDiscount = () => { if(!inPre()||!walletLive()||!paidCount()) return 0; return Math.min(10, subtotal()); };
-const affDiscount = () => (isEarly()&&isAff()&&S.email&&S.affBonus==='v5'&&paidCount()) ? Math.min(5, subtotal()) : 0;
+const affGift = () => (S.phase==='public'&&isAff()&&S.email) ? S.affBonus : null; /* подаръкът от партньора важи в публичната промоция */
+const affDiscount = () => (affGift()==='v5'&&paidCount()) ? Math.min(5, subtotal()) : 0;
 const total = () => Math.max(0, subtotal()-walletDiscount()-affDiscount()+shipping());
 /* спестяване: подаръци (реални или очаквани на стойността на купеното), ваучер от партньор, маска */
-function savings(){ const n=paidCount(); if(!n||inPre()) return null; const g=giftCount(), avg=subtotal()/n; const gifts=giftValue()+Math.max(0,n-g)*avg; const vouchers=0; const aff=affDiscount(); const mask=((S.phase==='public'&&isAff())||(isEarly()&&isAff()&&S.email&&S.affBonus==='mask'))?29.9:0; const tot=gifts+vouchers+aff+mask; const full=subtotal()+gifts+mask+vouchers; return {gifts,vouchers,aff,mask,total:tot,pct:Math.round(tot/full*100),est:g<n}; }
+function savings(){ const n=paidCount(); if(!n||inPre()) return null; const g=giftCount(), avg=subtotal()/n; const gifts=giftValue()+Math.max(0,n-g)*avg; const vouchers=0; const aff=affDiscount(); const mask=(affGift()==='mask')?29.9:0; const tot=gifts+vouchers+aff+mask; const full=subtotal()+gifts+mask+vouchers; return {gifts,vouchers,aff,mask,total:tot,pct:Math.round(tot/full*100),est:g<n}; }
 const saveLine = (cls) => { const sv=savings(); if(!sv) return ''; return `<div class="savebox ${cls||''}"><span>Спестяваш${sv.est?' поне':''}</span><b>${fmt(sv.total)}</b><em>−${sv.pct} %</em></div>`; };
 
 /* ---------- timer ---------- */
@@ -459,9 +460,9 @@ function vSignupAff(){
   return `<div class="scroll">
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa"><span class="tpill">🔗 линк на <b>${AFF.name}</b></span></div>
-    <div class="eyebrow">Black Friday 2026 · ранен достъп</div>
-    <div class="h1" style="font-size:25px">Black Friday на ANSA започва първо за теб, <em>благодарение на ${AFF.name}.</em></div>
-    <p class="sub">С нейния линк имаш предварителен достъп и гарантиран подарък. Въведи имейл, разгледай продуктите преди официалния старт.</p>
+    <div class="eyebrow">Black Friday 2026 · 72 часа</div>
+    <div class="h1" style="font-size:25px">Купуваш 1, получаваш 2. <em>И подарък от ${AFF.name}.</em></div>
+    <p class="sub">Всяка опаковка ти носи още една по избор. С линка на ${AFF.name} получаваш и подарък отгоре — избери го и влез.</p>
   </div>
   <div class="wrap">
     <div class="card">
@@ -470,22 +471,23 @@ function vSignupAff(){
         ${bonusBtn('v5', S.affBonus, '🎟️', 'Ваучер 5 €', '')}
         ${bonusBtn('mask', S.affBonus, '<img src="img/mask.jpg" alt="">', 'Колагенова маска подарък', 'CollaMask · 29,90 €')}
       </div>
-      ${emailForm('Отключи ранния достъп<small>подаръкът се пази за имейла ти</small>')}
-      <div class="trust">🔒 Личен линк за старта на ${DATE_EARLY}, 10:00. Без спам.</div>
+      ${emailForm('Вземи подаръка и влез<small>добавя се към поръчката ти</small>')}
+      <div class="trust">🔒 Само потвърждение на поръчката. Без спам.</div>
     </div>
-    <div class="k2">Какво ще получиш в ранния достъп</div>
+    <div class="k2">Как работи</div>
     <div class="steps">
-      <div class="st o"><i>48h</i><div>Пазаруваш 48 часа преди всички<small>Сряда, ${DATE_EARLY}, 10:00 — точният час ще го получиш по имейл.</small></div></div>
       <div class="st o"><i>1=2</i><div>Всяка опаковка ти носи още една — по избор<small>Купуваш Грийнс, избираш си подарък. Може и втори Грийнс.</small></div></div>
+      <div class="st o"><i>2=4</i><div>Две опаковки — два подаръка. И така до безкрай.</div></div>
       <div class="st o"><i>🎁</i><div>Плюс подаръкът от ${AFF.name}<small>ваучер 5 € или колагенова маска — ти избра горе</small></div></div>
     </div>
-    <div class="k2">4 нови продукта — първо за теб</div>
+    <div class="k2">4 нови продукта — само като подарък</div>
     <div class="gridp">${P.filter(p=>p.isNew).map(p=>`<div class="gp"><img src="${p.img}" alt=""><b>${esc(p.n)}</b><small>${esc(p.s)}</small></div>`).join('')}</div>
-    <div class="footnote">ansa™ · От жени за жени · Линк: ansa.bg/?ref=${AFF.code} · Подаръкът важи с поръчка в ранния достъп. Условия на ansa.bg/bf</div>
+    <div class="footnote">ansa™ · От жени за жени · Линк: ansa.bg/?ref=${AFF.code} · Подаръкът от ${AFF.name} важи с поръчка в промоцията. Условия на ansa.bg/bf</div>
   </div></div>`;
 }
 function vSignupDone(){
   if(!isAff()){ S.screen='wallet'; return vWallet(); }
+  S.phase='public'; S.screen='shop'; return vShop();
   const bonusTxt = S.affBonus==='v5' ? `<b>Ваучер 5 € за ранния достъп</b><small>приспада се сам от поръчката ти на ${DATE_EARLY}</small>` : `<b>Колагенова маска CollaMask</b><small>ще я сложим в пратката на поръчката ти в промото · MASK01</small>`;
   return `<div class="scroll"><div class="done">
     <div class="big">🎉</div>
@@ -538,7 +540,7 @@ function vShop(){
   <div class="hero">
     <div class="hrow"><img class="logo" src="img/logo-white.png" alt="ansa">${timerPill()}</div>
     ${stepsBar(1)}
-    ${isAff()?`<div class="affnote">🔗 Идваш от <b>${AFF.name}</b>: ${S.phase==='public'?'колагенова маска CollaMask се добавя автоматично към поръчката ти (MASK01).':(S.email?(S.affBonus==='v5'?'ваучерът ти 5 € се приспада в количката.':'колагенова маска CollaMask е добавена към поръчката ти.'):'въведи имейл на страницата за ранен достъп, за да вземеш подаръка ѝ.')}</div>`:''}
+    ${(S.phase==='public'&&isAff())?`<div class="affnote">🔗 Идваш от <b>${AFF.name}</b>: ${S.email?(S.affBonus==='v5'?'ваучерът ти 5 € се приспада в количката.':'колагенова маска CollaMask е добавена към поръчката ти (MASK01).'):`<button class="more" style="color:#fff" data-act="go" data-id="aff">вземи подаръка ѝ →</button>`}</div>`:''}
     <div class="eq pop" id="eq" data-n="${n||S.demoN||1}">${eqHtml(n||S.demoN||1, early)}</div>
     ${n?saveLine('hero'):'<div class="eq-note" id="eqNote">Колкото опаковки купиш, толкова подаръка си избираш.</div>'}
   </div>
@@ -595,10 +597,10 @@ function vCheckout(){
     + (pre?'':Object.entries(S.gifts).map(([id,q])=>{const p=byId(id);return `<div class="row gift"><img src="${p.img}" alt=""><div>🎁 ${esc(p.n)}${q>1?' × '+q:''}<small>подарък по избор</small></div><div class="p free"><s>${fmt(p.pr*q)}</s>0 €</div></div>`;}).join(''))
     + (walletDiscount()?`<div class="row v"><div class="ic">👛</div><div>Ваучер 10 € · ANSA10<small>от портфейла · важи още <span data-cd="walletExp">${mmss(S.walletExp-Date.now())}</span></small></div><div class="p" style="color:var(--goldd)">−${fmt(walletDiscount())}</div></div>`:'')
     + (affDiscount()?`<div class="row v"><div class="ic">🎟️</div><div>Ваучер 5 € от ${AFF.name}<small>подаръкът ти от записването</small></div><div class="p" style="color:var(--goldd)">−${fmt(affDiscount())}</div></div>`:'')
-    + ((early&&isAff()&&S.email&&S.affBonus==='mask')||(S.phase==='public'&&isAff())?`<div class="row gift"><img src="img/mask.jpg" alt=""><div>CollaMask колагенова маска<small>подарък от ${AFF.name} · MASK01${S.phase==='public'?', добавен автоматично':''}</small></div><div class="p free"><s>29,90 €</s>0 €</div></div>`:'')
+    + ((affGift()==='mask')?`<div class="row gift"><img src="img/mask.jpg" alt=""><div>CollaMask колагенова маска<small>подарък от ${AFF.name} · MASK01</small></div><div class="p free"><s>29,90 €</s>0 €</div></div>`:'')
     + `<div class="row"><div class="ic" style="background:var(--os)">🚚</div><div>Доставка<small>${shipping()?`безплатна от ${FREE_SHIP_FROM} опаковки`:'безплатна при 2+ опаковки'}</small></div><div class="p${shipping()?'':' free'}">${shipping()?fmt(shipping()):'0 €'}</div></div>`
     + (pre?'':`<div style="padding:10px 12px 0">${saveLine('row')}</div>`)
-    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(((S.phase==='public'&&isAff())||(isEarly()&&isAff()&&S.email&&S.affBonus==='mask'))?29.9:0))}`}</small></div><div>${fmt(total())}</div></div>`;
+    + `<div class="tot"><div>Общо<small>${pre?'доставка в 1–2 работни дни':`стойност на пратката ${fmt(subtotal()+giftValue()+(affGift()==='mask'?29.9:0))}`}</small></div><div>${fmt(total())}</div></div>`;
   return (pre
     ? `<div class="hdr dark"><div><b>Бърза поръчка</b><small>Плащаш ${fmt(total())}${walletDiscount()?` · с подаръка за днес`:''}</small></div><button class="x" data-act="screen" data-id="wallet" aria-label="назад">←</button></div>`
     : `<div class="hdr dark" style="flex-wrap:wrap"><div><b>Стъпка 3 · Твоята поръчка</b><small>Плащаш ${fmt(total())} · ${n} платени + ${n} ${n===1?'подарък':'подаръка'}</small></div><button class="x" data-act="screen" data-id="gifts" aria-label="назад">←</button>${stepsBar(3)}</div>`) + `
@@ -696,9 +698,9 @@ function vStories(){
   return `<div class="scroll"><div class="wrap">
     <div class="h2">Сторита на партньора (${AFF.name})</div>
     <p class="lead">Какво публикува афилиейтът и къде води линкът му. Кликни бутона, за да видиш страницата, която отваря последователят.</p>
-    ${story('По време на ранния достъп · 2–3 сторита','Предварителен достъп + гарантиран подарък','С моя линк имате предварителен достъп до Черния петък на ANSA, с гарантиран подарък — влезте сега и разгледайте продуктите преди официалния старт.','Отвори страницата от линка →','go','aff')}
-    ${story('По време на публичния старт · 1–2 сторита','Купуваш 1, получаваш 2 — и маска от мен','ANSA стартира тридневна промоция до изчерпване на количествата: купуваш 1, получаваш 2; купуваш 2, получаваш 4 — и така до безкрай. Имат и 4 нови продукта, влез и виж. С моя линк имаш допълнителен подарък — колагенова маска се добавя автоматично.','Отвори публичния BF →','go','public-aff')}
-    <div class="footnote">Партньорът получава комисионата си по правилата на ANSA Partner (?ref=КОД, атрибуция при поръчка). Маската е купон MASK01, който се прилага автоматично за ref-трафик.</div>
+    ${story('Старт на промоцията · 2–3 сторита','Купуваш 1, получаваш 2 — и подарък от мен','ANSA стартира тридневна промоция до изчерпване на количествата: купуваш 1, получаваш 2; купуваш 2, получаваш 4 — и така до безкрай. Имат и 4 нови продукта, влез и виж. С моя линк имаш и подарък отгоре: ваучер 5 € или колагенова маска.','Отвори страницата от линка →','go','aff')}
+    ${story('Последен ден · 1–2 сторита','Остават часове — с моя линк и подарък','Днес е последният ден на Black Friday в ANSA: всяка опаковка = една подарък по избор. Влез през моя линк, избери си ваучер 5 € или колагенова маска и си вземи любимото, докато има.','Отвори страницата от линка →','go','aff')}
+    <div class="footnote">Партньорът получава комисионата си по правилата на ANSA Partner (?ref=КОД, атрибуция при поръчка). Партньорските подаръци важат само в публичната промоция: ваучер 5 € (купон) или CollaMask (MASK01) на 0 € в количката.</div>
   </div></div>`;
 }
 function vEmails(){
@@ -752,7 +754,7 @@ function render(){
   document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.src===S.src));
   const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
-  const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;S._keepScroll=true;S._refocus='emailIn';render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); inp.addEventListener('focus',()=>{ S._focusId='emailIn'; }); }
+  const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;S._keepScroll=true;S._refocus='emailIn';render();return;} S.email=v;S.emailErr=false; if(isAff()){ S.phase='public'; S.screen='shop'; toast(`Подаръкът от ${AFF.name} е запазен за ${v}`); } else { S.screen='wallet'; S.walletExp=Date.now()+30*60e3; } save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); inp.addEventListener('focus',()=>{ S._focusId='emailIn'; }); }
   const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
   const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs&&document.getElementById('morePill')){ const pill=document.getElementById('morePill'); const upd=()=>{ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; const more=below>0 && gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
   try{ const h='#'+((S.phase==='prep'&&isAff())?'aff':S.phase); if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
@@ -787,11 +789,11 @@ phone.addEventListener('click', e=>{
   render();
 });
 function trimGifts(){ let over=giftCount()-paidCount(); if(over<=0) return; for(const id of Object.keys(S.gifts).reverse()){ while(over>0&&S.gifts[id]>0){S.gifts[id]--;over--;} if(!S.gifts[id]) delete S.gifts[id]; if(over<=0) break; } }
-function setPhase(ph){ if(ph==='aff'){ S.src='aff'; ph='prep'; } S.phase=ph; if(ph==='prep'){ if(!['signup','done','wallet','precheckout','predone'].includes(S.screen)) S.screen = S.email ? (isAff()?'done':'wallet') : 'signup'; if(isAff()&&['wallet','precheckout','predone'].includes(S.screen)) S.screen=S.email?'done':'signup'; if(!isAff()&&S.screen==='done') S.screen='wallet'; S.cart={}; S.gifts={}; } else if(ph==='early'||ph==='public'){ if(!['shop','gifts','checkout','ordered'].includes(S.screen)) S.screen='shop'; if(ph==='public'&&S.screen==='shop'){} } render(); }
+function setPhase(ph){ if(ph==='aff'){ S.src='aff'; ph='prep'; } S.phase=ph; if(ph==='prep'){ if(!['signup','done','wallet','precheckout','predone'].includes(S.screen)) S.screen = (S.email&&!isAff()) ? 'wallet' : 'signup'; if(isAff()) S.screen='signup'; if(!isAff()&&S.screen==='done') S.screen='wallet'; S.cart={}; S.gifts={}; } else if(ph==='early'||ph==='public'){ if(!['shop','gifts','checkout','ordered'].includes(S.screen)) S.screen='shop'; if(ph==='public'&&S.screen==='shop'){} } render(); }
 document.getElementById('phaseSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setPhase(b.dataset.phase); if(window.matchMedia('(max-width:480px)').matches) barEl.classList.add('collapsed'); } });
 const barEl=document.querySelector('.bar'); barEl.classList.add('collapsed');
 document.getElementById('barSum').addEventListener('click',()=>{ const c=barEl.classList.toggle('collapsed'); document.getElementById('barSum').setAttribute('aria-expanded', String(!c)); });
-document.getElementById('srcSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; S.src=b.dataset.src; if(S.phase==='prep'){ S.screen = S.email ? (isAff()?'done':'wallet') : 'signup'; S.cart={}; } render(); });
+document.getElementById('srcSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; S.src=b.dataset.src; if(S.phase==='prep'){ S.screen = (S.email&&!isAff()) ? 'wallet' : 'signup'; S.cart={}; } render(); });
 document.getElementById('resetBtn').addEventListener('click',()=>{ S=S0(); try{sessionStorage.removeItem('ansa_bf_emu');}catch(e){} render(); });
 window.addEventListener('hashchange',()=>{ const h=location.hash.replace('#',''); if(h==='aff'){ if(!(S.src==='aff'&&S.phase==='prep')) setPhase('aff'); return; } if(['prep','emails','early','public'].includes(h)&&h!==S.phase) setPhase(h); });
 (function boot(){ const h=location.hash.replace('#',''); if(h==='aff'){ S.src='aff'; S.phase='prep'; } else if(['prep','emails','early','public'].includes(h)) S.phase=h; render(); })();
