@@ -738,16 +738,20 @@ function screenFor(){
 }
 function render(){
   const sc=screenFor();
-  const prevScroll = phone.querySelector('.scroll'); const keep = prevScroll && S._keepScroll ? prevScroll.scrollTop : 0; S._keepScroll=false;
+  /* скролът се пази, докато екранът е същият; при смяна на екран се връща на запомнената позиция за него (0 за нов екран) */
+  const prevScroll = phone.querySelector('.scroll'); const scrollKey = (S._lastScreen||'')+'|'+S.phase+'|'+S.emailView;
+  S._scrollMem = S._scrollMem||{}; if(prevScroll) S._scrollMem[scrollKey]=prevScroll.scrollTop;
+  const newKey = sc+'|'+S.phase+'|'+S.emailView; const keep = (newKey===scrollKey && prevScroll) ? prevScroll.scrollTop : (S._scrollMem[newKey]||0); S._keepScroll=false; S._lastScreen=sc;
   let html='';
   if(sc==='signup') html=vSignup(); else if(sc==='done') html=vSignupDone(); else if(sc==='wallet') html=vWallet(); else if(sc==='emails') html=vEmails(); else if(sc==='shop') html=vShop(); else if(sc==='gifts') html=vGifts(); else if(sc==='checkout'||sc==='precheckout') html=vCheckout(); else if(sc==='ordered'||sc==='predone') html=vDone(); else if(sc==='closed') html=vClosed();
   if(S.sheet) html+=vSheet();
   phone.innerHTML=html;
   const scr=phone.querySelector('.scroll'); if(scr && keep) scr.scrollTop=keep;
+  const ae=document.activeElement; if(S._refocus){ const el=document.getElementById(S._refocus); if(el){ el.focus({preventScroll:true}); try{ el.setSelectionRange(el.value.length, el.value.length); }catch(e){} } S._refocus=null; }
   document.querySelectorAll('#phaseSeg button').forEach(b=>b.classList.toggle('on',b.dataset.phase===S.phase));
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.src===S.src));
   const sumEl=document.getElementById('barSum'); if(sumEl){ const ph={prep:'Подготовка',emails:'Имейли',early:'Ранен достъп',public:'Публичен BF'}[S.phase]; sumEl.textContent=`${ph} · ${isAff()?'🔗':'📣'} ▾`; }
-  const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); }
+  const f=document.getElementById('signupForm'); if(f){ f.addEventListener('submit',e=>{e.preventDefault(); const v=document.getElementById('emailIn').value.trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){S.emailErr=true;S.email=v;S._keepScroll=true;S._refocus='emailIn';render();return;} S.email=v;S.emailErr=false;S.screen=isAff()?'done':'wallet'; if(!isAff()){S.walletExp=Date.now()+30*60e3;} save();render();}); const inp=document.getElementById('emailIn'); inp.addEventListener('input',()=>{S.email=inp.value;}); inp.addEventListener('focus',()=>{ S._focusId='emailIn'; }); }
   const cs=document.getElementById('catSel'); if(cs){ cs.addEventListener('change',()=>{ S.filter=cs.value; S._keepScroll=true; render(); }); }
   const gs=document.getElementById('giftScroll')||document.getElementById('listScroll'); if(gs&&document.getElementById('morePill')){ const pill=document.getElementById('morePill'); const upd=()=>{ const tiles=[...gs.querySelectorAll('.tile')]; const below=tiles.filter(t=>t.offsetTop>gs.scrollTop+gs.clientHeight-20).length; const more=below>0 && gs.scrollHeight-gs.clientHeight-gs.scrollTop>40; pill.hidden=!more; if(more){ pill.textContent=`Скролни за още ${below} ${below===1?'продукт':'продукта'} ↓`; } }; gs.addEventListener('scroll',upd); upd(); }
   try{ const h='#'+((S.phase==='prep'&&isAff())?'aff':S.phase); if(location.hash!==h) history.replaceState(null,'',h); }catch(e){}
