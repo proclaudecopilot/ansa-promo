@@ -173,7 +173,8 @@ final class Copy {
 				'shop.footnote'     => 'Цените са от ansa.bg. Участват само единични опаковки на редовна цена.',
 			),
 			'gifts' => array(
-				'gifts.h'         => 'Стъпка 2 · Избери {{n}} {{podaruk}}',
+				'gifts.h'         => '🎁 Избери {{n}} {{podaruk}}',
+				'gifts.hsub'    => 'всеки на 0 € · пристигат в същата пратка',
 				'gifts.picked'    => 'Избрани',
 				'gifts.of'        => 'от',
 				'gifts.change'    => '↺ промени поръчката',

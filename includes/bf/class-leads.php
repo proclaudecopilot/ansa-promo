@@ -145,6 +145,25 @@ final class Leads {
 	}
 
 	/* ── админ ── */
+	/** 1.46.8: еднократна поправка — BF лийдовете, които Lead_Sync на Сезона (hook ansa_promo_lead_captured, 1.45.4–1.46.7) е качил и в листа/тага на Сезона:
+	 *  тези термини падат от контакта, BF синхронизацията се пуска пак (fka текстът става верен). Връща [checked, detached, resynced]. */
+	public static function repair_cross_sync( $force = false ) {
+		$key = 'ansa_promo_bf_repair_v1'; if ( ! $force && get_option( $key ) ) { return null; }
+		$r = array( 'checked' => 0, 'detached' => 0, 'resynced' => 0 );
+		if ( ! Lead_Sync::available() ) { return $r; }
+		$season = \AnsaPromo\Config::get_published(); $sl = is_array( $season['leads'] ?? null ) ? $season['leads'] : array();
+		$terms = array(); foreach ( array( 'list' => 2, 'tag' => 1, 'cart_tag' => 1 ) as $k => $type ) { $n = (string) ( $sl[ $k ] ?? '' ); if ( '' !== $n ) { $id = Merge::term_id( $n, $type ); if ( $id > 0 ) { $terms[] = array( $type, $id, $n ); } } }
+		$cfg = Config::get_published(); $own = array(); foreach ( array( (string) $cfg['leads']['list'], (string) $cfg['leads']['tag_cold'], (string) $cfg['leads']['tag_aff'] ) as $n ) { if ( '' !== $n ) { $own[] = $n; } }
+		foreach ( self::rows( 2000 ) as $row ) {
+			$r['checked']++; $email = (string) $row['email']; if ( ! is_email( $email ) ) { continue; }
+			foreach ( $terms as $t ) { try { $how = Lead_Sync::detach( $email, 2 === $t[0] ? 'lists' : 'tags', $t[1] ); if ( 'няма' !== $how ) { $r['detached']++; } } catch ( \Throwable $e ) {} }
+			$fka = (string) $row['fka']; $ok = false; foreach ( $own as $n ) { if ( false !== strpos( $fka, $n ) ) { $ok = true; } }
+			$has_ids = preg_match( '/#\d+/', $fka ) && ! preg_match( '/^(retry|off|no-)/', $fka );
+			if ( ! $ok || ! $has_ids ) { try { self::sync( (int) $row['id'], $email, ! empty( $row['consent'] ), $cfg, in_array( (string) $row['kind'], array( 'aff' ), true ) ? 'aff' : 'cold' ); $r['resynced']++; } catch ( \Throwable $e ) {} }
+		}
+		update_option( $key, current_time( 'mysql' ) . ' ' . wp_json_encode( $r ), false );
+		return $r;
+	}
 	public static function stats() {
 		global $wpdb; $t = Schema::table( 'leads' );
 		$r = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total, SUM(kind = 'cold') AS cold, SUM(kind = 'aff') AS aff, SUM(converted_order_id IS NOT NULL) AS converted, SUM(voucher <> '' AND voucher_order_id IS NOT NULL) AS voucher_used, SUM(fka <> '' AND fka NOT LIKE 'retry%%' AND fka <> 'no-consent' AND fka <> 'off') AS synced, SUM(fka = '' OR fka LIKE 'retry%%') AS pending FROM $t WHERE promo = %s", self::PROMO ), ARRAY_A );

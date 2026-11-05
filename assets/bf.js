@@ -110,7 +110,7 @@
       : (qty ? '<div class="step"><button data-act="cart-" data-id="' + p.key + '" aria-label="минус">−</button><b>' + qty + '</b><button data-act="cart+" data-id="' + p.key + '" aria-label="плюс">+</button></div>' : '<button class="addb" data-act="cart+" data-id="' + p.key + '">' + T('shop.add') + '</button>');
     var band = (!free && qty && !inWallet()) ? '<div class="gband' + (lastCounts[p.key] !== qty ? ' pop' : '') + '">' + T('shop.gl', { n: '<b class="gn">+' + qty + '</b>', podaruk: GIFT(qty) }) + '</div>' : '';
     return '<div class="tile' + (qty ? ' on' : '') + (band ? ' banded' : '') + '">' + band + '<img src="' + esc(pimg(p)) + '" alt="" loading="lazy"><div><div class="n">' + (p.isNew ? '<span class="nb">' + T('sheet.new') + '</span>' : '') + esc(p.name) + '<small>' + esc(p.sub) + '</small></div>'
-      + '<div class="pr' + (free ? ' free' : '') + '">' + (free ? '<s>' + fmt(p.price) + '</s>' + T('gifts.free') : fmt(p.price)) + '</div>'
+      + '<div class="pr' + (free ? ' free' : '') + '">' + (free ? '<s>' + fmt(p.price) + '</s><b class="g0">🎁 ' + T('gifts.free') + ' · 0 €</b>' : fmt(p.price)) + '</div>'
       + '<button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div>' + right + '</div>';
   };
   var emailForm = function (cta) { return '<form id="signupForm"><div class="input' + (S.emailErr ? ' err' : '') + '">✉️ <input id="emailIn" type="email" placeholder="' + esc(T('cold.form.ph')) + '" value="' + esc(S.email) + '" autocomplete="email" required></div>' + (S.emailErr ? '<div class="ferr">' + esc(S.emailErr) + '</div>' : '') + '<button class="cta" type="submit">' + cta + '</button></form>'; };
@@ -192,8 +192,7 @@
   function vchStrip() {
     if (inWallet()) return '';
     if (voucherLive()) return '<div class="vstrip ok">' + T('shop.vch.live', { amount: fmtNum(ctx.voucher.amount) }) + '</div>';
-    if (!(R.listv && R.listv.enabled) || !(earlyOk || isPublic() || R.draft)) return '';
-    return '<form class="claim' + (S.claimErr ? ' err' : '') + '" id="claimForm" autocomplete="off"><span class="claim-h">' + T('shop.claim.h') + '</span><input id="claimIn" type="text" placeholder="' + esc(T('shop.claim.ph')) + '" value="' + esc(S.claimVal || '') + '" autocapitalize="characters" spellcheck="false"><button class="addb" type="submit">' + T('shop.claim.cta') + '</button>' + (S.claimErr ? '<div class="claim-err">' + esc(S.claimErr) + '</div>' : '') + '</form>';
+    return ''; /* 1.46.8: без поле „Имаш ваучер от имейла?“ — ваучерът влиза сам през личния линк от имейла (човекът: „Не трябва да има активация на нищо“) */
   }
   function onClaim(e) {
     e.preventDefault(); var inp = document.getElementById('claimIn'); var code = (inp.value || '').trim().toUpperCase(); if (!code) return; S.claimVal = code; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
@@ -237,8 +236,10 @@
     var n = paidCount(), g = giftCount(), left = n - g; var news = giftList().filter(function (p) { return p.isNew; }), best = giftList().filter(function (p) { return !p.isNew; });
     var picked = []; Object.keys(S.gifts).forEach(function (k) { for (var i = 0; i < S.gifts[k]; i++) picked.push(k); });
     var slots = ''; for (var i = 0; i < n; i++) { var id = picked[i]; slots += id && P[id] ? '<div class="slot f"><img src="' + esc(pimg(P[id])) + '" alt=""></div>' : '<div class="slot' + (i === g ? ' next' : '') + '">' + (i + 1) + '</div>'; }
-    return '<div class="hdr" style="flex-wrap:wrap"><div><b>' + T('gifts.h', { n: n, podaruk: GIFT(n) }) + '</b></div><button class="x" data-act="screen" data-id="shop" aria-label="затвори">✕</button>' + stepsBar(2) + '</div>'
-      + '<div class="scroll" id="giftScroll"><div class="wrap" style="padding-top:8px"><div class="bar2"><i style="width:' + (n ? Math.round(g / n * 100) : 0) + '%"></i></div>'
+    /* 1.46.8: стъпка 2 е „подаръци навсякъде“ (човекът: „да нямаш капка съмнение, че са подаръци“) — зелен хедър с панделка, фон от кутийки, летящи подаръци, „🎁 0 € · подарък“ на всяка карта */
+    var floats = ''; for (var f = 0; f < 9; f++) { floats += '<span style="left:' + (4 + f * 11) + '%;animation-delay:' + (-f * 1.7) + 's;animation-duration:' + (13 + (f % 4) * 3) + 's;font-size:' + (26 + (f % 3) * 10) + 'px">' + (f % 3 === 2 ? '🎀' : '🎁') + '</span>'; }
+    return '<div class="hdr gifts" style="flex-wrap:wrap"><div><b>' + T('gifts.h', { n: n, podaruk: GIFT(n) }) + '</b><small>' + T('gifts.hsub', { n: n, podaruk: GIFT(n) }) + '</small></div><button class="x" data-act="screen" data-id="shop" aria-label="затвори">✕</button>' + stepsBar(2) + '</div>'
+      + '<div class="scroll gifts-bg" id="giftScroll"><div class="gfloat" aria-hidden="true">' + floats + '</div><div class="wrap" style="padding-top:8px"><div class="bar2"><i style="width:' + (n ? Math.round(g / n * 100) : 0) + '%"></i></div>'
       + '<div class="sline"><span>' + T('gifts.picked') + ' <b>' + g + ' ' + T('gifts.of') + ' ' + n + '</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">' + T('gifts.change') + '</button></div>'
       + (news.length ? '<div class="k2" style="margin-top:6px">' + T('gifts.new') + '</div>' + news.map(function (p) { return productTile(p, 'gift'); }).join('') : '')
       + '<div class="k2">' + T('gifts.best') + '</div>' + best.map(function (p) { return productTile(p, 'gift'); }).join('') + '<div style="height:8px"></div></div></div>'
@@ -298,7 +299,7 @@
     if (S.luckyOpen) html += vLucky();
     if (R.draft) html += vAdminBar();
     if (S.coErr) { html = html.replace(/(<button class="cta[^"]*" data-act="(?:checkout|wallet-go)")/, '<div class="ferr co">' + esc(S.coErr) + '</div>$1'); }
-    root.innerHTML = html;
+    root.innerHTML = html; document.body.classList.toggle('bf-gifts', sc === 'gifts');
     if (keep) window.scrollTo(0, keep); else window.scrollTo(0, 0);
     if (refocus) { var el = document.getElementById(refocus); if (el) { el.focus({ preventScroll: true }); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch (e) {} } }
     var f = document.getElementById('signupForm'); if (f) { f.addEventListener('submit', onSignup); var inp = document.getElementById('emailIn'); if (inp) inp.addEventListener('input', function () { S.email = inp.value; }); }
