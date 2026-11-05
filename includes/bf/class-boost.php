@@ -171,7 +171,7 @@ final class Boost {
 	}
 
 	/* ═══ MERGE TAGS за FunnelKit ({{ansa_promo_bf_voucher}} …) ═══ */
-	const TAGS = array( 'bf_voucher' => 'BF10-K7M2', 'bf_voucher_exp' => '27.11.2026 10:00', 'bf_early_url' => 'https://ansa.bg/cheren-petak-2026/?ea=…&u=…', 'bf_url' => 'https://ansa.bg/cheren-petak-2026/' );
+	const TAGS = array( 'bf_voucher' => 'BF10-K7M2', 'bf_voucher_exp' => '23.11.2026 23:59', 'bf_early_url' => 'https://ansa.bg/cheren-petak-2026/?ea=…&u=…', 'bf_url' => 'https://ansa.bg/cheren-petak-2026/' );
 	/** Стойността за имейла на текущия FKA контакт (или attr email= за тест от админ). */
 	public static function merge( $key, $attr = array() ) {
 		$attr = is_array( $attr ) ? $attr : array(); $cfg = Config::get_published();

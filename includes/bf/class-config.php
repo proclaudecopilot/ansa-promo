@@ -29,7 +29,7 @@ final class Config {
 			'enabled'  => false,
 			'slug'     => 'cheren-petak-2026',
 			/* фазите по часа на сайта (Y-m-d H:i); public_start по подразбиране = early_end */
-			'phases'   => array( 'early_start' => '2026-11-25 10:00', 'early_end' => '2026-11-27 10:00', 'public_start' => '2026-11-27 10:00', 'public_end' => '2026-11-30 10:00' ),
+			'phases'   => array( 'early_start' => '2026-11-20 10:00', 'early_end' => '2026-11-23 23:59', 'public_start' => '2026-11-25 07:00', 'public_end' => '2026-11-30 10:00' ), /* 1.48.8: планът от 05.11 — ранен достъп 20.11 → 23.11 23:59, пауза на 24.11, публичен 25.11 07:00 */
 			'force'    => '', /* '' = по датите · prep | early | public | over */
 			/* продуктите: key (utm стойност), sku на вариацията „1 опаковка“ (печели над product_id), product_id, name/sub (празно = от WC), cat (етикет за
 			   падащото меню), gift_only (само подарък — новите 4), is_new, fav (Най-продавани — първи в списъка), enabled, img (attachment id или URL) */
