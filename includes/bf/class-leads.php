@@ -40,7 +40,7 @@ final class Leads {
 	public static function ensure_terms() {
 		if ( ! Lead_Sync::available() ) { return false; }
 		$names = array();
-		foreach ( array( Config::get_draft(), Config::get_published() ) as $c ) { if ( empty( $c['leads']['fka'] ) ) { continue; } foreach ( array( 'list' => 2, 'tag_cold' => 1, 'tag_aff' => 1 ) as $k => $type ) { $n = (string) $c['leads'][ $k ]; if ( '' !== $n ) { $names[ $type . '|' . $n ] = array( $type, $n ); } } $ot = (string) ( $c['orders']['fka_tag'] ?? '' ); if ( '' !== $ot ) { $names[ '1|' . $ot ] = array( 1, $ot ); } }
+		foreach ( array( Config::get_draft(), Config::get_published() ) as $c ) { if ( empty( $c['leads']['fka'] ) ) { continue; } foreach ( array( 'list' => 2, 'tag_cold' => 1, 'tag_aff' => 1 ) as $k => $type ) { $n = (string) $c['leads'][ $k ]; if ( '' !== $n ) { $names[ $type . '|' . $n ] = array( $type, $n ); } } /* 1.47.3: и таговете на ваучерите за списъка — предварително, за да се правят автоматизациите преди 25.11 */ foreach ( array( 'tag_revived', 'tag_vip' ) as $lk ) { $ln = (string) ( $c['listv'][ $lk ] ?? '' ); if ( '' !== $ln && ! empty( $c['listv']['enabled'] ) ) { $names[ '1|' . $ln ] = array( 1, $ln ); } } $ot = (string) ( $c['orders']['fka_tag'] ?? '' ); if ( '' !== $ot ) { $names[ '1|' . $ot ] = array( 1, $ot ); } }
 		if ( ! $names ) { return true; }
 		$key = md5( implode( '|', array_keys( $names ) ) ); if ( get_option( 'ansa_promo_bf_fka_ensured' ) === $key ) { return true; }
 		$all = true; foreach ( $names as $n ) { if ( Merge::term_id( $n[1], $n[0], true ) <= 0 ) { $all = false; } }
