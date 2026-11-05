@@ -126,19 +126,22 @@ final class Copy {
 				'shop.steps'        => 'Продукти|Подаръци|Финализиране',
 				'shop.eq.buy'       => 'купуваш',
 				'shop.eq.get'       => 'по избор',
-				'shop.eq.note'      => 'Колкото опаковки купиш, толкова подаръка си избираш.',
+				'shop.eq.note'      => 'Колкото опаковки купиш, толкова подаръка си избираш. Само в Черния петък — не е за изпускане.',
 				'shop.opk1'         => 'опаковка',
 				'shop.opk'          => 'опаковки',
 				'shop.gift1'        => 'подарък',
 				'shop.gift'         => 'подаръка',
 				'shop.step1'        => 'Стъпка 1 · Избери какво купуваш',
 				'focus.h'           => 'Колко опаковки искаш?',
+				'focus.sub'         => 'Веднъж в годината: всяка опаковка ти носи още една <b>безплатно</b>. Колкото повече вземеш, толкова повече спестяваш.',
 				'focus.unit'        => '/ опаковка',
-				'focus.line'        => '{{n}} {{opk}} = <b>+{{g}} {{podaruk}} по избор</b> · плащаш {{total}}',
-				'focus.line.empty'  => 'Всяка опаковка ти носи още една по избор — подарък.',
+				'focus.line'        => '{{n}} {{opk}} + <b>{{g}} {{podaruk}} по избор</b> · плащаш {{total}} вместо <s>{{full}}</s>',
+				'focus.line.save'   => 'Спестяваш {{save}}',
+				'focus.line.empty'  => 'Избери бройка — всяка опаковка ти носи още една по избор, на 0 €.',
+				'focus.urgency'     => '⏳ Офертата изтича след {{timer}} · после подаръците ги няма',
 				'focus.other'       => 'Не искам този продукт. Виж други →',
 				'focus.opt.gift'    => '+{{g}} {{podaruk}} по избор',
-				'focus.opt.total'   => 'общо',
+				'focus.opt.full'    => 'вместо',
 				'shop.example.btn'  => 'ⓘ пример',
 				'shop.example'      => 'Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).',
 				'shop.filter.label' => 'Покажи',
@@ -156,14 +159,14 @@ final class Copy {
 				'panel.cart.h'      => 'Купуваш',
 				'panel.cart.empty'  => 'Още нищо — натисни „Добави“ на продукт',
 				'panel.gifts.h'     => 'Подаръците ти',
-				'panel.gifts.note'  => '{{n}} {{podaruk}} по избор те чакат на стъпка 2',
+				'panel.gifts.note'  => '{{n}} {{podaruk}} по избор на 0 € те чакат на стъпка 2',
 				'panel.gifts.note.pick' => 'избери още {{n}} {{podaruk}}',
 				'panel.gifts.note.done' => 'всички подаръци са избрани ✓',
 				'panel.gifts.note.empty' => 'всяка опаковка = 1 подарък по избор',
-				'shop.foot.cta.sub' => '{{n}} {{podaruk}} по избор · на 0 €',
+				'shop.foot.cta.sub' => '{{n}} {{podaruk}} на 0 € · спестяваш {{save}}',
 				'panel.title'       => 'Твоята поръчка с подаръци',
 				'shop.foot.pay'     => 'Плащаш',
-				'shop.foot.r'       => '{{n}} {{podaruk}} по избор · −{{pct}} %',
+				'shop.foot.r'       => 'Спестяваш {{save}} · −{{pct}} %',
 				'shop.foot.cta'     => 'Избери {{sel}} →',
 				'shop.sel1'         => 'подаръка си',
 				'shop.seln'         => '{{n}}-те си подаръка',
@@ -283,7 +286,7 @@ final class Copy {
 	}
 
 	public static function vars() {
-		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount', 'total', 'reg', 'opk', 'g' );
+		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount', 'total', 'reg', 'opk', 'g', 'full', 'timer' );
 	}
 	public static function defaults() { static $d = null; if ( null === $d ) { $d = array(); foreach ( self::registry() as $g => $keys ) { $d += $keys; } } return $d; }
 	public static function effective( $overrides ) {

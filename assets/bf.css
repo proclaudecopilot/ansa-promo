@@ -233,6 +233,8 @@ a.cta,a.cta:visited{color:#fff}
 .sline{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;margin-bottom:8px;gap:8px}
 .sline>span:first-child{white-space:nowrap}
 .sline b{color:var(--o)}.sline .ok{color:var(--gd);text-align:right}
+.sline s{color:var(--tan);font-weight:700;font-size:11.5px;margin-left:3px} /* 1.48.3: „Плащаш 177 € ~~354 €~~“ */
+@media (max-width:360px),(min-width:1024px) and (max-width:1279px){.sline s{display:none}}
 .slots{display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
 .slot{flex:none;width:48px;height:48px;border:2px dashed var(--ol);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--tan2);font-size:13px;background:#fff;overflow:hidden}
 .slot.f{border:2px solid var(--g);padding:0}
@@ -451,6 +453,8 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 .fo-p{text-align:right;line-height:1.1;white-space:nowrap}
 .fo-p b{display:block;font-size:16px;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums}
 .fo-p small{display:block;font-size:10.5px;font-weight:700;color:var(--tan);margin-top:2px}
+.fo-p small s{text-decoration-thickness:1.5px}
+@media (max-width:360px){.fo-p small .vm{display:none}}
 .fo-ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--ol);position:relative;background:#fff;transition:background .15s,border-color .15s}
 .fo-ck:after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);transition:transform .15s}
 .fopt.on{border-color:var(--o);background:var(--os);box-shadow:0 0 0 3px rgba(232,114,42,.16),0 8px 20px rgba(232,114,42,.14)}
@@ -474,7 +478,8 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   .fo-t em .fl,.fo-t em .fs{display:none}.fo-t em .fx{display:inline}
   .fo-p{text-align:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--ol);width:100%}
   .fo-p b{font-size:17px}
-  .fo-p small{display:inline;margin:0 0 0 3px;font-size:11px}
+  .fo-p small{display:block;margin:2px 0 0;font-size:11px}
+  .fo-p small .vm{display:none}
   .fo-ck{position:absolute;top:-9px;right:-9px;width:26px;height:26px;opacity:0;transform:scale(.6);transition:opacity .15s,transform .15s}
   .fo-ck:after{left:8px;top:4px}
   .fopt.on .fo-ck{opacity:1;transform:scale(1);box-shadow:0 3px 8px rgba(22,163,74,.35)}
@@ -483,12 +488,21 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   @media (hover:hover){.fopt:hover:not(.on){transform:translateY(-2px)}}
 }
 @media (min-width:1280px){.fo-t em .fx{display:none}.fo-t em .fs{display:inline}}
-.focus-line{margin-top:12px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center;background:var(--cream);border-radius:12px;padding:10px 12px;line-height:1.35}
+/* 1.48.3: под „Колко опаковки искаш?“ — подзаглавие (веднъж в годината…), зелената кутия „Спестяваш 177,00 €“ + „плащаш 177 € вместо 354 €“ и тъмната лента с таймера „Офертата изтича след…“ */
+.focus-sub{font-size:13px;font-weight:700;color:var(--ink2);line-height:1.4;margin:-2px 0 10px}
+.focus-sub b{color:var(--gd)}
+.focus-line{margin-top:12px;font-size:13.5px;font-weight:700;color:var(--ink2);text-align:center;background:var(--cream);border-radius:14px;padding:10px 12px;line-height:1.4}
 .focus-line b{color:var(--gd)}
+.focus-line.on{background:var(--gs);border:1.5px solid rgba(34,197,94,.35);padding:12px 14px}
+.focus-line .fl-save{display:block;font-size:20px;font-weight:900;color:var(--gd);line-height:1.1;letter-spacing:-.01em}
+.focus-line.on span{display:block;margin-top:5px}
+.focus-line s{color:var(--tan)}
+.focus-urg{display:block;margin-top:10px;background:var(--bf);color:#fff;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:800;text-align:center;line-height:1.3}
+.focus-urg b{color:var(--o2);font-variant-numeric:tabular-nums;font-weight:900}
 .focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px;padding:8px 0}
 @media (max-width:1023px){.focus{margin-bottom:16px}}
 @media (max-width:360px){.focus-top{grid-template-columns:92px 1fr}.focus-top img{width:92px;height:92px}.focus-n{font-size:18px}}
-@media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.focus-h{margin-top:18px}}
+@media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.focus-h{margin-top:18px}.focus-sub{font-size:14px}.focus-line .fl-save{font-size:24px}.focus-urg{font-size:13.5px}}
 
 /* 1.47.0: високият панел на десктоп — кутията на поръчката (продукти + места за подаръци) и големият бутон */
 @media (min-width:1024px){
