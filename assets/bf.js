@@ -99,6 +99,15 @@
   var howCard = function () { var ex = P.greens || cartList()[0]; var exPay = ex ? ex.price * 2 : 0; var g1 = P.kera || giftList()[0], g2 = P.berber || giftList()[1] || g1; return '<div class="k2">' + T('shop.how.h') + '</div><div class="howcard"><div class="hc-row"><div class="hc-col"><div class="hc-imgs"><span class="hc-im"><img src="' + esc(ex ? pimg(ex) : '') + '" alt=""></span><span class="hc-im"><img src="' + esc(ex ? pimg(ex) : '') + '" alt=""></span></div><b>' + T('shop.how.buy') + '</b><small>' + esc(ex ? ex.name : T('shop.how.buy.sub')) + '</small><em>' + fmt2(exPay) + '</em></div><div class="hc-arr"><span>→</span></div><div class="hc-col g"><div class="hc-imgs"><span class="hc-im g"><img src="' + esc(g1 ? pimg(g1) : '') + '" alt=""><i>🎁</i></span><span class="hc-im g"><img src="' + esc(g2 ? pimg(g2) : '') + '" alt=""><i>🎁</i></span></div><b>' + T('shop.how.get') + '</b><small>' + esc(g1 && g2 ? 'напр. ' + g1.name + ' + ' + g2.name : T('shop.how.get.sub')) + '</small><em>0 €</em></div></div><div class="hc-sum"><span>' + T('shop.how.sum') + '</span><b>' + T('shop.how.pay', { ex_pay: fmtNum(exPay) }) + '</b></div><div class="hc-steps"><div><i>1</i>' + T('shop.how.s1') + '</div><div><i>2</i>' + T('shop.how.s2') + '</div><div><i>3</i>' + T('shop.how.s3') + '</div></div></div>'; };
 
   /* ── екрани ── */
+  /* 1.45.5: големият таймер (човекът: „Таймерът е малко невидим… Трябва да е по-ясно колко време ти остава“) — тъмна лента с 34px цифри, лента, която се източва, червено + пулс под 5 минути, „изтече“ след края */
+  function timerBar(kind) {
+    var key = kind === 'cold' ? 'coldExp' : 'walletExp'; var exp = kind === 'cold' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0);
+    var total = (kind === 'cold' ? R.cold.landing_minutes : R.cold.minutes) * 60000; var ms = exp - now(); var live = ms > 0; var pct = live ? Math.max(0, Math.min(100, ms / total * 100)) : 0;
+    return '<div class="tbar' + (live ? (ms < 300000 ? ' hot' : '') : ' over') + '" data-tbar="' + key + '" data-total="' + total + '" role="timer" aria-live="off">'
+      + '<div class="tbar-l">' + (live ? T(kind + '.tbar', V()) + '<small>' + T(kind + '.tbar.sub', V()) + '</small>' : T(kind + '.tbar.over', V()) + '<small>' + T(kind + '.tbar.over.sub', V()) + '</small>') + '</div>'
+      + '<div class="tbar-t"><b data-cd="' + key + '">' + mmss(ms) + '</b>' + (live ? '<small>' + T('cold.tbar.unit') + '</small>' : '') + '</div>'
+      + '<div class="tbar-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div></div>';
+  }
   function vCold() {
     if (!S.coldExp || S.coldExp < now() - 86400000) S.coldExp = now() + R.cold.landing_minutes * 60000;
     var live = S.coldExp > now(); var left = seats.max - seats.n;
@@ -106,13 +115,13 @@
       + '<div class="hrow">' + logoImg + '<span class="tpill' + (live ? ' hot' : '') + '">' + (live ? T('cold.timer.live') : T('cold.timer.over')) + ' · <b data-cd="coldExp">' + mmss(S.coldExp - now()) + '</b></span></div>'
       + '<div class="eyebrow">' + T('cold.eyebrow') + '</div><div class="h1" style="font-size:25px">' + T('cold.title') + '</div><p class="sub big">' + T('cold.sub', V()) + '</p>'
       + (seats.enabled ? '<div class="seats"><div class="seats-bar"><i style="width:' + Math.round(seats.n / seats.max * 100) + '%"></i></div><div class="seats-t">' + T('cold.seats', { seats: nfmt(seats.n), max: nfmt(seats.max), left: left }) + '</div></div>' : '')
-      + '</div><div class="wrap">' + voucherCard({ locked: true })
+      + '</div><div class="wrap">' + timerBar('cold') + voucherCard({ locked: true })
       + '<div class="card"><div class="h2" style="font-size:16px;text-align:center">' + T('cold.form.h') + '</div>' + emailForm(T('cold.form.cta') + '<small>' + (live ? T('cold.vch.exp') + ' <span data-cd="coldExp">' + mmss(S.coldExp - now()) + '</span>' : T('cold.form.expired')) + '</small>') + '<div class="trust">' + T('cold.form.trust') + '</div></div>'
       + '<div class="footnote">' + T('cold.foot', V()) + '</div></div></div>';
   }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
-    var aside = (live ? voucherCard({ locked: false }) : '')
+    var aside = timerBar('wallet') + (live ? voucherCard({ locked: false }) : '')
       + '<div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">' + T('wallet.date', V()) + '</b><small>' + T('wallet.date.sub', V()) + '</small></span><span class="pillg">' + T('wallet.date.pill') + '</span></div>';
     var foot = n
       ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + (walletDisc() ? T('wallet.foot.disc', { amount: fmtNum(walletDisc()) }) : (live ? '' : T('wallet.foot.expired'))) + '</span></div><button class="cta" data-act="wallet-go">' + T('wallet.foot.cta') + '</button>'
@@ -225,6 +234,7 @@
   /* ── таймери ── */
   setInterval(function () {
     root.querySelectorAll('[data-cd]').forEach(function (el) { var k = el.getAttribute('data-cd'); var exp = k === 'coldExp' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0); var ms = exp - now(); el.textContent = mmss(ms); if (ms <= 0 && !S._exp[k]) { S._exp[k] = true; if (k === 'walletExp' && ctx.voucher) ctx.voucher.live = false; render(); } });
+    root.querySelectorAll('[data-tbar]').forEach(function (el) { var k = el.getAttribute('data-tbar'); var exp = k === 'coldExp' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0); var ms = exp - now(); var total = +el.getAttribute('data-total') || 1; var bar = el.querySelector('.tbar-bar i'); if (bar) { bar.style.width = Math.max(0, Math.min(100, ms / total * 100)).toFixed(1) + '%'; } el.classList.toggle('hot', ms > 0 && ms < 300000); });
     var t = root.querySelector('[data-timer]'); if (t) { var h = hms(phaseEnd - now()); t.textContent = h[0] + ':' + h[1] + ':' + h[2]; if (phaseEnd && phaseEnd - now() <= 0 && !S._exp.phase) { S._exp.phase = true; refresh(); } }
   }, 1000);
   setInterval(function () { var eq = document.getElementById('eq'); if (!eq || paidCount()) return; S.demoN = (S.demoN || 1) % 6 + 1; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML = eqHtml(S.demoN); eq.classList.add('pop'); }, 2200);
