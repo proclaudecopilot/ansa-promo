@@ -134,7 +134,7 @@ final class Cart {
 	 */
 	public static function perform_add( $a ) {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) { return array( 'ok' => false, 'code' => 'add', 'msg' => 'WooCommerce' ); }
-		$may_draft = ! empty( $a['trusted'] ) || current_user_can( \AnsaPromo\Plugin::CAP ) || Page::preview_ok();
+		$may_draft = ! empty( $a['trusted'] ) || current_user_can( \AnsaPromo\Plugin::CAP ) || Page::preview_ok() || Page::share_ok(); /* 1.48.0: тайният линк */
 		$draft = ! empty( $a['draft'] ) && $may_draft; $cfg = $draft ? Config::get_draft() : Config::get_published(); $copy = Copy::effective( $cfg['copy'] );
 		$err = function ( $code, $vars = array() ) use ( $copy ) { return array( 'ok' => false, 'code' => $code, 'msg' => Copy::render( $copy[ 'err.' . $code ] ?? $code, $vars ) ); };
 		$mode = 'wallet' === (string) ( $a['mode'] ?? '' ) ? 'wallet' : 'promo'; $phase = Config::phase_now( $cfg );

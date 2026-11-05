@@ -76,7 +76,21 @@ final class Page {
 	public static function no_404( $pre, $q ) { return self::is_route() ? true : $pre; }
 
 	/* ── чернова / преглед с парола ── */
-	public static function is_draft_request() { return ( isset( $_GET['ansa_bf'] ) && 'draft' === $_GET['ansa_bf'] && current_user_can( \AnsaPromo\Plugin::CAP ) ) || self::preview_ok(); }
+	public static function is_draft_request() { return ( isset( $_GET['ansa_bf'] ) && 'draft' === $_GET['ansa_bf'] && current_user_can( \AnsaPromo\Plugin::CAP ) ) || self::preview_ok() || self::share_ok(); }
+	/* ── 1.48.0: тайният линк за екипа — ?ansa_bf_share=<exp>.<hmac>, подписан със salt-а на сайта, важи 1 час (човекът: „secret link за екипа… да се генерира от настройки, и да е валиден 1 час… без да са логнати“).
+	   Който го отвори, получава прегледа (чернова + лентата с всички фази и входове) като бисквитка за остатъка от часа; след изтичането — живата страница. ── */
+	const SHARE_COOKIE = 'ansa_bf_share'; const SHARE_TTL = HOUR_IN_SECONDS;
+	public static function share_sig( $exp ) { return substr( hash_hmac( 'sha256', 'bf-share|' . (int) $exp, wp_salt( 'auth' ) ), 0, 24 ); }
+	public static function new_share_link( $cfg = null ) { $exp = time() + self::SHARE_TTL; return array( 'url' => add_query_arg( array( 'ansa_bf_share' => $exp . '.' . self::share_sig( $exp ), 'reset' => '1' ), self::url( $cfg ?: Config::get_published() ) ), 'exp' => $exp ); }
+	public static function share_valid( $tok ) { $tok = (string) $tok; if ( ! preg_match( '/^(\d{9,11})\.([a-f0-9]{24})$/', $tok, $m ) ) { return 0; } $exp = (int) $m[1]; if ( $exp < time() ) { return 0; } return hash_equals( self::share_sig( $exp ), $m[2] ) ? $exp : 0; }
+	private static $share_ok = null; public static $share_err = false;
+	public static function share_ok() {
+		if ( null !== self::$share_ok ) { return self::$share_ok; }
+		self::$share_ok = false;
+		if ( ! empty( $_GET['ansa_bf_share'] ) && self::share_valid( (string) wp_unslash( $_GET['ansa_bf_share'] ) ) ) { self::$share_ok = true; }
+		elseif ( ! empty( $_COOKIE[ self::SHARE_COOKIE ] ) && self::share_valid( (string) $_COOKIE[ self::SHARE_COOKIE ] ) ) { self::$share_ok = true; }
+		return self::$share_ok;
+	}
 	public static function preview_token( $pw ) { return hash_hmac( 'sha256', 'bf|' . (string) $pw, wp_salt( 'auth' ) ); }
 	public static function preview_ok() {
 		if ( null !== self::$pw_ok ) { return self::$pw_ok; }
@@ -97,6 +111,8 @@ final class Page {
 			if ( hash_equals( $pw, $given ) ) { setcookie( self::PW_COOKIE, self::preview_token( $given ), time() + 30 * DAY_IN_SECONDS, '/', '', is_ssl(), true ); wp_safe_redirect( remove_query_arg( 'ansa_bf_pw' ) ); exit; }
 			self::$pw_err = true;
 		}
+		/* 1.48.0: тайният линк → бисквитка до изтичането му + redirect без параметъра (адресът в лентата остава чист; лентата на прегледа носи ?ansa_bf=draft, който тук минава през бисквитката) */
+		if ( ! empty( $_GET['ansa_bf_share'] ) ) { $tok = (string) wp_unslash( $_GET['ansa_bf_share'] ); $exp = self::share_valid( $tok ); if ( $exp ) { setcookie( self::SHARE_COOKIE, $tok, $exp, '/', '', is_ssl(), true ); $_COOKIE[ self::SHARE_COOKIE ] = $tok; wp_safe_redirect( add_query_arg( 'ansa_bf', 'draft', remove_query_arg( 'ansa_bf_share' ) ) ); exit; } self::$share_err = true; }
 		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
 		status_header( 200 ); header( 'Content-Type: text/html; charset=utf-8' );
 		if ( $draft || ! empty( $_GET['ea'] ) || ! empty( $_GET['ref'] ) ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } } /* маркерите не бива да влизат в кеша като „страница“ */
@@ -227,6 +243,6 @@ final class Page {
 	private static function soon_html( $cfg ) {
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . esc_html( $cfg['name'] ) . '</title>'
 			. '<style>html,body{margin:0;background:#0f0f1a;color:#fff;font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif}body{min-height:100dvh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}p{font-size:20px;font-weight:800;line-height:1.4}a{color:#f59e0b}</style></head>'
-			. '<body><p>' . esc_html( $cfg['name'] ) . ' — скоро.<br><a href="' . esc_url( home_url( '/' ) ) . '" style="font-size:15px">към ansa.bg ›</a></p>' . ( self::$pw_err ? '<p style="font-size:14px;color:#f87171">Грешна парола.</p>' : '' ) . '</body></html>';
+			. '<body><p>' . esc_html( $cfg['name'] ) . ' — скоро.<br><a href="' . esc_url( home_url( '/' ) ) . '" style="font-size:15px">към ansa.bg ›</a></p>' . ( self::$pw_err ? '<p style="font-size:14px;color:#f87171">Грешна парола.</p>' : '' ) . ( self::$share_err ? '<p style="font-size:14px;color:#f87171">Тайният линк е изтекъл или невалиден — поискай нов от админа.</p>' : '' ) . '</body></html>';
 	}
 }
