@@ -103,7 +103,7 @@
   function timerBar(kind) {
     var key = kind === 'cold' ? 'coldExp' : 'walletExp'; var exp = kind === 'cold' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0);
     var total = (kind === 'cold' ? R.cold.landing_minutes : R.cold.minutes) * 60000; var ms = exp - now(); var live = ms > 0; var pct = live ? Math.max(0, Math.min(100, ms / total * 100)) : 0;
-    return '<div class="tbar' + (live ? (ms < 300000 ? ' hot' : '') : ' over') + '" data-tbar="' + key + '" data-total="' + total + '" role="timer" aria-live="off">'
+    return '<div class="tbar' + (live ? (ms < 300000 ? ' hot' : '') : ' done') + '" data-tbar="' + key + '" data-total="' + total + '" role="timer" aria-live="off">'
       + '<div class="tbar-l">' + (live ? T(kind + '.tbar', V()) + '<small>' + T(kind + '.tbar.sub', V()) + '</small>' : T(kind + '.tbar.over', V()) + '<small>' + T(kind + '.tbar.over.sub', V()) + '</small>') + '</div>'
       + '<div class="tbar-t"><b data-cd="' + key + '">' + mmss(ms) + '</b>' + (live ? '<small>' + T('cold.tbar.unit') + '</small>' : '') + '</div>'
       + '<div class="tbar-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div></div>';

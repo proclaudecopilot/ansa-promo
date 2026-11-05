@@ -324,7 +324,7 @@ button{font-family:inherit;cursor:pointer}
 .tbar-bar{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.12)}
 .tbar-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--o),var(--o2));transition:width 1s linear}
 .tbar.hot{border-color:#ef4444}.tbar.hot .tbar-t b{color:#f87171;animation:tpulse 1s ease-in-out infinite}.tbar.hot .tbar-bar i{background:#ef4444}
-.tbar.over{opacity:.9;border-color:rgba(255,255,255,.2)}.tbar.over .tbar-t b{color:rgba(255,255,255,.7);font-size:22px}
+.tbar.done{opacity:.9;border-color:rgba(255,255,255,.2)}.tbar.done .tbar-t b{color:rgba(255,255,255,.7);font-size:22px} /* „done“, не „over“ — .over е екранът „приключи“ */
 @keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @media (prefers-reduced-motion: reduce){.tbar.hot .tbar-t b{animation:none}}
 @media (max-width:360px){.tbar-t b{font-size:28px}.tbar-l{font-size:12.5px}}
