@@ -441,12 +441,13 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 .fopt small{font-size:10.5px;font-weight:700;color:var(--tan)}
 .fopt em{font-style:normal;font-size:10.5px;font-weight:900;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 5px;margin-top:3px;white-space:nowrap;max-width:100%;overflow:hidden}
 .fopt em .fs{display:none}
-@media (max-width:560px){.fopt em .fl{display:none}.fopt em .fs{display:inline}.fopt em{font-size:11.5px}}
+@media (max-width:560px),(min-width:1024px) and (max-width:1279px){.fopt em .fl{display:none}.fopt em .fs{display:inline}.fopt em{font-size:11.5px}}
 .fopt.on{border-color:var(--o);background:var(--os);box-shadow:0 0 0 3px rgba(232,114,42,.18);transform:translateY(-2px)}
 .fopt.on b{color:var(--od)}
 .focus-line{margin-top:12px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center;background:var(--cream);border-radius:12px;padding:10px 12px;line-height:1.35}
 .focus-line b{color:var(--gd)}
-.focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px}
+.focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px;padding:8px 0}
+@media (max-width:1023px){.focus{margin-bottom:16px}}
 @media (max-width:360px){.focus-top{grid-template-columns:92px 1fr}.focus-top img{width:92px;height:92px}.focus-n{font-size:18px}.fopt b{font-size:19px}.fopt em{font-size:9.5px;padding:2px 3px}}
 @media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.fopt{padding:14px 6px 12px}.fopt b{font-size:26px}}
 
@@ -508,7 +509,8 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   .pcap-h b{display:block;font-size:16px;font-weight:900;line-height:1.15;color:#fff}
   .pcap .eq{margin-top:0;max-width:none}
   .pcap .eq-note{max-width:none}
-  .pcap .affnote{margin:0 0 10px}
+  .pcap .affnote{margin:0 0 12px;background:rgba(232,114,42,.22);border-color:rgba(232,114,42,.55)}
+  .pcap-h{margin-bottom:14px}
   .pcap .savebox.hero{margin-top:10px}
   .pcap .tbar{margin:0 0 10px;background:rgba(255,255,255,.08);border-color:rgba(232,114,42,.6)}
   .pcap .vch{margin:0 0 10px}

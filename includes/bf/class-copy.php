@@ -156,6 +156,7 @@ final class Copy {
 				'panel.gifts.h'     => 'Подаръците ти',
 				'panel.gifts.note'  => '{{n}} {{podaruk}} по избор те чакат на стъпка 2',
 				'panel.gifts.note.pick' => 'избери още {{n}} {{podaruk}}',
+				'panel.gifts.note.done' => 'всички подаръци са избрани ✓',
 				'panel.gifts.note.empty' => 'всяка опаковка = 1 подарък по избор',
 				'shop.foot.cta.sub' => '{{n}} {{podaruk}} по избор · на 0 €',
 				'panel.title'       => 'Твоята поръчка с подаръци',
