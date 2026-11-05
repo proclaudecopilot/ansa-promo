@@ -36,12 +36,15 @@
   if (R.draft && q.get('reset')) { try { sessionStorage.removeItem('ansa_bf_s_' + (R.version || 0)); } catch (e) {} } /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
   if (eaParam) setCookie('ansa_bf_ea', eaParam, 7);
   var utm = (q.get('utm_content') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
+  /* 1.47.0: продуктов вход — ?p=berber (или utm_content=berber): един голям продукт с избор 1–5 опаковки = 1–5 подаръка; „Не искам този продукт. Виж други“ → пълният списък */
+  var pParam = (q.get('p') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
+  var focusKey = function () { if (S.focusOff) return ''; var k = pParam || utm; return (k && P[k] && !P[k].giftOnly && P[k].stock) ? k : ''; };
   var paidMarkers = /(^|&)(utm_medium=(paid|cpc|ppc|ads|paid_social|social)|fbclid=|gclid=|ttclid=|src=cold)/i.test(location.search.replace(/^\?/, ''));
   var isEmailLink = /(^|&)utm_medium=e?-?mail/i.test(location.search.replace(/^\?/, '')) || /utm_source=(email|newsletter|fka|funnelkit|sendgrid)/i.test(location.search);
 
   /* ── състояние ── */
   var KEY = 'ansa_bf_s_' + (R.version || 0);
-  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false, claimErr: '', claimVal: '', coErr: '', emailErr: '', signed: false }; };
+  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false, claimErr: '', claimVal: '', coErr: '', emailErr: '', signed: false, focusOff: false }; };
   var S = S0();
   try { var raw = sessionStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') S = Object.assign(S0(), o); } } catch (e) {}
   S.sheet = null; S.luckyOpen = false; S._exp = S._exp || {};
@@ -147,10 +150,22 @@
       + '<div class="rrow total"><span>' + T('rcpt.pay') + '</span><b>' + fmt2(total()) + '</b></div></div>';
   }
   /* 1.46.9: панелът на десктоп е една карта — тъмна „шапка“ („Черен петък 2026 · Твоята поръчка с подаръци“ + уравнението / ваучерът) и светло тяло (бележката, слотовете, бутонът) (човекът: „тези две секции вдясно трябва да са по-красиво разположени… в един контейнер“) */
-  function panel(cap, body) {
-    return '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>'
+  function panel(cap, body, cartbox) {
+    return '<div class="foot' + (isDesk() && cartbox ? ' tall' : '') + '"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>'
       + (isDesk() ? '<div class="pcap"><div class="pcap-h"><span class="gi">🎁</span><div><small>' + T('panel.eyebrow') + '</small><b>' + T('panel.title') + '</b></div></div>' + (cap || '') + '</div>' : '')
+      + (isDesk() && cartbox ? '<div class="pcart">' + cartbox + '</div>' : '')
       + '<div class="pbody">' + body + '</div></div>';
+  }
+  /* 1.47.0: кутията на поръчката в панела (десктоп): продуктите влизат като ги натиснеш (с − N +), под тях местата за подаръци — избраните със снимка, останалите с „?“ */
+  function cartBox(screen) {
+    var n = paidCount(); var rows = '';
+    Object.keys(S.cart).forEach(function (k) { var p = P[k]; if (!p || !S.cart[k]) return; rows += '<div class="crow"><img src="' + esc(pimg(p)) + '" alt=""><div class="cn">' + esc(p.name) + '<small>' + fmt(p.price) + ' × ' + S.cart[k] + '</small></div><div class="step sm"><button data-act="cart-" data-id="' + k + '" aria-label="минус">−</button><b>' + S.cart[k] + '</b><button data-act="cart+" data-id="' + k + '" aria-label="плюс">+</button></div></div>'; });
+    if (!rows) rows = '<div class="cempty">' + T('panel.cart.empty') + '</div>';
+    var picked = []; Object.keys(S.gifts).forEach(function (k) { for (var i = 0; i < S.gifts[k]; i++) picked.push(k); });
+    var slots = ''; for (var i = 0; i < Math.max(n, 1); i++) { var id = picked[i]; slots += id && P[id] ? '<div class="gslot f" title="' + esc(P[id].name) + '"><img src="' + esc(pimg(P[id])) + '" alt=""></div>' : '<div class="gslot' + (n ? ' q' : ' empty') + '">?</div>'; }
+    return '<div class="ph"><span>' + T('panel.cart.h') + '</span><b>' + (n ? n + ' ' + OPK(n) : '') + '</b></div><div class="crows">' + rows + '</div>'
+      + '<div class="ph gifts"><span>' + T('panel.gifts.h') + '</span><b>' + (n ? (giftCount() + ' / ' + n) : '') + '</b></div><div class="gslots">' + slots + '</div>'
+      + (n ? '<div class="gnote">' + (screen === 'gifts' ? T('panel.gifts.note.pick', { n: n - giftCount(), podaruk: GIFT(n - giftCount()) }) : T('panel.gifts.note', { n: n, podaruk: GIFT(n) })) + '</div>' : '<div class="gnote">' + T('panel.gifts.note.empty') + '</div>');
   }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
@@ -219,24 +234,34 @@
       + '<div class="lucky-gift">' + (L.img ? '<img src="' + esc(L.img) + '" alt="">' : '') + '<div><b>' + T('lucky.gift') + '</b><small>' + T('lucky.sub') + '</small>' + (L.price ? '<span class="lucky-pr"><s>' + fmt(L.price) + '</s> <em>0 €</em></span>' : '') + '</div></div>'
       + '<button class="cta" data-act="lucky-yes">' + T('lucky.cta') + '</button><button class="more lucky-no" data-act="lucky-no">' + T('lucky.no') + '</button></div>';
   }
+  function vFocus(p) {
+    var qty = S.cart[p.key] || 0; var opts = '';
+    for (var i = 1; i <= 5; i++) { opts += '<button class="fopt' + (qty === i ? ' on' : '') + '" data-act="focus-qty" data-id="' + i + '"><b>' + i + '</b><small>' + OPK(i) + '</small><em><span class="fl">+' + i + ' ' + GIFT(i) + '</span><span class="fs">+' + i + ' 🎁</span></em></button>'; }
+    var total = qty ? p.price * qty : p.price;
+    return '<div class="focus"><div class="focus-top"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="focus-n">' + esc(p.name) + '</div><div class="focus-s">' + esc(p.sub) + '</div><div class="focus-pr">' + fmt(p.price) + ' <small>' + T('focus.unit') + '</small></div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'
+      + '<div class="focus-h">' + T('focus.h') + '</div><div class="fopts">' + opts + '</div>'
+      + '<div class="focus-line">' + (qty ? T('focus.line', { n: qty, opk: OPK(qty), g: qty, podaruk: GIFT(qty), total: fmt2(total) }) : T('focus.line.empty')) + '</div>'
+      + '<button class="more focus-other" data-act="focus-off">' + T('focus.other') + '</button></div>';
+  }
   function vShop() {
-    var n = paidCount(); var pool = cartList(); var list = filtered(pool); var sv = savings();
+    var n = paidCount(); var pool = cartList(); var list = filtered(pool); var sv = savings(); var fk = focusKey(); var fp = fk ? P[fk] : null;
     var foot = n
       ? ((affVoucher() + listDisc())
           ? '<div class="sline"><span class="ok" style="text-align:left">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div>' + receipt(affVoucher() + listDisc(), true, '')
           : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div>')
-        + '<button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
+        + '<button class="cta big" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '<small>' + T('shop.foot.cta.sub', { n: n, podaruk: GIFT(n) }) + '</small></button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('shop.foot.empty') + '</span><span class="ok">' + T('shop.foot.empty.r') + '</span></div><button class="cta sm" disabled>' + T('shop.foot.empty.cta') + '</button>';
     var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T('shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
     /* механиката (уравнението + „Спестяваш“ + бележката за партньора): на телефона в тъмната секция, на десктоп (1.45.4) вдясно над „Твоята поръчка“ — както ваучерът в портфейла */
     var mech = affnote + '<div class="eq pop" id="eq" data-n="' + (n || S.demoN || 1) + '">' + eqHtml(n || S.demoN || 1) + '</div>' + (n ? saveLine('hero') : '<div class="eq-note" id="eqNote">' + T('shop.eq.note') + '</div>');
     return '<div class="scroll"><div class="hero' + (isDesk() ? ' slim' : '') + '">'
       + '<div class="hrow">' + logoImg + timerPill() + '</div>' + stepsBar(1) + (isDesk() ? '' : mech) + '</div>'
-      + '<div class="wrap" style="padding-top:10px">' + vchStrip() + '<div class="k2row"><span class="k2">' + T('shop.step1') + ' <button class="info' + (S.ex ? ' on' : '') + '" data-act="ex" aria-expanded="' + !!S.ex + '">' + T('shop.example.btn') + '</button></span>' + chips(pool) + '</div>'
+      + '<div class="wrap" style="padding-top:10px">' + vchStrip()
+      + (fp ? vFocus(fp) : '<div class="k2row"><span class="k2">' + T('shop.step1') + ' <button class="info' + (S.ex ? ' on' : '') + '" data-act="ex" aria-expanded="' + !!S.ex + '">' + T('shop.example.btn') + '</button></span>' + chips(pool) + '</div>'
       + (S.ex ? '<div class="exbox">' + T('shop.example') + '</div>' : '')
-      + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '<div class="lead">—</div>')
+      + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '<div class="lead">—</div>'))
       + howCard() + '<div class="footnote">' + T('shop.footnote') + '</div></div></div>'
-      + panel(mech, foot);
+      + panel(mech, foot, cartBox('shop'));
   }
   function vGifts() {
     var n = paidCount(), g = giftCount(), left = n - g; var news = giftList().filter(function (p) { return p.isNew; }), best = giftList().filter(function (p) { return !p.isNew; });
@@ -249,9 +274,9 @@
       + '<div class="sline"><span>' + T('gifts.picked') + ' <b>' + g + ' ' + T('gifts.of') + ' ' + n + '</b></span></div>'
       + (news.length ? '<div class="k2" style="margin-top:6px">' + T('gifts.new') + '</div>' + news.map(function (p) { return productTile(p, 'gift'); }).join('') : '')
       + '<div class="k2">' + T('gifts.best') + '</div>' + best.map(function (p) { return productTile(p, 'gift'); }).join('') + '<div style="height:8px"></div></div></div>'
-      + panel('<div class="eq">' + eqHtml(n) + '</div>' + saveLine('hero'), (isDesk() ? '' : saveLine('foot')) + ((affVoucher() + listDisc()) ? '<div class="sline"><span class="ok" style="text-align:left">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>' + receipt(affVoucher() + listDisc(), true, '') : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>') + '<div class="slots">' + slots + '</div>' + (S.lucky ? '<div class="luckyline">' + T('lucky.line') + '</div>' : '')
-      + (left > 0 ? '<button class="cta" disabled>' + T('gifts.cta.more', { n: left, podaruk: GIFT(left) }) + '</button>' : '<button class="cta" data-act="checkout">' + T('gifts.cta.go') + '</button>')
-      + '<button class="more backlink" data-act="screen" data-id="shop">' + T('gifts.back') + '</button>');
+      + panel('<div class="eq">' + eqHtml(n) + '</div>' + saveLine('hero'), (isDesk() ? '' : saveLine('foot')) + ((affVoucher() + listDisc()) ? '<div class="sline"><span class="ok" style="text-align:left">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>' + receipt(affVoucher() + listDisc(), true, '') : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>') + '<div class="slots mobile">' + slots + '</div>' + (S.lucky ? '<div class="luckyline">' + T('lucky.line') + '</div>' : '')
+      + (left > 0 ? '<button class="cta big" disabled>' + T('gifts.cta.more', { n: left, podaruk: GIFT(left) }) + '</button>' : '<button class="cta big" data-act="checkout">' + T('gifts.cta.go') + '</button>')
+      + '<button class="more backlink" data-act="screen" data-id="shop">' + T('gifts.back') + '</button>', cartBox('gifts'));
   }
   function vSheet() {
     var p = byId(S.sheet); if (!p) return '';
@@ -389,6 +414,8 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return; var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
     if (act === 'bonus') { S.affgift = id; }
     else if (act === 'ex') { S.ex = !S.ex; }
+    else if (act === 'focus-qty') { var fk2 = focusKey(); if (fk2) { var want = +id; if (S.cart[fk2] === want) { delete S.cart[fk2]; } else { S.cart[fk2] = want; } trimGifts(); } }
+    else if (act === 'focus-off') { S.focusOff = true; lastScreen = ''; }
     else if (act === 'cart+') { S.cart[id] = (S.cart[id] || 0) + 1; if (S.sheet) S.sheet = null; var p = P[id]; if (p && !inWallet()) toast(T('toast.added', { name: p.name, n: paidCount(), podaruk: GIFT(paidCount()) }), 'gift'); }
     else if (act === 'cart-') { if (S.cart[id] > 1) S.cart[id]--; else delete S.cart[id]; trimGifts(); }
     else if (act === 'gift+') { if (giftCount() < paidCount()) { S.gifts[id] = (S.gifts[id] || 0) + 1; } S.sheet = null; if (giftCount() === paidCount()) toast(T('toast.gifts')); }
