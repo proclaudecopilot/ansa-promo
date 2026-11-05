@@ -314,6 +314,21 @@ button{font-family:inherit;cursor:pointer}
 .ansa-bf .over .h1{color:var(--ink);font-size:26px}
 .ansa-bf .over .lead{margin:10px 0 18px}
 .ansa-bf .busy{opacity:.6;pointer-events:none}
+/* 1.45.5: големият таймер — тъмна лента с цифри 34px, лента, която се източва, червено + пулс под 5 минути */
+.tbar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--ink);color:#fff;border:1.5px solid rgba(232,114,42,.55);border-radius:14px;padding:11px 14px 13px;margin:0 0 10px;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(26,26,46,.18)}
+.tbar-l{font-size:13.5px;font-weight:800;line-height:1.2;min-width:0}
+.tbar-l small{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.65);margin-top:3px;line-height:1.25}
+.tbar-t{text-align:right;flex:none}
+.tbar-t b{display:block;font-size:34px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--o2)}
+.tbar-t small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:4px}
+.tbar-bar{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.12)}
+.tbar-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--o),var(--o2));transition:width 1s linear}
+.tbar.hot{border-color:#ef4444}.tbar.hot .tbar-t b{color:#f87171;animation:tpulse 1s ease-in-out infinite}.tbar.hot .tbar-bar i{background:#ef4444}
+.tbar.done{opacity:.9;border-color:rgba(255,255,255,.2)}.tbar.done .tbar-t b{color:rgba(255,255,255,.7);font-size:22px} /* „done“, не „over“ — .over е екранът „приключи“ */
+@keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@media (prefers-reduced-motion: reduce){.tbar.hot .tbar-t b{animation:none}}
+@media (max-width:360px){.tbar-t b{font-size:28px}.tbar-l{font-size:12.5px}}
+
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
 /* ═══ 1.45.2: десктоп (≥ 1024px) — не „телефон по средата на екрана“, а две колони: съдържанието вляво, панелът на поръчката (бившият залепен футър) вдясно, залепен горе; продуктите в две колони; листът „Прочети повече“ е модал по средата. Студената/партньорската/затворената страница (без панел) са една по-широка колона. ═══ */
