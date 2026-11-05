@@ -90,14 +90,16 @@
   var catCount = function (pool, k) { return pool.filter(function (p) { return k === 'all' || (k === 'fav' && p.fav) || p.cat === k; }).length; };
   var filtered = function (pool) { var f = S.filter; return pool.filter(function (p) { return f === 'all' || (f === 'fav' && p.fav) || p.cat === f; }); };
   var chips = function (pool) { var cats = [['all', T('shop.filter.all')], ['fav', T('shop.filter.fav')]].concat((R.cats || []).map(function (c) { return [c, c]; })).filter(function (c) { return catCount(pool, c[0]) > 0; }); if (!cats.some(function (c) { return c[0] === S.filter; })) S.filter = 'all'; return '<div class="selwrap"><label for="catSel">' + T('shop.filter.label') + '</label><select id="catSel">' + cats.map(function (c) { return '<option value="' + esc(c[0]) + '"' + (S.filter === c[0] ? ' selected' : '') + '>' + esc(c[1]) + ' (' + catCount(pool, c[0]) + ')</option>'; }).join('') + '</select><span class="selarr">▾</span></div>'; };
+  /* 1.46.3: лентата „носи ти +N подарък по избор“ е ВЪРХУ горния ръб на картата (не разширява съдържанието), а при промяна на бройката числото подскача (човекът) */
+  var lastCounts = {};
   var productTile = function (p, mode) {
     var qty = mode === 'gift' ? (S.gifts[p.key] || 0) : (S.cart[p.key] || 0); var free = mode === 'gift'; var full = giftCount() >= paidCount();
     var right = mode === 'gift'
       ? (qty ? '<div class="step"><button data-act="gift-" data-id="' + p.key + '" aria-label="минус">−</button><b>' + qty + '</b><button data-act="gift+" data-id="' + p.key + '"' + (full ? ' disabled' : '') + ' aria-label="плюс">+</button></div>' : '<button class="addb" data-act="gift+" data-id="' + p.key + '"' + (full ? ' disabled' : '') + '>' + T('gifts.pick') + '</button>')
       : (qty ? '<div class="step"><button data-act="cart-" data-id="' + p.key + '" aria-label="минус">−</button><b>' + qty + '</b><button data-act="cart+" data-id="' + p.key + '" aria-label="плюс">+</button></div>' : '<button class="addb" data-act="cart+" data-id="' + p.key + '">' + T('shop.add') + '</button>');
-    return '<div class="tile' + (qty ? ' on' : '') + '"><img src="' + esc(pimg(p)) + '" alt="" loading="lazy"><div><div class="n">' + (p.isNew ? '<span class="nb">' + T('sheet.new') + '</span>' : '') + esc(p.name) + '<small>' + esc(p.sub) + '</small></div>'
+    var band = (!free && qty && !inWallet()) ? '<div class="gband' + (lastCounts[p.key] !== qty ? ' pop' : '') + '">' + T('shop.gl', { n: '<b class="gn">+' + qty + '</b>', podaruk: GIFT(qty) }) + '</div>' : '';
+    return '<div class="tile' + (qty ? ' on' : '') + (band ? ' banded' : '') + '">' + band + '<img src="' + esc(pimg(p)) + '" alt="" loading="lazy"><div><div class="n">' + (p.isNew ? '<span class="nb">' + T('sheet.new') + '</span>' : '') + esc(p.name) + '<small>' + esc(p.sub) + '</small></div>'
       + '<div class="pr' + (free ? ' free' : '') + '">' + (free ? '<s>' + fmt(p.price) + '</s>' + T('gifts.free') : fmt(p.price)) + '</div>'
-      + ((!free && qty && !inWallet()) ? '<div class="gl">' + T('shop.gl', { n: qty, podaruk: GIFT(qty) }) + '</div>' : '')
       + '<button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div>' + right + '</div>';
   };
   var emailForm = function (cta) { return '<form id="signupForm"><div class="input' + (S.emailErr ? ' err' : '') + '">✉️ <input id="emailIn" type="email" placeholder="' + esc(T('cold.form.ph')) + '" value="' + esc(S.email) + '" autocomplete="email" required></div>' + (S.emailErr ? '<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">' + T('err.email') + '</div>' : '') + '<button class="cta" type="submit">' + cta + '</button></form>'; };
@@ -292,6 +294,7 @@
     var lock = !!(S.sheet || S.luckyOpen);
     if (lock) { if (document.body.style.overflow !== 'hidden') { var sbw = window.innerWidth - document.documentElement.clientWidth; document.body.style.paddingRight = sbw > 0 ? sbw + 'px' : ''; } document.body.style.overflow = 'hidden'; }
     else { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
+    lastCounts = {}; Object.keys(S.cart).forEach(function (k) { lastCounts[k] = S.cart[k]; });
     updatePill(); save();
   }
   function updatePill() { var pill = document.getElementById('morePill'); if (!pill) return; var tiles = Array.prototype.slice.call(root.querySelectorAll('.scroll .tile')); var below = tiles.filter(function (t) { return t.getBoundingClientRect().top > window.innerHeight - 20; }).length; pill.hidden = below <= 0; if (below > 0) pill.textContent = T('shop.scroll', { n: below, produkt: plural(below, 'продукт', 'продукта') }); }
