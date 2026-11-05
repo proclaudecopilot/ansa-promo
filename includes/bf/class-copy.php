@@ -124,6 +124,7 @@ final class Copy {
 				'shop.foot.empty'   => 'Количката е празна',
 				'shop.foot.empty.r' => '1 опаковка = 1 подарък по избор',
 				'shop.foot.empty.cta' => 'Добави нещо, за да избереш подарък',
+				'shop.panel.h'      => 'Твоята поръчка',
 				'shop.foot.pay'     => 'Плащаш',
 				'shop.foot.r'       => '{{n}} {{podaruk}} по избор · −{{pct}} %',
 				'shop.foot.cta'     => 'Избери {{sel}} →',

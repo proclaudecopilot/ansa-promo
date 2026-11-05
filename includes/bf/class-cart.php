@@ -221,6 +221,15 @@ final class Cart {
 	}
 
 	/* ═══ ТАКСИ: ваучерите ═══ */
+	/** 1.45.2: ваучерът е ОТРИЦАТЕЛНА такса, а WooCommerce разпределя ДДС върху всяка отрицателна такса (независимо от $taxable) и я третира
+	 *  като сума БЕЗ ДДС → „−10“ ставаше „−12,00“ в чекаута при цени с включен 20 % ДДС. Затова таксата се подава нето: брутната сума ÷ (1 + реалната
+	 *  ставка на количката = ДДС на редовете / сумата им без ДДС), и в чекаута се вижда точно −10,00 € (ДДС редът също намалява правилно). */
+	public static function fee_net( $cart, $gross ) {
+		$gross = (float) $gross; if ( $gross <= 0 || ! function_exists( 'wc_tax_enabled' ) || ! wc_tax_enabled() || ! wc_prices_include_tax() ) { return $gross; }
+		$ex = 0.0; $tax = 0.0; foreach ( $cart->get_cart() as $it ) { $ex += (float) ( $it['line_subtotal'] ?? 0 ); $tax += (float) ( $it['line_subtotal_tax'] ?? 0 ); }
+		if ( $ex <= 0 || $tax <= 0 ) { return $gross; }
+		return round( $gross / ( 1 + $tax / $ex ), 4 );
+	}
 	public static function fees( $cart ) {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) { return; }
 		$ctx = self::ctx(); if ( ! $ctx ) { return; }
@@ -231,12 +240,12 @@ final class Cart {
 		$v = is_array( $ctx['voucher'] ?? null ) ? $ctx['voucher'] : null;
 		if ( $v && Leads::voucher_valid( (string) $v['code'] ) && (float) $v['amount'] > 0 ) {
 			$amt = min( (float) $v['amount'], $sub ); $sub -= $amt;
-			$cart->add_fee( self::copy( 'co.fee.cold', array( 'voucher' => self::fmt( $v['amount'] ), 'code' => (string) $v['code'] ) ), -$amt, false );
+			$cart->add_fee( self::copy( 'co.fee.cold', array( 'voucher' => self::fmt( $v['amount'] ), 'code' => (string) $v['code'] ) ), -self::fee_net( $cart, $amt ), false );
 		}
 		/* партньорският ваучер: само в публичната промоция, при промо група с платени опаковки */
 		if ( $g && 'promo' === $g['mode'] && 'v5' === (string) ( $ctx['affgift'] ?? '' ) && (int) $g['paid'] > 0 && ( 'public' === Config::phase_now( $cfg ) || $g['draft'] ) && ! empty( $cfg['aff']['enabled'] ) && (float) $cfg['aff']['voucher'] > 0 && $sub > 0 ) {
 			$p = Page::partner( (string) ( $ctx['ref'] ?? '' ) );
-			if ( $p ) { $amt = min( (float) $cfg['aff']['voucher'], $sub ); $cart->add_fee( self::copy( 'co.fee.aff', array( 'aff_voucher' => self::fmt( $cfg['aff']['voucher'] ), 'partner' => $p['name'] ) ), -$amt, false ); }
+			if ( $p ) { $amt = min( (float) $cfg['aff']['voucher'], $sub ); $cart->add_fee( self::copy( 'co.fee.aff', array( 'aff_voucher' => self::fmt( $cfg['aff']['voucher'] ), 'partner' => $p['name'] ) ), -self::fee_net( $cart, $amt ), false ); }
 		}
 	}
 
@@ -293,19 +302,24 @@ final class Cart {
 		foreach ( $g['base'] as $it ) { $sub += self::reg_price( $it['data'] ) * (int) $it['quantity']; }
 		foreach ( $g['gifts'] as $it ) { $gv += self::reg_price( $it['data'] ) * (int) $it['quantity']; }
 		if ( $g['pgift'] ) { $it = $cart->get_cart_item( $g['pgift'] ); if ( $it ) { $pg = self::reg_price( $it['data'] ); } }
-		$vo = 0.0; foreach ( (array) $cart->get_fees() as $fee ) { if ( (float) $fee->amount < 0 ) { $vo += -(float) $fee->amount; } }
+		/* 1.45.2: таксата е нето (fee_net) — брутото за показване е total + tax, щом WC вече ги е сметнал */
+		$vo = 0.0; foreach ( (array) $cart->get_fees() as $fee ) { if ( (float) $fee->amount < 0 ) { $vo += -( isset( $fee->total ) ? (float) $fee->total + (float) ( $fee->tax ?? 0 ) : (float) $fee->amount ); } }
 		$total = $gv + $pg + $vo; $full = $sub + $gv + $pg;
 		return array( 'gifts' => round( $gv, 2 ), 'pgift' => round( $pg, 2 ), 'vouchers' => round( $vo, 2 ), 'total' => round( $total, 2 ), 'pct' => $full > 0 ? (int) round( $total / $full * 100 ) : 0, 'paid' => (int) $g['paid'], 'ngifts' => (int) $g['ngifts'], 'sub' => round( $sub, 2 ) );
 	}
 
 	/* ═══ ЧЕКАУТ ═══ */
 	public static function checkout_row() {
-		$g = self::group(); if ( ! $g || 'promo' !== $g['mode'] ) { return; }
+		$g = self::group(); if ( ! $g ) { return; }
+		self::css(); /* 1.45.2: и за портфейла (wallet) — иначе степерът на FunnelKit се показваше на редовете с ваучера (и се чупеше в reskin-а: два плюса/минуса) */
+		if ( 'promo' !== $g['mode'] ) { return; }
 		$sv = self::savings(); $v = array( 'paid' => $sv['paid'], 'gifts' => $sv['ngifts'], 'podaruk' => self::plural( $sv['ngifts'], 'подарък', 'подаръка' ), 'save' => self::fmt( $sv['total'] ), 'pct' => $sv['pct'] );
 		echo '<tr class="ansa-promo-co ansa-bf-co" data-ver="' . esc_attr( ANSA_PROMO_VER ) . '"><td colspan="2"><div class="ansa-promo-co__box"><b>' . wp_kses_post( self::copy( 'co.h', $v ) ) . '</b>' . ( $sv['total'] > 0 ? '<p class="ansa-bf-save">' . wp_kses_post( self::copy( 'co.save', $v ) ) . '</p>' : '' ) . '</div></td></tr>';
 		self::css();
 	}
-	private static function css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-bf-co-css">.ansa-promo-co__box{background:#fff8f1!important;border:1.5px solid #f3cdb8!important;border-radius:16px!important;padding:14px 16px!important;margin:6px 0!important;text-align:left!important;color:#1a1a2e}.ansa-promo-co__box>b{display:block!important;font-weight:900!important;font-size:15px!important;margin:0 0 6px!important}.ansa-bf-save{margin:0!important;font-weight:900;color:#15803d;font-size:14px}.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}.ansa-promo-qty{font-weight:900}tr.cart_item:has(.ansa-promo-lock) .wfacp_quantity_selector,tr.cart_item:has(.ansa-promo-lock) .product-quantity,tr.cart_item:has(.ansa-promo-lock) .wfacp_delete_item_wrap,tr.cart_item:has(.ansa-promo-lock) .wfacp_mini_cart_remove_item_from_cart{display:none!important}.ansa-promo-co td{padding:0!important}.ansa-promo-ty{margin:16px 0!important}.ansa-promo-ty p{margin:6px 0 0!important;font-size:14px!important}</style>'; }
+	/** 1.45.2: FunnelKit рисува таксите в обобщението като <tr class="cart-subtotal fee">, а Checkout Reskin-ът крие текста на ВСЕКИ tr.cart-subtotal th span
+	 *  и пише „Междинна сума“ през ::before — затова редът на ваучера се казваше „Междинна сума −12,00“. Тук за .fee връщаме истинското име („Ваучер 10 € · КОД“). */
+	private static function css() { static $d = false; if ( $d ) { return; } $d = true; echo '<style id="ansa-bf-co-css">.ansa-promo-co__box{background:#fff8f1!important;border:1.5px solid #f3cdb8!important;border-radius:16px!important;padding:14px 16px!important;margin:6px 0!important;text-align:left!important;color:#1a1a2e}.ansa-promo-co__box>b{display:block!important;font-weight:900!important;font-size:15px!important;margin:0 0 6px!important}.ansa-bf-save{margin:0!important;font-weight:900;color:#15803d;font-size:14px}.ansa-promo-tag{color:#c2410c;font-weight:800}.ansa-promo-free{font-weight:900;color:#15803d}.ansa-promo-qty{font-weight:900}tr.cart_item:has(.ansa-promo-lock) .wfacp_quantity_selector,tr.cart_item:has(.ansa-promo-lock) .product-quantity,tr.cart_item:has(.ansa-promo-lock) .wfacp_delete_item_wrap,tr.cart_item:has(.ansa-promo-lock) .wfacp_mini_cart_remove_item_from_cart{display:none!important}.ansa-promo-co td{padding:0!important}body table.wfacp_mini_cart_reviews tr.cart-subtotal.fee th span{font-size:13px!important}body table.wfacp_mini_cart_reviews tr.cart-subtotal.fee th span::before{content:none!important}.ansa-promo-ty{margin:16px 0!important}.ansa-promo-ty p{margin:6px 0 0!important;font-size:14px!important}</style>'; }
 
 	/* ═══ ПОРЪЧКА ═══ */
 	public static function build_meta() {

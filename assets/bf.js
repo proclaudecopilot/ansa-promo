@@ -120,7 +120,7 @@
       + '<div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">' + T('wallet.date', V()) + '</b><small>' + T('wallet.date.sub', V()) + '</small></span><span class="pillg">' + T('wallet.date.pill') + '</span></div>'
       + '<div class="k2row"><span class="k2">' + T('wallet.pick') + '</span>' + chips(pool) + '</div>'
       + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '') + '<div class="footnote">' + T('wallet.note') + '</div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>' + foot + '</div>';
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
   }
   function vAff() {
     var open = isPublic() || R.draft; var cur = S.affgift || ctx.affgift || 'v5'; var news = giftList().filter(function (p) { return p.isNew; });
@@ -156,7 +156,7 @@
       + (S.ex ? '<div class="exbox">' + T('shop.example') + '</div>' : '')
       + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '<div class="lead">—</div>')
       + howCard() + '<div class="footnote">' + T('shop.footnote') + '</div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>' + foot + '</div>';
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
   }
   function vGifts() {
     var n = paidCount(), g = giftCount(), left = n - g; var news = giftList().filter(function (p) { return p.isNew; }), best = giftList().filter(function (p) { return !p.isNew; });
@@ -167,7 +167,7 @@
       + '<div class="sline"><span>' + T('gifts.picked') + ' <b>' + g + ' ' + T('gifts.of') + ' ' + n + '</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">' + T('gifts.change') + '</button></div>'
       + (news.length ? '<div class="k2" style="margin-top:6px">' + T('gifts.new') + '</div>' + news.map(function (p) { return productTile(p, 'gift'); }).join('') : '')
       + '<div class="k2">' + T('gifts.best') + '</div>' + best.map(function (p) { return productTile(p, 'gift'); }).join('') + '<div style="height:8px"></div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>' + saveLine('foot') + '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div><div class="slots">' + slots + '</div>'
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + saveLine('foot') + '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div><div class="slots">' + slots + '</div>'
       + (left > 0 ? '<button class="cta" disabled>' + T('gifts.cta.more', { n: left, podaruk: GIFT(left) }) + '</button>' : '<button class="cta" data-act="checkout">' + T('gifts.cta.go') + '</button>') + '</div>';
   }
   function vSheet() {
