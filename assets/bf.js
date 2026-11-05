@@ -24,6 +24,8 @@
   var offset = (R.now ? R.now * 1000 : Date.now()) - Date.now(); /* сървърното време − клиентското */
   var now = function () { return Date.now() + offset; };
   var ASSET = R.assets || '';
+  var mqDesk = window.matchMedia ? window.matchMedia('(min-width:1024px)') : null; var isDesk = function () { return !!(mqDesk && mqDesk.matches); };
+  if (mqDesk && mqDesk.addEventListener) { mqDesk.addEventListener('change', function () { try { render(); } catch (e) {} }); }
   var pimg = function (p) { return p.img || (ASSET + p.key + '.jpg'); };
 
   /* ── източникът на посетителя: адресът + бисквитките ── */
@@ -110,17 +112,19 @@
   }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
+    var aside = (live ? voucherCard({ locked: false }) : '')
+      + '<div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">' + T('wallet.date', V()) + '</b><small>' + T('wallet.date.sub', V()) + '</small></span><span class="pillg">' + T('wallet.date.pill') + '</span></div>';
     var foot = n
       ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + (walletDisc() ? T('wallet.foot.disc', { amount: fmtNum(walletDisc()) }) : (live ? '' : T('wallet.foot.expired'))) + '</span></div><button class="cta" data-act="wallet-go">' + T('wallet.foot.cta') + '</button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('wallet.foot.empty') + '</span><span class="ok">' + (live ? T('wallet.foot.voucher', V()) : '') + '</span></div><button class="cta sm" disabled>' + T('wallet.foot.add') + '</button>';
     return '<div class="scroll"><div class="hero">'
       + '<div class="hrow">' + logoImg + '<span class="tpill' + (live ? ' hot' : '') + '">' + T('wallet.pill', V()) + ' · <b data-cd="walletExp">' + mmss(ctx.voucher ? ctx.voucher.exp * 1000 - now() : 0) + '</b></span></div>'
       + '<div class="h1">' + (live ? T('wallet.title.ok') : T('wallet.title.over')) + '</div><p class="sub">' + (live ? T('wallet.sub.ok', V()) : T('wallet.sub.over', V())) + '</p></div>'
-      + '<div class="wrap" style="padding-top:10px">' + (live ? voucherCard({ locked: false }) : '')
-      + '<div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">' + T('wallet.date', V()) + '</b><small>' + T('wallet.date.sub', V()) + '</small></span><span class="pillg">' + T('wallet.date.pill') + '</span></div>'
+      /* ваучерът + датата: на телефона под тъмната секция, на десктоп (1.45.3) вдясно над панела „Твоята поръчка“ (човекът: „Премести ваучера вдясно на десктоп, над «Твоята поръчка», за да може да е ясно“) */
+      + '<div class="wrap" style="padding-top:10px">' + (isDesk() ? '' : aside)
       + '<div class="k2row"><span class="k2">' + T('wallet.pick') + '</span>' + chips(pool) + '</div>'
       + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '') + '<div class="footnote">' + T('wallet.note') + '</div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>' + (isDesk() ? '<div class="aside">' + aside + '</div>' : '') + '<div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
   }
   function vAff() {
     var open = isPublic() || R.draft; var cur = S.affgift || ctx.affgift || 'v5'; var news = giftList().filter(function (p) { return p.isNew; });

@@ -319,7 +319,7 @@ button{font-family:inherit;cursor:pointer}
 /* ═══ 1.45.2: десктоп (≥ 1024px) — не „телефон по средата на екрана“, а две колони: съдържанието вляво, панелът на поръчката (бившият залепен футър) вдясно, залепен горе; продуктите в две колони; листът „Прочети повече“ е модал по средата. Студената/партньорската/затворената страница (без панел) са една по-широка колона. ═══ */
 @media (min-width:1024px){
   body.ansa-bf-page{background:#f3eadf}
-  .ansa-bf{max-width:1180px;min-height:0;margin:28px auto 48px;padding:0 24px;background:transparent;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;align-items:start}
+  .ansa-bf{box-sizing:border-box;max-width:1180px;min-height:0;margin:28px auto 48px;padding:0 24px;background:transparent;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;align-items:start}
   .ansa-bf:not(:has(> .foot)){display:block;max-width:820px}
   .ansa-bf > .scroll{background:var(--cream);border-radius:24px;overflow:clip;box-shadow:0 12px 44px rgba(26,26,46,.09);border:1px solid rgba(232,114,42,.12);min-width:0}
   .ansa-bf > .foot{grid-column:2;grid-row:1 / span 2;align-self:start;position:sticky;top:24px;bottom:auto;border:1.5px solid var(--ol);border-radius:24px;box-shadow:0 12px 44px rgba(26,26,46,.09);padding:18px 20px 20px}
@@ -334,6 +334,12 @@ button{font-family:inherit;cursor:pointer}
   .ansa-bf{grid-template-columns:minmax(0,1fr) 360px}
   .wrap > .tile{grid-column:1/-1}
   .ansa-bf > .foot .panelh{display:block}
+  /* портфейлът: ваучерът и датата са в панела вдясно, над „Твоята поръчка“ */
+  .ansa-bf > .foot .aside{margin:-4px 0 16px}
+  .ansa-bf > .foot .aside .vch{margin:0 0 10px}
+  .ansa-bf > .foot .aside .vch:before,.ansa-bf > .foot .aside .vch:after{background:#fffdfb}
+  .ansa-bf > .foot .aside .strip{margin-bottom:0}
+  .ansa-bf > .foot .aside + .panelh{border-top:1.5px solid var(--ol);padding-top:14px}
   .morepill{display:none!important}
   .ansa-bf .hero{padding:24px 32px 26px}
   .ansa-bf .hero .hrow{margin-bottom:14px}
