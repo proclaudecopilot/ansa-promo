@@ -192,7 +192,7 @@ final class Cart_Sync {
 			if ( function_exists( 'wc_get_product' ) ) { $p = wc_get_product( $vid ?: $pid ); if ( $p ) { $name = $p->get_name(); } }
 			if ( '' === $name ) { $name = ( $m['key'] ?? '' ) ? (string) $m['key'] : '#' . ( $vid ?: $pid ); }
 			$out['lines'][] = array( 'name' => $name, 'qty' => $qty, 'role' => (string) ( $m['role'] ?? '' ), 'key' => (string) ( $m['key'] ?? '' ), 'pid' => $pid, 'vid' => $vid, 'total' => (float) ( $it['line_total'] ?? 0 ) );
-			if ( $m && 'base' === (string) ( $m['role'] ?? 'base' ) ) { $out['promo'] = true; if ( ! $out['meta'] ) { $out['meta'] = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'box' => (string) ( $m['box'] ?? '' ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'pct' => (float) ( $m['pct'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ) ); } }
+			if ( $m && 'base' === (string) ( $m['role'] ?? 'base' ) ) { $out['promo'] = true; if ( ! $out['meta'] ) { $out['meta'] = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'box' => (string) ( $m['box'] ?? '' ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'pct' => (float) ( $m['pct'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'flow' => ! empty( $m['flow'] ) ); } } /* 1.49.0: flow = количката е от дизайна „поток“ (кутията по броя) */
 		}
 		return $out;
 	}
