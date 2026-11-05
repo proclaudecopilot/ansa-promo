@@ -61,7 +61,13 @@ final class Lead_Sync {
 	}
 
 	/* ── лийд → FunnelKit ── */
-	public static function on_lead( $lead_id, $email, $consent, $utm ) { self::sync( (int) $lead_id, $email, (bool) $consent ); }
+	/** 1.46.8: само лийдовете на Сезона (promo = ''). Черният петък вика същия hook (за Pixel CAPI Pro) и има свой лист/таг — иначе BF лийдовете
+	 *  получаваха и „Сезонът на ansa — лийдове“ + „sezon-lead“ и влизаха в Welcome Flow-а на Сезона (на живо: 2 контакта на 05.11). */
+	public static function on_lead( $lead_id, $email, $consent, $utm ) {
+		$row = $lead_id ? Leads::get( (int) $lead_id ) : null;
+		if ( $row && '' !== (string) ( $row['promo'] ?? '' ) ) { return; }
+		self::sync( (int) $lead_id, $email, (bool) $consent );
+	}
 
 	/**
 	 * Синхронизира един лийд: контакт → лист → таг (тагът не се слага на вече конвертиран лийд). Връща четимия резултат,

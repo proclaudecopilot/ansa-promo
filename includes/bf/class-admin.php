@@ -83,7 +83,7 @@ final class Admin {
 			case 'token': $cfg = Config::get_draft(); $cfg['early']['token'] = Config::new_token(); Config::save_draft( $cfg ); $msg = 'Нов токен за ранния достъп (в черновата) — старите линкове спират да работят след публикуване.'; break;
 			case 'restore': $msg = Config::restore( (int) ( $_POST['version'] ?? 0 ) ) ? 'Версия ' . (int) $_POST['version'] . ' е върната като чернова.' : 'Няма такава версия.'; break;
 			case 'import': $msg = Config::import( $u( 'json' ) ) ? 'JSON-ът е внесен като чернова.' : 'Невалиден JSON.'; break;
-			case 'leads_sync': Leads::ensure_terms(); $r = Leads::backfill(); $msg = 'Лийдове → FunnelKit: ' . $r['ok'] . ' синхронизирани, ' . $r['retry'] . ' за повторен опит, ' . $r['skip'] . ' пропуснати.'; break;
+			case 'leads_sync': Leads::ensure_terms(); $rep = Leads::repair_cross_sync( true ); $r = Leads::backfill(); $msg = ( is_array( $rep ) ? 'Поправка: ' . $rep['checked'] . ' проверени, ' . $rep['detached'] . ' термина на Сезона свалени, ' . $rep['resynced'] . ' пуснати пак · ' : '' ) . 'Лийдове → FunnelKit: ' . $r['ok'] . ' синхронизирани, ' . $r['retry'] . ' за повторен опит, ' . $r['skip'] . ' пропуснати.'; break;
 			case 'export_leads': nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-bf-leads-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo Leads::csv(); exit;
 		}
 		set_transient( 'ansa_promo_admin_msg_' . get_current_user_id(), $msg, 60 );
