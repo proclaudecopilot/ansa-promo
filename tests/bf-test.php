@@ -33,16 +33,16 @@ $ok( '„Нов токен“ е различен и се пази при normal
 
 /* фазите по датите */
 $ph = Config::phase_ts( $d );
-$ok( 'early_start = 25.11.2026 10:00 София', $ph['early_start'] === $ts( '2026-11-25 10:00' ) );
-$ok( 'преди старта → prep', 'prep' === Config::phase_now( $d, $ts( '2026-11-20 12:00' ) ) );
-$ok( 'в ранния достъп → early', 'early' === Config::phase_now( $d, $ts( '2026-11-26 12:00' ) ) );
-$ok( 'точно в 27.11 10:00 → public', 'public' === Config::phase_now( $d, $ts( '2026-11-27 10:00' ) ) );
+$ok( 'early_start = 20.11.2026 10:00 София', $ph['early_start'] === $ts( '2026-11-20 10:00' ) );
+$ok( 'преди старта → prep', 'prep' === Config::phase_now( $d, $ts( '2026-11-19 12:00' ) ) );
+$ok( 'в ранния достъп → early', 'early' === Config::phase_now( $d, $ts( '2026-11-23 12:00' ) ) );
+$ok( 'точно в 25.11 07:00 → public', 'public' === Config::phase_now( $d, $ts( '2026-11-25 07:00' ) ) );
 $ok( 'след края → over', 'over' === Config::phase_now( $d, $ts( '2026-11-30 10:00' ) ) );
 $ok( 'краят на prep = early_start, на early = early_end, на public = public_end', Config::phase_end( $d, 'prep' ) === $ph['early_start'] && Config::phase_end( $d, 'early' ) === $ph['early_end'] && Config::phase_end( $d, 'public' ) === $ph['public_end'] && 0 === Config::phase_end( $d, 'over' ) );
-$g = $d; $g['phases']['public_start'] = '2026-11-28 10:00';
-$ok( 'дупка между ранния достъп и публичния → pause', 'pause' === Config::phase_now( $g, $ts( '2026-11-27 12:00' ) ) );
+$g = $d;
+$ok( 'на 24.11 (дупката между ранния достъп и публичния) → pause', 'pause' === Config::phase_now( $g, $ts( '2026-11-24 12:00' ) ) && 'pause' === Config::phase_now( $g, $ts( '2026-11-23 23:59' ) ) );
 $ok( 'краят на pause = public_start', Config::phase_end( $g, 'pause' ) === Config::phase_ts( $g )['public_start'] );
-$ok( 'без дупка няма pause', 'public' === Config::phase_now( $d, $ts( '2026-11-27 12:00' ) ) );
+$g2 = $d; $g2['phases']['public_start'] = $g2['phases']['early_end']; $ok( 'без дупка няма pause', 'public' === Config::phase_now( $g2, $ts( '2026-11-24 12:00' ) ) );
 $ok( 'pause е в PHASES и има етикет', in_array( 'pause', Config::PHASES, true ) && '' !== Config::phase_label( 'pause' ) );
 $f = $d; $f['force'] = 'public'; $ok( 'force=public печели над датите', 'public' === Config::phase_now( $f, $ts( '2026-11-01 00:00' ) ) );
 $f['force'] = 'nope'; $ok( 'непознат force пада на „по датите“', '' === Config::normalize( $f )['force'] );
@@ -73,7 +73,7 @@ $x = Config::normalize( array( 'listv' => array( 'until' => 'nope', 'prefix' => 
 $ok( 'normalize: until пада на early_end, префиксът е [A-Z0-9], сумата ≥ 0', 'early_end' === $x['listv']['until'] && 'ABC' === $x['listv']['prefix'] && 0.0 === (float) $x['listv']['amount'] );
 $ok( 'normalize: lucky dwell ≥ 5, фазите само early/public', 5 === (int) $x['lucky']['dwell'] && 'public' === $x['lucky']['phases'] );
 $ok( 'lucky по подразбиране: #11161 (1 маска), 45 с, exit, early+public', 11161 === (int) $d['lucky']['product_id'] && 45 === (int) $d['lucky']['dwell'] && $d['lucky']['exit'] && 'early,public' === $d['lucky']['phases'] );
-$ok( 'until_ts = early_end', AnsaPromo\BF\Boost::until_ts( $d ) === $ts( '2026-11-27 10:00' ) );
+$ok( 'until_ts = early_end', AnsaPromo\BF\Boost::until_ts( $d ) === $ts( '2026-11-23 23:59' ) );
 $pe = $d; $pe['listv']['until'] = 'public_end'; $ok( 'until_ts = public_end при настройка', AnsaPromo\BF\Boost::until_ts( $pe ) === $ts( '2026-11-30 10:00' ) );
 $u = AnsaPromo\BF\Boost::utoken( 'Maria@Test.bg' ); $ok( 'личният линк: токенът на имейла е подписан и се чете обратно (малки букви)', '' !== $u && 'maria@test.bg' === AnsaPromo\BF\Boost::email_from_utoken( $u ) );
 $ok( 'личният линк: подправен подпис → празно', '' === AnsaPromo\BF\Boost::email_from_utoken( substr( $u, 0, -2 ) . 'zz' ) && '' === AnsaPromo\BF\Boost::email_from_utoken( 'x' ) );
