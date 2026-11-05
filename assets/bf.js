@@ -150,10 +150,12 @@
       + '<div class="rrow total"><span>' + T('rcpt.pay') + '</span><b>' + fmt2(total()) + '</b></div></div>';
   }
   /* 1.46.9: панелът на десктоп е една карта — тъмна „шапка“ („Черен петък 2026 · Твоята поръчка с подаръци“ + уравнението / ваучерът) и светло тяло (бележката, слотовете, бутонът) (човекът: „тези две секции вдясно трябва да са по-красиво разположени… в един контейнер“) */
-  function panel(cap, body, cartbox) {
-    return '<div class="foot' + (isDesk() && cartbox ? ' tall' : '') + '"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>'
+  /* 1.47.1: панелът е къс, докато количката е празна, и се разпъва до целия екран с първия продукт; скролва се САМО списъкът с продуктите (.pcart) — редът с подаръците (.pgifts) е закачен над „Плащаш + бутона“ (човекът) */
+  function panel(cap, body, parts) {
+    var tall = isDesk() && parts && paidCount() > 0;
+    return '<div class="foot' + (tall ? ' tall' : '') + '"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>'
       + (isDesk() ? '<div class="pcap"><div class="pcap-h"><span class="gi">🎁</span><div><small>' + T('panel.eyebrow') + '</small><b>' + T('panel.title') + '</b></div></div>' + (cap || '') + '</div>' : '')
-      + (isDesk() && cartbox ? '<div class="pcart">' + cartbox + '</div>' : '')
+      + (isDesk() && parts ? '<div class="pcart">' + parts.cart + '</div><div class="pgifts">' + parts.gifts + '</div>' : '')
       + '<div class="pbody">' + body + '</div></div>';
   }
   /* 1.47.0: кутията на поръчката в панела (десктоп): продуктите влизат като ги натиснеш (с − N +), под тях местата за подаръци — избраните със снимка, останалите с „?“ */
@@ -163,9 +165,9 @@
     if (!rows) rows = '<div class="cempty">' + T('panel.cart.empty') + '</div>';
     var picked = []; Object.keys(S.gifts).forEach(function (k) { for (var i = 0; i < S.gifts[k]; i++) picked.push(k); });
     var slots = ''; for (var i = 0; i < Math.max(n, 1); i++) { var id = picked[i]; slots += id && P[id] ? '<div class="gslot f" title="' + esc(P[id].name) + '"><img src="' + esc(pimg(P[id])) + '" alt=""></div>' : '<div class="gslot' + (n ? ' q' : ' empty') + '">?</div>'; }
-    return '<div class="ph"><span>' + T('panel.cart.h') + '</span><b>' + (n ? n + ' ' + OPK(n) : '') + '</b></div><div class="crows">' + rows + '</div>'
-      + '<div class="ph gifts"><span>' + T('panel.gifts.h') + '</span><b>' + (n ? (giftCount() + ' / ' + n) : '') + '</b></div><div class="gslots">' + slots + '</div>'
-      + (n ? '<div class="gnote">' + (screen === 'gifts' ? T('panel.gifts.note.pick', { n: n - giftCount(), podaruk: GIFT(n - giftCount()) }) : T('panel.gifts.note', { n: n, podaruk: GIFT(n) })) + '</div>' : '<div class="gnote">' + T('panel.gifts.note.empty') + '</div>');
+    return { cart: '<div class="ph"><span>' + T('panel.cart.h') + '</span><b>' + (n ? n + ' ' + OPK(n) : '') + '</b></div><div class="crows">' + rows + '</div>',
+      gifts: '<div class="ph gifts"><span>' + T('panel.gifts.h') + '</span><b>' + (n ? (giftCount() + ' / ' + n) : '') + '</b></div><div class="gslots">' + slots + '</div>'
+      + (n ? '<div class="gnote">' + (screen === 'gifts' ? T('panel.gifts.note.pick', { n: n - giftCount(), podaruk: GIFT(n - giftCount()) }) : T('panel.gifts.note', { n: n, podaruk: GIFT(n) })) + '</div>' : '<div class="gnote">' + T('panel.gifts.note.empty') + '</div>') };
   }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
@@ -343,7 +345,7 @@
     if (lock) { if (document.body.style.overflow !== 'hidden') { var sbw = window.innerWidth - document.documentElement.clientWidth; document.body.style.paddingRight = sbw > 0 ? sbw + 'px' : ''; } document.body.style.overflow = 'hidden'; }
     else { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
     lastCounts = {}; Object.keys(S.cart).forEach(function (k) { lastCounts[k] = S.cart[k]; });
-    updatePill(); placeToast(); save();
+    updatePill(); placeToast(); fitPanel(); save();
   }
   function updatePill() { var pill = document.getElementById('morePill'); if (!pill) return; var tiles = Array.prototype.slice.call(root.querySelectorAll('.scroll .tile')); var below = tiles.filter(function (t) { return t.getBoundingClientRect().top > window.innerHeight - 20; }).length; pill.hidden = below <= 0; if (below > 0) pill.textContent = T('shop.scroll', { n: below, produkt: plural(below, 'продукт', 'продукта') }); }
   window.addEventListener('scroll', updatePill, { passive: true });
@@ -432,6 +434,13 @@
     render();
   });
 
+  /* 1.47.1: високият панел се събира точно в екрана — мери реалното си отстояние отгоре (полето на корена, лентата на прегледа…) и ползва същото отдолу (човекът: „трябва да има равни отстояния отгоре и отдолу, а не да трябва да го скролваш“) */
+  function fitPanel() {
+    var f = root.querySelector('.foot.tall'); if (!f || !isDesk()) return;
+    var prev = f.style.position; f.style.position = 'static'; var gap = Math.max(12, Math.round(f.getBoundingClientRect().top + window.scrollY)); f.style.position = prev;
+    f.style.setProperty('--pgap', gap + 'px');
+  }
+  window.addEventListener('resize', fitPanel);
   /* 1.46.4: Escape затваря листа / попъпа */
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && (S.sheet || S.luckyOpen)) { S.sheet = null; S.luckyOpen = false; render(); } });
   /* 1.46.0: exit intent — мишката излиза през горния ръб (десктоп) или връщане в таба (телефон) */
