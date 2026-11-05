@@ -8,7 +8,6 @@ body.ansa-bf-page{margin:0;background:var(--cream,#faf3ec);min-height:100dvh}
 .ansa-bf button{font-family:inherit;cursor:pointer}
 .ansa-bf img{max-width:100%}
 .ansa-bf a{color:inherit}
-.ansa-bf-draft .ansa-bf::after{content:"ЧЕРНОВА";position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:60;background:#c2410c;color:#fff;font-size:11px;font-weight:900;letter-spacing:.1em;border-radius:6px;padding:3px 8px;pointer-events:none}
 /* Layout: a demo bar on top (phase, emails, reset) and one phone-sized app below; the app inside keeps the ansa™ Промо look (cream, orange, Nunito) in both themes. */
 :root{--bg:#ece6df;--fg:#1a1a2e;--bar:#ffffff;--bar-line:rgba(232,114,42,.25);--muted:#6b5f58;--accent:#e8722a;--accent-d:#c2410c;
   --o:#e8722a;--o2:#f59e0b;--od:#c2410c;--os:rgba(232,114,42,.07);--ol:rgba(232,114,42,.28);--cream:#faf3ec;--ink:#1a1a2e;--ink2:#2d2d3f;--tan:#8a6a55;--tan2:#a88a75;--mut:#6b5f58;--g:#16a34a;--gd:#15803d;--gs:rgba(34,197,94,.08);--gold:#f0b429;--goldd:#b45309;--bf:#0f0f1a;
@@ -365,6 +364,16 @@ button{font-family:inherit;cursor:pointer}
 .cta small b{font-variant-numeric:tabular-nums}
 @media (max-width:480px){.rcpt{padding:6px 10px}.rrow{padding:3px 0;font-size:12.5px}.rrow.total{padding-top:6px}.rrow.total b{font-size:22px}}
 
+/* 1.46.2: лентата на админския преглед (чернова) */
+.bfadm{position:fixed;left:0;right:0;top:0;z-index:70;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#1a1a2e;color:#fff;font-size:11.5px;font-weight:700;padding:6px 10px;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.bfadm b{background:#c2410c;border-radius:6px;padding:3px 7px;font-size:10px;letter-spacing:.08em}
+.bfadm-g{display:flex;gap:4px;flex-wrap:wrap;padding-left:8px;border-left:1px solid rgba(255,255,255,.2)}
+.bfadm a{color:#fff;text-decoration:none;background:rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;white-space:nowrap}
+.bfadm a.on{background:var(--o);color:#fff}
+.bfadm a:hover{background:rgba(255,255,255,.22)}
+.bfadm-x{margin-left:auto;opacity:.8}
+body.ansa-bf-draft .ansa-bf{padding-top:66px}
+@media (min-width:1024px){body.ansa-bf-draft .ansa-bf{padding-top:44px}}
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
 /* ═══ 1.45.2: десктоп (≥ 1024px) — не „телефон по средата на екрана“, а две колони: съдържанието вляво, панелът на поръчката (бившият залепен футър) вдясно, залепен горе; продуктите в две колони; листът „Прочети повече“ е модал по средата. Студената/партньорската/затворената страница (без панел) са една по-широка колона. ═══ */
@@ -429,7 +438,6 @@ button{font-family:inherit;cursor:pointer}
   .sheet{top:50%;bottom:auto;transform:translate(-50%,-50%);max-width:640px;max-height:86vh;border-radius:22px;animation:bfpop .22s ease-out}
   .sheet .grab{display:none}
   @keyframes bfpop{from{opacity:0;transform:translate(-50%,-47%)}to{opacity:1;transform:translate(-50%,-50%)}}
-  .ansa-bf-draft .ansa-bf::after{top:8px}
 }
 @media (min-width:1280px){
   .ansa-bf{max-width:1240px;grid-template-columns:minmax(0,1fr) 420px;gap:28px}

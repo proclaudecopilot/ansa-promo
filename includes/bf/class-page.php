@@ -160,13 +160,23 @@ final class Page {
 	public static function logo( $cfg ) { $v = (string) ( $cfg['logo'] ?? '' ); $url = ''; if ( ctype_digit( $v ) && (int) $v > 0 ) { $url = (string) wp_get_attachment_image_url( (int) $v, 'full' ); } elseif ( '' !== $v ) { $url = $v; } return $url ?: ANSA_PROMO_URL . 'assets/img/bf/logo-white.png'; }
 
 	/** Всичко, което bf.js трябва да знае. Никакви цени не идват от клиента. */
-	public static function runtime( $cfg, $draft = false ) {
-		$prods = self::products( $cfg, $draft ); $phase = Config::phase_now( $cfg ); $pt = Config::phase_ts( $cfg ); $mask = self::mask( $cfg );
+	/** 1.46.2: първият активен код на ansa Partner — за бутона „партньор“ в админския преглед. */
+	public static function preview_ref() {
+		if ( ! class_exists( 'AP_Schema' ) || ! method_exists( 'AP_Schema', 'table' ) ) { return ''; }
+		$c = get_transient( 'ansa_bf_preview_ref' ); if ( is_string( $c ) ) { return $c; }
+		global $wpdb; $code = '';
+		try { $code = (string) $wpdb->get_var( 'SELECT c.coupon_code FROM ' . \AP_Schema::table( 'coupons' ) . ' c JOIN ' . \AP_Schema::table( 'partners' ) . " p ON p.partner_id = c.partner_id WHERE c.active = 1 AND p.status = 'active' ORDER BY c.partner_id ASC LIMIT 1" ); } catch ( \Throwable $e ) { $code = ''; }
+		set_transient( 'ansa_bf_preview_ref', $code, HOUR_IN_SECONDS ); return $code;
+	}
+	/** $phase_force: 1.46.2 — админският преглед на друга фаза (само в чернова; публикуваното не се пипа). */
+	public static function runtime( $cfg, $draft = false, $phase_force = null ) {
+		$prods = self::products( $cfg, $draft ); $phase = ( $draft && $phase_force && in_array( $phase_force, Config::PHASES, true ) ) ? (string) $phase_force : Config::phase_now( $cfg ); $pt = Config::phase_ts( $cfg ); $mask = self::mask( $cfg );
 		$cats = array(); foreach ( $prods as $p ) { if ( '' !== $p['cat'] && ! in_array( $p['cat'], $cats, true ) ) { $cats[] = $p['cat']; } }
 		return array(
 			'ver' => ANSA_PROMO_VER, 'id' => $cfg['id'], 'name' => $cfg['name'], 'version' => Config::version(),
 			'ajax' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( self::NONCE ), 'draft' => (bool) $draft, 'enabled' => ! empty( $cfg['enabled'] ),
 			'phase' => $phase, 'phase_end' => Config::phase_end( $cfg, $phase ), 'now' => Config::now(), 'live' => Config::is_live( $cfg ) || $draft,
+			'preview' => $draft ? array( 'phase' => ( $phase_force && in_array( $phase_force, Config::PHASES, true ) ) ? (string) $phase_force : '', 'ref' => self::preview_ref(), 'real' => Config::phase_now( $cfg ) ) : null,
 			'dates' => array( 'early_date' => $pt['early_start'] ? wp_date( 'd.m', $pt['early_start'] ) : '', 'early_time' => $pt['early_start'] ? wp_date( 'H:i', $pt['early_start'] ) : '', 'public_date' => $pt['public_start'] ? wp_date( 'd.m', $pt['public_start'] ) : '', 'public_time' => $pt['public_start'] ? wp_date( 'H:i', $pt['public_start'] ) : '' ),
 			'url' => self::url( $cfg ), 'home' => home_url( '/' ), 'shop' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' ), 'logo' => self::logo( $cfg ),
 			'products' => (object) $prods, 'order' => array_keys( $prods ), 'cats' => $cats,
@@ -184,7 +194,7 @@ final class Page {
 	/** Свеж runtime за кеширана страница + контекстът на посетителя (?ref=КОД, ?ea=ТОКЕН, сесията). */
 	public static function ajax_runtime() {
 		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
-		$r = self::runtime( $cfg, $draft );
+		$r = self::runtime( $cfg, $draft, $draft ? sanitize_key( (string) ( $_REQUEST['phase'] ?? '' ) ) : null );
 		$ref = isset( $_REQUEST['ref'] ) ? (string) wp_unslash( $_REQUEST['ref'] ) : ''; $ea = isset( $_REQUEST['ea'] ) ? (string) wp_unslash( $_REQUEST['ea'] ) : '';
 		$ctx = Cart::ctx();
 		if ( '' !== $ref && ! empty( $cfg['aff']['enabled'] ) ) { $p = self::partner( $ref ); if ( $p ) { $r['partner'] = array( 'code' => $p['code'], 'name' => $p['name'] ); Cart::remember_ref( $p['code'] ); } }
@@ -203,7 +213,7 @@ final class Page {
 
 	public static function meta( $cfg ) { $c = Copy::effective( $cfg['copy'] ); return array( 'title' => wp_strip_all_tags( $c['page.title'] ), 'desc' => wp_strip_all_tags( $c['page.desc'] ) ); }
 	public static function page_html( $cfg, $draft = false ) {
-		$rt = self::runtime( $cfg, $draft ); $m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
+		$rt = self::runtime( $cfg, $draft, $draft ? sanitize_key( (string) ( $_GET['phase'] ?? '' ) ) : null ); $m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
 			. ( $draft ? '<meta name="robots" content="noindex,nofollow">' : '' )
 			. '<title>' . esc_html( $m['title'] ) . '</title><meta name="description" content="' . esc_attr( $m['desc'] ) . '"><link rel="canonical" href="' . esc_url( $url ) . '">'

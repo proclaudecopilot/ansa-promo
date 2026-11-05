@@ -31,7 +31,9 @@
   /* ── източникът на посетителя: адресът + бисквитките ── */
   var refParam = (q.get('ref') || '').replace(/[^a-z0-9_\-]/gi, '').toUpperCase();
   var eaParam = (q.get('ea') || '').replace(/[^a-z0-9]/gi, '');
-  var uParam = (q.get('u') || '').replace(/[^A-Za-z0-9_\-\.]/g, ''); /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
+  var uParam = (q.get('u') || '').replace(/[^A-Za-z0-9_\-\.]/g, '');
+  var phParam = R.draft ? (q.get('phase') || '').replace(/[^a-z]/g, '') : ''; /* 1.46.2: админският преглед на фаза (само чернова) */
+  if (R.draft && q.get('reset')) { try { sessionStorage.removeItem('ansa_bf_s_' + (R.version || 0)); } catch (e) {} } /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
   if (eaParam) setCookie('ansa_bf_ea', eaParam, 7);
   var utm = (q.get('utm_content') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
   var paidMarkers = /(^|&)(utm_medium=(paid|cpc|ppc|ads|paid_social|social)|fbclid=|gclid=|ttclid=|src=cold)/i.test(location.search.replace(/^\?/, ''));
@@ -244,6 +246,18 @@
       + body + '<p style="color:var(--tan);font-size:12.5px">' + (inGifts ? T('gifts.sheet.note') : (giftOnly ? T('sheet.giftonly') : T('sheet.other'))) + '</p></div>' + (foot ? '<div class="sfoot">' + foot + '</div>' : '') + '</div>';
   }
 
+  /* 1.46.2: лентата на админския преглед (само в чернова): фазите + входовете; всеки бутон започва на чисто */
+  function vAdminBar() {
+    var pv = R.preview || {}; var cur = phParam || ''; var base = location.pathname + '?ansa_bf=draft&reset=1';
+    var ph = [['', 'по датите (' + (pv.real || phase) + ')'], ['prep', 'Подготовка'], ['early', 'Ранен достъп'], ['public', 'Публичен'], ['over', 'Приключил']];
+    var ways = [['', 'директно'], ['src=cold&utm_medium=paid', 'реклама'], ['utm_source=email&utm_medium=email', 'имейл']]; if (pv.ref) ways.push(['ref=' + encodeURIComponent(pv.ref), 'партньор ' + pv.ref]);
+    var way = refParam ? 'ref' : (paidMarkers ? 'src=cold' : (isEmailLink ? 'utm_source=email' : ''));
+    var link = function (p, w, label, on) { var href = base + (p ? '&phase=' + p : '') + (w ? '&' + w : ''); return '<a class="' + (on ? 'on' : '') + '" href="' + esc(href) + '">' + esc(label) + '</a>'; };
+    var curWay = refParam ? 'ref=' : (paidMarkers ? 'src=cold' : (isEmailLink ? 'utm_source=email' : ''));
+    return '<div class="bfadm"><b>ЧЕРНОВА</b><span class="bfadm-g">' + ph.map(function (x) { return link(x[0], curWay && curWay !== 'ref=' ? ways.filter(function (w) { return w[0].indexOf(curWay) === 0; }).map(function (w) { return w[0]; })[0] || '' : (refParam && pv.ref ? 'ref=' + encodeURIComponent(pv.ref) : ''), x[1], x[0] === cur); }).join('') + '</span>'
+      + '<span class="bfadm-g">' + ways.map(function (w) { return link(cur, w[0], w[1], w[0] === '' ? !curWay : w[0].indexOf(curWay || '§') === 0); }).join('') + '</span>'
+      + '<a class="bfadm-x" href="' + esc(location.pathname) + '">✕ изход от прегледа</a></div>';
+  }
   /* ── кой екран ── */
   function decide() {
     var v = variant();
@@ -266,6 +280,7 @@
     var html = sc === 'cold' ? vCold() : sc === 'wallet' ? vWallet() : sc === 'aff' ? vAff() : sc === 'affwait' ? vAffWait() : sc === 'shop' ? vShop() : sc === 'gifts' ? vGifts() : sc === 'over' ? vOver() : vClosed();
     if (S.sheet) html += vSheet();
     if (S.luckyOpen) html += vLucky();
+    if (R.draft) html += vAdminBar();
     root.innerHTML = html;
     if (keep) window.scrollTo(0, keep); else window.scrollTo(0, 0);
     if (refocus) { var el = document.getElementById(refocus); if (el) { el.focus({ preventScroll: true }); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch (e) {} } }
@@ -296,7 +311,7 @@
   function post(action, data, _retry) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (!_retry && j && !j.success && j.data && j.data.code === 'nonce') { return freshNonce().then(function () { return post(action, data, true); }); } return j; }); }
   function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
-    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam;
+    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam; if (phParam) d.phase = phParam;
     var url = R.ajax + '?action=ansa_bf_runtime' + (R.draft ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
     var fd = new FormData(); Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
