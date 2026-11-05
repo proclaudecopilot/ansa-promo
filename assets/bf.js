@@ -213,6 +213,19 @@
   function vClosed() {
     return '<div class="scroll"><div class="hero"><div class="hrow">' + logoImg + '</div><div class="h1">' + T(isEarly() ? 'shop.closed.early.title' : 'shop.closed.title') + '</div><p class="sub">' + T(isEarly() ? 'shop.closed.early.sub' : 'shop.closed.sub', V()) + '</p></div><div class="wrap"><div class="k2">' + T('gifts.best') + '</div>' + cartList().map(function (p) { return '<div class="tile"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="n">' + esc(p.name) + '<small>' + esc(p.sub) + '</small></div><div class="pr">' + fmt(p.price) + '</div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'; }).join('') + '</div></div>';
   }
+  /* 1.48.7: паузата (човекът: „Направи отделен екран за паузата между 22.11 и 24.11“): брояч до публичния старт + „прати ми линка“ (kind=pause, таг bf-reminder) */
+  function cdCells() { var ms = Math.max(0, phaseEnd - now()); var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4), sec = Math.floor(ms % 6e4 / 1e3); var u = T('pause.cd.units').split('|'); return [[d, u[0]], [h, u[1]], [m, u[2]], [sec, u[3]]].map(function (x) { return '<div class="cdc"><b>' + (x[0] < 10 ? '0' : '') + x[0] + '</b><small>' + esc(x[1] || '') + '</small></div>'; }).join(''); }
+  function vPause() {
+    var news = giftList().filter(function (p) { return p.isNew; }); var done = !!(S.pauseOk || ctx.pause);
+    return '<div class="scroll pause"><div class="hero">'
+      + '<div class="hrow">' + logoImg + '<span class="tpill hot">' + T('pause.pill', V()) + '</span></div>'
+      + '<div class="eyebrow">' + T('pause.eyebrow') + '</div><div class="h1" style="font-size:25px">' + T('pause.title', V()) + '</div><p class="sub big">' + T('pause.sub', V()) + '</p>'
+      + '<div class="cdown" data-pause="1"><span class="cdl">' + T('pause.cd') + '</span><div class="cdcs">' + cdCells() + '</div></div></div>'
+      + '<div class="wrap"><div class="card">' + (done ? '<div class="h2" style="text-align:center">' + T('pause.done.title') + '</div><p class="pdone">' + T('pause.done.sub', V()) + '</p>' : '<div class="h2" style="font-size:16px;text-align:center">' + T('pause.form.h', V()) + '</div>' + emailForm(T('pause.form.cta')) + '<div class="trust">' + T('pause.form.trust') + '</div>') + '</div>'
+      + (news.length ? '<div class="k2">' + T('gifts.new') + '</div><div class="gridp">' + news.map(function (p) { return '<div class="gp"><img src="' + esc(pimg(p)) + '" alt=""><b>' + esc(p.name) + '</b><small>' + esc(p.sub) + '</small></div>'; }).join('') + '</div>' : '')
+      + '<div class="k2">' + T('gifts.best') + '</div>' + cartList().slice(0, 6).map(function (p) { return '<div class="tile"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="n">' + esc(p.name) + '<small>' + esc(p.sub) + '</small></div><div class="pr">' + fmt(p.price) + '</div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'; }).join('')
+      + '<div class="footnote">' + T('pause.foot', V()) + '</div></div></div>';
+  }
   function vOver() { return '<div class="scroll"><div class="over">' + logoImg.replace('class="logo"', 'class="logo" style="margin:0 auto 18px;filter:invert(1) brightness(.2)"') + '<div class="h1">' + T('over.title') + '</div><p class="lead">' + T('over.sub') + '</p><a class="cta dark" href="' + esc(R.shop) + '" style="display:inline-block;width:auto;text-decoration:none">' + T('over.cta') + '</a></div></div>'; }
   /* 1.46.0: ваучерът от имейла — зелена лента, ако е в сесията; иначе малка форма „Имаш ваучер от имейла? код → Активирай“ */
   function vchStrip() {
@@ -305,7 +318,7 @@
   /* 1.46.2: лентата на админския преглед (само в чернова): фазите + входовете; всеки бутон започва на чисто */
   function vAdminBar() {
     var pv = R.preview || {}; var cur = phParam || ''; var base = location.pathname + '?ansa_bf=draft&reset=1';
-    var ph = [['', 'по датите (' + (pv.real || phase) + ')'], ['prep', 'Подготовка'], ['early', 'Ранен достъп'], ['public', 'Публичен'], ['over', 'Приключил']];
+    var ph = [['', 'по датите (' + (pv.real || phase) + ')'], ['prep', 'Подготовка'], ['early', 'Ранен достъп'], ['pause', 'Пауза'], ['public', 'Публичен'], ['over', 'Приключил']];
     var ways = [['', 'директно'], ['src=cold&utm_medium=paid', 'реклама'], ['utm_source=email&utm_medium=email', 'имейл']]; if (pv.ref) ways.push(['ref=' + encodeURIComponent(pv.ref), 'партньор ' + pv.ref]);
     var way = refParam ? 'ref' : (paidMarkers ? 'src=cold' : (isEmailLink ? 'utm_source=email' : ''));
     var link = function (p, w, label, on) { var href = base + '&phase=' + p + (w ? '&' + w : ''); return '<a class="' + (on ? 'on' : '') + '" href="' + esc(href) + '">' + esc(label) + '</a>'; };
@@ -323,6 +336,7 @@
     /* 1.46.7: „записан“ = успешно записване (S.signed) или имейл в сесията — НЕ написаното в полето (S.email): грешен имейл местеше партньорската страница на „Подаръкът ти е запазен“ */
     if (phase === 'public') { if (v === 'aff' && !signed()) return 'aff'; return 'shop'; }
     if (phase === 'early' && (earlyOk || R.draft)) return 'shop';
+    if (phase === 'pause') { if (v === 'aff') return signed() ? 'affwait' : 'aff'; return 'pause'; } /* 1.48.7: паузата между ранния достъп и публичния старт */
     if (v === 'aff') return signed() ? 'affwait' : 'aff';
     var coldOn = !!(R.cold && R.cold.enabled);
     if (coldOn && ctx.email && ctx.voucher) return 'wallet';           /* вече записана (ваучерът ѝ е в сесията) */
@@ -336,7 +350,7 @@
   function render() {
     var sc = screenFor(); var keep = sc === lastScreen ? window.scrollY : 0; lastScreen = sc; S.screen = sc;
     var act = document.activeElement; var refocus = null, sel = null; if (act && root.contains(act) && act.id && (act.tagName === 'INPUT' || act.tagName === 'SELECT')) { refocus = act.id; try { sel = [act.selectionStart, act.selectionEnd]; } catch (e) {} }
-    var html = sc === 'cold' ? vCold() : sc === 'wallet' ? vWallet() : sc === 'aff' ? vAff() : sc === 'affwait' ? vAffWait() : sc === 'shop' ? vShop() : sc === 'gifts' ? vGifts() : sc === 'over' ? vOver() : vClosed();
+    var html = sc === 'cold' ? vCold() : sc === 'wallet' ? vWallet() : sc === 'aff' ? vAff() : sc === 'affwait' ? vAffWait() : sc === 'shop' ? vShop() : sc === 'gifts' ? vGifts() : sc === 'over' ? vOver() : sc === 'pause' ? vPause() : vClosed();
     if (S.sheet) html += vSheet();
     if (S.luckyOpen) html += vLucky();
     if (R.draft) html += vAdminBar();
@@ -362,6 +376,7 @@
   setInterval(function () {
     root.querySelectorAll('[data-cd]').forEach(function (el) { var k = el.getAttribute('data-cd'); var exp = k === 'coldExp' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0); var ms = exp - now(); el.textContent = mmss(ms); if (ms <= 0 && !S._exp[k]) { S._exp[k] = true; if (k === 'walletExp' && ctx.voucher) ctx.voucher.live = false; render(); } });
     root.querySelectorAll('[data-tbar]').forEach(function (el) { var k = el.getAttribute('data-tbar'); var exp = k === 'coldExp' ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0); var ms = exp - now(); var total = +el.getAttribute('data-total') || 1; var bar = el.querySelector('.tbar-bar i'); if (bar) { bar.style.width = Math.max(0, Math.min(100, ms / total * 100)).toFixed(1) + '%'; } el.classList.toggle('hot', ms > 0 && ms < 300000); });
+    var pz = root.querySelector('[data-pause] .cdcs'); if (pz) { pz.innerHTML = cdCells(); if (phaseEnd && phaseEnd - now() <= 0 && !S._exp.phase) { S._exp.phase = true; refresh(); } }
     var tt = root.querySelectorAll('[data-timer]'); if (tt.length) { var ts = timerTxt(); tt.forEach(function (t) { t.textContent = ts; }); if (phaseEnd && phaseEnd - now() <= 0 && !S._exp.phase) { S._exp.phase = true; refresh(); } }
   }, 1000);
   setInterval(function () { var eq = document.getElementById('eq'); if (!eq || paidCount()) return; S.demoN = (S.demoN || 1) % 6 + 1; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML = eqHtml(S.demoN); eq.classList.add('pop'); }, 2200);
@@ -390,11 +405,12 @@
   function onSignup(e) {
     e.preventDefault(); var v = (document.getElementById('emailIn').value || '').trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { S.emailErr = T('err.email'); S.email = v; render(); return; }
-    S.email = v; S.emailErr = false; var kind = S.screen === 'aff' ? 'aff' : 'cold'; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
+    S.email = v; S.emailErr = false; var kind = S.screen === 'aff' ? 'aff' : (S.screen === 'pause' ? 'pause' : 'cold'); var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_lead', { email: v, kind: kind, bonus: S.affgift || ctx.affgift || 'v5', consent: '1', utm: utm, ref: partner ? partner.code : refParam, sid: '' }).then(function (j) {
       if (!j || !j.success) { var code = j && j.data && j.data.code; S.emailErr = code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'); render(); return; }
       applyCtx(j.data.ctx); S.signed = true; S.emailErr = ''; if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
       if (kind === 'aff') { toast(T('aff.toast'), 'ok'); S.screen = isPublic() ? 'shop' : 'affwait'; }
+      else if (kind === 'pause') { S.pauseOk = true; toast(T('pause.toast', V()), 'ok'); }
       else { S._exp.walletExp = false; S.screen = 'wallet'; }
       render();
     }).catch(function () { S.emailErr = T('err.add'); render(); });

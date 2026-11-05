@@ -3,7 +3,7 @@
  * Plugin Name: ansa™ Промо
  * Plugin URI:  https://ansa.bg
  * Description: Промотата на ansa™: „Сезонът на ansa“ (три кутии, [ansa_promo]) и „Черен петък 2026“ (/cheren-petak-2026 — всяка опаковка = подарък по избор). Редактор на текстовете, количка и чекаут, лийдове, билети, Insights. Самостоятелен плъгин — ansa™ Shrine остава за продуктовите страници.
- * Version:     1.48.6
+ * Version:     1.48.7
  * GitHub Plugin URI: proclaudecopilot/ansa-promo
  * Author:      ansa.bg
  * Text Domain: ansa-promo
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ANSA_PROMO_VER', '1.48.6' );
+define( 'ANSA_PROMO_VER', '1.48.7' );
 
 /* 1.40.0: wp-cron / WP-CLI (сървърният крон на RunCloud) върви с CLI лимит 256M, а сайтът има нужда от ~300M при зареждане на плъгините — падаше на всяко пускане
    (28.10.2026, Site Bridge лог). Тук лимитът се вдига до 1024M само за cron/CLI; PHP-FPM има 2049M и не се пипа. */
@@ -71,6 +71,8 @@ add_action( 'init', function () {
 	try { if ( class_exists( '\\AnsaPromo\\BF\\Leads' ) ) { \AnsaPromo\BF\Leads::repair_cross_sync(); } } catch ( \Throwable $e ) {}
 	/* 1.48.6: еднократно — таговете bf-cold / bf-partner вече не падат при поръчка (и в публикуваното); option ansa_promo_bf_keep_tags_v1 */
 	try { if ( class_exists( '\\AnsaPromo\\BF\\Config' ) ) { \AnsaPromo\BF\Config::keep_tags_once(); } } catch ( \Throwable $e ) {}
+	/* 1.48.7: листът и таговете (вкл. новия bf-reminder) се създават във FunnelKit още при обновяването, не чак при първия лийд */
+	try { if ( class_exists( '\\AnsaPromo\\BF\\Leads' ) ) { \AnsaPromo\BF\Leads::ensure_terms(); } } catch ( \Throwable $e ) {}
 }, 1 );
 
 /* ── 1.41.1: страницата /health-quiz-by-ansa/ ([ansa_quiz]) излизаше празна — ANSA Quiz Studio (зарежда се СЛЕД този плъгин,

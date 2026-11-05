@@ -19,7 +19,7 @@ final class Config {
 
 	const OPTION  = 'ansa_promo_bf_store';
 	const HISTORY = 10;
-	const PHASES  = array( 'prep', 'early', 'public', 'over' );
+	const PHASES  = array( 'prep', 'early', 'pause', 'public', 'over' ); /* 1.48.7: pause = между края на ранния достъп и публичния старт */
 	private static $memory = null;
 
 	public static function defaults() {
@@ -49,7 +49,7 @@ final class Config {
 			'ship'     => array( 'free_from' => 2, 'paid' => 2.55 ),
 			'checkout' => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true ),
 			/* лийдовете → FunnelKit: един лист за всички + таг по вид (студен / партньор); при поръчка таговете падат */
-			'leads'    => array( 'fka' => true, 'list' => 'Черен петък 2026 — лийдове', 'tag_cold' => 'bf-cold', 'tag_aff' => 'bf-partner', 'consent_only' => false, 'untag_on_order' => true ),
+			'leads'    => array( 'fka' => true, 'list' => 'Черен петък 2026 — лийдове', 'tag_cold' => 'bf-cold', 'tag_aff' => 'bf-partner', 'tag_pause' => 'bf-reminder', 'consent_only' => false, 'untag_on_order' => true ),
 			'orders'   => array( 'fka_tag' => 'cheren-petak-2026' ),
 			'preview'  => array( 'password' => '' ),
 			'logo'     => '', /* attachment id или URL; празно = assets/img/bf/logo-white.png */
@@ -121,7 +121,7 @@ final class Config {
 		$out['ship'] = array( 'free_from' => max( 0, (int) ( $out['ship']['free_from'] ?? 2 ) ), 'paid' => round( (float) ( $out['ship']['paid'] ?? 2.55 ), 2 ) );
 		$out['checkout'] = array( 'card_gateway' => sanitize_key( (string) ( $out['checkout']['card_gateway'] ?? 'fkwcs_stripe' ) ), 'cod_gateway' => sanitize_key( (string) ( $out['checkout']['cod_gateway'] ?? 'cod' ) ), 'block_coupons' => ! isset( $out['checkout']['block_coupons'] ) || ! empty( $out['checkout']['block_coupons'] ) );
 		$l = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = array( 'fka' => ! isset( $l['fka'] ) || ! empty( $l['fka'] ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! empty( $l['untag_on_order'] ) ); /* 1.48.6: по подразбиране таговете остават */
-		foreach ( array( 'list', 'tag_cold', 'tag_aff' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) ( $l[ $lk ] ?? $d['leads'][ $lk ] ) ) ), 0, 100 ); }
+		foreach ( array( 'list', 'tag_cold', 'tag_aff', 'tag_pause' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) ( $l[ $lk ] ?? $d['leads'][ $lk ] ) ) ), 0, 100 ); }
 		$out['orders'] = array( 'fka_tag' => mb_substr( trim( wp_strip_all_tags( (string) ( $out['orders']['fka_tag'] ?? '' ) ) ), 0, 100 ) );
 		$out['preview'] = array( 'password' => trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) ) );
 		$lg = trim( (string) ( $out['logo'] ?? '' ) ); $out['logo'] = ctype_digit( $lg ) ? (string) (int) $lg : esc_url_raw( $lg );
@@ -208,6 +208,7 @@ final class Config {
 		if ( $p['public_end'] && $t >= $p['public_end'] ) { return 'over'; }
 		if ( $p['public_start'] && $t >= $p['public_start'] ) { return 'public'; }
 		if ( $p['early_start'] && $t >= $p['early_start'] && ( ! $p['early_end'] || $t < $p['early_end'] ) ) { return 'early'; }
+		if ( $p['early_end'] && $t >= $p['early_end'] && $p['public_start'] && $t < $p['public_start'] ) { return 'pause'; } /* 1.48.7: дупка между двете фази */
 		return 'prep';
 	}
 	/** Краят на текущата фаза (ts) — за таймера; 0 без край. */
@@ -216,9 +217,10 @@ final class Config {
 		if ( 'early' === $phase ) { return (int) $p['early_end']; }
 		if ( 'public' === $phase ) { return (int) $p['public_end']; }
 		if ( 'prep' === $phase ) { return (int) $p['early_start']; }
+		if ( 'pause' === $phase ) { return (int) $p['public_start']; }
 		return 0;
 	}
-	public static function phase_label( $phase ) { return array( 'prep' => 'подготовка (записване)', 'early' => 'ранен достъп (48 ч.)', 'public' => 'публичен Black Friday', 'over' => 'приключил' )[ $phase ] ?? $phase; }
+	public static function phase_label( $phase ) { return array( 'prep' => 'подготовка (записване)', 'early' => 'ранен достъп (48 ч.)', 'pause' => 'пауза (до публичния старт)', 'public' => 'публичен Black Friday', 'over' => 'приключил' )[ $phase ] ?? $phase; }
 	/** Промото е „на живо“ за купуване: публикувано, включено и във фаза early/public. */
 	public static function is_live( $cfg ) { return ! empty( $cfg['enabled'] ) && in_array( self::phase_now( $cfg ), array( 'early', 'public' ), true ); }
 	public static function fmt_dt( $ts ) { return $ts ? wp_date( 'd.m.Y H:i', (int) $ts ) : '—'; }

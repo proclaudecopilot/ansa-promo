@@ -641,3 +641,13 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   .wrap > .tile{grid-column:auto}
   .ansa-bf .hero{padding:28px 36px 28px}
 }
+
+/* 1.48.7: паузата между ранния достъп и публичния старт — броячът и „Записана си“ */
+.cdown{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cdl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.cdcs{display:flex;gap:8px}
+.cdc{min-width:62px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:8px 6px;text-align:center}
+.cdc b{display:block;font-size:24px;line-height:1;font-variant-numeric:tabular-nums;color:#fff}
+.cdc small{display:block;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.7);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+.pdone{text-align:center;color:var(--tan);font-size:14px;margin:0;line-height:1.45}
+@media (max-width:359px){.cdc{min-width:54px}.cdc b{font-size:20px}}
