@@ -56,7 +56,8 @@ button{font-family:inherit;cursor:pointer}
 .card{background:#fff;border:1.5px solid var(--ol);border-radius:16px;padding:14px;box-shadow:0 6px 24px rgba(232,114,42,.10)}
 .cta{display:block;width:100%;border:none;border-radius:14px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:16px;font-weight:900;padding:14px 16px;text-align:center;box-shadow:0 6px 18px rgba(232,114,42,.35)}
 .cta:disabled{background:#f6c9a6;box-shadow:none;cursor:not-allowed}
-.cta.dark{background:var(--bf);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.cta.dark{background:var(--bf);box-shadow:0 6px 18px rgba(0,0,0,.25);color:#fff}
+a.cta,a.cta:visited{color:#fff}
 .cta.soft{background:#fff;color:var(--od);border:2px solid var(--o);box-shadow:none}
 .cta small{display:block;font-size:12px;font-weight:700;opacity:.85;margin-top:2px}
 .cta:focus-visible,.addb:focus-visible,.chip:focus-visible,button:focus-visible{outline:3px solid rgba(232,114,42,.5);outline-offset:2px}
@@ -187,7 +188,7 @@ button{font-family:inherit;cursor:pointer}
 .hdr .x{flex:none}
 .tile .gl{display:inline-block;font-size:11.5px;font-weight:800;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 7px;margin-top:4px}
 .strip-hint{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin:-6px 0 10px}
-.tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07);position:relative}
+.tile{display:grid;grid-template-columns:64px 1fr 104px;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07);position:relative}
 /* 1.46.3: лентата с подаръка върху горния ръб на картата + подскачане на числото при промяна */
 .tile.banded{padding-top:34px}
 .gband{position:absolute;left:-1.5px;right:-1.5px;top:-1.5px;height:24px;display:flex;align-items:center;justify-content:center;gap:4px;background:linear-gradient(90deg,#15803d,#22c55e);color:#fff;font-size:11.5px;font-weight:800;border-radius:14px 14px 0 0;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px}
@@ -208,13 +209,24 @@ button{font-family:inherit;cursor:pointer}
 .tile.go{border-style:dashed;background:#fffdf9}
 .tile .nb{font-size:9.5px;font-weight:900;color:#fff;background:var(--o);border-radius:5px;padding:2px 5px;margin-right:5px;vertical-align:1px;letter-spacing:.06em}
 .more{border:none;background:none;padding:0;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px;display:inline-block}
-.addb{border:none;border-radius:11px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:13px;font-weight:800;padding:9px 12px;white-space:nowrap}
+/* 1.46.4: дясната колона на картата е с фиксирана ширина — „Добави“/„Избирам“ и степерът „− 1 +“ са еднакво широки, нищо не се размества при натискане (човекът) */
+.addb{border:none;border-radius:11px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:13px;font-weight:800;padding:9px 6px;white-space:nowrap;width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis}
 .addb:disabled{background:#f6c9a6;cursor:not-allowed}
 .addb.soft{background:#fff;color:var(--od);border:1.5px solid var(--o)}
-.step{display:flex;align-items:center;gap:6px}
+.step{display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%}
 .step button{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(232,114,42,.35);background:#fff;color:var(--o);font-weight:900;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .step button:disabled{opacity:.35;cursor:not-allowed}
-.step b{min-width:20px;text-align:center;font-size:16px}
+.step b{min-width:20px;text-align:center;font-size:16px;flex:1}
+@media (max-width:360px){.tile{grid-template-columns:56px 1fr 92px;gap:8px}.tile img{width:56px;height:56px}.addb{font-size:12px}.step button{width:28px;height:28px}}
+/* 1.46.4: чакането към чекаута */
+.cta.wait{color:transparent!important;position:relative;pointer-events:none}
+.cta.wait::after{content:"";position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid rgba(255,255,255,.45);border-top-color:#fff;animation:bfspin .8s linear infinite}
+.bfwait{position:fixed;inset:0;z-index:80;background:rgba(26,26,46,.62);display:flex;align-items:center;justify-content:center;padding:24px}
+.bfwait-c{background:#fff;border-radius:20px;padding:26px 24px;text-align:center;max-width:320px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.bfwait-c .spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--os);border-top-color:var(--o);margin:0 auto 14px;animation:bfspin .8s linear infinite}
+.bfwait-c b{display:block;font-size:17px;font-weight:900;color:var(--ink)}
+.bfwait-c small{display:block;font-size:12.5px;font-weight:600;color:var(--tan);margin-top:6px}
+@keyframes bfspin{to{transform:rotate(360deg)}}
 .sline{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;margin-bottom:8px;gap:8px}
 .sline>span:first-child{white-space:nowrap}
 .sline b{color:var(--o)}.sline .ok{color:var(--gd);text-align:right}
@@ -309,7 +321,7 @@ button{font-family:inherit;cursor:pointer}
 .emtabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:var(--cream);border-bottom:1px solid var(--ol);flex:none}
 .emtabs button{flex:none;font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid var(--ol);background:#fff;color:var(--tan)}
 .emtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:528px;top:14px;bottom:auto;background:var(--ink);color:#fff;font-weight:800;font-size:13px;border-radius:12px;padding:10px 14px;z-index:40;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:528px;bottom:24px;background:var(--ink);color:#fff;font-weight:800;font-size:13px;border-radius:12px;padding:10px 14px;z-index:40;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .done{text-align:center;padding:26px 16px 16px}
 .done .big{font-size:54px;line-height:1}
 .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;color:var(--od);background:var(--os);border:1px dashed var(--ol);border-radius:8px;padding:3px 8px;font-size:13px}
@@ -341,7 +353,8 @@ button{font-family:inherit;cursor:pointer}
 .vstrip{font-size:13px;font-weight:800;border-radius:12px;padding:9px 12px;margin:0 0 10px;text-align:center}
 .vstrip.ok{background:var(--gs);color:var(--gd);border:1.5px solid rgba(34,197,94,.4)}
 .claim{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px dashed var(--ol);border-radius:12px;padding:8px 10px;margin:0 0 10px;flex-wrap:wrap}
-.claim-h{font-size:12.5px;font-weight:800;color:var(--ink2);white-space:nowrap}
+.claim-h{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tan);white-space:nowrap;flex-basis:100%}
+.claim .addb{width:auto;flex:none}
 .claim input{flex:1;min-width:120px;border:1.5px solid var(--ol);border-radius:9px;padding:8px 10px;font:inherit;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);outline:none;background:#fff}
 .claim input:focus{border-color:var(--o)}
 .claim .addb{padding:9px 12px;font-size:12.5px}
@@ -372,6 +385,7 @@ button{font-family:inherit;cursor:pointer}
 .cta small{display:block;font-size:12px;font-weight:700;opacity:.9;margin-top:3px}
 .cta small b{font-variant-numeric:tabular-nums}
 @media (max-width:480px){.rcpt{padding:6px 10px}.rrow{padding:3px 0;font-size:12.5px}.rrow.total{padding-top:6px}.rrow.total b{font-size:22px}}
+@media (max-height:720px){.rcpt{padding:4px 10px;margin-bottom:8px}.rrow{padding:2px 0}.rrow.total{padding-top:4px}.rrow.total b{font-size:20px}.foot{padding-top:8px}.foot:has(.rcpt) > .sline{display:none}.foot .cta{padding-top:12px;padding-bottom:12px}}
 
 /* 1.46.2: лентата на админския преглед (чернова) */
 .bfadm{position:fixed;left:0;right:0;top:0;z-index:70;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;background:#1a1a2e;color:#fff;font-size:11.5px;font-weight:700;padding:6px 10px;box-shadow:0 2px 12px rgba(0,0,0,.3);height:36px;box-sizing:border-box}
@@ -416,6 +430,10 @@ body.ansa-bf-draft .ansa-bf{padding-top:36px}
   .ansa-bf > .foot .aside.dark .affnote{margin:0 0 10px}
   .ansa-bf > .foot .aside.dark .eq-note{max-width:none}
   .ansa-bf .hero.slim{padding-bottom:18px}
+  .gridp{grid-template-columns:repeat(4,1fr);gap:10px}
+  .gp b{font-size:12.5px}
+  .claim{flex-wrap:nowrap}
+  .claim-h{flex-basis:auto}
   .ansa-bf .hero.slim .stepsbar{margin-bottom:0}
   .morepill{display:none!important}
   .ansa-bf .hero{padding:24px 32px 26px}
@@ -444,7 +462,6 @@ body.ansa-bf-draft .ansa-bf{padding-top:36px}
   .footnote{grid-column:1/-1}
   .hdr{padding:12px 24px 8px}
   .hdr b{font-size:18px}
-  .toast{top:20px}
   .sheet{top:50%;bottom:auto;transform:translate(-50%,-50%);max-width:640px;max-height:86vh;border-radius:22px;animation:bfpop .22s ease-out}
   .sheet .grab{display:none}
   @keyframes bfpop{from{opacity:0;transform:translate(-50%,-47%)}to{opacity:1;transform:translate(-50%,-50%)}}
