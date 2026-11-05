@@ -39,6 +39,11 @@ $ok( 'в ранния достъп → early', 'early' === Config::phase_now( $d
 $ok( 'точно в 27.11 10:00 → public', 'public' === Config::phase_now( $d, $ts( '2026-11-27 10:00' ) ) );
 $ok( 'след края → over', 'over' === Config::phase_now( $d, $ts( '2026-11-30 10:00' ) ) );
 $ok( 'краят на prep = early_start, на early = early_end, на public = public_end', Config::phase_end( $d, 'prep' ) === $ph['early_start'] && Config::phase_end( $d, 'early' ) === $ph['early_end'] && Config::phase_end( $d, 'public' ) === $ph['public_end'] && 0 === Config::phase_end( $d, 'over' ) );
+$g = $d; $g['phases']['public_start'] = '2026-11-28 10:00';
+$ok( 'дупка между ранния достъп и публичния → pause', 'pause' === Config::phase_now( $g, $ts( '2026-11-27 12:00' ) ) );
+$ok( 'краят на pause = public_start', Config::phase_end( $g, 'pause' ) === Config::phase_ts( $g )['public_start'] );
+$ok( 'без дупка няма pause', 'public' === Config::phase_now( $d, $ts( '2026-11-27 12:00' ) ) );
+$ok( 'pause е в PHASES и има етикет', in_array( 'pause', Config::PHASES, true ) && '' !== Config::phase_label( 'pause' ) );
 $f = $d; $f['force'] = 'public'; $ok( 'force=public печели над датите', 'public' === Config::phase_now( $f, $ts( '2026-11-01 00:00' ) ) );
 $f['force'] = 'nope'; $ok( 'непознат force пада на „по датите“', '' === Config::normalize( $f )['force'] );
 $ok( 'is_live: enabled + early/public', ! Config::is_live( $d ) );

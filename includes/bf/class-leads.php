@@ -36,11 +36,11 @@ final class Leads {
 	}
 
 	/** Конфигът за Lead_Sync (той чете $cfg['leads']): листът + тагът по вид. */
-	public static function fka_cfg( $cfg, $kind ) { $l = $cfg['leads']; return array( 'leads' => array( 'fka' => ! empty( $l['fka'] ), 'list' => (string) $l['list'], 'tag' => (string) ( 'aff' === $kind ? $l['tag_aff'] : $l['tag_cold'] ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! empty( $l['untag_on_order'] ) ) ); }
+	public static function fka_cfg( $cfg, $kind ) { $l = $cfg['leads']; return array( 'leads' => array( 'fka' => ! empty( $l['fka'] ), 'list' => (string) $l['list'], 'tag' => (string) ( 'aff' === $kind ? $l['tag_aff'] : ( 'pause' === $kind ? $l['tag_pause'] : $l['tag_cold'] ) ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! empty( $l['untag_on_order'] ) ) ); }
 	public static function ensure_terms() {
 		if ( ! Lead_Sync::available() ) { return false; }
 		$names = array();
-		foreach ( array( Config::get_draft(), Config::get_published() ) as $c ) { if ( empty( $c['leads']['fka'] ) ) { continue; } foreach ( array( 'list' => 2, 'tag_cold' => 1, 'tag_aff' => 1 ) as $k => $type ) { $n = (string) $c['leads'][ $k ]; if ( '' !== $n ) { $names[ $type . '|' . $n ] = array( $type, $n ); } } /* 1.47.3: и таговете на ваучерите за списъка — предварително, за да се правят автоматизациите преди 25.11 */ foreach ( array( 'tag_revived', 'tag_vip' ) as $lk ) { $ln = (string) ( $c['listv'][ $lk ] ?? '' ); if ( '' !== $ln && ! empty( $c['listv']['enabled'] ) ) { $names[ '1|' . $ln ] = array( 1, $ln ); } } $ot = (string) ( $c['orders']['fka_tag'] ?? '' ); if ( '' !== $ot ) { $names[ '1|' . $ot ] = array( 1, $ot ); } }
+		foreach ( array( Config::get_draft(), Config::get_published() ) as $c ) { if ( empty( $c['leads']['fka'] ) ) { continue; } foreach ( array( 'list' => 2, 'tag_cold' => 1, 'tag_aff' => 1, 'tag_pause' => 1 ) as $k => $type ) { $n = (string) $c['leads'][ $k ]; if ( '' !== $n ) { $names[ $type . '|' . $n ] = array( $type, $n ); } } /* 1.47.3: и таговете на ваучерите за списъка — предварително, за да се правят автоматизациите преди 25.11 */ foreach ( array( 'tag_revived', 'tag_vip' ) as $lk ) { $ln = (string) ( $c['listv'][ $lk ] ?? '' ); if ( '' !== $ln && ! empty( $c['listv']['enabled'] ) ) { $names[ '1|' . $ln ] = array( 1, $ln ); } } $ot = (string) ( $c['orders']['fka_tag'] ?? '' ); if ( '' !== $ot ) { $names[ '1|' . $ot ] = array( 1, $ot ); } }
 		if ( ! $names ) { return true; }
 		$key = md5( implode( '|', array_keys( $names ) ) ); if ( get_option( 'ansa_promo_bf_fka_ensured' ) === $key ) { return true; }
 		$all = true; foreach ( $names as $n ) { if ( Merge::term_id( $n[1], $n[0], true ) <= 0 ) { $all = false; } }
@@ -55,7 +55,7 @@ final class Leads {
 		if ( SeasonLeads::rate_limited( 'bf_lead', 10 ) ) { wp_send_json_error( array( 'code' => 'rate' ), 429 ); }
 		$draft = Page::is_draft_request() || ( ! empty( $_POST['draft'] ) && current_user_can( \AnsaPromo\Plugin::CAP ) ); $cfg = $draft ? Config::get_draft() : Config::get_published();
 		$email = strtolower( sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ) ); if ( ! is_email( $email ) ) { wp_send_json_error( array( 'code' => 'email' ), 400 ); }
-		$kind = sanitize_key( (string) ( $_POST['kind'] ?? 'cold' ) ); if ( ! in_array( $kind, array( 'cold', 'aff' ), true ) ) { $kind = 'cold'; }
+		$kind = sanitize_key( (string) ( $_POST['kind'] ?? 'cold' ) ); if ( ! in_array( $kind, array( 'cold', 'aff', 'pause' ), true ) ) { $kind = 'cold'; }
 		$bonus = sanitize_key( (string) ( $_POST['bonus'] ?? '' ) ); $consent = ! isset( $_POST['consent'] ) || '0' !== (string) $_POST['consent'];
 		$utm = sanitize_key( (string) ( $_POST['utm'] ?? '' ) ); $ref = strtoupper( preg_replace( '/[^a-z0-9_\-]/i', '', (string) wp_unslash( $_POST['ref'] ?? '' ) ) );
 		if ( ! $draft && empty( $cfg['enabled'] ) ) { wp_send_json_error( array( 'code' => 'live' ), 400 ); }
@@ -73,6 +73,10 @@ final class Leads {
 				$out['voucher'] = array( 'code' => $code, 'amount' => (float) $cfg['cold']['voucher'], 'exp' => $exp ); $out['lead'] = $id;
 				self::sync( $id, $email, $consent, $cfg, 'cold' );
 			}
+		} elseif ( 'pause' === $kind ) {
+			/* 1.48.7: паузата — „прати ми линка в деня на старта“: без ваучер, лист + таг tag_pause (bf-reminder); същият имейл в сесията не прави втори ред */
+			if ( (string) ( $ctx['email'] ?? '' ) === $email && ! empty( $ctx['pause_lead'] ) ) { $out['lead'] = (int) $ctx['pause_lead']; }
+			else { $id = self::capture( $email, 'pause', '', '', $utm, $consent, '', 0 ); if ( ! $id ) { wp_send_json_error( array( 'code' => 'db' ), 500 ); } $ctx['pause_lead'] = $id; $out['lead'] = $id; self::sync( $id, $email, $consent, $cfg, 'pause' ); }
 		} else {
 			if ( empty( $cfg['aff']['enabled'] ) ) { wp_send_json_error( array( 'code' => 'live' ), 400 ); }
 			$ref = $ref ?: (string) ( $ctx['ref'] ?? '' ); $p = Page::partner( $ref ); if ( ! $p ) { wp_send_json_error( array( 'code' => 'ref' ), 400 ); }
@@ -159,7 +163,7 @@ final class Leads {
 			foreach ( $terms as $t ) { try { $how = Lead_Sync::detach( $email, 2 === $t[0] ? 'lists' : 'tags', $t[1] ); if ( 'няма' !== $how ) { $r['detached']++; } } catch ( \Throwable $e ) {} }
 			$fka = (string) $row['fka']; $ok = false; foreach ( $own as $n ) { if ( false !== strpos( $fka, $n ) ) { $ok = true; } }
 			$has_ids = preg_match( '/#\d+/', $fka ) && ! preg_match( '/^(retry|off|no-)/', $fka );
-			if ( ! $ok || ! $has_ids ) { try { self::sync( (int) $row['id'], $email, ! empty( $row['consent'] ), $cfg, in_array( (string) $row['kind'], array( 'aff' ), true ) ? 'aff' : 'cold' ); $r['resynced']++; } catch ( \Throwable $e ) {} }
+			if ( ! $ok || ! $has_ids ) { try { self::sync( (int) $row['id'], $email, ! empty( $row['consent'] ), $cfg, in_array( (string) $row['kind'], array( 'aff', 'pause' ), true ) ? (string) $row['kind'] : 'cold' ); $r['resynced']++; } catch ( \Throwable $e ) {} }
 		}
 		update_option( $key, current_time( 'mysql' ) . ' ' . wp_json_encode( $r ), false );
 		return $r;

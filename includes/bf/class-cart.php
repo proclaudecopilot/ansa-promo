@@ -70,7 +70,7 @@ final class Cart {
 	/** Безопасната част за bf.js. */
 	public static function ctx_public() {
 		$c = self::ctx(); $v = is_array( $c['voucher'] ?? null ) ? $c['voucher'] : null;
-		return array( 'email' => (string) ( $c['email'] ?? '' ), 'lead' => (int) ( $c['lead'] ?? 0 ), 'affgift' => (string) ( $c['affgift'] ?? '' ), 'ref' => (string) ( $c['ref'] ?? '' ), 'early' => ! empty( $c['early'] ), 'mode' => (string) ( $c['mode'] ?? '' ),
+		return array( 'email' => (string) ( $c['email'] ?? '' ), 'lead' => (int) ( $c['lead'] ?? 0 ), 'affgift' => (string) ( $c['affgift'] ?? '' ), 'ref' => (string) ( $c['ref'] ?? '' ), 'early' => ! empty( $c['early'] ), 'pause' => ! empty( $c['pause_lead'] ), 'mode' => (string) ( $c['mode'] ?? '' ),
 			'voucher' => $v ? array( 'code' => (string) $v['code'], 'amount' => (float) $v['amount'], 'exp' => (int) $v['exp'], 'live' => Leads::voucher_valid( (string) $v['code'] ) ) : null );
 	}
 	public static function remember_ref( $code ) {
