@@ -80,7 +80,12 @@
   /* ── toast ── */
   var toastT = null;
   /* 1.46.0: тостът е в body, не в корена — иначе render() веднага след toast() го триеше (грешен код, грешка при записване) */
-  var toast = function (msg) { var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); t.className = 'toast bf-toast'; document.body.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2200); };
+  /* 1.46.4: тостът е долу — над залепения футър на телефона, или 24px от дъното на десктоп — никога върху заглавието/панела */
+  var placeToast = function () { var t = document.querySelector('body > .bf-toast'); if (!t) return; var f = root.querySelector('.foot'); var stuck = f && getComputedStyle(f).position === 'sticky' && f.getBoundingClientRect().bottom >= window.innerHeight - 2; t.style.bottom = (stuck ? Math.round(f.getBoundingClientRect().height) + 10 : 24) + 'px'; };
+  var toast = function (msg) {
+    var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); t.className = 'toast bf-toast'; document.body.appendChild(t); }
+    t.textContent = msg; placeToast(); clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2200);
+  };
 
   /* ── компоненти ── */
   var logoImg = '<img class="logo" src="' + esc(R.logo) + '" alt="ansa">';
@@ -193,7 +198,8 @@
   }
   /* 1.46.0: попъпът „Ти си късметлия“ — exit intent / дълго стоене на стъпка 2 */
   var luckyTimer = null;
-  function luckyEligible() { return luckyOn() && S.screen === 'gifts' && !S.lucky && !S.luckyShown && !S.luckyOpen && paidCount() > 0 && affGift() !== 'mask'; }
+  var checkingOut = false; /* 1.46.4: след „Продължи към поръчката“ нищо не изскача (човекът: „излезе чак тогава „Ти си късметлия“ — това е забранено“) */
+  function luckyEligible() { return !checkingOut && luckyOn() && S.screen === 'gifts' && !S.lucky && !S.luckyShown && !S.luckyOpen && paidCount() > 0 && affGift() !== 'mask'; }
   function openLucky() { if (!luckyEligible()) return; S.luckyOpen = true; S.luckyShown = true; render(); }
   function luckyArm() { if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } if (luckyEligible() && R.lucky.dwell > 0) { luckyTimer = setTimeout(openLucky, R.lucky.dwell * 1000); } }
   function vLucky() {
@@ -295,7 +301,7 @@
     if (lock) { if (document.body.style.overflow !== 'hidden') { var sbw = window.innerWidth - document.documentElement.clientWidth; document.body.style.paddingRight = sbw > 0 ? sbw + 'px' : ''; } document.body.style.overflow = 'hidden'; }
     else { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
     lastCounts = {}; Object.keys(S.cart).forEach(function (k) { lastCounts[k] = S.cart[k]; });
-    updatePill(); save();
+    updatePill(); placeToast(); save();
   }
   function updatePill() { var pill = document.getElementById('morePill'); if (!pill) return; var tiles = Array.prototype.slice.call(root.querySelectorAll('.scroll .tile')); var below = tiles.filter(function (t) { return t.getBoundingClientRect().top > window.innerHeight - 20; }).length; pill.hidden = below <= 0; if (below > 0) pill.textContent = T('shop.scroll', { n: below, produkt: plural(below, 'продукт', 'продукта') }); }
   window.addEventListener('scroll', updatePill, { passive: true });
@@ -340,14 +346,25 @@
       render();
     }).catch(function () { toast(T('err.add')); render(); });
   }
+  /* 1.46.4: ясно състояние на зареждане — бутонът се върти, екранът е покрит с „Правим количката ти…“ (човекът: „по никакъв начин не се разбира, че се чака зареждане“) */
+  function setWait(on, msg) {
+    var w = document.querySelector('body > .bfwait');
+    if (!on) { if (w) w.remove(); root.classList.remove('busy'); root.querySelectorAll('.cta.wait').forEach(function (b) { b.classList.remove('wait'); b.disabled = false; }); return; }
+    root.classList.add('busy'); root.querySelectorAll('[data-act="checkout"],[data-act="wallet-go"]').forEach(function (b) { b.classList.add('wait'); b.disabled = true; });
+    if (!w) { w = document.createElement('div'); w.className = 'bfwait'; document.body.appendChild(w); }
+    w.innerHTML = '<div class="bfwait-c"><div class="spin"></div><b>' + esc(msg || '') + '</b><small>' + T('wait.sub') + '</small></div>';
+  }
+  window.addEventListener('pageshow', function (e) { if (e.persisted) { checkingOut = false; setWait(false); } });
   function checkout(mode) {
     var items = Object.keys(S.cart).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.cart[k] }; }).filter(function (x) { return x.id; });
     var gifts = mode === 'wallet' ? [] : Object.keys(S.gifts).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.gifts[k] }; }).filter(function (x) { return x.id; });
-    if (!items.length) return; toast(T('toast.sending')); root.classList.add('busy');
+    if (!items.length || checkingOut) return;
+    checkingOut = true; if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } S.luckyOpen = false;
+    setWait(true, mode === 'wallet' ? T('wait.wallet') : T('wait.promo'));
     post('ansa_bf_add', { mode: mode, items: JSON.stringify(items), gifts: JSON.stringify(gifts), pay: 'card', email: S.email || ctx.email || '', variant: variant(), utm: utm, lead: S.lead || ctx.lead || 0, ref: partner ? partner.code : '', affgift: S.affgift || ctx.affgift || '', lucky: S.lucky ? '1' : '0' }).then(function (j) {
-      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { root.classList.remove('busy'); var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add')); if (d.code === 'early') { earlyOk = false; render(); } return; }
-      location.href = j.data.checkoutUrl;
-    }).catch(function () { root.classList.remove('busy'); toast(T('err.add')); });
+      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { setWait(false); checkingOut = false; var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add')); if (d.code === 'early') { earlyOk = false; render(); } return; }
+      setWait(true, T('wait.go')); location.href = j.data.checkoutUrl;
+    }).catch(function () { setWait(false); checkingOut = false; toast(T('err.add')); });
   }
 
   /* ── действия ── */
@@ -371,6 +388,8 @@
     render();
   });
 
+  /* 1.46.4: Escape затваря листа / попъпа */
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && (S.sheet || S.luckyOpen)) { S.sheet = null; S.luckyOpen = false; render(); } });
   /* 1.46.0: exit intent — мишката излиза през горния ръб (десктоп) или връщане в таба (телефон) */
   document.addEventListener('mouseout', function (e) { if (R.lucky && R.lucky.exit && !e.relatedTarget && e.clientY <= 0) openLucky(); });
   document.addEventListener('visibilitychange', function () { if (R.lucky && R.lucky.exit && document.visibilityState === 'visible') openLucky(); });
