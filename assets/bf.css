@@ -442,8 +442,8 @@ body.ansa-bf-draft .ansa-bf{padding-top:36px}
   .ansa-bf .hero.slim{padding-bottom:18px}
   .gridp{grid-template-columns:repeat(4,1fr);gap:10px}
   .gp b{font-size:12.5px}
-  .claim{flex-wrap:nowrap}
   .claim-h{flex-basis:auto}
+  .claim input{flex:1}
   .ansa-bf .hero.slim .stepsbar{margin-bottom:0}
   .morepill{display:none!important}
   .ansa-bf .hero{padding:24px 32px 26px}

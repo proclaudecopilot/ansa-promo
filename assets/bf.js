@@ -41,7 +41,7 @@
 
   /* ── състояние ── */
   var KEY = 'ansa_bf_s_' + (R.version || 0);
-  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false, claimErr: '', claimVal: '', coErr: '', emailErr: '' }; };
+  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false, claimErr: '', claimVal: '', coErr: '', emailErr: '', signed: false }; };
   var S = S0();
   try { var raw = sessionStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') S = Object.assign(S0(), o); } } catch (e) {}
   S.sheet = null; S.luckyOpen = false; S._exp = S._exp || {};
@@ -273,18 +273,20 @@
       + '<a class="bfadm-x" href="' + esc(location.pathname) + '">✕ изход от прегледа</a></div>';
   }
   /* ── кой екран ── */
+  var signed = function () { return !!(ctx.email || S.signed); };
   function decide() {
     var v = variant();
     if (phase === 'over') return 'over';
-    if (phase === 'public') { if (v === 'aff' && !ctx.email && !S.email) return 'aff'; return 'shop'; }
+    /* 1.46.7: „записан“ = успешно записване (S.signed) или имейл в сесията — НЕ написаното в полето (S.email): грешен имейл местеше партньорската страница на „Подаръкът ти е запазен“ */
+    if (phase === 'public') { if (v === 'aff' && !signed()) return 'aff'; return 'shop'; }
     if (phase === 'early' && (earlyOk || R.draft)) return 'shop';
-    if (v === 'aff') return (ctx.email || S.email) ? 'affwait' : 'aff';
+    if (v === 'aff') return signed() ? 'affwait' : 'aff';
     var coldOn = !!(R.cold && R.cold.enabled);
     if (coldOn && ctx.email && ctx.voucher) return 'wallet';           /* вече записана (ваучерът ѝ е в сесията) */
     if (coldOn && v === 'cold') return 'cold';                          /* от реклама или директно преди старта */
     return 'closed';                                                    /* от имейл без личния линк / в ранния достъп без токен */
   }
-  function screenFor() { var base = decide(); var cur = S.screen; if (base === 'shop' && (cur === 'gifts' || cur === 'shop' || cur === 'aff')) return cur === 'aff' && (ctx.email || S.email) ? 'shop' : cur; if (base === 'wallet' && cur === 'wallet') return cur; if (base === 'cold' && cur === 'wallet' && ctx.voucher) return 'wallet'; return base; }
+  function screenFor() { var base = decide(); var cur = S.screen; if (base === 'shop' && (cur === 'gifts' || cur === 'shop' || cur === 'aff')) return cur === 'aff' && signed() ? 'shop' : cur; if (base === 'wallet' && cur === 'wallet') return cur; if (base === 'cold' && cur === 'wallet' && ctx.voucher) return 'wallet'; return base; }
 
   /* ── рендер ── */
   var lastScreen = '';
@@ -325,7 +327,7 @@
   /* 1.45.4: страницата е кеширана, а nonce-ът в нея живее 12–24 ч. → свеж nonce от ansa_bf_runtime при зареждане (refresh) и при грешка „nonce“ — един повторен опит със свеж, без човекът да разбере (както promo.js v1.1.0) */
   function freshNonce() { return fetch(R.ajax + '?action=ansa_bf_runtime&_=' + Date.now(), { method: 'POST', body: new FormData(), credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (j && j.success && j.data && j.data.nonce) { R.nonce = j.data.nonce; } }).catch(function () {}); }
   function post(action, data, _retry) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (!_retry && j && !j.success && j.data && j.data.code === 'nonce') { return freshNonce().then(function () { return post(action, data, true); }); } return j; }); }
-  function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
+  function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.email) S.signed = true; if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
     var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam; if (phParam) d.phase = phParam;
     var url = R.ajax + '?action=ansa_bf_runtime' + (R.draft ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
@@ -347,7 +349,7 @@
     S.email = v; S.emailErr = false; var kind = S.screen === 'aff' ? 'aff' : 'cold'; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_lead', { email: v, kind: kind, bonus: S.affgift || ctx.affgift || 'v5', consent: '1', utm: utm, ref: partner ? partner.code : refParam, sid: '' }).then(function (j) {
       if (!j || !j.success) { var code = j && j.data && j.data.code; S.emailErr = code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'); render(); return; }
-      applyCtx(j.data.ctx); if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
+      applyCtx(j.data.ctx); S.signed = true; S.emailErr = ''; if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
       if (kind === 'aff') { toast(T('aff.toast'), 'ok'); S.screen = isPublic() ? 'shop' : 'affwait'; }
       else { S._exp.walletExp = false; S.screen = 'wallet'; }
       render();
