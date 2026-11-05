@@ -208,7 +208,7 @@ a.cta,a.cta:visited{color:#fff}
 .tile.on{border-color:var(--g);background:#fbfff9}
 .tile.go{border-style:dashed;background:#fffdf9}
 .tile .nb{font-size:9.5px;font-weight:900;color:#fff;background:var(--o);border-radius:5px;padding:2px 5px;margin-right:5px;vertical-align:1px;letter-spacing:.06em}
-.more{border:none;background:none;padding:0;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px;display:inline-block}
+.more{border:none;background:none;padding:0;font-size:12px;font-weight:800;color:var(--od);text-decoration:underline;margin-top:3px;display:inline-block;white-space:nowrap}
 /* 1.46.4: дясната колона на картата е с фиксирана ширина — „Добави“/„Избирам“ и степерът „− 1 +“ са еднакво широки, нищо не се размества при натискане (човекът) */
 .addb{border:none;border-radius:11px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;font-size:13px;font-weight:800;padding:9px 6px;white-space:nowrap;width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis}
 .addb:disabled{background:#f6c9a6;cursor:not-allowed}
@@ -408,6 +408,22 @@ a.cta,a.cta:visited{color:#fff}
 .bfadm-x{margin-left:auto;opacity:.8;flex:none}
 body.ansa-bf-draft .ansa-bf{padding-top:36px}
 @media (min-width:1024px){body.ansa-bf-draft .ansa-bf{padding-top:44px}}
+/* 1.46.8: стъпка 2 — подаръци навсякъде */
+.hdr.gifts{background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 6px 20px rgba(21,128,61,.25)}
+.hdr.gifts small{opacity:.92}
+.hdr.gifts .stepsbar div.on{border-top-color:#fff}
+.scroll.gifts-bg{position:relative;background:#f4fbf2 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cg fill='none' stroke='%2322c55e' stroke-width='3' stroke-linecap='round' opacity='.14'%3E%3Crect x='26' y='52' width='48' height='42' rx='7'/%3E%3Crect x='21' y='38' width='58' height='16' rx='6'/%3E%3Cpath d='M50 38v56M50 38c-11-15-26-11-19-2 4 5 13 3 19 2zm0 0c11-15 26-11 19-2-4 5-13 3-19 2z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23e8722a' stroke-width='2.5' stroke-linecap='round' opacity='.12'%3E%3Crect x='94' y='104' width='24' height='20' rx='4'/%3E%3Crect x='91' y='97' width='30' height='9' rx='3'/%3E%3Cpath d='M106 97v27'/%3E%3C/g%3E%3C/svg%3E");background-size:132px 132px}
+.scroll.gifts-bg > .wrap{position:relative;z-index:1}
+.gfloat{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.gfloat span{position:absolute;bottom:-60px;opacity:0;line-height:1;filter:saturate(1.1);animation:gfl 15s linear infinite;will-change:transform,opacity}
+@keyframes gfl{0%{transform:translateY(0) rotate(-10deg);opacity:0}8%{opacity:.28}55%{transform:translateY(-55vh) rotate(6deg)}92%{opacity:.28}100%{transform:translateY(-115vh) rotate(-6deg);opacity:0}}
+.tile .pr.free{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--gd)}
+.tile .pr.free .g0{font-size:13px;font-weight:900;color:var(--gd);background:var(--gs);border:1px solid rgba(34,197,94,.35);border-radius:8px;padding:2px 8px;white-space:nowrap}
+.tile .pr.free s{font-size:11.5px}
+body.bf-gifts.ansa-bf-page{background:#f4fbf2}
+@media (min-width:1024px){body.bf-gifts.ansa-bf-page{background:#efe9df url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cg fill='none' stroke='%2322c55e' stroke-width='3' stroke-linecap='round' opacity='.14'%3E%3Crect x='26' y='52' width='48' height='42' rx='7'/%3E%3Crect x='21' y='38' width='58' height='16' rx='6'/%3E%3Cpath d='M50 38v56M50 38c-11-15-26-11-19-2 4 5 13 3 19 2zm0 0c11-15 26-11 19-2-4 5-13 3-19 2z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23e8722a' stroke-width='2.5' stroke-linecap='round' opacity='.12'%3E%3Crect x='94' y='104' width='24' height='20' rx='4'/%3E%3Crect x='91' y='97' width='30' height='9' rx='3'/%3E%3Cpath d='M106 97v27'/%3E%3C/g%3E%3C/svg%3E");background-size:132px 132px}.ansa-bf > .hdr.gifts{border-radius:24px 24px 0 0}}
+@media (prefers-reduced-motion: reduce){.gfloat span{animation:none;opacity:.18;bottom:auto;top:20%}}
+
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
 /* ═══ 1.45.2: десктоп (≥ 1024px) — не „телефон по средата на екрана“, а две колони: съдържанието вляво, панелът на поръчката (бившият залепен футър) вдясно, залепен горе; продуктите в две колони; листът „Прочети повече“ е модал по средата. Студената/партньорската/затворената страница (без панел) са една по-широка колона. ═══ */
