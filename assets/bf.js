@@ -167,7 +167,7 @@
     var slots = ''; for (var i = 0; i < Math.max(n, 1); i++) { var id = picked[i]; slots += id && P[id] ? '<div class="gslot f" title="' + esc(P[id].name) + '"><img src="' + esc(pimg(P[id])) + '" alt=""></div>' : '<div class="gslot' + (n ? ' q' : ' empty') + '">?</div>'; }
     return { cart: '<div class="ph"><span>' + T('panel.cart.h') + '</span><b>' + (n ? n + ' ' + OPK(n) : '') + '</b></div><div class="crows">' + rows + '</div>',
       gifts: '<div class="ph gifts"><span>' + T('panel.gifts.h') + '</span><b>' + (n ? (giftCount() + ' / ' + n) : '') + '</b></div><div class="gslots">' + slots + '</div>'
-      + (n ? '<div class="gnote">' + (screen === 'gifts' ? T('panel.gifts.note.pick', { n: n - giftCount(), podaruk: GIFT(n - giftCount()) }) : T('panel.gifts.note', { n: n, podaruk: GIFT(n) })) + '</div>' : '<div class="gnote">' + T('panel.gifts.note.empty') + '</div>') };
+      + (n ? '<div class="gnote">' + (screen === 'gifts' ? (giftCount() >= n ? T('panel.gifts.note.done') : T('panel.gifts.note.pick', { n: n - giftCount(), podaruk: GIFT(n - giftCount()) })) : T('panel.gifts.note', { n: n, podaruk: GIFT(n) })) + '</div>' : '<div class="gnote">' + T('panel.gifts.note.empty') + '</div>') };
   }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
