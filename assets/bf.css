@@ -409,6 +409,7 @@ a.cta,a.cta:visited{color:#fff}
 .bfadm a.on{background:var(--o);color:#fff}
 .bfadm a:hover{background:rgba(255,255,255,.22)}
 .bfadm-x{margin-left:auto;opacity:.8;flex:none}
+.bfadm-g a{font-size:11px}
 body.ansa-bf-draft .ansa-bf{padding-top:36px}
 @media (min-width:1024px){body.ansa-bf-draft .ansa-bf{padding-top:44px}}
 /* 1.46.8: стъпка 2 — подаръци навсякъде */

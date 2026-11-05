@@ -84,6 +84,17 @@ final class Page {
 	public static function new_share_link( $cfg = null ) { $exp = time() + self::SHARE_TTL; return array( 'url' => add_query_arg( array( 'ansa_bf_share' => $exp . '.' . self::share_sig( $exp ), 'reset' => '1' ), self::url( $cfg ?: Config::get_published() ) ), 'exp' => $exp ); }
 	public static function share_valid( $tok ) { $tok = (string) $tok; if ( ! preg_match( '/^(\d{9,11})\.([a-f0-9]{24})$/', $tok, $m ) ) { return 0; } $exp = (int) $m[1]; if ( $exp < time() ) { return 0; } return hash_equals( self::share_sig( $exp ), $m[2] ) ? $exp : 0; }
 	private static $share_ok = null; public static $share_err = false;
+	/* 1.48.1: избраната фаза в прегледа (само чернова) се помни в бисквитка 1 ч — UTM/имейл линковете без ?ansa_bf=draft идват от кеша и я взимат през ajax-а. */
+	const PV_COOKIE = 'ansa_bf_pv';
+	public static function phase_force() {
+		$p = isset( $_GET['phase'] ) ? $_GET['phase'] : ( isset( $_POST['phase'] ) ? $_POST['phase'] : ( $_COOKIE[ self::PV_COOKIE ] ?? '' ) );
+		$p = sanitize_key( (string) wp_unslash( $p ) ); return in_array( $p, Config::PHASES, true ) ? $p : '';
+	}
+	public static function remember_phase( $p ) {
+		if ( headers_sent() ) { return; }
+		if ( '' !== $p ) { setcookie( self::PV_COOKIE, $p, time() + HOUR_IN_SECONDS, '/', '', is_ssl(), false ); $_COOKIE[ self::PV_COOKIE ] = $p; }
+		else { setcookie( self::PV_COOKIE, '', time() - YEAR_IN_SECONDS, '/', '', is_ssl(), false ); unset( $_COOKIE[ self::PV_COOKIE ] ); }
+	}
 	public static function share_ok() {
 		if ( null !== self::$share_ok ) { return self::$share_ok; }
 		self::$share_ok = false;
@@ -113,7 +124,9 @@ final class Page {
 		}
 		/* 1.48.0: тайният линк → бисквитка до изтичането му + redirect без параметъра (адресът в лентата остава чист; лентата на прегледа носи ?ansa_bf=draft, който тук минава през бисквитката) */
 		if ( ! empty( $_GET['ansa_bf_share'] ) ) { $tok = (string) wp_unslash( $_GET['ansa_bf_share'] ); $exp = self::share_valid( $tok ); if ( $exp ) { setcookie( self::SHARE_COOKIE, $tok, $exp, '/', '', is_ssl(), true ); $_COOKIE[ self::SHARE_COOKIE ] = $tok; wp_safe_redirect( add_query_arg( 'ansa_bf', 'draft', remove_query_arg( 'ansa_bf_share' ) ) ); exit; } self::$share_err = true; }
+		if ( isset( $_GET['ansa_bf'] ) && 'exit' === $_GET['ansa_bf'] ) { self::remember_phase( '' ); wp_safe_redirect( remove_query_arg( 'ansa_bf' ) ); exit; } /* 1.48.1: „изход от прегледа“ забравя фазата */
 		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
+		if ( $draft && isset( $_GET['phase'] ) ) { self::remember_phase( self::phase_force() ); }
 		status_header( 200 ); header( 'Content-Type: text/html; charset=utf-8' );
 		if ( $draft || ! empty( $_GET['ea'] ) || ! empty( $_GET['ref'] ) ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } } /* маркерите не бива да влизат в кеша като „страница“ */
 		if ( ! $draft && empty( $cfg['enabled'] ) ) { header( 'X-Robots-Tag: noindex' ); nocache_headers(); echo self::soon_html( $cfg ); exit; }
@@ -210,7 +223,7 @@ final class Page {
 	/** Свеж runtime за кеширана страница + контекстът на посетителя (?ref=КОД, ?ea=ТОКЕН, сесията). */
 	public static function ajax_runtime() {
 		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
-		$r = self::runtime( $cfg, $draft, $draft ? sanitize_key( (string) ( $_REQUEST['phase'] ?? '' ) ) : null );
+		$r = self::runtime( $cfg, $draft, $draft ? self::phase_force() : null );
 		$ref = isset( $_REQUEST['ref'] ) ? (string) wp_unslash( $_REQUEST['ref'] ) : ''; $ea = isset( $_REQUEST['ea'] ) ? (string) wp_unslash( $_REQUEST['ea'] ) : '';
 		$ctx = Cart::ctx();
 		if ( '' !== $ref && ! empty( $cfg['aff']['enabled'] ) ) { $p = self::partner( $ref ); if ( $p ) { $r['partner'] = array( 'code' => $p['code'], 'name' => $p['name'] ); Cart::remember_ref( $p['code'] ); } }
@@ -229,7 +242,7 @@ final class Page {
 
 	public static function meta( $cfg ) { $c = Copy::effective( $cfg['copy'] ); return array( 'title' => wp_strip_all_tags( $c['page.title'] ), 'desc' => wp_strip_all_tags( $c['page.desc'] ) ); }
 	public static function page_html( $cfg, $draft = false ) {
-		$rt = self::runtime( $cfg, $draft, $draft ? sanitize_key( (string) ( $_GET['phase'] ?? '' ) ) : null ); $m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
+		$rt = self::runtime( $cfg, $draft, $draft ? self::phase_force() : null ); $m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
 		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
 			. ( $draft ? '<meta name="robots" content="noindex,nofollow">' : '' )
 			. '<title>' . esc_html( $m['title'] ) . '</title><meta name="description" content="' . esc_attr( $m['desc'] ) . '"><link rel="canonical" href="' . esc_url( $url ) . '">'
