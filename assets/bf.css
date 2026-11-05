@@ -365,14 +365,15 @@ button{font-family:inherit;cursor:pointer}
 @media (max-width:480px){.rcpt{padding:6px 10px}.rrow{padding:3px 0;font-size:12.5px}.rrow.total{padding-top:6px}.rrow.total b{font-size:22px}}
 
 /* 1.46.2: лентата на админския преглед (чернова) */
-.bfadm{position:fixed;left:0;right:0;top:0;z-index:70;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#1a1a2e;color:#fff;font-size:11.5px;font-weight:700;padding:6px 10px;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.bfadm{position:fixed;left:0;right:0;top:0;z-index:70;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;background:#1a1a2e;color:#fff;font-size:11.5px;font-weight:700;padding:6px 10px;box-shadow:0 2px 12px rgba(0,0,0,.3);height:36px;box-sizing:border-box}
+.bfadm::-webkit-scrollbar{display:none}
 .bfadm b{background:#c2410c;border-radius:6px;padding:3px 7px;font-size:10px;letter-spacing:.08em}
-.bfadm-g{display:flex;gap:4px;flex-wrap:wrap;padding-left:8px;border-left:1px solid rgba(255,255,255,.2)}
+.bfadm-g{display:flex;gap:4px;flex-wrap:nowrap;padding-left:8px;border-left:1px solid rgba(255,255,255,.2);flex:none}
 .bfadm a{color:#fff;text-decoration:none;background:rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;white-space:nowrap}
 .bfadm a.on{background:var(--o);color:#fff}
 .bfadm a:hover{background:rgba(255,255,255,.22)}
-.bfadm-x{margin-left:auto;opacity:.8}
-body.ansa-bf-draft .ansa-bf{padding-top:66px}
+.bfadm-x{margin-left:auto;opacity:.8;flex:none}
+body.ansa-bf-draft .ansa-bf{padding-top:36px}
 @media (min-width:1024px){body.ansa-bf-draft .ansa-bf{padding-top:44px}}
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
