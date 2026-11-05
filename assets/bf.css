@@ -167,8 +167,8 @@ a.cta,a.cta:visited{color:#fff}
 .ns-it img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;border:2px solid var(--g);background:#fff}
 .ns-it b{display:block;font-size:11px;font-weight:900;margin-top:5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ns-it small{display:block;font-size:9.5px;font-weight:600;color:var(--tan);line-height:1.15;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.savebox{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border-radius:999px;padding:5px 12px 5px 12px;font-size:12.5px;font-weight:800;box-shadow:0 4px 14px rgba(22,163,74,.35)}
-.savebox b{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums}
+.savebox{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;box-shadow:0 4px 14px rgba(22,163,74,.35)}
+.savebox b{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0}
 .savebox em{font-style:normal;background:#fff;color:#15803d;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:900}
 .savebox.hero{margin:8px auto 0;display:flex;width:max-content;max-width:100%}
 .savebox.row{display:flex;justify-content:space-between;border-radius:12px;padding:9px 12px;margin:8px 0 0}
@@ -426,6 +426,65 @@ body.ansa-bf-draft .ansa-bf{padding-top:36px}
 body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 @media (min-width:1024px){body.bf-gifts.ansa-bf-page{background:#efe9df url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cg fill='none' stroke='%2322c55e' stroke-width='3' stroke-linecap='round' opacity='.14'%3E%3Crect x='26' y='52' width='48' height='42' rx='7'/%3E%3Crect x='21' y='38' width='58' height='16' rx='6'/%3E%3Cpath d='M50 38v56M50 38c-11-15-26-11-19-2 4 5 13 3 19 2zm0 0c11-15 26-11 19-2-4 5-13 3-19 2z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23e8722a' stroke-width='2.5' stroke-linecap='round' opacity='.12'%3E%3Crect x='94' y='104' width='24' height='20' rx='4'/%3E%3Crect x='91' y='97' width='30' height='9' rx='3'/%3E%3Cpath d='M106 97v27'/%3E%3C/g%3E%3C/svg%3E");background-size:132px 132px}.ansa-bf > .hdr.gifts{border-radius:24px 24px 0 0}}
 @media (prefers-reduced-motion: reduce){.gfloat span{animation:none;opacity:.18;bottom:auto;top:20%}}
+
+/* 1.47.0: продуктовият вход (?p=berber) — един голям продукт с избор 1–5 опаковки */
+.focus{background:#fff;border:1.5px solid var(--ol);border-radius:20px;padding:14px;margin:0 0 12px;box-shadow:0 8px 28px rgba(232,114,42,.12)}
+.focus-top{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:center}
+.focus-top img{width:118px;height:118px;border-radius:14px;object-fit:cover;background:#f5efe8}
+.focus-n{font-size:21px;font-weight:900;line-height:1.1}
+.focus-s{font-size:13px;color:var(--tan);font-weight:600;margin-top:3px}
+.focus-pr{font-size:20px;font-weight:900;color:var(--o);margin-top:6px}.focus-pr small{font-size:12px;color:var(--tan);font-weight:700}
+.focus-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:14px 0 8px}
+.fopts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.fopt{border:1.5px solid var(--ol);background:#fff;border-radius:14px;padding:10px 4px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;transition:transform .12s}
+.fopt b{font-size:22px;font-weight:900;line-height:1;color:var(--ink)}
+.fopt small{font-size:10.5px;font-weight:700;color:var(--tan)}
+.fopt em{font-style:normal;font-size:10.5px;font-weight:900;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 5px;margin-top:3px;white-space:nowrap;max-width:100%;overflow:hidden}
+.fopt em .fs{display:none}
+@media (max-width:560px){.fopt em .fl{display:none}.fopt em .fs{display:inline}.fopt em{font-size:11.5px}}
+.fopt.on{border-color:var(--o);background:var(--os);box-shadow:0 0 0 3px rgba(232,114,42,.18);transform:translateY(-2px)}
+.fopt.on b{color:var(--od)}
+.focus-line{margin-top:12px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center;background:var(--cream);border-radius:12px;padding:10px 12px;line-height:1.35}
+.focus-line b{color:var(--gd)}
+.focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px}
+@media (max-width:360px){.focus-top{grid-template-columns:92px 1fr}.focus-top img{width:92px;height:92px}.focus-n{font-size:18px}.fopt b{font-size:19px}.fopt em{font-size:9.5px;padding:2px 3px}}
+@media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.fopt{padding:14px 6px 12px}.fopt b{font-size:26px}}
+
+/* 1.47.0: високият панел на десктоп — кутията на поръчката (продукти + места за подаръци) и големият бутон */
+@media (min-width:1024px){
+  .ansa-bf > .foot.tall{display:flex;flex-direction:column;min-height:calc(100vh - 48px);max-height:calc(100vh - 48px)}
+  .ansa-bf > .foot.tall .pcap{flex:none}
+  .ansa-bf > .foot.tall .pcart{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 18px 6px;border-bottom:1.5px solid var(--ol);background:#fffdfb}
+  .ansa-bf > .foot.tall .pbody{flex:none}
+  .pcap .savebox.hero{margin:10px auto 0}
+  .pcap .savebox{padding:4px 12px}
+  .pcap .savebox b{font-size:22px}
+  .ph{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 8px}
+  .ph b{font-size:12px;color:var(--ink);text-transform:none;letter-spacing:0}
+  .ph.gifts{margin-top:14px;color:var(--gd)}
+  .crows{display:flex;flex-direction:column;gap:6px}
+  .crow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:6px 8px;animation:bfpopin .25s ease-out}
+  .crow img{width:44px;height:44px;border-radius:9px;object-fit:cover;background:#f5efe8}
+  .crow .cn{font-size:13px;font-weight:900;line-height:1.15;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .crow .cn small{display:block;font-size:11px;font-weight:700;color:var(--tan);margin-top:2px}
+  .step.sm{width:auto;gap:2px}.step.sm button{width:26px;height:26px;font-size:15px}.step.sm b{min-width:16px;font-size:14px;flex:none}
+  .cempty{font-size:12.5px;font-weight:600;color:var(--tan);background:var(--cream);border:1.5px dashed var(--ol);border-radius:12px;padding:14px 12px;text-align:center}
+  .gslots{display:flex;flex-wrap:wrap;gap:6px}
+  .gslot{width:46px;height:46px;border-radius:11px;border:2px dashed var(--ol);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:var(--tan2);background:#fff;overflow:hidden}
+  .gslot.q{border-color:var(--g);color:var(--gd);background:var(--gs);animation:qpulse 1.6s ease-in-out infinite}
+  .gslot.f{border:2px solid var(--g);padding:0}.gslot.f img{width:100%;height:100%;object-fit:cover}
+  .gslot.empty{opacity:.5} /* не „dim“ — това е фонът на листа */
+  .gnote{font-size:12px;font-weight:700;color:var(--gd);margin-top:8px}
+  .cta.big{font-size:17px;padding:16px 12px;box-shadow:0 10px 28px rgba(232,114,42,.4);animation:ctaglow 1.8s ease-in-out infinite}
+  .cta.big small{font-size:12px;opacity:.92}
+  .cta.big:disabled{animation:none;box-shadow:none}
+  @keyframes qpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+  @keyframes ctaglow{0%,100%{box-shadow:0 10px 28px rgba(232,114,42,.35)}50%{box-shadow:0 14px 36px rgba(232,114,42,.6)}}
+  @keyframes bfpopin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .ansa-bf > .foot.tall .slots.mobile{display:none}
+  .ansa-bf > .foot.tall .savebox.foot{display:none}
+}
+@media (prefers-reduced-motion: reduce){.gslot.q,.cta.big,.crow{animation:none}}
 
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
