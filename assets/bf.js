@@ -32,7 +32,9 @@
   var refParam = (q.get('ref') || '').replace(/[^a-z0-9_\-]/gi, '').toUpperCase();
   var eaParam = (q.get('ea') || '').replace(/[^a-z0-9]/gi, '');
   var uParam = (q.get('u') || '').replace(/[^A-Za-z0-9_\-\.]/g, '');
-  var phParam = R.draft ? (q.get('phase') || '').replace(/[^a-z]/g, '') : ''; /* 1.46.2: админският преглед на фаза (само чернова) */
+  /* 1.48.1: избраната фаза в прегледа се помни в бисквитка от сървъра (1 ч): UTM/продуктов адрес без ?ansa_bf=draft идва от кеша (draft:false) и я взема през ajax-а, който с бисквитката пита като чернова */
+  var PV = 'ansa_bf_pv'; var pvOn = function () { return R.draft || !!cookie(PV); };
+  var phParam = pvOn() ? (q.has('phase') ? (q.get('phase') || '') : cookie(PV)).replace(/[^a-z]/g, '') : '';
   if (R.draft && q.get('reset')) { try { sessionStorage.removeItem('ansa_bf_s_' + (R.version || 0)); } catch (e) {} } /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
   if (eaParam) setCookie('ansa_bf_ea', eaParam, 7);
   var utm = (q.get('utm_content') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
@@ -301,11 +303,12 @@
     var ph = [['', 'по датите (' + (pv.real || phase) + ')'], ['prep', 'Подготовка'], ['early', 'Ранен достъп'], ['public', 'Публичен'], ['over', 'Приключил']];
     var ways = [['', 'директно'], ['src=cold&utm_medium=paid', 'реклама'], ['utm_source=email&utm_medium=email', 'имейл']]; if (pv.ref) ways.push(['ref=' + encodeURIComponent(pv.ref), 'партньор ' + pv.ref]);
     var way = refParam ? 'ref' : (paidMarkers ? 'src=cold' : (isEmailLink ? 'utm_source=email' : ''));
-    var link = function (p, w, label, on) { var href = base + (p ? '&phase=' + p : '') + (w ? '&' + w : ''); return '<a class="' + (on ? 'on' : '') + '" href="' + esc(href) + '">' + esc(label) + '</a>'; };
+    var link = function (p, w, label, on) { var href = base + '&phase=' + p + (w ? '&' + w : ''); return '<a class="' + (on ? 'on' : '') + '" href="' + esc(href) + '">' + esc(label) + '</a>'; };
     var curWay = refParam ? 'ref=' : (paidMarkers ? 'src=cold' : (isEmailLink ? 'utm_source=email' : ''));
     return '<div class="bfadm"><b>ЧЕРНОВА</b><span class="bfadm-g">' + ph.map(function (x) { return link(x[0], curWay && curWay !== 'ref=' ? ways.filter(function (w) { return w[0].indexOf(curWay) === 0; }).map(function (w) { return w[0]; })[0] || '' : (refParam && pv.ref ? 'ref=' + encodeURIComponent(pv.ref) : ''), x[1], x[0] === cur); }).join('') + '</span>'
       + '<span class="bfadm-g">' + ways.map(function (w) { return link(cur, w[0], w[1], w[0] === '' ? !curWay : w[0].indexOf(curWay || '§') === 0); }).join('') + '</span>'
-      + '<a class="bfadm-x" href="' + esc(location.pathname) + '">✕ изход от прегледа</a></div>';
+      + '<span class="bfadm-g">' + ORDER.filter(function (k) { return P[k] && !P[k].giftOnly; }).map(function (k) { return link(cur || 'public', 'utm_medium=paid&utm_content=' + encodeURIComponent(k), '🛒 ' + P[k].name.split(' ')[0], (pParam || utm) === k); }).join('') + '</span>'
+      + '<a class="bfadm-x" href="' + esc(location.pathname + '?ansa_bf=exit') + '">✕ изход от прегледа</a></div>';
   }
   /* ── кой екран ── */
   var signed = function () { return !!(ctx.email || S.signed); };
@@ -365,12 +368,13 @@
   function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.email) S.signed = true; if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
     var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam; if (phParam) d.phase = phParam;
-    var url = R.ajax + '?action=ansa_bf_runtime' + (R.draft ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
+    var url = R.ajax + '?action=ansa_bf_runtime' + (pvOn() ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
     var fd = new FormData(); Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.success || !j.data) return;
       var rt = j.data; P = rt.products || P; ORDER = rt.order || ORDER; copy = rt.copy || copy; phase = rt.phase || phase; phaseEnd = (rt.phase_end || 0) * 1000; seats = rt.seats || seats; offset = (rt.now ? rt.now * 1000 : Date.now()) - Date.now(); R.cats = rt.cats || R.cats; R.aff = rt.aff || R.aff; R.cold = rt.cold || R.cold; R.ship = rt.ship || R.ship; R.dates = rt.dates || R.dates; dates = R.dates;
       if (rt.nonce) { R.nonce = rt.nonce; }
+      if (rt.draft) { if (!R.draft) { R.draft = true; document.body.classList.add('ansa-bf-draft'); } R.preview = rt.preview || R.preview; phParam = (rt.preview && rt.preview.phase) || ''; } /* 1.48.1: кеширана страница + бисквитка за прегледа → чернова */
       if (rt.partner) { partner = rt.partner; setCookie('ansa_bf_aff', partner.code, (R.aff && R.aff.cookie_days) || 7); }
       earlyOk = !!rt.early_ok; applyCtx(rt.ctx); S._exp.phase = false; render();
     }).catch(function () {});
@@ -447,5 +451,5 @@
   document.addEventListener('mouseout', function (e) { if (R.lucky && R.lucky.exit && !e.relatedTarget && e.clientY <= 0) openLucky(); });
   document.addEventListener('visibilitychange', function () { if (R.lucky && R.lucky.exit && document.visibilityState === 'visible') openLucky(); });
 
-  render(); refresh();
+  if (!R.draft && cookie(PV)) { refresh().then(function () { if (!root.children.length) render(); }); } else { render(); refresh(); } /* 1.48.1: с бисквитка за прегледа — първо свежият runtime, без да мига публичният екран */
 })();
