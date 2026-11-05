@@ -124,13 +124,25 @@
       + '<div class="card"><div class="h2" style="font-size:16px;text-align:center">' + T('cold.form.h') + '</div>' + emailForm(T('cold.form.cta') + '<small>' + (live ? T('cold.vch.exp') + ' <span data-cd="coldExp">' + mmss(S.coldExp - now()) + '</span>' : T('cold.form.expired')) + '</small>') + '<div class="trust">' + T('cold.form.trust') + '</div></div>'
       + '<div class="footnote">' + T('cold.foot', V()) + '</div></div></div>';
   }
+  /* 1.46.2: „касовата бележка“ (човекът: „РЕДОВНА ЦЕНА / МИНУС ВАУЧЕР / ЩЕ ПЛАТИШ трябва да е супер видимо… целият CTA да наблегне, че имаш 10 € ваучер и трябва да ги използваш ASAP“) */
+  function receipt(disc, live, expiredTxt) {
+    var reg = subtotal();
+    return '<div class="rcpt"><div class="rrow"><span>' + T('rcpt.reg') + '</span><b>' + fmt2(reg) + '</b></div>'
+      + (disc ? '<div class="rrow disc"><span>' + T('rcpt.vch') + '</span><b>−' + fmt2(disc) + '</b></div>' : (expiredTxt ? '<div class="rrow exp"><span>' + expiredTxt + '</span><b>—</b></div>' : ''))
+      + '<div class="rrow total"><span>' + T('rcpt.pay') + '</span><b>' + fmt2(total()) + '</b></div></div>';
+  }
   function vWallet() {
     var live = voucherLive(); var n = paidCount(); var pool = cartList(); var list = filtered(pool); var vl = fmtNum(R.cold.voucher) + ' €';
     var aside = timerBar('wallet') + (live ? voucherCard({ locked: false }) : '')
       + '<div class="strip live" style="justify-content:space-between"><span style="text-align:left"><b style="font-size:14px">' + T('wallet.date', V()) + '</b><small>' + T('wallet.date.sub', V()) + '</small></span><span class="pillg">' + T('wallet.date.pill') + '</span></div>';
     var foot = n
-      ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + (walletDisc() ? T('wallet.foot.disc', { amount: fmtNum(walletDisc()) }) : (live ? '' : T('wallet.foot.expired'))) + '</span></div><button class="cta" data-act="wallet-go">' + T('wallet.foot.cta') + '</button>'
-      : '<div class="sline"><span style="color:var(--tan)">' + T('wallet.foot.empty') + '</span><span class="ok">' + (live ? T('wallet.foot.voucher', V()) : '') + '</span></div><button class="cta sm" disabled>' + T('wallet.foot.add') + '</button>';
+      ? receipt(walletDisc(), live, live ? '' : T('wallet.r.exp'))
+        + (walletDisc()
+          ? '<button class="cta" data-act="wallet-go">' + T('wallet.cta.use', { total: fmt2(total()) }) + '<small>' + T('wallet.cta.sub', { reg: fmt2(subtotal()) }) + ' <b data-cd="walletExp">' + mmss(ctx.voucher ? ctx.voucher.exp * 1000 - now() : 0) + '</b></small></button>'
+          : '<button class="cta" data-act="wallet-go">' + T('wallet.cta.plain', { total: fmt2(total()) }) + '<small>' + T('wallet.cta.plain.sub') + '</small></button>')
+      : (live
+          ? '<div class="rcpt empty"><div class="rrow disc"><span>' + T('rcpt.vch') + '</span><b>−' + fmt2(R.cold.voucher) + '</b></div><div class="rrow hint"><span>' + T('wallet.r.hint') + '</span></div></div><button class="cta sm" disabled>' + T('wallet.foot.add') + '</button>'
+          : '<div class="rcpt empty"><div class="rrow exp"><span>' + T('wallet.r.exp') + '</span><b>—</b></div><div class="rrow hint"><span>' + T('wallet.r.hint.plain') + '</span></div></div><button class="cta sm" disabled>' + T('wallet.foot.add') + '</button>');
     return '<div class="scroll"><div class="hero">'
       + '<div class="hrow">' + logoImg + '<span class="tpill' + (live ? ' hot' : '') + '">' + T('wallet.pill', V()) + ' · <b data-cd="walletExp">' + mmss(ctx.voucher ? ctx.voucher.exp * 1000 - now() : 0) + '</b></span></div>'
       + '<div class="h1">' + (live ? T('wallet.title.ok') : T('wallet.title.over')) + '</div><p class="sub">' + (live ? T('wallet.sub.ok', V()) : T('wallet.sub.over', V())) + '</p></div>'
@@ -189,7 +201,10 @@
   function vShop() {
     var n = paidCount(); var pool = cartList(); var list = filtered(pool); var sv = savings();
     var foot = n
-      ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + ((affVoucher() + listDisc()) ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher() + listDisc()) + ' €)</span>' : '') + '</span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div><button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
+      ? ((affVoucher() + listDisc())
+          ? '<div class="sline"><span class="ok" style="text-align:left">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div>' + receipt(affVoucher() + listDisc(), true, '')
+          : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div>')
+        + '<button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('shop.foot.empty') + '</span><span class="ok">' + T('shop.foot.empty.r') + '</span></div><button class="cta sm" disabled>' + T('shop.foot.empty.cta') + '</button>';
     var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T('shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
     /* механиката (уравнението + „Спестяваш“ + бележката за партньора): на телефона в тъмната секция, на десктоп (1.45.4) вдясно над „Твоята поръчка“ — както ваучерът в портфейла */
@@ -211,7 +226,7 @@
       + '<div class="sline"><span>' + T('gifts.picked') + ' <b>' + g + ' ' + T('gifts.of') + ' ' + n + '</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">' + T('gifts.change') + '</button></div>'
       + (news.length ? '<div class="k2" style="margin-top:6px">' + T('gifts.new') + '</div>' + news.map(function (p) { return productTile(p, 'gift'); }).join('') : '')
       + '<div class="k2">' + T('gifts.best') + '</div>' + best.map(function (p) { return productTile(p, 'gift'); }).join('') + '<div style="height:8px"></div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + saveLine('foot') + '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + ((affVoucher() + listDisc()) ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher() + listDisc()) + ' €)</span>' : '') + '</span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div><div class="slots">' + slots + '</div>' + (S.lucky ? '<div class="luckyline">' + T('lucky.line') + '</div>' : '')
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + saveLine('foot') + ((affVoucher() + listDisc()) ? '<div class="sline"><span class="ok" style="text-align:left">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>' + receipt(affVoucher() + listDisc(), true, '') : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div>') + '<div class="slots">' + slots + '</div>' + (S.lucky ? '<div class="luckyline">' + T('lucky.line') + '</div>' : '')
       + (left > 0 ? '<button class="cta" disabled>' + T('gifts.cta.more', { n: left, podaruk: GIFT(left) }) + '</button>' : '<button class="cta" data-act="checkout">' + T('gifts.cta.go') + '</button>') + '</div>';
   }
   function vSheet() {
@@ -258,7 +273,10 @@
     var cs = document.getElementById('catSel'); if (cs) cs.addEventListener('change', function () { S.filter = cs.value; render(); });
     var cf = document.getElementById('claimForm'); if (cf) cf.addEventListener('submit', onClaim);
     luckyArm();
-    document.body.style.overflow = (S.sheet || S.luckyOpen) ? 'hidden' : '';
+    /* 1.46.2: заключването на скрола без отместване — компенсираме ширината на скролбара (човекът: „леко се размества всичко и мърда малко вдясно“) */
+    var lock = !!(S.sheet || S.luckyOpen);
+    if (lock) { if (document.body.style.overflow !== 'hidden') { var sbw = window.innerWidth - document.documentElement.clientWidth; document.body.style.paddingRight = sbw > 0 ? sbw + 'px' : ''; } document.body.style.overflow = 'hidden'; }
+    else { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
     updatePill(); save();
   }
   function updatePill() { var pill = document.getElementById('morePill'); if (!pill) return; var tiles = Array.prototype.slice.call(root.querySelectorAll('.scroll .tile')); var below = tiles.filter(function (t) { return t.getBoundingClientRect().top > window.innerHeight - 20; }).length; pill.hidden = below <= 0; if (below > 0) pill.textContent = T('shop.scroll', { n: below, produkt: plural(below, 'продукт', 'продукта') }); }
