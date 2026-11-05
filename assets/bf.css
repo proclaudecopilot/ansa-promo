@@ -436,21 +436,59 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 .focus-s{font-size:13px;color:var(--tan);font-weight:600;margin-top:3px}
 .focus-pr{font-size:20px;font-weight:900;color:var(--o);margin-top:6px}.focus-pr small{font-size:12px;color:var(--tan);font-weight:700}
 .focus-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:14px 0 8px}
-.fopts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.fopt{border:1.5px solid var(--ol);background:#fff;border-radius:14px;padding:10px 4px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;transition:transform .12s}
-.fopt b{font-size:22px;font-weight:900;line-height:1;color:var(--ink)}
-.fopt small{font-size:10.5px;font-weight:700;color:var(--tan)}
-.fopt em{font-style:normal;font-size:10.5px;font-weight:900;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 5px;margin-top:3px;white-space:nowrap;max-width:100%;overflow:hidden}
-.fopt em .fs{display:none}
-@media (max-width:560px),(min-width:1024px) and (max-width:1279px){.fopt em .fl{display:none}.fopt em .fs{display:inline}.fopt em{font-size:11.5px}}
-.fopt.on{border-color:var(--o);background:var(--os);box-shadow:0 0 0 3px rgba(232,114,42,.18);transform:translateY(-2px)}
-.fopt.on b{color:var(--od)}
+/* 1.48.2: бройките — на телефона (и до 1023px) вертикален списък с просторни редове: кръгъл номер · „N опаковки“ + „+N подаръка по избор“ · общата цена · отметка;
+   на десктоп пет карти една до друга с големия номер, „опаковки“, зеленото хапче и цената. Избраната е оранжева със зелена отметка (езикът на .bo от партньорската страница) */
+.fopts{display:grid;gap:8px}
+.fopt{position:relative;display:grid;grid-template-columns:46px minmax(0,1fr) auto 24px;align-items:center;gap:12px;width:100%;border:1.5px solid var(--ol);background:#fff;border-radius:16px;padding:9px 12px 9px 10px;text-align:left;color:var(--ink);font:inherit;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;-webkit-tap-highlight-color:transparent}
+.fo-n{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--cream);border:1.5px solid var(--ol);font-size:21px;font-weight:900;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+.fo-t{min-width:0;display:flex;flex-direction:column;gap:3px}
+.fo-t b{font-size:15.5px;font-weight:900;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fo-t b i{font-style:normal}
+.fo-t em{font-style:normal;font-size:12.5px;font-weight:800;color:var(--gd);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fo-t em:before{content:"🎁";font-size:11px;margin-right:4px}
+.fo-t em .fl,.fo-t em .fx{display:none} /* .fl „+N подаръка по избор“ (≥480px), .fs „+N подаръка“ (телефон <480px и ≥1280px), .fx „+N 🎁“ (1024–1279px) */
+@media (min-width:480px) and (max-width:1023px){.fo-t em .fl{display:inline}.fo-t em .fs{display:none}}
+.fo-p{text-align:right;line-height:1.1;white-space:nowrap}
+.fo-p b{display:block;font-size:16px;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums}
+.fo-p small{display:block;font-size:10.5px;font-weight:700;color:var(--tan);margin-top:2px}
+.fo-ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--ol);position:relative;background:#fff;transition:background .15s,border-color .15s}
+.fo-ck:after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);transition:transform .15s}
+.fopt.on{border-color:var(--o);background:var(--os);box-shadow:0 0 0 3px rgba(232,114,42,.16),0 8px 20px rgba(232,114,42,.14)}
+.fopt.on .fo-n{background:linear-gradient(135deg,var(--o),var(--o2));border-color:transparent;color:#fff;box-shadow:0 6px 14px rgba(232,114,42,.35)}
+.fopt.on .fo-t b{color:var(--od)}
+.fopt.on .fo-p b{color:var(--od)}
+.fopt.on .fo-ck{background:var(--g);border-color:var(--g)}
+.fopt.on .fo-ck:after{transform:rotate(45deg) scale(1)}
+@media (hover:hover){.fopt:hover:not(.on){border-color:rgba(232,114,42,.6);transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,114,42,.12)}}
+.fopt:active{transform:scale(.985)}
+@media (max-width:360px){.fopt{grid-template-columns:40px minmax(0,1fr) auto 22px;gap:9px;padding:8px 10px 8px 8px}.fo-n{width:40px;height:40px;font-size:18px}.fo-t b{font-size:14.5px}.fo-t em{font-size:11.5px}.fo-p b{font-size:15px}}
+@media (min-width:1024px){
+  .fopts{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .fopt{display:flex;flex-direction:column;align-items:center;gap:0;padding:16px 6px 14px;border-radius:18px;text-align:center;border-width:2px;border-color:rgba(232,114,42,.22)}
+  .fo-n{width:54px;height:54px;font-size:26px}
+  .fo-t{align-items:center;gap:0;margin-top:8px;width:100%}
+  .fo-t b{font-size:12px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.06em}
+  .fo-t b i{display:none}
+  .fo-t em{margin-top:8px;font-size:11.5px;background:var(--gs);border:1px solid rgba(34,197,94,.3);border-radius:999px;padding:3px 7px;max-width:100%}
+  .fo-t em:before{content:none}
+  .fo-t em .fl,.fo-t em .fs{display:none}.fo-t em .fx{display:inline}
+  .fo-p{text-align:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--ol);width:100%}
+  .fo-p b{font-size:17px}
+  .fo-p small{display:inline;margin:0 0 0 3px;font-size:11px}
+  .fo-ck{position:absolute;top:-9px;right:-9px;width:26px;height:26px;opacity:0;transform:scale(.6);transition:opacity .15s,transform .15s}
+  .fo-ck:after{left:8px;top:4px}
+  .fopt.on .fo-ck{opacity:1;transform:scale(1);box-shadow:0 3px 8px rgba(22,163,74,.35)}
+  .fopt.on{box-shadow:0 0 0 3px rgba(232,114,42,.16),0 10px 24px rgba(232,114,42,.16)}
+  .fopt.on .fo-t b{color:var(--od)}
+  @media (hover:hover){.fopt:hover:not(.on){transform:translateY(-2px)}}
+}
+@media (min-width:1280px){.fo-t em .fx{display:none}.fo-t em .fs{display:inline}}
 .focus-line{margin-top:12px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center;background:var(--cream);border-radius:12px;padding:10px 12px;line-height:1.35}
 .focus-line b{color:var(--gd)}
 .focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px;padding:8px 0}
 @media (max-width:1023px){.focus{margin-bottom:16px}}
-@media (max-width:360px){.focus-top{grid-template-columns:92px 1fr}.focus-top img{width:92px;height:92px}.focus-n{font-size:18px}.fopt b{font-size:19px}.fopt em{font-size:9.5px;padding:2px 3px}}
-@media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.fopt{padding:14px 6px 12px}.fopt b{font-size:26px}}
+@media (max-width:360px){.focus-top{grid-template-columns:92px 1fr}.focus-top img{width:92px;height:92px}.focus-n{font-size:18px}}
+@media (min-width:1024px){.focus{padding:20px}.focus-top{grid-template-columns:160px 1fr;gap:20px}.focus-top img{width:160px;height:160px}.focus-n{font-size:26px}.focus-h{margin-top:18px}}
 
 /* 1.47.0: високият панел на десктоп — кутията на поръчката (продукти + места за подаръци) и големият бутон */
 @media (min-width:1024px){

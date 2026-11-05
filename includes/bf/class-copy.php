@@ -137,6 +137,8 @@ final class Copy {
 				'focus.line'        => '{{n}} {{opk}} = <b>+{{g}} {{podaruk}} по избор</b> · плащаш {{total}}',
 				'focus.line.empty'  => 'Всяка опаковка ти носи още една по избор — подарък.',
 				'focus.other'       => 'Не искам този продукт. Виж други →',
+				'focus.opt.gift'    => '+{{g}} {{podaruk}} по избор',
+				'focus.opt.total'   => 'общо',
 				'shop.example.btn'  => 'ⓘ пример',
 				'shop.example'      => 'Например: избираш си 1 или повече опаковки Daily Greens, на <b>стъпка 2</b> избираш 1 или повече опаковки от продукт по избор (може пак Daily Greens).',
 				'shop.filter.label' => 'Покажи',

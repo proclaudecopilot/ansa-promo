@@ -240,7 +240,8 @@
   }
   function vFocus(p) {
     var qty = S.cart[p.key] || 0; var opts = '';
-    for (var i = 1; i <= 5; i++) { opts += '<button class="fopt' + (qty === i ? ' on' : '') + '" data-act="focus-qty" data-id="' + i + '"><b>' + i + '</b><small>' + OPK(i) + '</small><em><span class="fl">+' + i + ' ' + GIFT(i) + '</span><span class="fs">+' + i + ' 🎁</span></em></button>'; }
+    /* 1.48.2: бройките са редове на телефона (номер · „N опаковки / +N подаръка по избор“ · обща цена · отметка) и пет просторни карти на десктоп (човекът: „супер сплескано и тотално неатрактивно“) */
+    for (var i = 1; i <= 5; i++) { opts += '<button class="fopt' + (qty === i ? ' on' : '') + '" data-act="focus-qty" data-id="' + i + '" aria-pressed="' + (qty === i) + '"><span class="fo-n">' + i + '</span><span class="fo-t"><b><i>' + i + ' </i>' + OPK(i) + '</b><em><span class="fl">' + T('focus.opt.gift', { g: i, podaruk: GIFT(i) }) + '</span><span class="fs">+' + i + ' ' + GIFT(i) + '</span><span class="fx">+' + i + ' 🎁</span></em></span><span class="fo-p"><b>' + fmt(p.price * i) + '</b><small>' + T('focus.opt.total') + '</small></span><span class="fo-ck" aria-hidden="true"></span></button>'; }
     var total = qty ? p.price * qty : p.price;
     return '<div class="focus"><div class="focus-top"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="focus-n">' + esc(p.name) + '</div><div class="focus-s">' + esc(p.sub) + '</div><div class="focus-pr">' + fmt(p.price) + ' <small>' + T('focus.unit') + '</small></div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'
       + '<div class="focus-h">' + T('focus.h') + '</div><div class="fopts">' + opts + '</div>'
