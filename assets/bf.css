@@ -576,7 +576,9 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   .pcap .rcpt{display:none}
   .ansa-bf > .scroll{grid-column:1}
   /* стъпка 2: оранжевият хедър е преди .scroll (отделен елемент) — стои над картата, с нейните горни ъгли */
-  .ansa-bf > .hdr{grid-column:1;border-radius:24px 24px 0 0;padding:14px 32px 10px;flex-wrap:wrap}
+  /* 1.48.5: хедърът и съдържанието са ЕДНА карта — без отстоянието между редовете на решетката и без отделна сянка под хедъра (човекът: „зеленият хедър е отделно от фона зад продуктите, трябва да са 1 съединена секция“) */
+  .ansa-bf{row-gap:0;grid-template-rows:auto 1fr} /* панелът вдясно е на два реда; когато е по-висок от хедъра + съдържанието, излишъкът отива във втория ред (не между хедъра и съдържанието) */
+  .ansa-bf > .hdr{grid-column:1;border-radius:24px 24px 0 0;padding:14px 32px 10px;flex-wrap:wrap;box-shadow:none}
   .ansa-bf > .hdr + .scroll{border-radius:0 0 24px 24px;border-top:none}
   .ansa-bf > .hdr b{font-size:20px}
   .ansa-bf > .hdr .stepsbar{max-width:none;margin-top:8px}
@@ -634,7 +636,7 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
   @keyframes bfpop{from{opacity:0;transform:translate(-50%,-47%)}to{opacity:1;transform:translate(-50%,-50%)}}
 }
 @media (min-width:1280px){
-  .ansa-bf{max-width:1240px;grid-template-columns:minmax(0,1fr) 420px;gap:28px}
+  .ansa-bf{max-width:1240px;grid-template-columns:minmax(0,1fr) 420px;gap:0 28px}
   .wrap{padding:22px 36px 36px;column-gap:16px}
   .wrap > .tile{grid-column:auto}
   .ansa-bf .hero{padding:28px 36px 28px}
