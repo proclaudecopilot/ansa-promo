@@ -43,11 +43,14 @@ final class Frontend {
 	public static function page_variant() {
 		if ( null !== self::$variant ) { return self::$variant; }
 		self::$variant = '';
-		if ( is_singular() ) {
-			$post = get_post(); $src = $post ? (string) $post->post_content . (string) get_post_meta( $post->ID, '_elementor_data', true ) : '';
-			if ( '' !== $src && preg_match( '/\[' . Plugin::SHORTCODE . '[^\]]*\bvariant\s*=\s*\\\\?["\']?flow/i', $src ) ) { self::$variant = 'flow'; }
-		}
+		if ( is_singular() ) { $post = get_post(); if ( $post && self::post_is_flow( $post ) ) { self::$variant = 'flow'; } }
 		return self::$variant;
+	}
+	/** 1.49.0: носи ли страницата (ID или пост) [ansa_promo variant="flow"] — в съдържанието или в данните на Elementor. */
+	public static function post_is_flow( $post ) {
+		$post = is_object( $post ) ? $post : get_post( (int) $post ); if ( ! $post ) { return false; }
+		$src = (string) $post->post_content . (string) get_post_meta( $post->ID, '_elementor_data', true );
+		return '' !== $src && (bool) preg_match( '/\[' . Plugin::SHORTCODE . '[^\]]*\bvariant\s*=\s*\\\\?["\']?flow/i', $src );
 	}
 	public static function is_flow() { return 'flow' === self::page_variant(); }
 	/** A/B: на основната страница (A) при ab.share > 0 — бисквитка a/b за 30 дни и клиентски redirect на „b“ към страницата B (статичен скрипт,

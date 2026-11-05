@@ -74,6 +74,9 @@
   var SKEY='ansa_flow_s';
   function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify({id:A.id,qty:S.qty,cosm:S.cosm,cosmTouched:S.cosmTouched,pay:S.pay}))}catch(e){}}
   function restoreS(){try{var d=JSON.parse(sessionStorage.getItem(SKEY)||'null');if(!d||d.id!==A.id)return;var q={};for(var k in d.qty||{}){if(PROD[k]&&d.qty[k]>0)q[k]=Math.min(99,d.qty[k]|0)}S.qty=q;S.cosm=!!d.cosm;S.cosmTouched=!!d.cosmTouched;S.pay=d.pay==='cod'?'cod':'card'}catch(e){}}
+  /* 1.49.0: 📞 обаждане — операторът отваря страницата с ?ansa_op=<токен> (както promo.js, 1.29.0): състоянието се чисти, опаковките на клиента идват
+     от сървъра (runtime → op), „Продължи към плащане“ носи токена и бонуса (&ansa_bonus=pct|gift — изборът от Insights) */
+  try{var qq=new URLSearchParams(location.search),qop=qq.get('ansa_op');if(qop){S._op=qop;S._opBonusPre=qq.get('ansa_bonus')||'';try{sessionStorage.removeItem(SKEY)}catch(e){}}}catch(e){}
   restoreS();
   function itemCount(){var n=0;for(var k in S.qty)n+=S.qty[k];return n}
   function totals(){
@@ -252,7 +255,7 @@
   /* 1.36.0: приветственият попъп — веднъж на устройство (localStorage), не в редактора/чернова; 1.36.1 (човекът): на всички, ключът носи поколението (pop_gen) — вдигне ли се, всички го виждат отново веднъж */
   var popCta=false,POPKEY='ansa_flow_pop_'+A.id+'_'+(Number(A.pop_gen)||1);
   function popSeen(){try{localStorage.setItem(POPKEY,'1')}catch(e){}}
-  function welcome(){if(!Number(A.pop)||A.editor)return;try{if(localStorage.getItem(POPKEY))return}catch(e){}popCta=false;openDrawer('welcome');beacon('pop_view')}
+  function welcome(){if(!Number(A.pop)||A.editor||S._op)return;try{if(localStorage.getItem(POPKEY))return}catch(e){}popCta=false;openDrawer('welcome');beacon('pop_view')}
   function renderWelcome(){$('flDrawer').classList.add('is-welcome');$('flDrawerTitle').textContent=T('fl.pop.h');
     var tiers=steps().map(function(s){var last=s.a>=BIG.packs,name=stepName(s),sub=last?T('fl.pop.t.l.s'):(s.a===1?T('fl.pop.t.s.s'):T('fl.pop.t.m.s')),b={pct:s.pct};
       return '<div class="pop-tier'+(last?' best':'')+'"><div class="pop-tier-n">'+esc(name)+'<small>'+esc(sub)+'</small></div><div class="pop-tier-pct">'+TT('fl.pop.pct',{pct:fmt(b.pct)})+'</div>'
@@ -303,6 +306,7 @@
     var restore=function(){sending=false;if(btn){btn.disabled=false;btn.innerHTML=html}};
     var fd=new FormData();fd.append('action','ansa_promo_add');fd.append('nonce',A.nonce||'');fd.append('variant','flow');fd.append('box',t.box?t.box.id:'');fd.append('pay',S.pay||'card');fd.append('cosm',t.reserved?'1':'0');fd.append('email','');fd.append('utm',S.utm||'');fd.append('lead',0);fd.append('sid',sid());if(A.draft)fd.append('draft','1');
     fd.append('items',JSON.stringify(items().map(function(k){return PROD[k].id})));fd.append('secret','[]');
+    if(S._op){fd.append('op',S._op);fd.append('op_bonus',S.opBonus||'')} /* 1.49.0: 📞 обаждане */
     var send=function(retry){fd.set('nonce',A.nonce||'');return fetch(A.ajax,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(r){
       if(r&&r.success&&r.data&&r.data.checkoutUrl){beacon('add');window.location.href=r.data.checkoutUrl;return}
       if(retry&&r&&r.data&&r.data.code==='nonce'){return fetch(A.ajax+'?action=ansa_promo_runtime',{credentials:'same-origin'}).then(function(x){return x.json()}).then(function(x){if(x&&x.success&&x.data&&x.data.nonce)A.nonce=x.data.nonce;return send(false)})}
@@ -332,11 +336,30 @@
     if(e.key==='Tab'){var nodes=Array.prototype.slice.call($('flDrawer').querySelectorAll('button:not(:disabled),input:not(:disabled),summary,[href],[tabindex="0"]')).filter(function(el){return el.getClientRects().length});var first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();if(last)last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();if(first)first.focus()}}
   });
 
+  /* ── 1.49.0: 📞 обаждане — опаковките на клиента, бонусът за обаждането, лентата на оператора (както promo.js applyOp/opBar) ── */
+  function applyOp(op){
+    if(!op||!op.ok){toast((op&&op.note)||'Линкът за обаждане е невалиден');return}
+    var q={};(op.items||[]).forEach(function(k){if(PROD[k])q[k]=Math.min(99,(q[k]||0)+1)});S.qty=q;S.opInfo=op;
+    if(op.pay&&(op.pay!=='cod'||(A.checkout&&A.checkout.cod)))S.pay=op.pay;
+    S.opBonusCfg=op.bonus||{pct:0,gift:null};var pre=S._opBonusPre||'';S.opBonus=(pre==='pct'&&S.opBonusCfg.pct>0)||(pre==='gift'&&S.opBonusCfg.gift)?pre:'';
+    saveS();renderProducts();renderDock();opBar();if(itemCount()>0)beacon('box');
+    toast(S.opBonus==='pct'?'📞 Опаковките са заредени · −'+S.opBonusCfg.pct+' % на поръчката':S.opBonus==='gift'?'📞 Опаковките са заредени · 🎁 подарък':'📞 Опаковките са заредени — коригирай → „Продължи към плащане“');
+  }
+  function opBar(){var op=S.opInfo||{},c=S.opBonusCfg||{},who=(op.name?op.name+' · ':'')+(op.email||'')+(op.phone?' · '+op.phone:'');
+    var bar=document.getElementById('apOpBar');if(!bar){bar=document.createElement('div');bar.id='apOpBar';document.body.appendChild(bar);bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#43302a;color:#fff;font:700 13px/1.5 Nunito,sans-serif;padding:9px 16px;text-align:center;box-shadow:0 -6px 20px rgba(0,0,0,.25)'}
+    var chip=function(v,l){return '<button type="button" data-ob="'+v+'" style="border:0;border-radius:999px;padding:4px 12px;margin:0 3px;font:800 12px Nunito,sans-serif;cursor:pointer;background:'+((S.opBonus||'')===v?'#f47a49':'rgba(255,255,255,.14)')+';color:#fff">'+l+'</button>'};
+    bar.innerHTML='<span><b>📞 Обаждане</b> · '+esc(who||'клиента')+' <small style="opacity:.75">('+esc(op.label||'')+')</small>'+(op.note?' · <b style="color:#f8a41d">'+esc(op.note)+'</b>':'')+'</span>'
+      +'<span style="display:inline-block;margin-left:14px">бонус за обаждането: '+chip('','без')+(c.pct>0?chip('pct','−'+c.pct+' % на поръчката'):'')+(c.gift?chip('gift','🎁 '+esc(c.gift.name)):'')+'</span>'
+      +'<span style="display:inline-block;margin-left:14px;opacity:.8">коригирай → „Продължи към плащане“ → чекаутът е с данните на клиента, остава офисът</span>';
+    bar.querySelectorAll('[data-ob]').forEach(function(b){b.onclick=function(){S.opBonus=b.getAttribute('data-ob');opBar();toast(S.opBonus==='pct'?'📞 −'+c.pct+' % ще се приложи в чекаута':S.opBonus==='gift'?'🎁 Подаръкът ще е в количката на €0':'Без бонус')}});
+  }
+
   /* ── свеж runtime (цени, nonce, седмица) + „view“ в Insights; кешираната страница носи стар JSON ── */
   function refresh(){
-    if(!A.ajax||A.editor||A.draft||A.refresh===false)return;
-    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER+'&path='+encodeURIComponent(location.pathname.slice(0,120)),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    if(!A.ajax||A.editor||A.draft||(A.refresh===false&&!S._op))return;
+    fetch(A.ajax+'?action=ansa_promo_runtime&v='+encodeURIComponent(A.version||'')+'&sid='+encodeURIComponent(sid())+'&vid='+encodeURIComponent(vid())+'&utm='+encodeURIComponent(S.utm||'')+'&variant=flow&page='+LANDER+'&path='+encodeURIComponent(location.pathname.slice(0,120))+(S._op?'&op='+encodeURIComponent(S._op):''),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
       if(!r||!r.success||!r.data)return;var d=r.data;
+      if(d.op&&S._op&&!S._opDone){S._opDone=true;applyOp(d.op)} /* 1.49.0: опаковките на клиента за оператора */
       ['products','order','boxes','max_packs','rewards','nonce','season','deadline','deadline_ts','draw','tombola_url','cosm_reserved','copy','live','checkout','bgn','li_items','version','logo'].forEach(function(k){if(d[k]!==undefined)A[k]=d[k]});
       bind();if(!BIG||!ORDER.length)return;var q={};for(var k in S.qty){if(PROD[k])q[k]=S.qty[k]}S.qty=q;
       renderProducts();renderDock();

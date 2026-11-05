@@ -123,16 +123,16 @@ final class Phone_Orders {
 	public static function load( $op ) {
 		if ( ! $op ) { return null; } $cfg = Config::get_published(); $prods = Frontend::products( $cfg ); $bykey = array(); $bypid = array();
 		foreach ( $prods as $k => $p ) { $bykey[ $k ] = $p; $bypid[ (int) $p['id'] ] = $k; if ( ! empty( $p['vid'] ) ) { $bypid[ (int) $p['vid'] ] = $k; } }
-		$out = array( 'ok' => false, 'box' => '', 'items' => array(), 'email' => '', 'phone' => '', 'first' => '', 'last' => '', 'name' => '', 'label' => '', 'pay' => 'cod', 'src' => $op['t'] . ':' . $op['id'], 'by' => $op['by'], 'note' => '' );
+		$out = array( 'ok' => false, 'box' => '', 'items' => array(), 'email' => '', 'phone' => '', 'first' => '', 'last' => '', 'name' => '', 'label' => '', 'pay' => 'cod', 'src' => $op['t'] . ':' . $op['id'], 'by' => $op['by'], 'note' => '', 'variant' => '' ); /* 1.49.0: variant = '' (кутиите, точен брой) или flow (потокът — кутията е по броя) */
 		if ( 'cart' === $op['t'] ) {
 			$row = Cart_Sync::cart_by_id( $op['id'] ); if ( ! $row ) { $out['note'] = 'Количката не е намерена във FunnelKit.'; return $out; }
-			$out['box'] = (string) ( $row['meta']['box'] ?? '' ); $out['email'] = (string) $row['email']; $out['phone'] = (string) $row['phone']; $out['first'] = (string) ( $row['first'] ?? '' ); $out['last'] = (string) ( $row['last'] ?? '' ); $out['label'] = 'количка #' . (int) $row['id'] . ' · ' . $row['status_label'];
+			$out['box'] = (string) ( $row['meta']['box'] ?? '' ); $out['variant'] = ! empty( $row['meta']['flow'] ) ? 'flow' : ''; $out['email'] = (string) $row['email']; $out['phone'] = (string) $row['phone']; $out['first'] = (string) ( $row['first'] ?? '' ); $out['last'] = (string) ( $row['last'] ?? '' ); $out['label'] = 'количка #' . (int) $row['id'] . ' · ' . $row['status_label'];
 			foreach ( $row['lines'] as $l ) { if ( ! in_array( (string) $l['role'], array( 'base', '' ), true ) ) { continue; } $k = (string) $l['key']; if ( '' === $k || ! isset( $bykey[ $k ] ) ) { $k = $bypid[ (int) ( $l['vid'] ?: $l['pid'] ) ] ?? ''; } if ( '' === $k ) { continue; } for ( $i = 0; $i < max( 1, (int) $l['qty'] ); $i++ ) { $out['items'][] = $k; } }
 			if ( $row['order_id'] > 0 ) { $out['note'] = 'Тази количка вече е поръчка #' . (int) $row['order_id'] . '.'; }
 		} else {
 			global $wpdb; $s = $wpdb->get_row( $wpdb->prepare( 'SELECT s.*, l.email AS lead_email FROM ' . Schema::table( 'sessions' ) . ' s LEFT JOIN ' . Schema::table( 'leads' ) . ' l ON l.id = s.lead_id WHERE s.id = %d', (int) $op['id'] ), ARRAY_A );
 			if ( ! $s ) { $out['note'] = 'Сесията не е намерена.'; return $out; }
-			$out['box'] = (string) $s['box']; $out['email'] = (string) ( $s['lead_email'] ?? '' ); $out['label'] = 'сесия от ' . substr( (string) $s['started_at'], 0, 16 ) . ( $s['utm'] ? ' · ' . $s['utm'] : '' );
+			$out['box'] = (string) $s['box']; $out['variant'] = 'flow' === (string) ( $s['variant'] ?? '' ) ? 'flow' : ''; $out['email'] = (string) ( $s['lead_email'] ?? '' ); $out['label'] = 'сесия от ' . substr( (string) $s['started_at'], 0, 16 ) . ( $s['utm'] ? ' · ' . $s['utm'] : '' );
 			$items = $s['items'] ? json_decode( (string) $s['items'], true ) : array(); foreach ( (array) $items as $k ) { $k = (string) $k; if ( isset( $bykey[ $k ] ) ) { $out['items'][] = $k; } }
 			if ( ! empty( $s['order_id'] ) ) { $out['note'] = 'Тази сесия вече е поръчка #' . (int) $s['order_id'] . '.'; }
 		}
@@ -145,9 +145,32 @@ final class Phone_Orders {
 		/* кутията: по избраната, иначе по броя опаковки; продуктите само наличните */
 		$out['items'] = array_values( array_filter( $out['items'], function ( $k ) use ( $bykey ) { return isset( $bykey[ $k ] ) && ( $bykey[ $k ]['price'] ?? 0 ) > 0 && ! empty( $bykey[ $k ]['stock'] ); } ) );
 		if ( '' === $out['box'] || ! Config::box( $cfg, $out['box'] ) ) { $b = Config::box_for_count( $cfg, count( $out['items'] ) ); $out['box'] = $b ? (string) $b['id'] : ( $cfg['boxes'][0]['id'] ?? 's' ); }
+		$out['variant'] = self::fit_variant( $cfg, $out['variant'], $out['box'], count( $out['items'] ) ); if ( 'flow' === $out['variant'] ) { $b = Config::flow_box( $cfg, null, count( $out['items'] ) ); if ( $b ) { $out['box'] = (string) $b['id']; } } else { $out['box'] = self::fit_box( $cfg, $out['box'], count( $out['items'] ) ); }
 		$out['pay'] = ! empty( $cfg['checkout']['cod_gateway'] ) ? 'cod' : 'card';
 		$out['ok'] = true;
 		return $out;
+	}
+
+	/** 1.49.0 (човекът: „не ще да ми дава кода за отстъпка за спасяване на колички“ — „Завърши поръчка“ спираше с „Кутията трябва да е с точно
+	 *  1 опаковка“): количката от новия дизайн „поток“ (2 опаковки в малка кутия, −20 % от стълбицата) се пресъздаваше по правилата на кутиите.
+	 *  Дизайнът идва от записа (flow в реда на FunnelKit / variant на сесията); без белег (стар запис) броят решава — пасва ли точно в кутия
+	 *  от стария дизайн, остава там, иначе е потокът (там всеки брой е позволен). Връща '' или 'flow'. */
+	public static function fit_variant( $cfg, $variant, $box_id, $n ) {
+		if ( 'flow' === (string) $variant ) { return 'flow'; } $n = (int) $n; if ( $n <= 0 ) { return ''; }
+		$b = Config::box( $cfg, (string) $box_id ); if ( $b && ( ! empty( $b['grow'] ) ? $n >= (int) $b['packs'] : $n === (int) $b['packs'] ) ) { return ''; }
+		$alt = Config::box_for_count( $cfg, $n ); return $alt && ( ! empty( $alt['grow'] ) || $n === (int) $alt['packs'] ) ? '' : 'flow';
+	}
+	/** Старият дизайн: кутията по броя, ако избраната не го побира (малка/средна = точно packs, растящата = поне packs). */
+	public static function fit_box( $cfg, $box_id, $n ) {
+		$n = (int) $n; $b = Config::box( $cfg, (string) $box_id ); if ( $n <= 0 || ! $b ) { return (string) $box_id; }
+		if ( ! empty( $b['grow'] ) ? $n >= (int) $b['packs'] : $n === (int) $b['packs'] ) { return (string) $box_id; }
+		$alt = Config::box_for_count( $cfg, $n ); return $alt ? (string) $alt['id'] : (string) $box_id;
+	}
+	/** Страницата с този дизайн (page_id / ab.page_id — която носи [ansa_promo variant="flow"] за потока, другата за кутиите); 0 = няма. */
+	public static function page_for( $variant ) {
+		$pub = Config::get_published(); $ids = array_unique( array_filter( array( (int) ( $pub['page_id'] ?? 0 ), (int) ( $pub['ab']['page_id'] ?? 0 ) ) ) );
+		foreach ( $ids as $id ) { if ( ( 'flow' === (string) $variant ) === Frontend::post_is_flow( $id ) ) { return $id; } }
+		return 0;
 	}
 
 	/* ── операторът на промо страницата ── */
@@ -158,7 +181,7 @@ final class Phone_Orders {
 	public static function runtime_payload( $tok ) {
 		$op = self::verify( $tok ); if ( ! $op ) { return array( 'ok' => false, 'note' => 'Линкът е изтекъл или невалиден — направи нов от Insights.' ); }
 		self::mark_operator(); $d = self::load( $op ); if ( ! $d ) { return array( 'ok' => false, 'note' => 'няма данни' ); }
-		return array( 'ok' => $d['ok'], 'box' => $d['box'], 'items' => $d['items'], 'email' => $d['email'], 'phone' => $d['phone'], 'name' => $d['name'], 'label' => $d['label'], 'pay' => $d['pay'], 'note' => $d['note'], 'by' => $d['by'], 'bonus' => self::bonus_cfg() ); /* 1.30.0: −X % / подарък */
+		return array( 'ok' => $d['ok'], 'box' => $d['box'], 'items' => $d['items'], 'email' => $d['email'], 'phone' => $d['phone'], 'name' => $d['name'], 'label' => $d['label'], 'pay' => $d['pay'], 'note' => $d['note'], 'by' => $d['by'], 'bonus' => self::bonus_cfg(), 'variant' => $d['variant'] ); /* 1.49.0: variant — дизайнът на количката */ /* 1.30.0: −X % / подарък */
 	}
 	/** Попълва клиента на WooCommerce в сесията на оператора (чекаутът на FunnelKit чете оттам). */
 	public static function prefill_customer( $d ) {
@@ -186,15 +209,28 @@ final class Phone_Orders {
 	}
 	/** ✅ Завърши поръчка: ?ansa_op=<токен>&go=1[&bonus=pct|gift] → количката се прави тук и браузърът отива в чекаута. */
 	public static function maybe_go() {
-		if ( empty( $_GET[ self::PARAM ] ) || empty( $_GET['go'] ) ) { return; }
+		if ( empty( $_GET[ self::PARAM ] ) ) { return; }
+		if ( empty( $_GET['go'] ) ) { self::maybe_switch_page(); return; }
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers();
 		$tok = (string) wp_unslash( $_GET[ self::PARAM ] ); $op = self::verify( $tok ); $d = $op ? self::load( $op ) : null;
 		if ( ! $d || ! $d['ok'] ) { wp_die( esc_html( $d['note'] ?? 'Линкът е изтекъл или невалиден — направи нов от Insights.' ), '📞 Обаждане', array( 'response' => 410, 'back_link' => true ) ); }
 		$cfg = Config::get_published(); $prods = Frontend::products( $cfg ); $ids = array(); foreach ( $d['items'] as $k ) { if ( isset( $prods[ $k ] ) ) { $ids[] = (int) $prods[ $k ]['id']; } }
-		$box = Config::box( $cfg, $d['box'] ); if ( $box && count( $ids ) < (int) $box['packs'] ) { $b2 = Config::box_for_count( $cfg, count( $ids ) ); if ( $b2 ) { $d['box'] = (string) $b2['id']; } }
-		$r = Cart::perform_add( array( 'trusted' => true, 'box' => $d['box'], 'items' => $ids, 'pay' => $d['pay'], 'email' => $d['email'], 'cosm' => true, 'sid' => Insights::request_sid( '' ), 'op' => $tok, 'op_bonus' => self::norm_bonus( (string) ( $_GET['bonus'] ?? '' ) ) ) ); /* 1.30.1: &bonus=pct|gift от избора в Insights */
+		/* 1.49.0: дизайнът на количката (load → fit_variant): потокът праща variant=flow — кутията е по броя (2 и 4 опаковки минават); кутиите — точният брой */
+		$r = Cart::perform_add( array( 'trusted' => true, 'variant' => $d['variant'], 'box' => $d['box'], 'items' => $ids, 'pay' => $d['pay'], 'email' => $d['email'], 'cosm' => true, 'sid' => Insights::request_sid( '' ), 'op' => $tok, 'op_bonus' => self::norm_bonus( (string) ( $_GET['bonus'] ?? '' ) ) ) ); /* 1.30.1: &bonus=pct|gift от избора в Insights */
 		if ( empty( $r['ok'] ) ) { wp_die( esc_html( '✅ Завърши поръчка: ' . ( $r['msg'] ?? 'количката не може да се направи' ) . ' — отвори „✏️ Редактирай поръчка“ и коригирай.' ), '📞 Обаждане', array( 'response' => 409, 'back_link' => true ) ); }
 		wp_safe_redirect( (string) $r['checkoutUrl'], 303 ); exit;
+	}
+	/** 1.49.0: ✏️ Редактирай поръчка отваря страницата, чийто дизайн е на количката — количка от потока на страницата с кутиите (или обратно)
+	 *  би показала друг екран и друг брой. Ако текущата страница е с другия дизайн и има страница с правилния, браузърът отива там със същия адрес. */
+	public static function maybe_switch_page() {
+		if ( ! function_exists( 'is_singular' ) || ! is_singular() || ! Frontend::is_promo_page() ) { return; }
+		$op = self::verify( (string) wp_unslash( $_GET[ self::PARAM ] ) ); $d = $op ? self::load( $op ) : null; if ( ! $d || ! $d['ok'] ) { return; }
+		$want = (string) $d['variant']; if ( $want === Frontend::page_variant() ) { return; }
+		$pid = self::page_for( $want ); if ( ! $pid || $pid === (int) get_queried_object_id() || 'publish' !== get_post_status( $pid ) ) { return; }
+		$url = get_permalink( $pid ); if ( ! $url ) { return; }
+		$q = array( self::PARAM => rawurlencode( (string) wp_unslash( $_GET[ self::PARAM ] ) ) ); $b = self::norm_bonus( (string) ( $_GET['ansa_bonus'] ?? '' ) ); if ( '' !== $b ) { $q['ansa_bonus'] = $b; }
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers();
+		wp_safe_redirect( add_query_arg( $q, $url ), 302 ); exit;
 	}
 	/** Поръчката: бележка в WooCommerce. */
 	public static function on_order( $order, $m ) {
