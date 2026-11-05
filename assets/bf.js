@@ -41,7 +41,7 @@
 
   /* ── състояние ── */
   var KEY = 'ansa_bf_s_' + (R.version || 0);
-  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false }; };
+  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false, claimErr: '', claimVal: '', coErr: '', emailErr: '' }; };
   var S = S0();
   try { var raw = sessionStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') S = Object.assign(S0(), o); } } catch (e) {}
   S.sheet = null; S.luckyOpen = false; S._exp = S._exp || {};
@@ -87,7 +87,8 @@
     kind = kind || 'ok';
     var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); document.body.appendChild(t); }
     var ic = { ok: '✓', gift: '🎁', err: '!', lucky: '🍀', vch: '🎟' }[kind] || '✓';
-    t.className = 'toast bf-toast ' + kind; t.innerHTML = '<span class="ti">' + ic + '</span><span class="tm">' + esc(msg) + '</span>';
+    msg = String(msg || ''); if (msg.length > 42) { msg = msg.slice(0, 40).replace(/\s+\S*$/, '') + '…'; } /* 1.46.6: тостът е ЕДИН ред — дългите текстове са под полето/в картата, не в балон (човекът) */
+    t.className = 'toast bf-toast tk-' + kind; t.innerHTML /* tk- : „vch“ съвпадаше с класа на ваучера-билет */ = '<span class="ti">' + ic + '</span><span class="tm">' + esc(msg) + '</span>';
     void t.offsetWidth; t.classList.add('in');
     placeToast(); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('in'); setTimeout(function () { if (!t.classList.contains('in')) t.remove(); }, 220); }, 2400);
   };
@@ -112,7 +113,7 @@
       + '<div class="pr' + (free ? ' free' : '') + '">' + (free ? '<s>' + fmt(p.price) + '</s>' + T('gifts.free') : fmt(p.price)) + '</div>'
       + '<button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div>' + right + '</div>';
   };
-  var emailForm = function (cta) { return '<form id="signupForm"><div class="input' + (S.emailErr ? ' err' : '') + '">✉️ <input id="emailIn" type="email" placeholder="' + esc(T('cold.form.ph')) + '" value="' + esc(S.email) + '" autocomplete="email" required></div>' + (S.emailErr ? '<div style="font-size:12px;color:#dc2626;font-weight:700;margin:-4px 0 8px">' + T('err.email') + '</div>' : '') + '<button class="cta" type="submit">' + cta + '</button></form>'; };
+  var emailForm = function (cta) { return '<form id="signupForm"><div class="input' + (S.emailErr ? ' err' : '') + '">✉️ <input id="emailIn" type="email" placeholder="' + esc(T('cold.form.ph')) + '" value="' + esc(S.email) + '" autocomplete="email" required></div>' + (S.emailErr ? '<div class="ferr">' + esc(S.emailErr) + '</div>' : '') + '<button class="cta" type="submit">' + cta + '</button></form>'; };
   var bonusBtn = function (id, cur, ic, title, sub) { return '<button type="button" class="bo' + (cur === id ? ' on' : '') + '" data-act="bonus" data-id="' + id + '"><span class="ic">' + ic + '</span><span><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span><span class="r"></span></button>'; };
   var voucherCard = function (o) { var exp = o.locked ? S.coldExp : (ctx.voucher ? ctx.voucher.exp * 1000 : 0); var left = exp - now(); return '<div class="vch' + (o.locked ? '' : ' ok') + '"><img class="vlogo" src="' + esc(R.logo) + '" alt="ansa"><div class="stamp">' + (o.locked ? T('cold.vch.locked') : T('cold.vch.ok')) + '</div><div class="vt" style="margin-top:14px">' + T('cold.vch.title') + '</div><div class="va">' + fmtNum(R.cold.voucher) + '<small>€</small></div><div class="vs">' + (o.locked ? T('cold.vch.note', V()) : T('cold.vch.wallet')) + '</div><div class="vl"></div><div class="vb"><span class="vcode' + (o.locked ? ' lock' : '') + '">' + (o.locked ? 'ANSA' + fmtNum(R.cold.voucher) : esc(ctx.voucher ? ctx.voucher.code : '')) + '</span><span class="vtm">' + (o.locked ? T('cold.vch.exp') : T('cold.vch.valid')) + ' <b data-cd="' + (o.locked ? 'coldExp' : 'walletExp') + '">' + mmss(left) + '</b></span></div></div>'; };
   var howCard = function () { var ex = P.greens || cartList()[0]; var exPay = ex ? ex.price * 2 : 0; var g1 = P.kera || giftList()[0], g2 = P.berber || giftList()[1] || g1; return '<div class="k2">' + T('shop.how.h') + '</div><div class="howcard"><div class="hc-row"><div class="hc-col"><div class="hc-imgs"><span class="hc-im"><img src="' + esc(ex ? pimg(ex) : '') + '" alt=""></span><span class="hc-im"><img src="' + esc(ex ? pimg(ex) : '') + '" alt=""></span></div><b>' + T('shop.how.buy') + '</b><small>' + esc(ex ? ex.name : T('shop.how.buy.sub')) + '</small><em>' + fmt2(exPay) + '</em></div><div class="hc-arr"><span>→</span></div><div class="hc-col g"><div class="hc-imgs"><span class="hc-im g"><img src="' + esc(g1 ? pimg(g1) : '') + '" alt=""><i>🎁</i></span><span class="hc-im g"><img src="' + esc(g2 ? pimg(g2) : '') + '" alt=""><i>🎁</i></span></div><b>' + T('shop.how.get') + '</b><small>' + esc(g1 && g2 ? 'напр. ' + g1.name + ' + ' + g2.name : T('shop.how.get.sub')) + '</small><em>0 €</em></div></div><div class="hc-sum"><span>' + T('shop.how.sum') + '</span><b>' + T('shop.how.pay', { ex_pay: fmtNum(exPay) }) + '</b></div><div class="hc-steps"><div><i>1</i>' + T('shop.how.s1') + '</div><div><i>2</i>' + T('shop.how.s2') + '</div><div><i>3</i>' + T('shop.how.s3') + '</div></div></div>'; };
@@ -192,14 +193,14 @@
     if (inWallet()) return '';
     if (voucherLive()) return '<div class="vstrip ok">' + T('shop.vch.live', { amount: fmtNum(ctx.voucher.amount) }) + '</div>';
     if (!(R.listv && R.listv.enabled) || !(earlyOk || isPublic() || R.draft)) return '';
-    return '<form class="claim" id="claimForm" autocomplete="off"><span class="claim-h">' + T('shop.claim.h') + '</span><input id="claimIn" type="text" placeholder="' + esc(T('shop.claim.ph')) + '" autocapitalize="characters" spellcheck="false"><button class="addb" type="submit">' + T('shop.claim.cta') + '</button></form>';
+    return '<form class="claim' + (S.claimErr ? ' err' : '') + '" id="claimForm" autocomplete="off"><span class="claim-h">' + T('shop.claim.h') + '</span><input id="claimIn" type="text" placeholder="' + esc(T('shop.claim.ph')) + '" value="' + esc(S.claimVal || '') + '" autocapitalize="characters" spellcheck="false"><button class="addb" type="submit">' + T('shop.claim.cta') + '</button>' + (S.claimErr ? '<div class="claim-err">' + esc(S.claimErr) + '</div>' : '') + '</form>';
   }
   function onClaim(e) {
-    e.preventDefault(); var inp = document.getElementById('claimIn'); var code = (inp.value || '').trim().toUpperCase(); if (!code) return; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
+    e.preventDefault(); var inp = document.getElementById('claimIn'); var code = (inp.value || '').trim().toUpperCase(); if (!code) return; S.claimVal = code; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_claim', { code: code }).then(function (j) {
-      if (!j || !j.success) { var d = j && j.data ? j.data : {}; toast(d.msg || T('err.code'), 'err'); render(); return; }
-      applyCtx(j.data.ctx); toast(T('toast.claimed', { code: code, amount: fmtNum(ctx.voucher ? ctx.voucher.amount : 0) }), 'vch'); render();
-    }).catch(function () { toast(T('err.add'), 'err'); render(); });
+      if (!j || !j.success) { var d = j && j.data ? j.data : {}; S.claimErr = d.msg || T('err.code'); render(); return; }
+      S.claimErr = ''; S.claimVal = ''; applyCtx(j.data.ctx); toast(T('toast.claimed', { amount: fmtNum(ctx.voucher ? ctx.voucher.amount : 0) }), 'vch'); render();
+    }).catch(function () { S.claimErr = T('err.add'); render(); });
   }
   /* 1.46.0: попъпът „Ти си късметлия“ — exit intent / дълго стоене на стъпка 2 */
   var luckyTimer = null;
@@ -294,12 +295,13 @@
     if (S.sheet) html += vSheet();
     if (S.luckyOpen) html += vLucky();
     if (R.draft) html += vAdminBar();
+    if (S.coErr) { html = html.replace(/(<button class="cta[^"]*" data-act="(?:checkout|wallet-go)")/, '<div class="ferr co">' + esc(S.coErr) + '</div>$1'); }
     root.innerHTML = html;
     if (keep) window.scrollTo(0, keep); else window.scrollTo(0, 0);
     if (refocus) { var el = document.getElementById(refocus); if (el) { el.focus({ preventScroll: true }); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch (e) {} } }
     var f = document.getElementById('signupForm'); if (f) { f.addEventListener('submit', onSignup); var inp = document.getElementById('emailIn'); if (inp) inp.addEventListener('input', function () { S.email = inp.value; }); }
     var cs = document.getElementById('catSel'); if (cs) cs.addEventListener('change', function () { S.filter = cs.value; render(); });
-    var cf = document.getElementById('claimForm'); if (cf) cf.addEventListener('submit', onClaim);
+    var cf = document.getElementById('claimForm'); if (cf) { cf.addEventListener('submit', onClaim); var ci = document.getElementById('claimIn'); if (ci) ci.addEventListener('input', function () { S.claimVal = ci.value; if (S.claimErr) { S.claimErr = ''; var e = cf.querySelector('.claim-err'); if (e) e.remove(); cf.classList.remove('err'); } }); }
     luckyArm();
     /* 1.46.2: заключването на скрола без отместване — компенсираме ширината на скролбара (човекът: „леко се размества всичко и мърда малко вдясно“) */
     var lock = !!(S.sheet || S.luckyOpen);
@@ -341,15 +343,15 @@
 
   function onSignup(e) {
     e.preventDefault(); var v = (document.getElementById('emailIn').value || '').trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { S.emailErr = true; S.email = v; render(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { S.emailErr = T('err.email'); S.email = v; render(); return; }
     S.email = v; S.emailErr = false; var kind = S.screen === 'aff' ? 'aff' : 'cold'; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_lead', { email: v, kind: kind, bonus: S.affgift || ctx.affgift || 'v5', consent: '1', utm: utm, ref: partner ? partner.code : refParam, sid: '' }).then(function (j) {
-      if (!j || !j.success) { var code = j && j.data && j.data.code; toast(code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'), 'err'); render(); return; }
+      if (!j || !j.success) { var code = j && j.data && j.data.code; S.emailErr = code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'); render(); return; }
       applyCtx(j.data.ctx); if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
-      if (kind === 'aff') { toast(T('aff.toast', V({ email: v }))); S.screen = isPublic() ? 'shop' : 'affwait'; }
+      if (kind === 'aff') { toast(T('aff.toast'), 'ok'); S.screen = isPublic() ? 'shop' : 'affwait'; }
       else { S._exp.walletExp = false; S.screen = 'wallet'; }
       render();
-    }).catch(function () { toast(T('err.add'), 'err'); render(); });
+    }).catch(function () { S.emailErr = T('err.add'); render(); });
   }
   /* 1.46.4: ясно състояние на зареждане — бутонът се върти, екранът е покрит с „Правим количката ти…“ (човекът: „по никакъв начин не се разбира, че се чака зареждане“) */
   function setWait(on, msg) {
@@ -364,12 +366,12 @@
     var items = Object.keys(S.cart).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.cart[k] }; }).filter(function (x) { return x.id; });
     var gifts = mode === 'wallet' ? [] : Object.keys(S.gifts).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.gifts[k] }; }).filter(function (x) { return x.id; });
     if (!items.length || checkingOut) return;
-    checkingOut = true; if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } S.luckyOpen = false;
+    S.coErr = ''; checkingOut = true; if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } S.luckyOpen = false;
     setWait(true, mode === 'wallet' ? T('wait.wallet') : T('wait.promo'));
     post('ansa_bf_add', { mode: mode, items: JSON.stringify(items), gifts: JSON.stringify(gifts), pay: 'card', email: S.email || ctx.email || '', variant: variant(), utm: utm, lead: S.lead || ctx.lead || 0, ref: partner ? partner.code : '', affgift: S.affgift || ctx.affgift || '', lucky: S.lucky ? '1' : '0' }).then(function (j) {
-      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { setWait(false); checkingOut = false; var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add'), 'err'); if (d.code === 'early') { earlyOk = false; render(); } return; }
+      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { setWait(false); checkingOut = false; var d = j && j.data ? j.data : {}; S.coErr = d.msg || T('err.add'); if (d.code === 'early') { earlyOk = false; } render(); return; }
       setWait(true, T('wait.go')); location.href = j.data.checkoutUrl;
-    }).catch(function () { setWait(false); checkingOut = false; toast(T('err.add'), 'err'); });
+    }).catch(function () { setWait(false); checkingOut = false; S.coErr = T('err.add'); render(); });
   }
 
   /* ── действия ── */
@@ -381,7 +383,7 @@
     else if (act === 'cart-') { if (S.cart[id] > 1) S.cart[id]--; else delete S.cart[id]; trimGifts(); }
     else if (act === 'gift+') { if (giftCount() < paidCount()) { S.gifts[id] = (S.gifts[id] || 0) + 1; } S.sheet = null; if (giftCount() === paidCount()) toast(T('toast.gifts')); }
     else if (act === 'gift-') { if (S.gifts[id] > 1) S.gifts[id]--; else delete S.gifts[id]; }
-    else if (act === 'giftonly') { S.sheet = null; if (paidCount()) { S.screen = 'gifts'; } else { toast(T('toast.giftonly'), 'err'); } }
+    else if (act === 'giftonly') { S.sheet = null; if (paidCount()) { S.screen = 'gifts'; } else { toast(T('toast.giftonly'), 'gift'); } }
     else if (act === 'sheet') { S.sheet = id || null; S.tab = 'desc'; }
     else if (act === 'tab') { S.tab = id; }
     else if (act === 'screen') { if (id === 'gifts' && !paidCount()) return; S.screen = id; lastScreen = ''; }
