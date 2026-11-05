@@ -497,6 +497,10 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 .focus-line .fl-save{display:block;font-size:20px;font-weight:900;color:var(--gd);line-height:1.1;letter-spacing:-.01em}
 .focus-line.on span{display:block;margin-top:5px}
 .focus-line s{color:var(--tan)}
+/* 1.48.4: стъпка 2 — зелената лента „Всеки подарък тук е на 0 € — спестяваш…“ под прогреса */
+.gsave{margin:8px 0 4px;background:var(--gs);border:1.5px solid rgba(34,197,94,.35);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:800;color:var(--gd);text-align:center;line-height:1.35}
+.gsave b{font-size:15px}
+.cta.big:disabled small{opacity:.9}
 .focus-urg{display:block;margin-top:10px;background:var(--bf);color:#fff;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:800;text-align:center;line-height:1.3}
 .focus-urg b{color:var(--o2);font-variant-numeric:tabular-nums;font-weight:900}
 .focus-other{display:block;width:100%;text-align:center;margin:12px 0 2px;color:var(--tan);font-size:13px;padding:8px 0}
