@@ -77,7 +77,8 @@
 
   /* ── toast ── */
   var toastT = null;
-  var toast = function (msg) { var t = document.querySelector('.ansa-bf .toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; root.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 1800); };
+  /* 1.46.0: тостът е в body, не в корена — иначе render() веднага след toast() го триеше (грешен код, грешка при записване) */
+  var toast = function (msg) { var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); t.className = 'toast bf-toast'; document.body.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2200); };
 
   /* ── компоненти ── */
   var logoImg = '<img class="logo" src="' + esc(R.logo) + '" alt="ansa">';
