@@ -65,9 +65,9 @@
   var listDisc = function () { return !inWallet() && voucherLive() && paidCount() ? Math.min(ctx.voucher.amount, subtotal()) : 0; };
   var luckyOn = function () { return !!(R.lucky && R.lucky.enabled && (R.draft || (R.lucky.phases || []).indexOf(phase) >= 0)); };
   var maskPrice = function () { return R.aff && R.aff.mask ? R.aff.mask.price : 0; };
-  var shipping = function () { return inWallet() ? R.ship.paid : (paidCount() >= R.ship.free_from ? 0 : R.ship.paid); };
   var walletDisc = function () { return inWallet() && voucherLive() && paidCount() ? Math.min(ctx.voucher.amount, subtotal()) : 0; };
-  var total = function () { return Math.max(0, subtotal() - walletDisc() - affVoucher() - listDisc() + shipping()); };
+  /* 1.46.1: „Плащаш“ е продуктите минус ваучерите — БЕЗ доставка (човекът: „плащаш е грешно — пише 39,90, че е продуктът, а плащаш 32,45 и минус ваучер −10 €?“ = 39,90 − 10 + 2,55 доставка). Доставката се избира в чекаута. */
+  var total = function () { return Math.max(0, subtotal() - walletDisc() - affVoucher() - listDisc()); };
   var savings = function () { var n = paidCount(); if (!n || inWallet()) return null; var g = giftCount(), avg = subtotal() / n; var gifts = giftValue() + Math.max(0, n - g) * avg; var mask = affGift() === 'mask' ? maskPrice() : 0; var tot = gifts + affVoucher() + mask; var full = subtotal() + gifts + mask; return { total: tot, pct: full > 0 ? Math.round(tot / full * 100) : 0, est: g < n }; };
   var saveLine = function (cls) { var sv = savings(); if (!sv || sv.total <= 0) return ''; return '<div class="savebox ' + (cls || '') + '"><span>' + (sv.est ? T('shop.save.est') : T('shop.save')) + '</span><b>' + fmt2(sv.total) + '</b><em>−' + sv.pct + ' %</em></div>'; };
   var trimGifts = function () { var over = giftCount() - paidCount(); if (over <= 0) return; Object.keys(S.gifts).reverse().forEach(function (k) { while (over > 0 && S.gifts[k] > 0) { S.gifts[k]--; over--; } if (!S.gifts[k]) delete S.gifts[k]; }); };
