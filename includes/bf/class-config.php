@@ -42,6 +42,10 @@ final class Config {
 			'aff'      => array( 'enabled' => true, 'voucher' => 5, 'mask_sku' => '', 'mask_product_id' => 11163, 'cookie_days' => 7 ), /* 1.45.1: CollaMask „10 маски“ (#11163, 29,90 €); SKU-то на продукта е MASK02 (вариациите: „MASK02;MASK02;…“), MASK01 няма */
 			/* ранният достъп: общ токен в линка от имейла (?ea=ТОКЕН → бисквитка); генерира се сам при първия запис */
 			'early'    => array( 'token' => '', 'cookie_days' => 7 ),
+			/* 1.46.0: ваучерите за списъка в ранния достъп — (а) неизползван → възобновен (същият код), (б) използван → нов „ВИП“ ваучер; тагове за FunnelKit; until = early_end | public_end */
+			'listv'    => array( 'enabled' => true, 'amount' => 10, 'until' => 'early_end', 'prefix' => 'BFV', 'tag_revived' => 'bf-revived', 'tag_vip' => 'bf-vip', 'auto' => true ),
+			/* 1.46.0: попъпът „Ти си късметлия“ на стъпка 2 — 1 бр CollaMask (#11161 „1 маска“; на сайта няма SKU MASK01 — ако го дадеш на вариацията, намира се по SKU) */
+			'lucky'    => array( 'enabled' => true, 'product_id' => 11161, 'sku' => '', 'dwell' => 45, 'exit' => true, 'phases' => 'early,public' ),
 			'ship'     => array( 'free_from' => 2, 'paid' => 2.55 ),
 			'checkout' => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true ),
 			/* лийдовете → FunnelKit: един лист за всички + таг по вид (студен / партньор); при поръчка таговете падат */
@@ -110,6 +114,9 @@ final class Config {
 		if ( $out['seats']['start'] >= $out['seats']['max'] ) { $out['seats']['start'] = max( 0, $out['seats']['max'] - 1 ); }
 		$a = is_array( $out['aff'] ?? null ) ? $out['aff'] : array(); $out['aff'] = array( 'enabled' => ! isset( $a['enabled'] ) || ! empty( $a['enabled'] ), 'voucher' => max( 0, round( (float) ( $a['voucher'] ?? 5 ), 2 ) ), 'mask_sku' => sanitize_text_field( (string) ( $a['mask_sku'] ?? '' ) ), 'mask_product_id' => (int) ( $a['mask_product_id'] ?? 0 ), 'cookie_days' => max( 1, min( 60, (int) ( $a['cookie_days'] ?? 7 ) ) ) );
 		$e = is_array( $out['early'] ?? null ) ? $out['early'] : array(); $tok = preg_replace( '/[^a-z0-9]/i', '', (string) ( $e['token'] ?? '' ) );
+		$lv = is_array( $out['listv'] ?? null ) ? $out['listv'] : array(); $out['listv'] = array( 'enabled' => ! isset( $lv['enabled'] ) || ! empty( $lv['enabled'] ), 'amount' => max( 0, round( (float) ( $lv['amount'] ?? 10 ), 2 ) ), 'until' => in_array( (string) ( $lv['until'] ?? '' ), array( 'early_end', 'public_end' ), true ) ? (string) $lv['until'] : 'early_end', 'prefix' => strtoupper( preg_replace( '/[^a-z0-9]/i', '', (string) ( $lv['prefix'] ?? 'BFV' ) ) ) ?: 'BFV', 'tag_revived' => mb_substr( trim( wp_strip_all_tags( (string) ( $lv['tag_revived'] ?? 'bf-revived' ) ) ), 0, 100 ), 'tag_vip' => mb_substr( trim( wp_strip_all_tags( (string) ( $lv['tag_vip'] ?? 'bf-vip' ) ) ), 0, 100 ), 'auto' => ! isset( $lv['auto'] ) || ! empty( $lv['auto'] ) );
+		$lk = is_array( $out['lucky'] ?? null ) ? $out['lucky'] : array(); $ph = array_values( array_intersect( array_map( 'trim', explode( ',', (string) ( $lk['phases'] ?? 'early,public' ) ) ), array( 'early', 'public' ) ) );
+		$out['lucky'] = array( 'enabled' => ! isset( $lk['enabled'] ) || ! empty( $lk['enabled'] ), 'product_id' => (int) ( $lk['product_id'] ?? 0 ), 'sku' => sanitize_text_field( (string) ( $lk['sku'] ?? '' ) ), 'dwell' => max( 5, min( 600, (int) ( $lk['dwell'] ?? 45 ) ) ), 'exit' => ! isset( $lk['exit'] ) || ! empty( $lk['exit'] ), 'phases' => implode( ',', $ph ?: array( 'early', 'public' ) ) );
 		$out['early'] = array( 'token' => '' !== $tok ? $tok : self::default_token(), 'cookie_days' => max( 1, min( 60, (int) ( $e['cookie_days'] ?? 7 ) ) ) );
 		$out['ship'] = array( 'free_from' => max( 0, (int) ( $out['ship']['free_from'] ?? 2 ) ), 'paid' => round( (float) ( $out['ship']['paid'] ?? 2.55 ), 2 ) );
 		$out['checkout'] = array( 'card_gateway' => sanitize_key( (string) ( $out['checkout']['card_gateway'] ?? 'fkwcs_stripe' ) ), 'cod_gateway' => sanitize_key( (string) ( $out['checkout']['cod_gateway'] ?? 'cod' ) ), 'block_coupons' => ! isset( $out['checkout']['block_coupons'] ) || ! empty( $out['checkout']['block_coupons'] ) );

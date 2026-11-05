@@ -94,8 +94,8 @@ final class Leads {
 	}
 	private static function sync( $id, $email, $consent, $cfg, $kind ) { try { return Lead_Sync::sync( (int) $id, $email, (bool) $consent, self::fka_cfg( $cfg, $kind ) ); } catch ( \Throwable $e ) { return 'retry: ' . $e->getMessage(); } }
 
-	public static function new_voucher_code( $cfg ) {
-		$pre = (string) $cfg['cold']['prefix'] . (int) round( (float) $cfg['cold']['voucher'] ) . '-'; $alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+	public static function new_voucher_code( $cfg, $pre = null ) {
+		$pre = null === $pre ? (string) $cfg['cold']['prefix'] . (int) round( (float) $cfg['cold']['voucher'] ) . '-' : (string) $pre; $alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 		for ( $i = 0; $i < 5; $i++ ) { $c = ''; for ( $j = 0; $j < 4; $j++ ) { $c .= $alpha[ random_int( 0, strlen( $alpha ) - 1 ) ]; } if ( ! self::voucher_row( $pre . $c ) ) { return $pre . $c; } }
 		return $pre . strtoupper( substr( md5( uniqid( '', true ) ), 0, 5 ) );
 	}

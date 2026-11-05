@@ -31,6 +31,7 @@
   /* ── източникът на посетителя: адресът + бисквитките ── */
   var refParam = (q.get('ref') || '').replace(/[^a-z0-9_\-]/gi, '').toUpperCase();
   var eaParam = (q.get('ea') || '').replace(/[^a-z0-9]/gi, '');
+  var uParam = (q.get('u') || '').replace(/[^A-Za-z0-9_\-\.]/g, ''); /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
   if (eaParam) setCookie('ansa_bf_ea', eaParam, 7);
   var utm = (q.get('utm_content') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
   var paidMarkers = /(^|&)(utm_medium=(paid|cpc|ppc|ads|paid_social|social)|fbclid=|gclid=|ttclid=|src=cold)/i.test(location.search.replace(/^\?/, ''));
@@ -38,10 +39,10 @@
 
   /* ── състояние ── */
   var KEY = 'ansa_bf_s_' + (R.version || 0);
-  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {} }; };
+  var S0 = function () { return { screen: '', cart: {}, gifts: {}, filter: 'all', email: '', lead: 0, affgift: '', coldExp: 0, ex: false, sheet: null, tab: 'desc', seatsN: 0, demoN: 1, _exp: {}, lucky: false, luckyShown: false, luckyOpen: false }; };
   var S = S0();
   try { var raw = sessionStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') S = Object.assign(S0(), o); } } catch (e) {}
-  S.sheet = null; S._exp = S._exp || {};
+  S.sheet = null; S.luckyOpen = false; S._exp = S._exp || {};
   var save = function () { try { sessionStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
   var ctx = { email: '', lead: 0, affgift: '', ref: '', early: false, voucher: null, mode: '' };
   var partner = R.partner || null; var earlyOk = !!R.early_ok; var phase = R.phase || 'prep'; var phaseEnd = (R.phase_end || 0) * 1000; var seats = R.seats || { enabled: false, n: 0, max: 0 };
@@ -60,10 +61,13 @@
   var inWallet = function () { return S.screen === 'wallet'; };
   var affGift = function () { return (isPublic() || R.draft) && partner && ctx.email && (S.affgift || ctx.affgift) ? (S.affgift || ctx.affgift) : ''; };
   var affVoucher = function () { return affGift() === 'v5' && paidCount() ? Math.min(R.aff.voucher, subtotal()) : 0; };
+  /* 1.46.0: ваучерът от имейла (възобновен / ВИП) или живият студен ваучер — в промо количката */
+  var listDisc = function () { return !inWallet() && voucherLive() && paidCount() ? Math.min(ctx.voucher.amount, subtotal()) : 0; };
+  var luckyOn = function () { return !!(R.lucky && R.lucky.enabled && (R.draft || (R.lucky.phases || []).indexOf(phase) >= 0)); };
   var maskPrice = function () { return R.aff && R.aff.mask ? R.aff.mask.price : 0; };
   var shipping = function () { return inWallet() ? R.ship.paid : (paidCount() >= R.ship.free_from ? 0 : R.ship.paid); };
   var walletDisc = function () { return inWallet() && voucherLive() && paidCount() ? Math.min(ctx.voucher.amount, subtotal()) : 0; };
-  var total = function () { return Math.max(0, subtotal() - walletDisc() - affVoucher() + shipping()); };
+  var total = function () { return Math.max(0, subtotal() - walletDisc() - affVoucher() - listDisc() + shipping()); };
   var savings = function () { var n = paidCount(); if (!n || inWallet()) return null; var g = giftCount(), avg = subtotal() / n; var gifts = giftValue() + Math.max(0, n - g) * avg; var mask = affGift() === 'mask' ? maskPrice() : 0; var tot = gifts + affVoucher() + mask; var full = subtotal() + gifts + mask; return { total: tot, pct: full > 0 ? Math.round(tot / full * 100) : 0, est: g < n }; };
   var saveLine = function (cls) { var sv = savings(); if (!sv || sv.total <= 0) return ''; return '<div class="savebox ' + (cls || '') + '"><span>' + (sv.est ? T('shop.save.est') : T('shop.save')) + '</span><b>' + fmt2(sv.total) + '</b><em>−' + sv.pct + ' %</em></div>'; };
   var trimGifts = function () { var over = giftCount() - paidCount(); if (over <= 0) return; Object.keys(S.gifts).reverse().forEach(function (k) { while (over > 0 && S.gifts[k] > 0) { S.gifts[k]--; over--; } if (!S.gifts[k]) delete S.gifts[k]; }); };
@@ -73,7 +77,8 @@
 
   /* ── toast ── */
   var toastT = null;
-  var toast = function (msg) { var t = document.querySelector('.ansa-bf .toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; root.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 1800); };
+  /* 1.46.0: тостът е в body, не в корена — иначе render() веднага след toast() го триеше (грешен код, грешка при записване) */
+  var toast = function (msg) { var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); t.className = 'toast bf-toast'; document.body.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2200); };
 
   /* ── компоненти ── */
   var logoImg = '<img class="logo" src="' + esc(R.logo) + '" alt="ansa">';
@@ -156,17 +161,42 @@
     return '<div class="scroll"><div class="hero"><div class="hrow">' + logoImg + '</div><div class="h1">' + T(isEarly() ? 'shop.closed.early.title' : 'shop.closed.title') + '</div><p class="sub">' + T(isEarly() ? 'shop.closed.early.sub' : 'shop.closed.sub', V()) + '</p></div><div class="wrap"><div class="k2">' + T('gifts.best') + '</div>' + cartList().map(function (p) { return '<div class="tile"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="n">' + esc(p.name) + '<small>' + esc(p.sub) + '</small></div><div class="pr">' + fmt(p.price) + '</div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'; }).join('') + '</div></div>';
   }
   function vOver() { return '<div class="scroll"><div class="over">' + logoImg.replace('class="logo"', 'class="logo" style="margin:0 auto 18px;filter:invert(1) brightness(.2)"') + '<div class="h1">' + T('over.title') + '</div><p class="lead">' + T('over.sub') + '</p><a class="cta dark" href="' + esc(R.shop) + '" style="display:inline-block;width:auto;text-decoration:none">' + T('over.cta') + '</a></div></div>'; }
+  /* 1.46.0: ваучерът от имейла — зелена лента, ако е в сесията; иначе малка форма „Имаш ваучер от имейла? код → Активирай“ */
+  function vchStrip() {
+    if (inWallet()) return '';
+    if (voucherLive()) return '<div class="vstrip ok">' + T('shop.vch.live', { amount: fmtNum(ctx.voucher.amount) }) + '</div>';
+    if (!(R.listv && R.listv.enabled) || !(earlyOk || isPublic() || R.draft)) return '';
+    return '<form class="claim" id="claimForm" autocomplete="off"><span class="claim-h">' + T('shop.claim.h') + '</span><input id="claimIn" type="text" placeholder="' + esc(T('shop.claim.ph')) + '" autocapitalize="characters" spellcheck="false"><button class="addb" type="submit">' + T('shop.claim.cta') + '</button></form>';
+  }
+  function onClaim(e) {
+    e.preventDefault(); var inp = document.getElementById('claimIn'); var code = (inp.value || '').trim().toUpperCase(); if (!code) return; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
+    post('ansa_bf_claim', { code: code }).then(function (j) {
+      if (!j || !j.success) { var d = j && j.data ? j.data : {}; toast(d.msg || T('err.code')); render(); return; }
+      applyCtx(j.data.ctx); toast(T('toast.claimed', { code: code, amount: fmtNum(ctx.voucher ? ctx.voucher.amount : 0) })); render();
+    }).catch(function () { toast(T('err.add')); render(); });
+  }
+  /* 1.46.0: попъпът „Ти си късметлия“ — exit intent / дълго стоене на стъпка 2 */
+  var luckyTimer = null;
+  function luckyEligible() { return luckyOn() && S.screen === 'gifts' && !S.lucky && !S.luckyShown && !S.luckyOpen && paidCount() > 0 && affGift() !== 'mask'; }
+  function openLucky() { if (!luckyEligible()) return; S.luckyOpen = true; S.luckyShown = true; render(); }
+  function luckyArm() { if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } if (luckyEligible() && R.lucky.dwell > 0) { luckyTimer = setTimeout(openLucky, R.lucky.dwell * 1000); } }
+  function vLucky() {
+    var L = R.lucky || {};
+    return '<button class="dim" data-act="lucky-no" aria-label="затвори"></button><div class="lucky" role="dialog" aria-modal="true" aria-label="' + esc(T('lucky.title')) + '"><div class="lucky-ic">🍀</div><div class="lucky-h">' + T('lucky.title') + '</div><p class="lucky-p">' + T('lucky.text') + '</p>'
+      + '<div class="lucky-gift">' + (L.img ? '<img src="' + esc(L.img) + '" alt="">' : '') + '<div><b>' + T('lucky.gift') + '</b><small>' + T('lucky.sub') + '</small>' + (L.price ? '<span class="lucky-pr"><s>' + fmt(L.price) + '</s> <em>0 €</em></span>' : '') + '</div></div>'
+      + '<button class="cta" data-act="lucky-yes">' + T('lucky.cta') + '</button><button class="more lucky-no" data-act="lucky-no">' + T('lucky.no') + '</button></div>';
+  }
   function vShop() {
     var n = paidCount(); var pool = cartList(); var list = filtered(pool); var sv = savings();
     var foot = n
-      ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + (affVoucher() ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher()) + ' €)</span>' : '') + '</span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div><button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
+      ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + ((affVoucher() + listDisc()) ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher() + listDisc()) + ' €)</span>' : '') + '</span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div><button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('shop.foot.empty') + '</span><span class="ok">' + T('shop.foot.empty.r') + '</span></div><button class="cta sm" disabled>' + T('shop.foot.empty.cta') + '</button>';
     var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T('shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
     /* механиката (уравнението + „Спестяваш“ + бележката за партньора): на телефона в тъмната секция, на десктоп (1.45.4) вдясно над „Твоята поръчка“ — както ваучерът в портфейла */
     var mech = affnote + '<div class="eq pop" id="eq" data-n="' + (n || S.demoN || 1) + '">' + eqHtml(n || S.demoN || 1) + '</div>' + (n ? saveLine('hero') : '<div class="eq-note" id="eqNote">' + T('shop.eq.note') + '</div>');
     return '<div class="scroll"><div class="hero' + (isDesk() ? ' slim' : '') + '">'
       + '<div class="hrow">' + logoImg + timerPill() + '</div>' + stepsBar(1) + (isDesk() ? '' : mech) + '</div>'
-      + '<div class="wrap" style="padding-top:10px"><div class="k2row"><span class="k2">' + T('shop.step1') + ' <button class="info' + (S.ex ? ' on' : '') + '" data-act="ex" aria-expanded="' + !!S.ex + '">' + T('shop.example.btn') + '</button></span>' + chips(pool) + '</div>'
+      + '<div class="wrap" style="padding-top:10px">' + vchStrip() + '<div class="k2row"><span class="k2">' + T('shop.step1') + ' <button class="info' + (S.ex ? ' on' : '') + '" data-act="ex" aria-expanded="' + !!S.ex + '">' + T('shop.example.btn') + '</button></span>' + chips(pool) + '</div>'
       + (S.ex ? '<div class="exbox">' + T('shop.example') + '</div>' : '')
       + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '<div class="lead">—</div>')
       + howCard() + '<div class="footnote">' + T('shop.footnote') + '</div></div></div>'
@@ -181,7 +211,7 @@
       + '<div class="sline"><span>' + T('gifts.picked') + ' <b>' + g + ' ' + T('gifts.of') + ' ' + n + '</b></span><button class="more" data-act="screen" data-id="shop" style="text-decoration:none;color:var(--tan)">' + T('gifts.change') + '</button></div>'
       + (news.length ? '<div class="k2" style="margin-top:6px">' + T('gifts.new') + '</div>' + news.map(function (p) { return productTile(p, 'gift'); }).join('') : '')
       + '<div class="k2">' + T('gifts.best') + '</div>' + best.map(function (p) { return productTile(p, 'gift'); }).join('') + '<div style="height:8px"></div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + saveLine('foot') + '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b></span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div><div class="slots">' + slots + '</div>'
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + saveLine('foot') + '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + ((affVoucher() + listDisc()) ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher() + listDisc()) + ' €)</span>' : '') + '</span><span class="ok">' + T('gifts.foot.r', { n: n, podaruk: GIFT(n) }) + '</span></div><div class="slots">' + slots + '</div>' + (S.lucky ? '<div class="luckyline">' + T('lucky.line') + '</div>' : '')
       + (left > 0 ? '<button class="cta" disabled>' + T('gifts.cta.more', { n: left, podaruk: GIFT(left) }) + '</button>' : '<button class="cta" data-act="checkout">' + T('gifts.cta.go') + '</button>') + '</div>';
   }
   function vSheet() {
@@ -220,12 +250,15 @@
     var act = document.activeElement; var refocus = null, sel = null; if (act && root.contains(act) && act.id && (act.tagName === 'INPUT' || act.tagName === 'SELECT')) { refocus = act.id; try { sel = [act.selectionStart, act.selectionEnd]; } catch (e) {} }
     var html = sc === 'cold' ? vCold() : sc === 'wallet' ? vWallet() : sc === 'aff' ? vAff() : sc === 'affwait' ? vAffWait() : sc === 'shop' ? vShop() : sc === 'gifts' ? vGifts() : sc === 'over' ? vOver() : vClosed();
     if (S.sheet) html += vSheet();
+    if (S.luckyOpen) html += vLucky();
     root.innerHTML = html;
     if (keep) window.scrollTo(0, keep); else window.scrollTo(0, 0);
     if (refocus) { var el = document.getElementById(refocus); if (el) { el.focus({ preventScroll: true }); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch (e) {} } }
     var f = document.getElementById('signupForm'); if (f) { f.addEventListener('submit', onSignup); var inp = document.getElementById('emailIn'); if (inp) inp.addEventListener('input', function () { S.email = inp.value; }); }
     var cs = document.getElementById('catSel'); if (cs) cs.addEventListener('change', function () { S.filter = cs.value; render(); });
-    document.body.style.overflow = S.sheet ? 'hidden' : '';
+    var cf = document.getElementById('claimForm'); if (cf) cf.addEventListener('submit', onClaim);
+    luckyArm();
+    document.body.style.overflow = (S.sheet || S.luckyOpen) ? 'hidden' : '';
     updatePill(); save();
   }
   function updatePill() { var pill = document.getElementById('morePill'); if (!pill) return; var tiles = Array.prototype.slice.call(root.querySelectorAll('.scroll .tile')); var below = tiles.filter(function (t) { return t.getBoundingClientRect().top > window.innerHeight - 20; }).length; pill.hidden = below <= 0; if (below > 0) pill.textContent = T('shop.scroll', { n: below, produkt: plural(below, 'продукт', 'продукта') }); }
@@ -245,7 +278,7 @@
   function post(action, data, _retry) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (!_retry && j && !j.success && j.data && j.data.code === 'nonce') { return freshNonce().then(function () { return post(action, data, true); }); } return j; }); }
   function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
-    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam;
+    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam;
     var url = R.ajax + '?action=ansa_bf_runtime' + (R.draft ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
     var fd = new FormData(); Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
@@ -275,7 +308,7 @@
     var items = Object.keys(S.cart).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.cart[k] }; }).filter(function (x) { return x.id; });
     var gifts = mode === 'wallet' ? [] : Object.keys(S.gifts).map(function (k) { return { id: P[k] ? P[k].id : 0, q: S.gifts[k] }; }).filter(function (x) { return x.id; });
     if (!items.length) return; toast(T('toast.sending')); root.classList.add('busy');
-    post('ansa_bf_add', { mode: mode, items: JSON.stringify(items), gifts: JSON.stringify(gifts), pay: 'card', email: S.email || ctx.email || '', variant: variant(), utm: utm, lead: S.lead || ctx.lead || 0, ref: partner ? partner.code : '', affgift: S.affgift || ctx.affgift || '' }).then(function (j) {
+    post('ansa_bf_add', { mode: mode, items: JSON.stringify(items), gifts: JSON.stringify(gifts), pay: 'card', email: S.email || ctx.email || '', variant: variant(), utm: utm, lead: S.lead || ctx.lead || 0, ref: partner ? partner.code : '', affgift: S.affgift || ctx.affgift || '', lucky: S.lucky ? '1' : '0' }).then(function (j) {
       if (!j || !j.success || !j.data || !j.data.checkoutUrl) { root.classList.remove('busy'); var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add')); if (d.code === 'early') { earlyOk = false; render(); } return; }
       location.href = j.data.checkoutUrl;
     }).catch(function () { root.classList.remove('busy'); toast(T('err.add')); });
@@ -295,10 +328,16 @@
     else if (act === 'tab') { S.tab = id; }
     else if (act === 'screen') { if (id === 'gifts' && !paidCount()) return; S.screen = id; lastScreen = ''; }
     else if (act === 'checkout') { checkout('promo'); return; }
+    else if (act === 'lucky-yes') { S.lucky = true; S.luckyOpen = false; toast(T('lucky.toast')); }
+    else if (act === 'lucky-no') { S.luckyOpen = false; }
     else if (act === 'wallet-go') { checkout('wallet'); return; }
     else if (act === 'scrolldown') { window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' }); return; }
     render();
   });
+
+  /* 1.46.0: exit intent — мишката излиза през горния ръб (десктоп) или връщане в таба (телефон) */
+  document.addEventListener('mouseout', function (e) { if (R.lucky && R.lucky.exit && !e.relatedTarget && e.clientY <= 0) openLucky(); });
+  document.addEventListener('visibilitychange', function () { if (R.lucky && R.lucky.exit && document.visibilityState === 'visible') openLucky(); });
 
   render(); refresh();
 })();
