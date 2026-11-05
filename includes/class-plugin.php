@@ -60,7 +60,7 @@ final class Plugin {
 		Probe::register();
 		Mega_Menu::register(); /* 1.40.0: мега менюто „Продукти“ + хапчето „Сезонът на ANSA −40%“ в навигацията */
 		Shop::register(); /* 1.44.0: страницата /shop/ „Всички продукти“ — същите продукти, нужди и „от“ цени като в менюто */
-		BF\Page::register(); BF\Cart::register(); BF\Leads::register(); /* 1.45.0: второто промо — Черен петък 2026 (/cheren-petak-2026): свой конфиг, количка, лийдове */
+		BF\Page::register(); BF\Cart::register(); BF\Leads::register(); BF\Boost::register(); /* 1.46.0: ваучерите за списъка + „Ти си късметлия“ */ /* 1.45.0: второто промо — Черен петък 2026 (/cheren-petak-2026): свой конфиг, количка, лийдове */
 		if ( is_admin() ) { Admin::register(); Editor::register(); Products_UI::register(); /* 1.15.0: 📦 Продукти */ BF\Admin::register(); /* 1.45.0: 🖤 Черен петък */ }
 		add_action( 'init', array( __CLASS__, 'cron' ) );
 		add_action( Config::FLIP_HOOK, array( 'AnsaPromo\\Config', 'on_flip' ) ); /* v1.19.0: смяната на седмицата чисти кеша */
@@ -82,7 +82,7 @@ final class Plugin {
 		}
 	}
 
-	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); wp_clear_scheduled_hook( Cart_Sync::HOOK ); /* 1.25.0 */ wp_clear_scheduled_hook( Insights_Reports::HOOK ); /* 1.28.0 */ }
+	public static function deactivate() { wp_clear_scheduled_hook( 'ansa_promo_daily' ); wp_clear_scheduled_hook( BF\Boost::HOOK ); wp_clear_scheduled_hook( Config::FLIP_HOOK ); wp_clear_scheduled_hook( Cart_Sync::HOOK ); /* 1.25.0 */ wp_clear_scheduled_hook( Insights_Reports::HOOK ); /* 1.28.0 */ }
 
 	/* ── Shrine (съжителство) ───────────────────────────────────── */
 

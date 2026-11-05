@@ -10,6 +10,8 @@ if ( ! function_exists( 'add_query_arg' ) ) { function add_query_arg( $k, $v = n
 if ( ! function_exists( 'wp_salt' ) ) { function wp_salt( $s = '' ) { return 'salt'; } }
 if ( ! function_exists( 'add_filter' ) ) { function add_filter() {} }
 if ( ! function_exists( 'add_shortcode' ) ) { function add_shortcode() {} }
+if ( ! function_exists( 'wp_next_scheduled' ) ) { function wp_next_scheduled() { return 1; } function wp_schedule_event() {} }
+if ( ! function_exists( 'get_transient' ) ) { function get_transient( $k ) { return false; } function set_transient() {} }
 spl_autoload_register( function ( $c ) { if ( 0 !== strpos( $c, 'AnsaPromo\\BF\\' ) ) { return; } $f = ANSA_PROMO_PATH . 'includes/bf/class-' . strtolower( str_replace( '_', '-', substr( $c, 13 ) ) ) . '.php'; if ( is_file( $f ) ) { require_once $f; } } );
 use AnsaPromo\BF\Config;
 use AnsaPromo\BF\Copy;
@@ -60,11 +62,23 @@ $ok( 'normalize: cookie_days ≥ 1', $x['aff']['cookie_days'] >= 1 );
 $ok( 'normalize: start < max при броячa', $x['seats']['start'] < $x['seats']['max'], $x['seats']['start'] . '/' . $x['seats']['max'] );
 $ok( 'early_url носи токена', false !== strpos( Config::early_url( $d ), 'cheren-petak-2026/?ea=' . $d['early']['token'] ) );
 
+/* ── 1.46.0: ваучерите за списъка + „Ти си късметлия“ ── */
+$ok( 'listv по подразбиране: 10 €, до края на ранния достъп, тагове bf-revived / bf-vip, auto', 10.0 === (float) $d['listv']['amount'] && 'early_end' === $d['listv']['until'] && 'bf-revived' === $d['listv']['tag_revived'] && 'bf-vip' === $d['listv']['tag_vip'] && $d['listv']['auto'] && 'BFV' === $d['listv']['prefix'] );
+$x = Config::normalize( array( 'listv' => array( 'until' => 'nope', 'prefix' => 'ab-c', 'amount' => -3 ), 'lucky' => array( 'dwell' => 1, 'phases' => 'public,xx' ) ) );
+$ok( 'normalize: until пада на early_end, префиксът е [A-Z0-9], сумата ≥ 0', 'early_end' === $x['listv']['until'] && 'ABC' === $x['listv']['prefix'] && 0.0 === (float) $x['listv']['amount'] );
+$ok( 'normalize: lucky dwell ≥ 5, фазите само early/public', 5 === (int) $x['lucky']['dwell'] && 'public' === $x['lucky']['phases'] );
+$ok( 'lucky по подразбиране: #11161 (1 маска), 45 с, exit, early+public', 11161 === (int) $d['lucky']['product_id'] && 45 === (int) $d['lucky']['dwell'] && $d['lucky']['exit'] && 'early,public' === $d['lucky']['phases'] );
+$ok( 'until_ts = early_end', AnsaPromo\BF\Boost::until_ts( $d ) === $ts( '2026-11-27 10:00' ) );
+$pe = $d; $pe['listv']['until'] = 'public_end'; $ok( 'until_ts = public_end при настройка', AnsaPromo\BF\Boost::until_ts( $pe ) === $ts( '2026-11-30 10:00' ) );
+$u = AnsaPromo\BF\Boost::utoken( 'Maria@Test.bg' ); $ok( 'личният линк: токенът на имейла е подписан и се чете обратно (малки букви)', '' !== $u && 'maria@test.bg' === AnsaPromo\BF\Boost::email_from_utoken( $u ) );
+$ok( 'личният линк: подправен подпис → празно', '' === AnsaPromo\BF\Boost::email_from_utoken( substr( $u, 0, -2 ) . 'zz' ) && '' === AnsaPromo\BF\Boost::email_from_utoken( 'x' ) );
+$ok( 'lucky_phases', array( 'early', 'public' ) === AnsaPromo\BF\Boost::lucky_phases( $d ) );
+
 /* ── копи-регистърът ── */
 $reg = Copy::defaults(); $ok( 'регистърът има ≥ 160 ключа', count( $reg ) >= 160, (string) count( $reg ) );
 $bad = array(); foreach ( $reg as $k => $v ) { foreach ( Copy::validate( $v ) as $err ) { $bad[] = $k . ': ' . $err; } } $ok( 'всички текстове по подразбиране минават validate', ! $bad, implode( '; ', $bad ) );
 $ok( 'ключовете са групирани и уникални', array_sum( array_map( 'count', Copy::registry() ) ) === count( $reg ) && count( Copy::groups() ) === count( Copy::registry() ) );
-foreach ( array( 'cold.title', 'cold.vch.title', 'wallet.sub.ok', 'aff.title', 'aff.v.title', 'aff.m.title', 'shop.steps', 'shop.foot.pay', 'shop.save', 'gifts.new', 'gifts.best', 'shop.closed.early.title', 'co.h', 'ty.h', 'err.early', 'over.title' ) as $k ) { $ok( 'ключ ' . $k, isset( $reg[ $k ] ) && '' !== $reg[ $k ] ); }
+foreach ( array( 'lucky.title', 'lucky.gift', 'lucky.cta', 'co.lucky.tag', 'shop.vch.live', 'shop.claim.h', 'err.code', 'toast.claimed', 'cold.tbar', 'wallet.tbar', 'cold.title', 'cold.vch.title', 'wallet.sub.ok', 'aff.title', 'aff.v.title', 'aff.m.title', 'shop.steps', 'shop.foot.pay', 'shop.save', 'gifts.new', 'gifts.best', 'shop.closed.early.title', 'co.h', 'ty.h', 'err.early', 'over.title' ) as $k ) { $ok( 'ключ ' . $k, isset( $reg[ $k ] ) && '' !== $reg[ $k ] ); }
 $ok( 'aff.v.title е само „Ваучер {{aff_voucher}} €“', 'Ваучер {{aff_voucher}} €' === $reg['aff.v.title'] );
 $ok( 'wallet.sub.ok е новият текст на човека', 0 === strpos( $reg['wallet.sub.ok'], 'Не чакай промото — започни още днес с нещо малко. Ще ти хареса' ) );
 $ok( 'стъпките са Продукти|Подаръци|Финализиране', 'Продукти|Подаръци|Финализиране' === $reg['shop.steps'] );

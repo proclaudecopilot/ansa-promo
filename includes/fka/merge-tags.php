@@ -85,3 +85,16 @@ class Ansa_Promo_FKA_Fav extends Ansa_Promo_FKA_Tag {
 class Ansa_Promo_FKA_Fav_Url extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'fav_url'; protected $ansa_desc = 'ansa™ Промо: линкът към продуктовата страница на най-купувания продукт на човека; празно, ако няма';
 }
+/* 1.46.0: Черен петък — ваучерите за списъка в ранния достъп и личният линк (AnsaPromo\BF\Boost::merge) */
+class Ansa_Promo_FKA_Bf_Voucher extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_voucher'; protected $ansa_desc = 'ansa™ Черен петък: кодът на живия ваучер на контакта (възобновеният или ВИП ваучерът; празно, ако няма)';
+}
+class Ansa_Promo_FKA_Bf_Voucher_Exp extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_voucher_exp'; protected $ansa_desc = 'ansa™ Черен петък: до кога важи ваучерът на контакта (дд.мм.гггг чч:мм)';
+}
+class Ansa_Promo_FKA_Bf_Early_Url extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_early_url'; protected $ansa_desc = 'ansa™ Черен петък: личният линк за ранния достъп (токенът + подписаният имейл → ваучерът влиза сам в количката); с UTM';
+}
+class Ansa_Promo_FKA_Bf_Url extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_url'; protected $ansa_desc = 'ansa™ Черен петък: публичният адрес на промоцията с UTM (за партньорите и публичния старт)';
+}

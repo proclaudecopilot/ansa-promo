@@ -42,7 +42,7 @@ final class Page {
 		foreach ( array( 'woocommerce_update_product', 'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status', 'woocommerce_update_product_variation', 'save_post_product' ) as $h ) { add_action( $h, array( __CLASS__, 'purge_runtime' ) ); }
 	}
 	public static function purge_runtime() { delete_transient( Config::runtime_key() ); }
-	public static function sc_early_url( $atts ) { return esc_url_raw( self::sc_utm( Config::early_url(), $atts, 'bf_early' ) ); }
+	public static function sc_early_url( $atts ) { $a = is_array( $atts ) ? $atts : array(); return Boost::merge( 'bf_early_url', array( 'utm_content' => (string) ( $a['utm_content'] ?? 'bf_early' ) ) ); } /* 1.46.0: личен, когато FKA знае контакта */
 	public static function sc_url( $atts ) { return esc_url_raw( self::sc_utm( self::url(), $atts, 'bf_public' ) ); }
 	private static function sc_utm( $url, $atts, $content ) {
 		$a = shortcode_atts( array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => $content ), is_array( $atts ) ? $atts : array() );
@@ -175,6 +175,8 @@ final class Page {
 			'aff' => array( 'enabled' => ! empty( $cfg['aff']['enabled'] ), 'voucher' => (float) $cfg['aff']['voucher'], 'mask' => $mask ? array( 'name' => $mask['name'], 'price' => $mask['price'], 'img' => $mask['img'] ) : null ),
 			'ship' => array( 'free_from' => (int) $cfg['ship']['free_from'], 'paid' => (float) $cfg['ship']['paid'] ),
 			'cod' => '' !== (string) $cfg['checkout']['cod_gateway'],
+			'listv' => array( 'enabled' => ! empty( $cfg['listv']['enabled'] ), 'amount' => (float) $cfg['listv']['amount'] ), /* 1.46.0 */
+			'lucky' => Boost::lucky_runtime( $cfg ),
 			'assets' => ANSA_PROMO_URL . 'assets/img/bf/',
 			'copy' => Copy::effective( $cfg['copy'] ),
 		);
@@ -187,6 +189,9 @@ final class Page {
 		$ctx = Cart::ctx();
 		if ( '' !== $ref && ! empty( $cfg['aff']['enabled'] ) ) { $p = self::partner( $ref ); if ( $p ) { $r['partner'] = array( 'code' => $p['code'], 'name' => $p['name'] ); Cart::remember_ref( $p['code'] ); } }
 		elseif ( ! empty( $ctx['ref'] ) ) { $p = self::partner( (string) $ctx['ref'] ); if ( $p ) { $r['partner'] = array( 'code' => $p['code'], 'name' => $p['name'] ); } }
+		/* 1.46.0: личният линк ?u= (подписан имейл) → ваучерът на човека влиза в сесията; и автоматичното издаване при старта на ранния достъп */
+		if ( ! empty( $_REQUEST['u'] ) ) { try { Boost::identify( (string) wp_unslash( $_REQUEST['u'] ), $cfg ); } catch ( \Throwable $e ) {} }
+		if ( ! $draft ) { try { Boost::maybe_auto(); } catch ( \Throwable $e ) {} }
 		$early = false;
 		if ( '' !== $ea && self::ea_valid( $ea, $cfg ) ) { $early = true; setcookie( self::EA_COOKIE, (string) $cfg['early']['token'], time() + (int) $cfg['early']['cookie_days'] * DAY_IN_SECONDS, '/', '', is_ssl(), false ); $ctx['early'] = 1; Cart::set_ctx( $ctx ); }
 		elseif ( self::early_ok( $cfg ) ) { $early = true; }

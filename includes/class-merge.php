@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
 final class Merge {
 
 	/** key → примерна стойност за преглед на имейла в FKA. */
-	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/', 'ref_link' => 'https://ansa.bg/sezonut-na-ansa/?r=XXXXXXXX', 'ref_code' => 'XXXXXXXX', 'fav' => 'Daily Greens', 'fav_url' => 'https://ansa.bg/' ); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката · 1.13.0 ref_link / ref_code: личният линк за препоръка на поръчката (работи от заявката, преди пратката) · 1.20.0 fav / fav_url: най-купуваният продукт на човека с КРАТКОТО име от картата (Favorite) — по имейла на контакта, не по поръчката */
+	const TAGS = array( 'tickets' => '5', 'bileta' => 'билета', 'tickets_text' => '', 'box' => 'Голяма кутия', 'book_url' => 'https://ansa.bg/kniga/', 'ref_link' => 'https://ansa.bg/sezonut-na-ansa/?r=XXXXXXXX', 'ref_code' => 'XXXXXXXX', 'fav' => 'Daily Greens', 'fav_url' => 'https://ansa.bg/' , 'bf_voucher' => 'BF10-K7M2', 'bf_voucher_exp' => '27.11.2026 10:00', 'bf_early_url' => 'https://ansa.bg/cheren-petak-2026/?ea=…&u=…', 'bf_url' => 'https://ansa.bg/cheren-petak-2026/'); /* 1.9.0 book_url: линкът към книгата (/kniga), празно без книга в поръчката · 1.13.0 ref_link / ref_code: личният линк за препоръка на поръчката (работи от заявката, преди пратката) · 1.20.0 fav / fav_url: най-купуваният продукт на човека с КРАТКОТО име от картата (Favorite) — по имейла на контакта, не по поръчката */
 
 	/** Състоянието на FKA регистрацията за Doctor/Probe: '' = още не е опитвано. */
 	private static $status = '';
@@ -125,6 +125,7 @@ final class Merge {
 	public static function shortcode( $key, $attr = array() ) {
 		$attr = shortcode_atts( array( 'order_id' => 0, 'fallback' => '', 'email' => '' ), is_array( $attr ) ? $attr : array() );
 		if ( empty( $attr['order_id'] ) && self::is_preview() ) { return self::dummy( $key ); }
+		if ( 0 === strpos( (string) $key, 'bf_' ) && class_exists( '\\AnsaPromo\\BF\\Boost' ) ) { $val = (string) BF\Boost::merge( $key, $attr ); return '' !== $val ? $val : (string) $attr['fallback']; } /* 1.46.0: Черен петък */
 		if ( in_array( $key, Favorite::TAGS, true ) ) { $val = self::favorite( $key, $attr ); return '' !== $val ? $val : (string) $attr['fallback']; } /* 1.20.0 */
 		$v = self::values( self::order( $attr ) );
 		$val = (string) ( $v[ $key ] ?? '' );
@@ -453,7 +454,7 @@ final class Merge {
 		if ( '' !== $why ) { self::$status = 'прескочено: ' . $why; return; }
 		require_once ANSA_PROMO_PATH . 'includes/fka/merge-tags.php';
 		$n = 0; $err = '';
-		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url', 'Ansa_Promo_FKA_Ref_Link', 'Ansa_Promo_FKA_Ref_Code', 'Ansa_Promo_FKA_Fav', 'Ansa_Promo_FKA_Fav_Url' ) as $c ) {
+		foreach ( array( 'Ansa_Promo_FKA_Tickets', 'Ansa_Promo_FKA_Bileta', 'Ansa_Promo_FKA_Tickets_Text', 'Ansa_Promo_FKA_Box', 'Ansa_Promo_FKA_Book_Url', 'Ansa_Promo_FKA_Ref_Link', 'Ansa_Promo_FKA_Ref_Code', 'Ansa_Promo_FKA_Fav', 'Ansa_Promo_FKA_Fav_Url', 'Ansa_Promo_FKA_Bf_Voucher', 'Ansa_Promo_FKA_Bf_Voucher_Exp', 'Ansa_Promo_FKA_Bf_Early_Url', 'Ansa_Promo_FKA_Bf_Url' ) as $c ) {
 			if ( ! class_exists( $c ) ) { continue; }
 			try { $c::get_instance(); $n++; self::fka_register( $c ); } catch ( \Throwable $e ) { $err = $err ?: $e->getMessage(); }
 		}

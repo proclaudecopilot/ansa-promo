@@ -62,6 +62,12 @@ function ansa_bf_snippet1_report() {
 	$p( '  само подарък / нови', count( array_filter( $live, function ( $x ) { return $x['giftOnly']; } ) ) . ' / ' . count( array_filter( $live, function ( $x ) { return $x['isNew']; } ) ) . ' · без снимка: ' . count( array_filter( $live, function ( $x ) { return '' === $x['img']; } ) ) );
 	$m = $Pg::mask( $d ); $p( 'маска (' . ( $d['aff']['mask_sku'] ?: '#' . $d['aff']['mask_product_id'] ) . ')', $m ? '#' . $m['id'] . ' ' . $m['name'] . ' · ' . $m['price'] . ' € · stock=' . $yn( $m['stock'] ) : 'НЕ Е НАМЕРЕНА' );
 	$p( 'лого', $Pg::logo( $d ) );
+	if ( class_exists( 'AnsaPromo\\BF\\Boost' ) ) {
+		$Bo = 'AnsaPromo\\BF\\Boost'; $pv = $Bo::preview( $d ); $lg = $Bo::log();
+		$p( 'ваучери за списъка (1.46.0)', json_encode( $d['listv'], JSON_UNESCAPED_UNICODE ) . ' · до ' . $C::fmt_dt( $Bo::until_ts( $d ) ) . ' · издадени=' . $yn( $Bo::is_done( $d ) ) . ' · ' . json_encode( $pv ) . ( $lg ? ' · последно ' . $lg['at'] . ' ' . (int) $lg['revived'] . '/' . (int) $lg['vip'] . ' грешки ' . count( $lg['errors'] ) : '' ) );
+		$lp = $Bo::lucky_product( $d ); $p( 'попъпът „късметлия“', json_encode( $d['lucky'] ) . ' → ' . ( $lp ? '#' . ( $lp['vid'] ?: $lp['id'] ) . ' ' . $lp['name'] . ' · ' . $lp['price'] . ' € · stock=' . $yn( $lp['stock'] ) : 'ПРОДУКТЪТ НЕ Е НАМЕРЕН' ) );
+		$p( 'merge tags', 'bf_early_url(test) → ' . $Bo::merge( 'bf_early_url', array( 'email' => 'test@example.com' ) ) . "\n" . str_repeat( ' ', 35 ) . 'bf_voucher(test) → ' . ( $Bo::merge( 'bf_voucher', array( 'email' => 'test@example.com' ) ) ?: '(няма — нормално)' ) );
+	}
 
 	$h( 'Копи-регистър' );
 	$reg = $Cp::defaults(); $p( 'ключове', count( $reg ) . ' · групи ' . count( $Cp::groups() ) . ' · override-и: ' . count( $d['copy'] ) );

@@ -329,6 +329,28 @@ button{font-family:inherit;cursor:pointer}
 @media (prefers-reduced-motion: reduce){.tbar.hot .tbar-t b{animation:none}}
 @media (max-width:360px){.tbar-t b{font-size:28px}.tbar-l{font-size:12.5px}}
 
+/* 1.46.0: ваучерът от имейла (лента / форма с код) и попъпът „Ти си късметлия“ */
+.vstrip{font-size:13px;font-weight:800;border-radius:12px;padding:9px 12px;margin:0 0 10px;text-align:center}
+.vstrip.ok{background:var(--gs);color:var(--gd);border:1.5px solid rgba(34,197,94,.4)}
+.claim{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px dashed var(--ol);border-radius:12px;padding:8px 10px;margin:0 0 10px;flex-wrap:wrap}
+.claim-h{font-size:12.5px;font-weight:800;color:var(--ink2);white-space:nowrap}
+.claim input{flex:1;min-width:120px;border:1.5px solid var(--ol);border-radius:9px;padding:8px 10px;font:inherit;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);outline:none;background:#fff}
+.claim input:focus{border-color:var(--o)}
+.claim .addb{padding:9px 12px;font-size:12.5px}
+.luckyline{font-size:12.5px;font-weight:800;color:var(--gd);background:var(--gs);border-radius:8px;padding:6px 10px;margin:-2px 0 8px}
+.lucky{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 32px);max-width:380px;z-index:45;background:#fff;border-radius:22px;padding:22px 18px 16px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:bfpop .25s ease-out}
+.lucky-ic{font-size:44px;line-height:1;margin-bottom:6px}
+.lucky-h{font-size:22px;font-weight:900;line-height:1.15;color:var(--ink)}
+.lucky-p{font-size:14px;font-weight:600;color:var(--mut);margin:6px 0 12px}
+.lucky-gift{display:flex;align-items:center;gap:12px;text-align:left;background:var(--gs);border:1.5px solid rgba(34,197,94,.4);border-radius:14px;padding:10px;margin-bottom:14px}
+.lucky-gift img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f5efe8;flex:none}
+.lucky-gift b{display:block;font-size:14px;font-weight:900;line-height:1.15;color:var(--gd)}
+.lucky-gift small{display:block;font-size:11.5px;font-weight:600;color:var(--tan);margin-top:2px}
+.lucky-pr{display:block;font-size:13px;font-weight:800;margin-top:4px}.lucky-pr s{color:var(--tan2);font-weight:600;margin-right:6px}.lucky-pr em{font-style:normal;color:var(--gd)}
+.lucky .cta{margin-top:0}
+.lucky .lucky-no{margin-top:10px;color:var(--tan);text-decoration:none;font-weight:700}
+@keyframes bfpop{from{opacity:0;transform:translate(-50%,-47%)}to{opacity:1;transform:translate(-50%,-50%)}}
+
 .panelh{display:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 12px}
 
 /* ═══ 1.45.2: десктоп (≥ 1024px) — не „телефон по средата на екрана“, а две колони: съдържанието вляво, панелът на поръчката (бившият залепен футър) вдясно, залепен горе; продуктите в две колони; листът „Прочети повече“ е модал по средата. Студената/партньорската/затворената страница (без панел) са една по-широка колона. ═══ */

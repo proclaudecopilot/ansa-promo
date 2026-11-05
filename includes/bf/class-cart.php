@@ -93,11 +93,12 @@ final class Cart {
 		foreach ( $cart->get_cart() as $key => $item ) {
 			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { $foreign[] = $key; continue; }
 			$m = $item[ self::META ];
-			if ( null === $g ) { $g = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'group' => (string) ( $m['group'] ?? '' ), 'mode' => (string) ( $m['mode'] ?? 'promo' ), 'phase' => (string) ( $m['phase'] ?? '' ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'base' => array(), 'gifts' => array(), 'pgift' => '', 'paid' => 0, 'ngifts' => 0 ); }
+			if ( null === $g ) { $g = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'group' => (string) ( $m['group'] ?? '' ), 'mode' => (string) ( $m['mode'] ?? 'promo' ), 'phase' => (string) ( $m['phase'] ?? '' ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'base' => array(), 'gifts' => array(), 'pgift' => '', 'lucky' => '', 'paid' => 0, 'ngifts' => 0 ); }
 			$role = (string) ( $m['role'] ?? '' );
 			if ( 'base' === $role ) { $g['base'][ $key ] = $item; $g['paid'] += (int) $item['quantity']; }
 			elseif ( 'gift' === $role ) { $g['gifts'][ $key ] = $item; $g['ngifts'] += (int) $item['quantity']; }
 			elseif ( 'pgift' === $role ) { $g['pgift'] = $key; }
+			elseif ( 'lucky' === $role ) { $g['lucky'] = $key; } /* 1.46.0: подаръкът от раздаването „Ти си късметлия“ */
 		}
 		if ( $g ) { $g['foreign'] = $foreign; }
 		return $g;
@@ -171,6 +172,10 @@ final class Cart {
 		if ( ! $added ) { self::$mutating = false; WC()->cart->empty_cart(); return $err( 'add' ); }
 		foreach ( $gifts as $pid => $q ) { $p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0; WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'gift', 'key' => $p['key'] ) ) ) ); }
 		/* маската от партньора — само в публичната промоция (или чернова) */
+		/* 1.46.0: „Ти си късметлия“ — 1 бр маска на 0 € към поръчката (промо режим, фазите от настройката, поне една платена опаковка) */
+		$lucky = ! empty( $a['lucky'] ) || ! empty( $prev['lucky'] );
+		if ( $lucky && 'promo' === $mode && ! empty( $cfg['lucky']['enabled'] ) && ( $draft || in_array( $phase, Boost::lucky_phases( $cfg ), true ) ) ) { $lp = Boost::lucky_product( $cfg ); if ( $lp && $lp['stock'] ) { $lsrc = $lp['vid'] ? wc_get_product( $lp['vid'] ) : wc_get_product( $lp['id'] ); if ( $lsrc ) { WC()->cart->add_to_cart( (int) $lp['id'], 1, (int) $lp['vid'], self::variation_attrs( $lsrc ), array( self::META => array_merge( $meta, array( 'role' => 'lucky', 'key' => 'lucky' ) ) ) ); $ctx['lucky'] = 1; } } }
+		elseif ( empty( $a['lucky'] ) ) { unset( $ctx['lucky'] ); }
 		if ( 'promo' === $mode && 'mask' === $affgift && ( 'public' === $phase || $draft ) ) { $mk = Page::mask( $cfg ); if ( $mk && $mk['stock'] ) { $msrc = $mk['vid'] ? wc_get_product( $mk['vid'] ) : wc_get_product( $mk['id'] ); if ( $msrc ) { WC()->cart->add_to_cart( (int) $mk['id'], 1, (int) $mk['vid'], self::variation_attrs( $msrc ), array( self::META => array_merge( $meta, array( 'role' => 'pgift', 'key' => 'mask' ) ) ) ); } } }
 		foreach ( WC()->cart->get_cart() as $k => $it ) { if ( empty( $it[ self::META ] ) ) { WC()->cart->remove_cart_item( $k ); } }
 		self::$mutating = false;
@@ -217,9 +222,11 @@ final class Cart {
 			self::$mutating = false; $g = self::group( $cart ); $ctx = self::ctx(); $ctx['shrunk'] = 1; self::set_ctx( $ctx );
 		}
 		if ( $g['pgift'] && (int) $g['paid'] <= 0 ) { self::$mutating = true; $cart->remove_cart_item( $g['pgift'] ); self::$mutating = false; $g = self::group( $cart ); if ( ! $g ) { return; } }
+		if ( $g['lucky'] && (int) $g['paid'] <= 0 ) { self::$mutating = true; $cart->remove_cart_item( $g['lucky'] ); self::$mutating = false; $g = self::group( $cart ); if ( ! $g ) { return; } }
 		foreach ( $g['base'] as $key => $item ) { $item['data']->set_price( self::reg_price( $item['data'] ) ); }
 		foreach ( $g['gifts'] as $key => $item ) { $item['data']->set_price( 0 ); }
 		if ( $g['pgift'] ) { $items = $cart->get_cart(); if ( isset( $items[ $g['pgift'] ] ) ) { $items[ $g['pgift'] ]['data']->set_price( 0 ); } }
+		if ( $g['lucky'] ) { $items = $cart->get_cart(); if ( isset( $items[ $g['lucky'] ] ) ) { $items[ $g['lucky'] ]['data']->set_price( 0 ); } }
 	}
 
 	/* ═══ ТАКСИ: ваучерите ═══ */
@@ -258,10 +265,10 @@ final class Cart {
 		if ( empty( $item[ self::META ] ) ) { return $name; }
 		$role = (string) $item[ self::META ]['role']; $name = preg_replace( '/\s*(?:[-–—,·|]|&ndash;|&mdash;)\s*(?:1|една|един)\s*(?:бр\.?|брой|опаковка|кутия|кутийка|pc\.?|pcs\.?)(\s*<\/a>)?\s*$/iu', '$1', (string) $name );
 		$ctx = self::ctx(); $p = ! empty( $ctx['ref'] ) ? Page::partner( (string) $ctx['ref'] ) : null;
-		$tag = 'gift' === $role ? self::copy( 'co.gift.tag' ) : ( 'pgift' === $role ? self::copy( 'co.pgift.tag', array( 'partner' => $p ? $p['name'] : 'партньора' ) ) : ( 'wallet' === (string) ( $item[ self::META ]['mode'] ?? '' ) ? self::copy( 'co.wallet.tag' ) : self::copy( 'co.base.tag' ) ) );
+		$tag = 'gift' === $role ? self::copy( 'co.gift.tag' ) : ( 'lucky' === $role ? self::copy( 'co.lucky.tag' ) : ( 'pgift' === $role ? self::copy( 'co.pgift.tag', array( 'partner' => $p ? $p['name'] : 'партньора' ) ) : ( 'wallet' === (string) ( $item[ self::META ]['mode'] ?? '' ) ? self::copy( 'co.wallet.tag' ) : self::copy( 'co.base.tag' ) ) ));
 		return $name . '<br><small class="ansa-promo-tag ansa-promo-lock">' . wp_kses_post( $tag ) . '</small>';
 	}
-	public static function cart_price_html( $html, $item, $key ) { if ( empty( $item[ self::META ] ) || ! in_array( $item[ self::META ]['role'], array( 'gift', 'pgift' ), true ) ) { return $html; } return '<span class="ansa-promo-free">' . esc_html( self::copy( 'co.free' ) ) . '</span>'; }
+	public static function cart_price_html( $html, $item, $key ) { if ( empty( $item[ self::META ] ) || ! in_array( $item[ self::META ]['role'], array( 'gift', 'pgift', 'lucky' ), true ) ) { return $html; } return '<span class="ansa-promo-free">' . esc_html( self::copy( 'co.free' ) ) . '</span>'; }
 
 	public static function check_cart() {
 		$g = self::group(); if ( ! $g ) { return; }
@@ -304,6 +311,7 @@ final class Cart {
 		foreach ( $g['base'] as $it ) { $sub += self::reg_price( $it['data'] ) * (int) $it['quantity']; }
 		foreach ( $g['gifts'] as $it ) { $gv += self::reg_price( $it['data'] ) * (int) $it['quantity']; }
 		if ( $g['pgift'] ) { $it = $cart->get_cart_item( $g['pgift'] ); if ( $it ) { $pg = self::reg_price( $it['data'] ); } }
+		if ( $g['lucky'] ) { $it = $cart->get_cart_item( $g['lucky'] ); if ( $it ) { $pg += self::reg_price( $it['data'] ); } }
 		/* 1.45.2: таксата е нето (fee_net) — брутото за показване е total + tax, щом WC вече ги е сметнал */
 		$vo = 0.0; foreach ( (array) $cart->get_fees() as $fee ) { if ( (float) $fee->amount < 0 ) { $vo += -( isset( $fee->total ) ? (float) $fee->total + (float) ( $fee->tax ?? 0 ) : (float) $fee->amount ); } }
 		$total = $gv + $pg + $vo; $full = $sub + $gv + $pg;
@@ -331,7 +339,7 @@ final class Cart {
 		$v = is_array( $ctx['voucher'] ?? null ) && Leads::voucher_valid( (string) $ctx['voucher']['code'] ) ? array( 'kind' => 'cold', 'code' => (string) $ctx['voucher']['code'], 'amount' => (float) $ctx['voucher']['amount'] ) : null;
 		$meta = array(
 			'promo' => $cfg['id'], 'group' => $g['group'], 'mode' => $g['mode'], 'phase' => $g['phase'], 'variant' => (string) ( $ctx['variant'] ?? '' ), 'paid' => (int) $g['paid'], 'ngifts' => (int) $g['ngifts'], 'gifts' => $gifts,
-			'pgift' => $g['pgift'] ? 'mask' : '', 'voucher' => $v, 'aff' => $p ? array( 'code' => $p['code'], 'name' => $p['name'], 'gift' => (string) ( $ctx['affgift'] ?? '' ) ) : null,
+			'pgift' => $g['pgift'] ? 'mask' : '', 'lucky' => $g['lucky'] ? 1 : 0, 'voucher' => $v, 'aff' => $p ? array( 'code' => $p['code'], 'name' => $p['name'], 'gift' => (string) ( $ctx['affgift'] ?? '' ) ) : null,
 			'savings' => $sv, 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 		);
 		return apply_filters( 'ansa_promo_bf_order_meta', $meta, $g, $cfg );
@@ -361,7 +369,7 @@ final class Cart {
 		if ( ! is_object( $item ) || ! method_exists( $item, 'get_meta' ) ) { return $name; }
 		$role = (string) $item->get_meta( '_ansa_bf_role' ); if ( '' === $role ) { return $name; }
 		$c = Copy::effective( Config::get_published()['copy'] );
-		return $name . ' <small class="ansa-promo-tag" style="color:#c2410c;font-weight:800">' . esc_html( 'gift' === $role ? $c['co.gift.tag'] : ( 'pgift' === $role ? wp_strip_all_tags( Copy::render( $c['co.pgift.tag'], array( 'partner' => 'партньор' ) ) ) : $c['co.base.tag'] ) ) . '</small>';
+		return $name . ' <small class="ansa-promo-tag" style="color:#c2410c;font-weight:800">' . esc_html( 'gift' === $role ? $c['co.gift.tag'] : ( 'lucky' === $role ? $c['co.lucky.tag'] : ( 'pgift' === $role ? wp_strip_all_tags( Copy::render( $c['co.pgift.tag'], array( 'partner' => 'партньор' ) ) ) : $c['co.base.tag'] ) ) ) . '</small>';
 	}
 	public static function thankyou( $order_id ) {
 		$order = wc_get_order( $order_id ); if ( ! $order ) { return; }
