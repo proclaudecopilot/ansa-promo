@@ -120,7 +120,7 @@ final class Config {
 		$out['early'] = array( 'token' => '' !== $tok ? $tok : self::default_token(), 'cookie_days' => max( 1, min( 60, (int) ( $e['cookie_days'] ?? 7 ) ) ) );
 		$out['ship'] = array( 'free_from' => max( 0, (int) ( $out['ship']['free_from'] ?? 2 ) ), 'paid' => round( (float) ( $out['ship']['paid'] ?? 2.55 ), 2 ) );
 		$out['checkout'] = array( 'card_gateway' => sanitize_key( (string) ( $out['checkout']['card_gateway'] ?? 'fkwcs_stripe' ) ), 'cod_gateway' => sanitize_key( (string) ( $out['checkout']['cod_gateway'] ?? 'cod' ) ), 'block_coupons' => ! isset( $out['checkout']['block_coupons'] ) || ! empty( $out['checkout']['block_coupons'] ) );
-		$l = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = array( 'fka' => ! isset( $l['fka'] ) || ! empty( $l['fka'] ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! isset( $l['untag_on_order'] ) || ! empty( $l['untag_on_order'] ) );
+		$l = is_array( $out['leads'] ?? null ) ? $out['leads'] : array(); $out['leads'] = array( 'fka' => ! isset( $l['fka'] ) || ! empty( $l['fka'] ), 'consent_only' => ! empty( $l['consent_only'] ), 'untag_on_order' => ! empty( $l['untag_on_order'] ) ); /* 1.48.6: по подразбиране таговете остават */
 		foreach ( array( 'list', 'tag_cold', 'tag_aff' ) as $lk ) { $out['leads'][ $lk ] = mb_substr( trim( wp_strip_all_tags( (string) ( $l[ $lk ] ?? $d['leads'][ $lk ] ) ) ), 0, 100 ); }
 		$out['orders'] = array( 'fka_tag' => mb_substr( trim( wp_strip_all_tags( (string) ( $out['orders']['fka_tag'] ?? '' ) ) ), 0, 100 ) );
 		$out['preview'] = array( 'password' => trim( wp_strip_all_tags( (string) ( $out['preview']['password'] ?? '' ) ) ) );
@@ -161,6 +161,14 @@ final class Config {
 	public static function published_at() { $s = self::read_store(); return (int) $s['published_at']; }
 	public static function history() { $s = self::read_store(); return array_map( function ( $h ) { return array( 'version' => (int) $h['version'], 'at' => (int) $h['at'] ); }, $s['history'] ); }
 	public static function save_draft( $data ) { $s = self::read_store(); $s['draft'] = self::normalize( $data ); $s['draft_at'] = time(); self::write_store( $s ); return $s['draft']; }
+	/* 1.48.6: еднократно при обновяване — „при поръчка таговете падат“ става изключено и в черновата, и в публикуваното, без нова версия (човекът: „Нека си останат“). */
+	public static function keep_tags_once() {
+		$key = 'ansa_promo_bf_keep_tags_v1'; if ( get_option( $key ) ) { return false; }
+		$s = self::read_store(); $n = 0;
+		foreach ( array( 'draft', 'published' ) as $k ) { if ( is_array( $s[ $k ] ) && ! empty( $s[ $k ]['leads']['untag_on_order'] ) ) { $s[ $k ]['leads']['untag_on_order'] = false; $n++; } }
+		if ( $n ) { self::write_store( $s ); }
+		update_option( $key, array( 'at' => time(), 'changed' => $n ), false ); return $n;
+	}
 	public static function publish() {
 		$s = self::read_store();
 		$src = is_array( $s['draft'] ) ? $s['draft'] : $s['published'];
