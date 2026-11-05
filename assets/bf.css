@@ -340,6 +340,13 @@ button{font-family:inherit;cursor:pointer}
   .ansa-bf > .foot .aside .vch:before,.ansa-bf > .foot .aside .vch:after{background:#fffdfb}
   .ansa-bf > .foot .aside .strip{margin-bottom:0}
   .ansa-bf > .foot .aside + .panelh{border-top:1.5px solid var(--ol);padding-top:14px}
+  /* магазинът: уравнението + „Спестяваш“ в тъмна карта вдясно */
+  .ansa-bf > .foot .aside.dark{background:var(--bf);color:#fff;border-radius:16px;padding:12px 12px 12px;margin:-4px 0 14px}
+  .ansa-bf > .foot .aside.dark .eq{margin-top:0;max-width:none}
+  .ansa-bf > .foot .aside.dark .affnote{margin:0 0 10px}
+  .ansa-bf > .foot .aside.dark .eq-note{max-width:none}
+  .ansa-bf .hero.slim{padding-bottom:18px}
+  .ansa-bf .hero.slim .stepsbar{margin-bottom:0}
   .morepill{display:none!important}
   .ansa-bf .hero{padding:24px 32px 26px}
   .ansa-bf .hero .hrow{margin-bottom:14px}

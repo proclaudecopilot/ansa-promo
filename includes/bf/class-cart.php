@@ -32,6 +32,7 @@ final class Cart {
 
 	public static function register() {
 		add_action( 'wp_ajax_ansa_bf_add', array( __CLASS__, 'ajax_add' ) );
+		foreach ( array( 'wp_ajax_ansa_bf_add', 'wp_ajax_nopriv_ansa_bf_add' ) as $h ) { add_action( $h, array( Leads::class, 'pixel_cookies' ), 0 ); } /* 1.45.4: Pixel CAPI Pro бисквитки */
 		add_action( 'wp_ajax_nopriv_ansa_bf_add', array( __CLASS__, 'ajax_add' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'apply_pricing' ), 94 );
 		add_action( 'woocommerce_cart_loaded_from_session', array( __CLASS__, 'strip_foreign' ), 20 );
@@ -179,6 +180,7 @@ final class Cart {
 		WC()->cart->calculate_totals(); WC()->cart->set_session();
 		try { Insights::hit( 'add', 'bf', (string) $ctx['variant'] ); } catch ( \Throwable $e ) {}
 		do_action( 'ansa_promo_bf_added', $group, $ctx, $cfg );
+		do_action( 'ansa_promo_added', $group, 'bf:' . $mode, $ctx, $cfg ); /* 1.45.4: хукът на Сезона → Pixel CAPI Pro праща AddToCart с реалната количка */
 		$sv = self::savings(); return array( 'ok' => true, 'group' => $group, 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url(), 'savings' => $sv );
 	}
 

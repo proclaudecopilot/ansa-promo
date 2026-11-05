@@ -26,6 +26,8 @@ final class Leads {
 
 	public static function register() {
 		add_action( 'wp_ajax_ansa_bf_lead', array( __CLASS__, 'ajax_lead' ) );
+		/* 1.45.4: Pixel CAPI Pro може да запише fbp/fbc/имейл бисквитките в отговора на ajax-а (както при ansa_promo_lead на Сезона) */
+		foreach ( array( 'wp_ajax_ansa_bf_lead', 'wp_ajax_nopriv_ansa_bf_lead' ) as $h ) { add_action( $h, array( __CLASS__, 'pixel_cookies' ), 0 ); }
 		add_action( 'wp_ajax_nopriv_ansa_bf_lead', array( __CLASS__, 'ajax_lead' ) );
 		foreach ( array( 'on-hold', 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_order_id' ), 27 ); }
 		add_action( 'woocommerce_payment_complete', array( __CLASS__, 'on_order_id' ), 27 );
@@ -47,6 +49,7 @@ final class Leads {
 	}
 
 	/* ── ajax: записване ── */
+	public static function pixel_cookies() { if ( class_exists( '\\PixelCapiPro\\Identity' ) && method_exists( '\\PixelCapiPro\\Identity', 'allow_cookies' ) ) { \PixelCapiPro\Identity::allow_cookies( true ); } }
 	public static function ajax_lead() {
 		if ( ! check_ajax_referer( Page::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'nonce' ), 403 ); }
 		if ( SeasonLeads::rate_limited( 'bf_lead', 10 ) ) { wp_send_json_error( array( 'code' => 'rate' ), 429 ); }
@@ -85,6 +88,8 @@ final class Leads {
 		try { Insights::hit( 'gate', 'bf', $kind ); } catch ( \Throwable $e ) {}
 		$out['ctx'] = Cart::ctx_public();
 		do_action( 'ansa_promo_bf_lead_captured', (int) ( $out['lead'] ?? 0 ), $email, $kind, $bonus );
+		/* 1.45.4: и хукът на Сезона (същия подпис) — Pixel CAPI Pro слуша него за събитието Lead към Meta */
+		do_action( 'ansa_promo_lead_captured', (int) ( $out['lead'] ?? 0 ), $email, (bool) $consent, 'bf-' . $kind . ( '' !== $utm ? '-' . $utm : '' ) );
 		nocache_headers(); wp_send_json_success( $out );
 	}
 	private static function sync( $id, $email, $consent, $cfg, $kind ) { try { return Lead_Sync::sync( (int) $id, $email, (bool) $consent, self::fka_cfg( $cfg, $kind ) ); } catch ( \Throwable $e ) { return 'retry: ' . $e->getMessage(); } }

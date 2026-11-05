@@ -153,14 +153,15 @@
       ? '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + (affVoucher() ? ' <span style="font-weight:600;color:var(--tan)">(−' + fmtNum(affVoucher()) + ' €)</span>' : '') + '</span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0 }) + '</span></div><button class="cta" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '</button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('shop.foot.empty') + '</span><span class="ok">' + T('shop.foot.empty.r') + '</span></div><button class="cta sm" disabled>' + T('shop.foot.empty.cta') + '</button>';
     var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T('shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
-    return '<div class="scroll"><div class="hero">'
-      + '<div class="hrow">' + logoImg + timerPill() + '</div>' + stepsBar(1) + affnote
-      + '<div class="eq pop" id="eq" data-n="' + (n || S.demoN || 1) + '">' + eqHtml(n || S.demoN || 1) + '</div>' + (n ? saveLine('hero') : '<div class="eq-note" id="eqNote">' + T('shop.eq.note') + '</div>') + '</div>'
+    /* механиката (уравнението + „Спестяваш“ + бележката за партньора): на телефона в тъмната секция, на десктоп (1.45.4) вдясно над „Твоята поръчка“ — както ваучерът в портфейла */
+    var mech = affnote + '<div class="eq pop" id="eq" data-n="' + (n || S.demoN || 1) + '">' + eqHtml(n || S.demoN || 1) + '</div>' + (n ? saveLine('hero') : '<div class="eq-note" id="eqNote">' + T('shop.eq.note') + '</div>');
+    return '<div class="scroll"><div class="hero' + (isDesk() ? ' slim' : '') + '">'
+      + '<div class="hrow">' + logoImg + timerPill() + '</div>' + stepsBar(1) + (isDesk() ? '' : mech) + '</div>'
       + '<div class="wrap" style="padding-top:10px"><div class="k2row"><span class="k2">' + T('shop.step1') + ' <button class="info' + (S.ex ? ' on' : '') + '" data-act="ex" aria-expanded="' + !!S.ex + '">' + T('shop.example.btn') + '</button></span>' + chips(pool) + '</div>'
       + (S.ex ? '<div class="exbox">' + T('shop.example') + '</div>' : '')
       + (list.length ? list.map(function (p) { return productTile(p, 'buy'); }).join('') : '<div class="lead">—</div>')
       + howCard() + '<div class="footnote">' + T('shop.footnote') + '</div></div></div>'
-      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button><div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
+      + '<div class="foot"><button class="morepill" id="morePill" data-act="scrolldown" hidden></button>' + (isDesk() ? '<div class="aside dark">' + mech + '</div>' : '') + '<div class="panelh">' + T('shop.panel.h') + '</div>' + foot + '</div>';
   }
   function vGifts() {
     var n = paidCount(), g = giftCount(), left = n - g; var news = giftList().filter(function (p) { return p.isNew; }), best = giftList().filter(function (p) { return !p.isNew; });
@@ -229,7 +230,9 @@
   setInterval(function () { var eq = document.getElementById('eq'); if (!eq || paidCount()) return; S.demoN = (S.demoN || 1) % 6 + 1; eq.classList.remove('pop'); void eq.offsetWidth; eq.innerHTML = eqHtml(S.demoN); eq.classList.add('pop'); }, 2200);
 
   /* ── ajax ── */
-  function post(action, data) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+  /* 1.45.4: страницата е кеширана, а nonce-ът в нея живее 12–24 ч. → свеж nonce от ansa_bf_runtime при зареждане (refresh) и при грешка „nonce“ — един повторен опит със свеж, без човекът да разбере (както promo.js v1.1.0) */
+  function freshNonce() { return fetch(R.ajax + '?action=ansa_bf_runtime&_=' + Date.now(), { method: 'POST', body: new FormData(), credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (j && j.success && j.data && j.data.nonce) { R.nonce = j.data.nonce; } }).catch(function () {}); }
+  function post(action, data, _retry) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (!_retry && j && !j.success && j.data && j.data.code === 'nonce') { return freshNonce().then(function () { return post(action, data, true); }); } return j; }); }
   function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
     var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam;
@@ -238,6 +241,7 @@
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.success || !j.data) return;
       var rt = j.data; P = rt.products || P; ORDER = rt.order || ORDER; copy = rt.copy || copy; phase = rt.phase || phase; phaseEnd = (rt.phase_end || 0) * 1000; seats = rt.seats || seats; offset = (rt.now ? rt.now * 1000 : Date.now()) - Date.now(); R.cats = rt.cats || R.cats; R.aff = rt.aff || R.aff; R.cold = rt.cold || R.cold; R.ship = rt.ship || R.ship; R.dates = rt.dates || R.dates; dates = R.dates;
+      if (rt.nonce) { R.nonce = rt.nonce; }
       if (rt.partner) { partner = rt.partner; setCookie('ansa_bf_aff', partner.code, (R.aff && R.aff.cookie_days) || 7); }
       earlyOk = !!rt.early_ok; applyCtx(rt.ctx); S._exp.phase = false; render();
     }).catch(function () {});
