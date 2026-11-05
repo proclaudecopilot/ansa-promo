@@ -452,16 +452,19 @@ body.bf-gifts.ansa-bf-page{background:#f4fbf2}
 
 /* 1.47.0: високият панел на десктоп — кутията на поръчката (продукти + места за подаръци) и големият бутон */
 @media (min-width:1024px){
-  .ansa-bf > .foot.tall{display:flex;flex-direction:column;min-height:calc(100vh - 48px);max-height:calc(100vh - 48px)}
+  .ansa-bf > .foot.tall{display:flex;flex-direction:column;top:var(--pgap,24px);height:calc(100vh - 2 * var(--pgap,24px));min-height:0;max-height:none}
   .ansa-bf > .foot.tall .pcap{flex:none}
-  .ansa-bf > .foot.tall .pcart{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 18px 6px;border-bottom:1.5px solid var(--ol);background:#fffdfb}
+  .ansa-bf > .foot .pcart{padding:14px 18px 10px;background:#fffdfb}
+  .ansa-bf > .foot .pgifts{flex:none;padding:12px 18px 12px;border-top:1.5px solid var(--ol);border-bottom:1.5px solid var(--ol);background:#f4fbf2}
+  .ansa-bf > .foot.tall .pcart{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
   .ansa-bf > .foot.tall .pbody{flex:none}
+  .ansa-bf > .foot:not(.tall){transition:height .25s ease}
   .pcap .savebox.hero{margin:10px auto 0}
   .pcap .savebox{padding:4px 12px}
   .pcap .savebox b{font-size:22px}
   .ph{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tan);margin:0 0 8px}
   .ph b{font-size:12px;color:var(--ink);text-transform:none;letter-spacing:0}
-  .ph.gifts{margin-top:14px;color:var(--gd)}
+  .ph.gifts{margin-top:0;color:var(--gd)}
   .crows{display:flex;flex-direction:column;gap:6px}
   .crow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:12px;padding:6px 8px;animation:bfpopin .25s ease-out}
   .crow img{width:44px;height:44px;border-radius:9px;object-fit:cover;background:#f5efe8}
