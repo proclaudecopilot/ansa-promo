@@ -614,6 +614,7 @@ final class Cart {
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return; }
 		$cfg = ! empty( $m['draft'] ) ? Config::get_draft() : Config::get_published(); $box = Config::box( $cfg, $m['box'] ); if ( ! $box ) { return; }
 		$v = self::vars( $cfg, $box ); $v['tickets'] = Tickets::count_for_order( $order ); /* 1.8.2: една сметка с merge tags/имейлите */ $v['bileta'] = 1 === $v['tickets'] ? 'билет' : 'билета';
+		$v['portal_url'] = Merge::portal_url( $cfg ); /* 1.45.2: ty.p казва къде се виждат билетите (томболата / порталът), както имейлите */
 		echo '<div class="ansa-promo-co__box ansa-promo-ty"><b>' . wp_kses_post( self::copy( 'ty.h', $v ) ) . '</b><p>' . wp_kses_post( self::copy( 'ty.p', $v ) ) . '</p><ul>' . self::rewards_list( $cfg, $box, $v ) . '</ul>' . ( $m['cosm'] && 'reserved' === $m['cosm']['status'] ? '<p>' . wp_kses_post( self::copy( 'ty.cosm', $v ) ) . '</p>' : '' ) . '</div>';
 		self::checkout_css();
 	}
