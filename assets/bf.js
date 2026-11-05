@@ -82,9 +82,14 @@
   /* 1.46.0: тостът е в body, не в корена — иначе render() веднага след toast() го триеше (грешен код, грешка при записване) */
   /* 1.46.4: тостът е долу — над залепения футър на телефона, или 24px от дъното на десктоп — никога върху заглавието/панела */
   var placeToast = function () { var t = document.querySelector('body > .bf-toast'); if (!t) return; var f = root.querySelector('.foot'); var stuck = f && getComputedStyle(f).position === 'sticky' && f.getBoundingClientRect().bottom >= window.innerHeight - 2; t.style.bottom = (stuck ? Math.round(f.getBoundingClientRect().height) + 10 : 24) + 'px'; };
-  var toast = function (msg) {
-    var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); t.className = 'toast bf-toast'; document.body.appendChild(t); }
-    t.textContent = msg; placeToast(); clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2200);
+  /* 1.46.5: тостът в стила на ansa — бяла карта с Nunito, икона по вид (ok / подарък / грешка / ваучер / раздаване), центриран, изскача отдолу (човекът: „това съобщение е изключително грозно“) */
+  var toast = function (msg, kind) {
+    kind = kind || 'ok';
+    var t = document.querySelector('body > .bf-toast'); if (!t) { t = document.createElement('div'); document.body.appendChild(t); }
+    var ic = { ok: '✓', gift: '🎁', err: '!', lucky: '🍀', vch: '🎟' }[kind] || '✓';
+    t.className = 'toast bf-toast ' + kind; t.innerHTML = '<span class="ti">' + ic + '</span><span class="tm">' + esc(msg) + '</span>';
+    void t.offsetWidth; t.classList.add('in');
+    placeToast(); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('in'); setTimeout(function () { if (!t.classList.contains('in')) t.remove(); }, 220); }, 2400);
   };
 
   /* ── компоненти ── */
@@ -192,9 +197,9 @@
   function onClaim(e) {
     e.preventDefault(); var inp = document.getElementById('claimIn'); var code = (inp.value || '').trim().toUpperCase(); if (!code) return; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_claim', { code: code }).then(function (j) {
-      if (!j || !j.success) { var d = j && j.data ? j.data : {}; toast(d.msg || T('err.code')); render(); return; }
-      applyCtx(j.data.ctx); toast(T('toast.claimed', { code: code, amount: fmtNum(ctx.voucher ? ctx.voucher.amount : 0) })); render();
-    }).catch(function () { toast(T('err.add')); render(); });
+      if (!j || !j.success) { var d = j && j.data ? j.data : {}; toast(d.msg || T('err.code'), 'err'); render(); return; }
+      applyCtx(j.data.ctx); toast(T('toast.claimed', { code: code, amount: fmtNum(ctx.voucher ? ctx.voucher.amount : 0) }), 'vch'); render();
+    }).catch(function () { toast(T('err.add'), 'err'); render(); });
   }
   /* 1.46.0: попъпът „Ти си късметлия“ — exit intent / дълго стоене на стъпка 2 */
   var luckyTimer = null;
@@ -339,12 +344,12 @@
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { S.emailErr = true; S.email = v; render(); return; }
     S.email = v; S.emailErr = false; var kind = S.screen === 'aff' ? 'aff' : 'cold'; var btn = e.target.querySelector('button'); if (btn) btn.classList.add('busy');
     post('ansa_bf_lead', { email: v, kind: kind, bonus: S.affgift || ctx.affgift || 'v5', consent: '1', utm: utm, ref: partner ? partner.code : refParam, sid: '' }).then(function (j) {
-      if (!j || !j.success) { var code = j && j.data && j.data.code; toast(code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add')); render(); return; }
+      if (!j || !j.success) { var code = j && j.data && j.data.code; toast(code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'), 'err'); render(); return; }
       applyCtx(j.data.ctx); if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
       if (kind === 'aff') { toast(T('aff.toast', V({ email: v }))); S.screen = isPublic() ? 'shop' : 'affwait'; }
       else { S._exp.walletExp = false; S.screen = 'wallet'; }
       render();
-    }).catch(function () { toast(T('err.add')); render(); });
+    }).catch(function () { toast(T('err.add'), 'err'); render(); });
   }
   /* 1.46.4: ясно състояние на зареждане — бутонът се върти, екранът е покрит с „Правим количката ти…“ (човекът: „по никакъв начин не се разбира, че се чака зареждане“) */
   function setWait(on, msg) {
@@ -362,9 +367,9 @@
     checkingOut = true; if (luckyTimer) { clearTimeout(luckyTimer); luckyTimer = null; } S.luckyOpen = false;
     setWait(true, mode === 'wallet' ? T('wait.wallet') : T('wait.promo'));
     post('ansa_bf_add', { mode: mode, items: JSON.stringify(items), gifts: JSON.stringify(gifts), pay: 'card', email: S.email || ctx.email || '', variant: variant(), utm: utm, lead: S.lead || ctx.lead || 0, ref: partner ? partner.code : '', affgift: S.affgift || ctx.affgift || '', lucky: S.lucky ? '1' : '0' }).then(function (j) {
-      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { setWait(false); checkingOut = false; var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add')); if (d.code === 'early') { earlyOk = false; render(); } return; }
+      if (!j || !j.success || !j.data || !j.data.checkoutUrl) { setWait(false); checkingOut = false; var d = j && j.data ? j.data : {}; toast(d.msg || T('err.add'), 'err'); if (d.code === 'early') { earlyOk = false; render(); } return; }
       setWait(true, T('wait.go')); location.href = j.data.checkoutUrl;
-    }).catch(function () { setWait(false); checkingOut = false; toast(T('err.add')); });
+    }).catch(function () { setWait(false); checkingOut = false; toast(T('err.add'), 'err'); });
   }
 
   /* ── действия ── */
@@ -372,16 +377,16 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return; var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
     if (act === 'bonus') { S.affgift = id; }
     else if (act === 'ex') { S.ex = !S.ex; }
-    else if (act === 'cart+') { S.cart[id] = (S.cart[id] || 0) + 1; if (S.sheet) S.sheet = null; var p = P[id]; if (p && !inWallet()) toast(T('toast.added', { name: p.name, n: paidCount(), podaruk: GIFT(paidCount()) })); }
+    else if (act === 'cart+') { S.cart[id] = (S.cart[id] || 0) + 1; if (S.sheet) S.sheet = null; var p = P[id]; if (p && !inWallet()) toast(T('toast.added', { name: p.name, n: paidCount(), podaruk: GIFT(paidCount()) }), 'gift'); }
     else if (act === 'cart-') { if (S.cart[id] > 1) S.cart[id]--; else delete S.cart[id]; trimGifts(); }
     else if (act === 'gift+') { if (giftCount() < paidCount()) { S.gifts[id] = (S.gifts[id] || 0) + 1; } S.sheet = null; if (giftCount() === paidCount()) toast(T('toast.gifts')); }
     else if (act === 'gift-') { if (S.gifts[id] > 1) S.gifts[id]--; else delete S.gifts[id]; }
-    else if (act === 'giftonly') { S.sheet = null; if (paidCount()) { S.screen = 'gifts'; } else { toast(T('toast.giftonly')); } }
+    else if (act === 'giftonly') { S.sheet = null; if (paidCount()) { S.screen = 'gifts'; } else { toast(T('toast.giftonly'), 'err'); } }
     else if (act === 'sheet') { S.sheet = id || null; S.tab = 'desc'; }
     else if (act === 'tab') { S.tab = id; }
     else if (act === 'screen') { if (id === 'gifts' && !paidCount()) return; S.screen = id; lastScreen = ''; }
     else if (act === 'checkout') { checkout('promo'); return; }
-    else if (act === 'lucky-yes') { S.lucky = true; S.luckyOpen = false; toast(T('lucky.toast')); }
+    else if (act === 'lucky-yes') { S.lucky = true; S.luckyOpen = false; toast(T('lucky.toast'), 'lucky'); }
     else if (act === 'lucky-no') { S.luckyOpen = false; }
     else if (act === 'wallet-go') { checkout('wallet'); return; }
     else if (act === 'scrolldown') { window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' }); return; }
