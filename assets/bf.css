@@ -187,7 +187,16 @@ button{font-family:inherit;cursor:pointer}
 .hdr .x{flex:none}
 .tile .gl{display:inline-block;font-size:11.5px;font-weight:800;color:var(--gd);background:var(--gs);border-radius:6px;padding:2px 7px;margin-top:4px}
 .strip-hint{font-size:11.5px;font-weight:600;color:var(--tan);text-align:center;margin:-6px 0 10px}
-.tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07)}
+.tile{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px;margin-bottom:8px;box-shadow:0 2px 10px rgba(232,114,42,.07);position:relative}
+/* 1.46.3: лентата с подаръка върху горния ръб на картата + подскачане на числото при промяна */
+.tile.banded{padding-top:34px}
+.gband{position:absolute;left:-1.5px;right:-1.5px;top:-1.5px;height:24px;display:flex;align-items:center;justify-content:center;gap:4px;background:linear-gradient(90deg,#15803d,#22c55e);color:#fff;font-size:11.5px;font-weight:800;border-radius:14px 14px 0 0;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px}
+.gband .gn{display:inline-block;font-size:13px;font-weight:900;background:#fff;color:var(--gd);border-radius:6px;padding:0 6px;line-height:18px;margin:0 2px}
+.gband.pop .gn{animation:gbounce .6s cubic-bezier(.2,1.6,.4,1)}
+.gband.pop{animation:gflash .6s ease-out}
+@keyframes gbounce{0%{transform:scale(1)}35%{transform:scale(1.45) translateY(-2px)}70%{transform:scale(.95)}100%{transform:scale(1)}}
+@keyframes gflash{0%{filter:brightness(1.35)}100%{filter:brightness(1)}}
+@media (prefers-reduced-motion: reduce){.gband.pop .gn,.gband.pop{animation:none}}
 .tile>div{min-width:0}
 .tile img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f5efe8}
 .tile .n{font-size:14.5px;font-weight:900;line-height:1.15}

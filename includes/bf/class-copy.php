@@ -139,7 +139,7 @@ final class Copy {
 				'shop.filter.fav'   => 'Най-продавани',
 				'shop.add'          => '＋ Добави',
 				'shop.more'         => 'Прочети повече ▾',
-				'shop.gl'           => '🎁 носи ти +{{n}} {{podaruk}} по избор',
+				'shop.gl'           => '🎁 носи ти {{n}} {{podaruk}} по избор',
 				'shop.scroll'       => 'Скролни за още {{n}} {{produkt}} ↓',
 				'shop.foot.empty'   => 'Количката е празна',
 				'shop.foot.empty.r' => '1 опаковка = 1 подарък по избор',
