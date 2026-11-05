@@ -83,6 +83,16 @@ final class Copy {
 				'wallet.foot.disc'   => '−{{amount}} € с ваучера',
 				'wallet.foot.expired'=> 'ваучерът изтече',
 				'wallet.foot.cta'    => 'Бърза поръчка →',
+				'rcpt.reg'           => 'Редовна цена',
+				'rcpt.vch'           => '🎟 Минус ваучера ти',
+				'rcpt.pay'           => 'Ще платиш',
+				'wallet.r.exp'       => 'ваучерът за днес изтече',
+				'wallet.r.hint'      => 'Добави продукт, за да го използваш — важи само днес',
+				'wallet.r.hint.plain'=> 'Можеш да поръчаш на редовна цена',
+				'wallet.cta.use'     => 'Използвай ваучера · {{total}} →',
+				'wallet.cta.sub'     => 'вместо {{reg}} · изтича след',
+				'wallet.cta.plain'   => 'Поръчай · {{total}} →',
+				'wallet.cta.plain.sub' => 'на редовна цена',
 				'wallet.note'        => 'Цените са редовни. Ваучерът от записването се приспада в количката.',
 			),
 			'aff' => array(
@@ -249,7 +259,7 @@ final class Copy {
 	}
 
 	public static function vars() {
-		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount' );
+		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount', 'total', 'reg' );
 	}
 	public static function defaults() { static $d = null; if ( null === $d ) { $d = array(); foreach ( self::registry() as $g => $keys ) { $d += $keys; } } return $d; }
 	public static function effective( $overrides ) {
