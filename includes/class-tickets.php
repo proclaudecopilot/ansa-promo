@@ -3,7 +3,9 @@
  * ansa™ Промо — награди (Фаза 4): билети, QR, REST за портала, ваучер/книга по имейл, void, админ.
  *
  *  - Издаване: при processing/completed (веднъж; guard `_ansa_promo_ticket_id`) за валидна промо поръчка с allowance > 0 →
- *    ред в {prefix}ansa_promo_tickets {order_id, code, tickets, box, status=issued}. Кодът е 12 знака (8 случайни + 4 HMAC
+ *    ред в {prefix}ansa_promo_tickets {order_id, code, tickets, box, status=issued}. 1.49.1: и при „получена“ (tombola.statuses =
+ *    Delivered) — поръчка, минала без processing/completed (напр. наложен платеж с книгата: WC я слага on-hold, после
+ *    on-hold → shipped → delivered), получава билета при получаването; крон + бутонът в 🎟️ Поръчки догонват старите. Кодът е 12 знака (8 случайни + 4 HMAC
  *    контролни, азбука без 0/O/1/I), показва се като XXXX-XXXX-XXXX; невалиден код се отхвърля без DB.
  *  - QR: съдържанието е URL към портала (tickets.portal_url) или към промо страницата с ?ticket=КОД. PNG/SVG през
  *    GET /wp-json/ansa-promo/v1/order/{id}/qr.png (manage_woocommerce или подписан ?key=) — за складовия стикер; URL-ът
@@ -27,16 +29,19 @@ final class Tickets {
 	const NS       = 'ansa-promo/v1';
 	const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 	const OPT_SECRET = 'ansa_promo_ticket_secret';
+	const OPT_BACKFILL = 'ansa_promo_tickets_delivered_v1'; /* 1.49.1: еднократният backfill след ъпдейта е минал */
+	const BACKFILL_HOOK = 'ansa_promo_tickets_backfill';
 
 	public static function register() {
 		foreach ( array( 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_paid' ), 20 ); }
-		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 30, 3 ); /* 1.9.0: ваучер + книга при „получена“ (tombola.statuses = Delivered), НЕ при „Изпълнена“ */
+		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 30, 3 ); /* 1.9.0: ваучер + книга при „получена“ (tombola.statuses = Delivered), НЕ при „Изпълнена“; 1.49.1: + билетът, ако още няма */
 		foreach ( array( 'cancelled', 'refunded' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_void' ), 20 ); }
 		add_action( 'woocommerce_before_delete_order', array( __CLASS__, 'on_delete' ) );
 		add_action( 'before_delete_post', array( __CLASS__, 'on_delete' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
 		add_filter( 'allowed_http_origins', array( __CLASS__, 'cors' ) );
 		add_action( 'ansa_promo_daily', array( __CLASS__, 'cron' ) );
+		add_action( self::BACKFILL_HOOK, array( __CLASS__, 'cron_backfill_once' ) ); /* 1.49.1 */
 		if ( is_admin() ) {
 			add_action( 'add_meta_boxes', array( __CLASS__, 'metabox' ), 10, 2 );
 			add_action( 'admin_post_ansa_promo_ticket_print', array( __CLASS__, 'print_page' ) );
@@ -89,12 +94,14 @@ final class Tickets {
 
 	/* ── издаване / void ── */
 	public static function on_paid( $order_id ) { self::issue( $order_id ); }
+	/** Колко билета носи поръчката по order meta: allowance + бонусът на партньора + подаръкът от препоръка (1.6.0). */
+	public static function allowance( $m ) { $m = (array) $m; return (int) ( $m['tickets']['allowance'] ?? 0 ) + ( ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0 ) + (int) ( $m['tickets']['ref_bonus'] ?? 0 ); }
 	/** Издава (или възстановява) билета за поръчката. Връща реда или null. */
 	public static function issue( $order_id, $force = false ) {
 		global $wpdb;
 		$order = wc_get_order( $order_id ); if ( ! $order ) { return null; }
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return null; }
-		$allow = (int) ( $m['tickets']['allowance'] ?? 0 ) + ( ! empty( $m['tickets']['partner'] ) ? (int) ( $m['tickets']['bonus'] ?? 0 ) : 0 ) + (int) ( $m['tickets']['ref_bonus'] ?? 0 ); /* 1.6.0: + подаръкът от препоръка */
+		$allow = self::allowance( $m ); /* 1.6.0: + подаръкът от препоръка */
 		if ( $allow <= 0 && ! $force ) { return null; }
 		$row = self::for_order( $order_id );
 		if ( $row ) {
@@ -130,9 +137,39 @@ final class Tickets {
 		global $wpdb;
 		$t = Schema::table( 'tickets' ); $ids = $wpdb->get_col( "SELECT order_id FROM $t WHERE status <> 'void'" );
 		foreach ( (array) $ids as $oid ) { $o = wc_get_order( (int) $oid ); if ( $o && in_array( $o->get_status(), array( 'cancelled', 'refunded', 'trash' ), true ) ) { self::on_void( (int) $oid ); } }
+		self::backfill_delivered( null, 200 ); /* 1.49.1: получени поръчки без билет (статусът е сменен без hook-овете или преди 1.49.1) */
+	}
+	/** 1.49.1: еднократно след ъпдейта (Plugin::cron → single event +2 мин): билетите на получените поръчки без билет; резултатът остава в option-а за Doctor/Probe. */
+	public static function cron_backfill_once() {
+		$r = self::backfill_delivered( null, 1000 );
+		update_option( self::OPT_BACKFILL, array( 'at' => current_time( 'mysql' ), 'ver' => ANSA_PROMO_VER ) + $r, false );
+	}
+	/** 1.49.1: получени промо поръчки (tombola.statuses) с пълна кутия, която носи билети, но без (или с анулиран) билет. */
+	public static function missing_delivered( $cfg = null, $limit = 500 ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) { return array(); }
+		$cfg = $cfg ?: Config::get_published(); $st = array_map( function ( $s ) { return 'wc-' . $s; }, (array) $cfg['tombola']['statuses'] ); if ( ! $st ) { return array(); }
+		$out = array();
+		foreach ( wc_get_orders( array( 'limit' => $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'status' => $st, 'meta_key' => '_ansa_promo_id', 'meta_compare' => 'EXISTS' ) ) as $o ) {
+			$m = is_object( $o ) ? $o->get_meta( '_ansa_promo' ) : null; if ( ! is_array( $m ) || empty( $m['valid'] ) || self::allowance( $m ) <= 0 ) { continue; }
+			$row = self::for_order( $o->get_id() ); if ( $row && 'void' !== $row['status'] ) { continue; }
+			$out[] = $o;
+		}
+		return $out;
+	}
+	/** 1.49.1: издава билетите (и ваучера/книгата, ако още не са тръгнали) на получените поръчки без билет → брой issued / voucher / book / skip. */
+	public static function backfill_delivered( $cfg = null, $limit = 500 ) {
+		$r = array( 'issued' => 0, 'voucher' => 0, 'book' => 0, 'skip' => 0 );
+		foreach ( self::missing_delivered( $cfg, $limit ) as $o ) {
+			$oid = $o->get_id(); $was = array( (string) $o->get_meta( '_ansa_promo_cosm_status' ), (string) $o->get_meta( '_ansa_promo_book_sent' ) );
+			self::on_delivered( $oid ); $row = self::for_order( $oid ); $o = wc_get_order( $oid );
+			if ( $row && 'void' !== $row['status'] ) { $r['issued']++; } else { $r['skip']++; }
+			if ( $o && 'voucher_sent' === $o->get_meta( '_ansa_promo_cosm_status' ) && 'voucher_sent' !== $was[0] ) { $r['voucher']++; }
+			if ( $o && '' !== (string) $o->get_meta( '_ansa_promo_book_sent' ) && '' === $was[1] ) { $r['book']++; }
+		}
+		return $r;
 	}
 
-	/* ── „получена“ поръчка (tombola.statuses, по подразбиране само delivered): ваучер + книга ── */
+	/* ── „получена“ поръчка (tombola.statuses, по подразбиране само delivered): билет (1.49.1, ако още няма) + ваучер + книга ── */
 	public static function on_status_changed( $order_id, $from = '', $to = '' ) {
 		$order = wc_get_order( $order_id ); if ( ! $order || ! Tombola::delivered( $order ) ) { return; }
 		self::on_delivered( $order_id );
@@ -142,6 +179,8 @@ final class Tickets {
 	public static function on_delivered( $order_id ) {
 		$order = wc_get_order( $order_id ); if ( ! $order ) { return; }
 		$m = $order->get_meta( '_ansa_promo' ); if ( ! is_array( $m ) || empty( $m['valid'] ) ) { return; }
+		/* 1.49.1: билетът — ако поръчката е минала без processing/completed (напр. наложен платеж с книгата → on-hold → shipped → delivered), издава се сега; issue() записва сама и пази (void → issued), затова поръчката се чете наново */
+		if ( self::issue( $order_id ) ) { $order = wc_get_order( $order_id ); if ( ! $order ) { return; } }
 		$cfg = Config::get_published();
 		if ( ! empty( $m['cosm'] ) && 'reserved' === ( $m['cosm']['status'] ?? '' ) && 'voucher_sent' !== $order->get_meta( '_ansa_promo_cosm_status' ) ) {
 			if ( ! $order->get_meta( '_ansa_promo_voucher' ) ) { $order->update_meta_data( '_ansa_promo_voucher', 'V' . substr( self::generate(), 0, 7 ) ); }
@@ -292,12 +331,12 @@ final class Tickets {
 			echo '<p style="text-align:center"><img src="' . esc_attr( QR::data_uri( self::ticket_url( $t['code'] ), 4, 2 ) ) . '" alt="QR" style="width:140px;height:140px;image-rendering:pixelated"></p>';
 			echo '<p><a class="button button-primary" target="_blank" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_print&order=' . $order->get_id() ), 'ansa_promo_ticket_print' ) ) . '">🖨 Стикер за пратката</a> <a class="button" target="_blank" href="' . esc_url( self::qr_url( $order->get_id() ) ) . '">PNG</a></p>';
 		} else {
-			echo '<p>Няма издаден билет' . ( empty( $m['valid'] ) ? ' (кутията е непълна).' : ' — издава се при „Обработва се“/„Изпълнена“.' ) . '</p>';
+			echo '<p>Няма издаден билет' . ( empty( $m['valid'] ) ? ' (кутията е непълна).' : ' — издава се при „Обработва се“/„Изпълнена“ или при „получена“ (' . esc_html( implode( ', ', (array) $cfg['tombola']['statuses'] ) ) . ').' ) . '</p>';
 			if ( $order->get_meta( Tombola::META_REF ) ) { echo '<p>🎲 Томбола: код за препоръка <code>' . esc_html( (string) $order->get_meta( Tombola::META_REF ) ) . '</code> (работи от заявката; билетът го наследява) · препоръки: ' . count( Tombola::referrals( (string) $order->get_meta( Tombola::META_REF ), 'credited' ) ) . '</p>'; }
 			if ( ! empty( $m['valid'] ) ) { echo '<p><a class="button" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=ansa_promo_ticket_issue&order=' . $order->get_id() ), 'ansa_promo_ticket_issue' ) ) . '">🎟 Издай билет сега</a></p>'; }
 		}
 		if ( ! empty( $m['cosm'] ) ) { echo '<p>Сет: <b>' . esc_html( (string) $order->get_meta( '_ansa_promo_cosm_status' ) ) . '</b>' . ( $order->get_meta( '_ansa_promo_voucher' ) ? ' · ваучер <code>' . esc_html( $order->get_meta( '_ansa_promo_voucher' ) ) . '</code>' : '' ) . '</p>'; }
-		if ( ! empty( $m['book'] ) ) { echo '<p>Книга: ' . ( $order->get_meta( '_ansa_promo_book_sent' ) ? 'изпратена (' . esc_html( $order->get_meta( '_ansa_promo_book_sent' ) ) . ')' : 'при „Изпълнена“' ) . '</p>'; }
+		if ( ! empty( $m['book'] ) ) { echo '<p>Книга: ' . ( $order->get_meta( '_ansa_promo_book_sent' ) ? 'изпратена (' . esc_html( $order->get_meta( '_ansa_promo_book_sent' ) ) . ')' : 'при „получена“ (' . esc_html( implode( ', ', (array) $cfg['tombola']['statuses'] ) ) . ')' ) . '</p>'; }
 		if ( ! empty( $m['tickets']['ref_code'] ) ) { echo '<p>По препоръка: код <code>' . esc_html( (string) $m['tickets']['ref_code'] ) . '</code> (поръчка #' . (int) ( $m['tickets']['ref_order'] ?? 0 ) . ') · подарък +' . (int) ( $m['tickets']['ref_bonus'] ?? 0 ) . ( ! empty( $m['tickets']['ref_self'] ) ? ' · <span style="color:#9a6700">същият клиент</span>' : '' ) . '</p>'; }
 		if ( ! empty( $m['utm'] ) ) { echo '<p>UTM: <code>' . esc_html( $m['utm'] ) . '</code></p>'; }
 		if ( Tombola::enabled( $cfg ) ) { echo '<p><small>Линк за SMS при доставка: <code>' . esc_html( Tombola::url( $cfg ) ) . '</code></small></p>'; }
