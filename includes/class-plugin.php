@@ -72,6 +72,8 @@ final class Plugin {
 
 	public static function cron() {
 		if ( ! wp_next_scheduled( 'ansa_promo_daily' ) ) { wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ansa_promo_daily' ); }
+		/* 1.49.1: еднократно след ъпдейта — билетите на вече получените поръчки без билет, без да чака дневния крон или бутона */
+		if ( ! get_option( Tickets::OPT_BACKFILL ) && ! wp_next_scheduled( Tickets::BACKFILL_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Tickets::BACKFILL_HOOK ); }
 	}
 
 	/** register_activation_hook — таблиците + маркер кога е активиран. */

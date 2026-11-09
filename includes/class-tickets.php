@@ -29,6 +29,8 @@ final class Tickets {
 	const NS       = 'ansa-promo/v1';
 	const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 	const OPT_SECRET = 'ansa_promo_ticket_secret';
+	const OPT_BACKFILL = 'ansa_promo_tickets_delivered_v1'; /* 1.49.1: еднократният backfill след ъпдейта е минал */
+	const BACKFILL_HOOK = 'ansa_promo_tickets_backfill';
 
 	public static function register() {
 		foreach ( array( 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'on_paid' ), 20 ); }
@@ -39,6 +41,7 @@ final class Tickets {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
 		add_filter( 'allowed_http_origins', array( __CLASS__, 'cors' ) );
 		add_action( 'ansa_promo_daily', array( __CLASS__, 'cron' ) );
+		add_action( self::BACKFILL_HOOK, array( __CLASS__, 'cron_backfill_once' ) ); /* 1.49.1 */
 		if ( is_admin() ) {
 			add_action( 'add_meta_boxes', array( __CLASS__, 'metabox' ), 10, 2 );
 			add_action( 'admin_post_ansa_promo_ticket_print', array( __CLASS__, 'print_page' ) );
@@ -135,6 +138,11 @@ final class Tickets {
 		$t = Schema::table( 'tickets' ); $ids = $wpdb->get_col( "SELECT order_id FROM $t WHERE status <> 'void'" );
 		foreach ( (array) $ids as $oid ) { $o = wc_get_order( (int) $oid ); if ( $o && in_array( $o->get_status(), array( 'cancelled', 'refunded', 'trash' ), true ) ) { self::on_void( (int) $oid ); } }
 		self::backfill_delivered( null, 200 ); /* 1.49.1: получени поръчки без билет (статусът е сменен без hook-овете или преди 1.49.1) */
+	}
+	/** 1.49.1: еднократно след ъпдейта (Plugin::cron → single event +2 мин): билетите на получените поръчки без билет; резултатът остава в option-а за Doctor/Probe. */
+	public static function cron_backfill_once() {
+		$r = self::backfill_delivered( null, 1000 );
+		update_option( self::OPT_BACKFILL, array( 'at' => current_time( 'mysql' ), 'ver' => ANSA_PROMO_VER ) + $r, false );
 	}
 	/** 1.49.1: получени промо поръчки (tombola.statuses) с пълна кутия, която носи билети, но без (или с анулиран) билет. */
 	public static function missing_delivered( $cfg = null, $limit = 500 ) {
