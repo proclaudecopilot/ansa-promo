@@ -477,7 +477,7 @@ final class Probe {
 		return $out;
 	}
 
-	/* ── tickets: Фаза 4 — поръчка → processing → билет (HMAC код, QR, REST), activate, completed → имейли, cancel → void. ?keep=1 оставя поръчката. */
+	/* ── tickets: Фаза 4 — поръчка → processing → билет (HMAC код, QR, REST), activate, получена → имейли (+ билет, ако няма — 1.49.1), cancel → void. ?keep=1 оставя поръчката. */
 	public static function suite_tickets( $t, $params ) {
 		self::guard_orders( $t ); /* 1.24.34 */
 		if ( ! function_exists( 'WC' ) ) { $t->ok( 'WooCommerce', false ); return null; }
@@ -564,6 +564,15 @@ final class Probe {
 		$t->eq( 'merge: void → 0 билета', 0, Tickets::count_for_order( $oid ) );
 		$req = new \WP_REST_Request( 'GET', '/' . Tickets::NS . '/ticket/' . $row['code'] ); $d = rest_do_request( $req )->get_data(); $t->ok( 'GET void → valid=false', empty( $d['valid'] ) && 'void' === ( $d['status'] ?? '' ) );
 		$o = wc_get_order( $oid ); $o->update_status( 'processing', 'probe' ); $t->eq( 'пак processing → issued', 'issued', Tickets::for_order( $oid )['status'] );
+		/* 1.49.1: получена поръчка без билет (напр. on-hold → shipped → delivered, без processing) → билетът се издава при получаването; backfill-ът я вижда преди това */
+		if ( $dst ) {
+			global $wpdb; $wpdb->delete( Schema::table( 'tickets' ), array( 'order_id' => $oid ), array( '%d' ) ); $o = wc_get_order( $oid ); $o->update_status( 'on-hold', 'probe: без билет' );
+			$mis = array_map( function ( $x ) { return $x->get_id(); }, Tickets::missing_delivered( $cfg ) ); $t->ok( 'on-hold без билет → не е в „получени без билет“', ! in_array( $oid, $mis, true ), count( $mis ) . ' чакащи' );
+			$o = wc_get_order( $oid ); $o->update_status( $dst, 'probe: получена без билет' ); $row2 = Tickets::for_order( $oid );
+			$t->ok( 'получена (' . $dst . ') без билет → билетът се издава при получаването (1.49.1)', (bool) $row2 && 'issued' === $row2['status'] && (int) $row2['tickets'] === (int) $m['tickets']['allowance'], $row2 ? Tickets::pretty( $row2['code'] ) . ' · ' . $row2['tickets'] . ' бр.' : 'няма ред' );
+			$mis = array_map( function ( $x ) { return $x->get_id(); }, Tickets::missing_delivered( $cfg ) ); $t->ok( 'след издаването не е в „получени без билет“', ! in_array( $oid, $mis, true ) );
+			$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code = новият билет', $o->get_meta( '_ansa_promo_ticket_code' ) === $row2['code'] );
+		}
 		remove_filter( 'pre_wp_mail', $hook, 10 );
 		/* стикерът */
 		$t->ok( 'данни за стикера', ! empty( Tickets::ticket_url( $row['code'] ) ) && (bool) Tickets::for_order( $oid ) );
