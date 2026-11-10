@@ -132,10 +132,6 @@
 .ansa-home .bf-step{background:var(--cream2);border:1.5px solid rgba(232,114,42,.18);border-radius:18px;padding:20px 18px;display:grid;gap:8px;align-content:start}
 .ansa-home .bf-step i{font-style:normal;width:38px;height:38px;border-radius:12px;background:var(--o);color:#fff;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center}
 .ansa-home .bf-step p{font-size:14px;font-weight:600;color:var(--muted);line-height:1.45}
-.ansa-home .bf-dates{margin-top:22px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:12.5px;font-weight:700;color:var(--tan)}
-.ansa-home .bf-dates span{background:#fff;border:1.5px solid rgba(26,26,46,.1);border-radius:999px;padding:5px 11px;white-space:nowrap}
-.ansa-home .bf-dates span.on{background:var(--os);border-color:var(--o);color:var(--od)}
-.ansa-home .bf-dates span.past{opacity:.45;text-decoration:line-through}
 @media(max-width:900px){.ansa-home .bf-steps{grid-template-columns:1fr}}
 
 /* ───── HERO = Сезонът на ansa (от 01.12) ───── */.ansa-home .season{position:relative;background:var(--cream);overflow:hidden;isolation:isolate}
@@ -385,16 +381,16 @@
   <div class="wrap">
     <div class="bf-grid">
       <div class="bf-copy">
-        <div class="bf-pills"><span class="pill-bf">🖤 Black Friday 2026</span><span class="chip chip-o" id="bfChip">Записването тече · до 20.11</span></div>
+        <div class="bf-pills"><span class="pill-bf">🖤 Black Friday 2026</span><span class="chip chip-o" id="bfChip">Предварително записване</span></div>
         <h1 id="bfH">Black Friday на ansa започва <em>първо за теб.</em></h1>
-        <p class="bf-sub" id="bfSub">Всяка платена опаковка = <b>1 подарък по избор</b>. Запиши се: влизаш 48 часа преди всички и вземаш ваучер 10 € още днес.</p>
+        <p class="bf-sub" id="bfSub">Всяка платена опаковка = <b>1 подарък по избор</b>. Запиши се за ранния достъп и вземи ваучер 10 € още днес.</p>
         <div class="bf-cta">
           <a class="btn btn-o" id="bfBtn1" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=hero&amp;utm_campaign=bf2026-signup&amp;src=cold">Запиши се за ранния достъп →</a>
           <a class="bf-link" id="bfBtn2" href="#bf-kak">Как работи ›</a>
         </div>
         <ul class="bf-facts" id="bfFacts">
           <li>🎁 <b>Плащаш 1,</b> получаваш 2</li>
-          <li>⏰ Ранен достъп <b>20.11</b> · за всички <b>25.11</b></li>
+          <li>💶 Ваучер <b>10 €</b> веднага след записването</li>
           <li>🚚 Безплатна доставка от 2 опаковки</li>
         </ul>
       </div>
@@ -553,14 +549,7 @@
       <div class="bf-step"><i>2</i><h3>Избираш толкова подаръка</h3><p>За всяка платена опаковка избираш една опаковка подарък: някой от новите 4 продукта или продукт, който вече обичаш. Може и еднакви.</p></div>
       <div class="bf-step"><i>3</i><h3>Поръчваш. Подаръците са на 0 €</h3><p>Виждаш „Плащаш X € · Спестяваш Y €“, доставката е безплатна от 2 платени опаковки. Без код, без дребен шрифт.</p></div>
     </div>
-    <div class="bf-dates" id="bfDates" aria-label="Датите на Black Friday 2026">
-      <span data-ph="prep">до 20.11 · записване</span>
-      <span data-ph="early">20.11 10:00 → 23.11 · ранен достъп</span>
-      <span data-ph="pause">24.11 · пауза</span>
-      <span data-ph="public">25.11 07:00 → 30.11 10:00 · за всички</span>
-      <span data-ph="season">от 01.12 · Сезонът на ansa продължава</span>
-    </div>
-    <div class="pmore"><a class="btn btn-o" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=how&amp;utm_campaign=bf2026-signup&amp;src=cold" data-bf-link id="bfHowBtn">Запиши се за ранния достъп →</a></div>
+    <div class="pmore" style="margin-top:22px"><a class="btn btn-o" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=how&amp;utm_campaign=bf2026-signup&amp;src=cold" data-bf-link id="bfHowBtn">Запиши се за ранния достъп →</a></div>
   </div>
 </section>
 
@@ -793,9 +782,8 @@
   <div class="wrap">
     <div class="sec-h center"><h2 id="faqH">А ти чудиш ли се?</h2></div>
     <div class="faq">
-      <details data-only="bf"><summary>Как работи Black Friday в ansa?</summary><p>Просто уравнение: плащаш 1, получаваш 2. За всяка платена опаковка на редовна цена избираш една опаковка подарък: някой от новите 4 продукта или продукт, който вече обичаш. 2 = 4, 3 = 6. Подаръците влизат в количката на 0 €, без код. Доставката е безплатна от 2 платени опаковки. <a href="https://www.ansa.bg/bf/">Условия ›</a></p></details>
-      <details data-only="bf"><summary>Кога е Black Friday и какво е „ранен достъп“?</summary><p>Ранният достъп е от 20.11 в 10:00 до 23.11 в 23:59 и е само за записаните: те получават личен линк по имейл и пазаруват 48 часа преди всички. На 24.11 правим пауза, а от 25.11 в 07:00 до 30.11 в 10:00 Black Friday е отворен за всички. Записването дава и ваучер 10 € за всичко в ansa.bg, който важи 30 минути след отключването.</p></details>
-      <details data-only="bf"><summary>Какво става със Сезона на ansa и билетите за яхтата?</summary><p>Сезонът на ansa продължава от 01.12 до 31.12.2026 с кутиите, отстъпките и томболата за почивка на яхта. Билетите от вече направените поръчки си важат и тегленето е на 25.01.2027, на живо. Black Friday е отделна оферта за няколко дни между двете части на Сезона.</p></details>
+      <details data-only="bf"><summary>Как работи Black Friday в ansa?</summary><p>Просто уравнение: плащаш 1, получаваш 2. За всяка платена опаковка на редовна цена избираш една опаковка подарък: някой от новите 4 продукта или продукт, който вече обичаш. 2 = 4, 3 = 6. Подаръците влизат в количката на 0 €, без код. Доставката е безплатна от 2 платени опаковки.</p></details>
+      <details data-only="bf"><summary>Какво е ранният достъп?</summary><p>Записаните получават личен линк по имейл и избират продуктите и подаръците си преди всички. Записването дава и ваучер 10 € за всичко в ansa.bg, който важи 30 минути след отключването.</p></details>
       <details data-only="season" hidden><summary>Как работи Сезонът на ansa?</summary><p>Три стъпки, нищо за регистриране. Избираш кутия (Малка, Средна или Голяма) и любимите си продукти. Получаваш пратката и билетите ти за томболата се активират сами в момента, в който я вземеш. На 25.01.2027 теглим томболата за почивка на яхта на живо и се обаждаме на победителката в ефир. <a href="https://www.ansa.bg/sezonut-na-ansa/info/">Пълните правила и 15 въпроса ›</a></p></details>
       <details data-only="season" hidden><summary>Ще има ли още отстъпки до края на годината?</summary><p>Не. Отстъпката на кутиите пада всяка седмица до 31.12.2026. Цената, която виждаш сега, е най-ниската до края на сезона.</p></details>
       <details><summary>Защо е важно да се грижиш за своето женско здраве?</summary><p>Често те наляга умора и не се чувстваш „на себе си“? През повечето дни си подута и не ти се става от леглото? Всяка една от нас е изпитвала тези симптоми. Не трябва да чакаш първите сериозни сигнали. Правилното хранене е в основата, а в забързаното ежедневие рядко ни остава време за него. Затова се погрижи за себе си с нашите зеленини <a href="https://www.ansa.bg/product/daily-greens/">Daily Greens</a>: зеленчуци, плодове, водорасли и растителни екстракти, витамини, минерали, пре- и пробиотици, ензими, фибри, колаген и антиоксиданти.</p></details>
@@ -861,10 +849,6 @@
   var cdTarget=null, cdLabel='';
 
   if(mode==='bf'){
-    /* датите в „Как работи“ */
-    var ds=root.querySelectorAll('#bfDates span'); var order=['prep','early','pause','public','season']; var pi=order.indexOf(phase==='over'?'public':phase);
-    for(var j=0;j<ds.length;j++){ var k=order.indexOf(ds[j].getAttribute('data-ph')); ds[j].className=k<pi?'past':(k===pi&&phase!=='over'?'on':''); }
-
     /* BF линковете по секциите: в живия публичен Black Friday водят към магазина; преди това (вкл. в ранния достъп) към записването,
        защото страницата без личен линк е „затворена“, а със src=cold показва записването (ваучер + линк за 25.11) */
     var links=root.querySelectorAll('[data-bf-link]');
@@ -875,46 +859,44 @@
       /* броячът „записани“ — същата формула като на страницата: n = 440 − 128·e^(−d/9), d = дни от 04.11 */
       var d0=sofia('2026-11-04 00:00'); var d=Math.max(0,Math.floor((now-d0)/864e5)); var seats=Math.min(439,Math.round(440-128*Math.exp(-d/9))); var left=440-seats;
       chip.innerHTML='<b>'+seats+'</b>/440 записани · остават <b>'+left+'</b> места';
-      cdTarget=BF_PHASES.early_start; cdLabel='Ранният достъп започва след';
     } else if(phase==='early'){
-      chip.textContent='Ранният достъп тече · до 23.11'; chip.className='chip chip-g';
-      text('bfH','Ранният достъп тече. <em>Всяка опаковка = 1 подарък.</em>');
-      text('bfSub','Записаните пазаруват с личния линк от имейла. Не си записана? Запиши се сега: вземаш <b>ваучер 10 €</b> веднага, а на 25.11 в 07:00 ти пращаме линка за старта.');
-      var b1=q('bfBtn1'); b1.textContent='Запиши се: ваучер 10 € + линк за 25.11 →'; b1.setAttribute('href',utm('bf2026-signup')+'&src=cold');
+      chip.textContent='Тече Черен петък · ранен достъп'; chip.className='chip chip-g';
+      text('bfH','Черен петък тече. <em>Всяка опаковка = 1 подарък по избор.</em>');
+      text('bfSub','Записаните вече пазаруват с личния линк от имейла. Запиши се и вземи <b>ваучер 10 €</b> веднага.');
+      var b1=q('bfBtn1'); b1.textContent='Запиши се и вземи ваучер 10 € →'; b1.setAttribute('href',utm('bf2026-signup')+'&src=cold');
       var b2=q('bfBtn2'); b2.textContent='Имам линк от имейла ›'; b2.setAttribute('href',utm('bf2026-early'));
-      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>⏰ За всички: <b>25.11 в 07:00</b></li><li>🚚 Безплатна доставка от 2 опаковки</li>');
+      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>💶 Ваучер <b>10 €</b> веднага след записването</li><li>🚚 Безплатна доставка от 2 опаковки</li>');
+      if(howBtn){ howBtn.textContent='Запиши се и вземи ваучер 10 € →'; }
       vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
-      cdTarget=BF_PHASES.early_end; cdLabel='Ранният достъп свършва след';
     } else if(phase==='pause'){
-      chip.textContent='Отваря на 25.11 в 07:00';
-      text('bfH','Ранният достъп приключи. <em>За всички отваря на 25.11 в 07:00.</em>');
+      chip.textContent='Черен петък · отваря на 25.11 в 07:00';
+      text('bfH','За всички отваря на <em>25.11 в 07:00.</em>');
       text('bfSub','Всяка платена опаковка = <b>1 подарък по избор</b>. Остави имейла си и ще ти пратим линка точно в 07:00.');
-      var p1=q('bfBtn1'); p1.textContent='Прати ми линка на 25.11 →'; p1.setAttribute('href',utm('bf2026-reminder'));
+      var p1=q('bfBtn1'); p1.textContent='Прати ми линка →'; p1.setAttribute('href',utm('bf2026-reminder'));
       var p2=q('bfBtn2'); p2.textContent='Как работи ›'; p2.setAttribute('href','#bf-kak');
-      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>⏰ <b>25.11 07:00</b> → 30.11 10:00</li><li>📩 Един имейл в деня на старта</li>');
-      if(howBtn){ howBtn.textContent='Прати ми линка на 25.11 →'; howBtn.setAttribute('href',utm('bf2026-reminder')); }
+      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>🚚 Безплатна доставка от 2 опаковки</li><li>✅ Без код, подаръците са на <b>0 €</b></li>');
+      if(howBtn){ howBtn.textContent='Прати ми линка →'; howBtn.setAttribute('href',utm('bf2026-reminder')); }
       vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
       cdTarget=BF_PHASES.public_start; cdLabel='Отваря след';
     } else if(phase==='public'){
-      chip.textContent='Отворен за всички · до 30.11, 10:00'; chip.className='chip chip-g';
+      chip.textContent='Тече Черен петък'; chip.className='chip chip-g';
       text('bfH','Плащаш 1, <em>получаваш 2.</em>');
-      text('bfSub','Всяка поръчана опаковка = <b>1 опаковка подарък по избор</b>: новите 4 продукта или любимите ти. 2 = 4, 3 = 6. Само до 30.11 в 10:00.');
+      text('bfSub','Всяка поръчана опаковка = <b>1 опаковка подарък по избор</b>: новите 4 продукта или любимите ти. 2 = 4, 3 = 6.');
       var u1=q('bfBtn1'); u1.textContent='Избери продуктите и подаръците →'; u1.setAttribute('href',utm('bf2026-public'));
       var u2=q('bfBtn2'); u2.textContent='Как работи ›'; u2.setAttribute('href','#bf-kak');
       text('bfFacts','<li>🎁 Подаръкът е <b>по избор</b></li><li>🚚 Безплатна доставка от 2 опаковки</li><li>✅ Без код, подаръците са на <b>0 €</b></li>');
       if(howBtn){ howBtn.textContent='Избери продуктите и подаръците →'; }
       vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
-      cdTarget=BF_PHASES.public_end; cdLabel='Black Friday свършва след';
+      cdTarget=BF_PHASES.public_end; cdLabel='Черен петък свършва след';
     } else if(phase==='over'){
-      chip.textContent='Приключи на 30.11'; chip.className='chip chip-hot';
-      text('bfH','Black Friday в ansa приключи. <em>Благодарим.</em>');
-      text('bfSub','Подаръците пътуват с пратките. От <b>01.12</b> Сезонът на ansa продължава: до −40% и билети за томболата за почивка на яхта.');
+      chip.textContent='Черен петък приключи'; chip.className='chip chip-hot';
+      text('bfH','Черен петък в ansa приключи. <em>Благодарим.</em>');
+      text('bfSub','Поръчките и подаръците вече пътуват към вас. Продуктите са в магазина.');
       var o1=q('bfBtn1'); o1.textContent='Към магазина'; o1.setAttribute('href','https://www.ansa.bg/shop/');
-      var o2=q('bfBtn2'); o2.textContent='Сезонът на ansa ›'; o2.setAttribute('href','https://www.ansa.bg/sezonut-na-ansa/info/');
-      text('bfFacts','<li>📦 Поръчките тръгват по реда на постъпване</li><li>🎟️ Билетите от Сезона важат · теглене <b>25.01.2027</b></li>');
+      var o2=q('bfBtn2'); o2.textContent=''; o2.setAttribute('hidden','');
+      text('bfFacts','');
       if(howBtn){ howBtn.textContent='Към магазина'; howBtn.setAttribute('href','https://www.ansa.bg/shop/'); }
       vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
-      cdTarget=SEASON_BACK; cdLabel='Сезонът на ansa се връща след';
     }
 
     /* брояч: „след 9 дни 20 ч 00 мин“, една карта под визуала */
