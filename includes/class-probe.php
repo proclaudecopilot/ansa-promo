@@ -573,6 +573,37 @@ final class Probe {
 			$mis = array_map( function ( $x ) { return $x->get_id(); }, Tickets::missing_delivered( $cfg ) ); $t->ok( 'след издаването не е в „получени без билет“', ! in_array( $oid, $mis, true ) );
 			$o = wc_get_order( $oid ); $t->ok( 'order meta _ansa_promo_ticket_code = новият билет', $o->get_meta( '_ansa_promo_ticket_code' ) === $row2['code'] );
 		}
+		/* 1.50.0: пазачът на „Получена“ — курирските „в офис“ и „получена“ идват в една секунда и „в офис“ презаписваше (#106576, #107643) */
+		$dg = array_values( array_intersect( Status_Guard::downgrades(), $wcst ) );
+		if ( $dst && $dg ) {
+			$mid = $dg[0]; $vouchers = function () use ( &$mails ) { return count( array_filter( $mails, function ( $x ) { return false !== mb_stripos( (string) $x['subject'], 'ваучер' ); } ) ); };
+			/* А: обектът е зареден вече „получена“ и иска „в офис“ (както #107643: „Delivered → В офис“) */
+			$o = wc_get_order( $oid ); $t->eq( 'guard А: преди — получена', $dst, $o->get_status() ); $nm = count( $mails );
+			$o->update_status( $mid, 'probe: закъсняла курирска заявка' );
+			$t->eq( 'guard А: базата остава „получена“', $dst, Status_Guard::db_status( $oid ) );
+			$t->eq( 'guard А: нов обект чете „получена“', $dst, wc_get_order( $oid )->get_status() );
+			$t->ok( 'guard А: без имейл („At office“) и без преход', count( $mails ) === $nm, ( count( $mails ) - $nm ) . ' нови имейла' );
+			$notes = \wc_get_order_notes( array( 'order_id' => $oid, 'limit' => 3 ) );
+			$t->ok( 'guard А: бележката обяснява („остава“)', (bool) array_filter( (array) $notes, function ( $x ) { return false !== strpos( $x->content, 'остава' ); } ), $notes ? wp_strip_all_tags( $notes[0]->content ) : 'няма бележки' );
+			/* Б: двата обекта са заредени „в път“; „получена“ записва първа, после „в офис“ със стария обект (както #106576) */
+			$o = wc_get_order( $oid ); $o->update_status( 'on-hold', 'probe: пътува' ); $stale = wc_get_order( $oid ); $fresh = wc_get_order( $oid );
+			$fresh->update_status( $dst, 'probe: получена' ); $nm = count( $mails ); $stale->update_status( $mid, 'probe: закъсняла курирска заявка (стар обект)' );
+			$t->eq( 'guard Б: базата остава „получена“', $dst, Status_Guard::db_status( $oid ) );
+			$t->ok( 'guard Б: старият обект не прати имейл', count( $mails ) === $nm, ( count( $mails ) - $nm ) . ' нови имейла' );
+			$t->ok( 'guard Б: не е „заседнала“ за крона', ! isset( Status_Guard::stuck( 50, array( $oid ) )[ $oid ] ) );
+			/* В: заседнала (както преди 1.50.0: базата е „в офис“, а има бележка „→ получена“) → кронът я връща с преход, без дублиран ваучер */
+			$o = wc_get_order( $oid ); $o->set_status( $mid ); $o->get_data_store()->update( $o ); /* тих запис покрай пазача — симулира презаписването */
+			$t->eq( 'sweep: симулирана заседнала', $mid, Status_Guard::db_status( $oid ) );
+			$st = Status_Guard::stuck( 50, array( $oid ) ); $t->ok( 'sweep: кронът я вижда', isset( $st[ $oid ] ) && $st[ $oid ]['ts'] > time() - DAY_IN_SECONDS, wp_json_encode( $st[ $oid ] ?? null ) );
+			$nv = $vouchers(); $r = Status_Guard::repair( 50, null, array( $oid ) ); $o = wc_get_order( $oid );
+			$t->ok( 'sweep: върната на „получена“ с преход (отскоро)', 1 === $r['full'] && 0 === $r['silent'] && $dst === $o->get_status(), wp_json_encode( $r ) . ' · ' . $o->get_status() );
+			$t->eq( 'sweep: ваучерът не се праща втори път', $nv, $vouchers() );
+			$t->ok( 'sweep: след връщането не е „заседнала“', ! isset( Status_Guard::stuck( 50, array( $oid ) )[ $oid ] ) );
+			/* Г: ръчна смяна от админа минава (woocommerce_order_edit_status) — най-накрая, флагът остава до края на заявката */
+			$o = wc_get_order( $oid ); $o->set_status( $mid, 'probe: ръчно', true ); $o->save();
+			$t->eq( 'guard Г: ръчна смяна от админа минава', $mid, Status_Guard::db_status( $oid ) );
+			$o = wc_get_order( $oid ); $o->update_status( $dst, 'probe: обратно' );
+		}
 		remove_filter( 'pre_wp_mail', $hook, 10 );
 		/* стикерът */
 		$t->ok( 'данни за стикера', ! empty( Tickets::ticket_url( $row['code'] ) ) && (bool) Tickets::for_order( $oid ) );
