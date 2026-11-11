@@ -46,6 +46,7 @@ final class Plugin {
 		Cart_Sync::register(); /* v1.25.0: изоставената промо количка → таг на контакта (FKA Cart Abandoned → условие Contact Tags) */
 		Cart::register();
 		Tickets::register();
+		Status_Guard::register(); /* 1.50.0: пазач на „Получена“ — курирските „в офис“ и „получена“ идват в една секунда и „в офис“ презаписваше */
 		Insights::register();
 		Insights_Portal::register(); /* 1.27.0: отделният адрес на Insights за екипа по реклами (вход с парола, без wp-admin) */
 		Insights_Reports::register(); /* 1.28.0: вътрешен трафик, ботове, седмичен отчет, аларми, API */
@@ -74,6 +75,8 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'ansa_promo_daily' ) ) { wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ansa_promo_daily' ); }
 		/* 1.49.1: еднократно след ъпдейта — билетите на вече получените поръчки без билет, без да чака дневния крон или бутона */
 		if ( ! get_option( Tickets::OPT_BACKFILL ) && ! wp_next_scheduled( Tickets::BACKFILL_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Tickets::BACKFILL_HOOK ); }
+		/* 1.50.0: еднократно след ъпдейта — заседналите „в офис/изпратена“ след получаване се връщат на „Получена“ (до 1000) */
+		if ( ! get_option( Status_Guard::OPT_REPAIR ) && ! wp_next_scheduled( Status_Guard::REPAIR_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Status_Guard::REPAIR_HOOK ); }
 	}
 
 	/** register_activation_hook — таблиците + маркер кога е активиран. */
