@@ -102,6 +102,31 @@ final class Page {
 		elseif ( ! empty( $_COOKIE[ self::SHARE_COOKIE ] ) && self::share_valid( (string) $_COOKIE[ self::SHARE_COOKIE ] ) ) { self::$share_ok = true; }
 		return self::$share_ok;
 	}
+	/* ── 1.50.0: служебен достъп — ?ansa_bf_staff=ТОКЕН (Настройки → „Служебен достъп“), бисквитка 30 дни (човекът: „служебен достъп до черния петък,
+	   за да може да пускаме служебно поръчки от офертата без да чакаме да тръгне офертата… с таен линк“). Екипът вижда магазина по ПУБЛИКУВАНОТО
+	   като в публичната фаза (без токен за ранния достъп, без чернова) и завършва реална поръчка; поръчката е белязана „служебна“ (_ansa_bf_staff),
+	   не влиза в Insights и не праща Purchase към Meta. „Нов линк“ сменя токена (старите бисквитки умират), „Спри“ маха всичко. ── */
+	const STAFF_COOKIE = 'ansa_bf_staff'; const STAFF_ON = 'ansa_bf_staff_on'; const STAFF_OPT = 'ansa_promo_bf_staff'; const STAFF_TTL = 30 * DAY_IN_SECONDS;
+	public static function staff_token() { $o = get_option( self::STAFF_OPT ); return is_array( $o ) ? preg_replace( '/[^a-z0-9]/i', '', (string) ( $o['token'] ?? '' ) ) : ''; }
+	public static function staff_sig( $token ) { return substr( hash_hmac( 'sha256', 'bf-staff|' . (string) $token, wp_salt( 'auth' ) ), 0, 32 ); }
+	public static function staff_link( $cfg = null ) { $t = self::staff_token(); return '' !== $t ? add_query_arg( array( 'ansa_bf_staff' => $t, 'reset' => '1' ), self::url( $cfg ?: Config::get_published() ) ) : ''; }
+	public static function new_staff_link( $cfg = null ) { $tok = substr( preg_replace( '/[^a-z0-9]/i', '', base64_encode( random_bytes( 24 ) ) ), 0, 24 ); update_option( self::STAFF_OPT, array( 'token' => $tok, 'at' => time(), 'by' => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0 ), false ); self::$staff_ok = null; return self::staff_link( $cfg ); }
+	public static function stop_staff() { delete_option( self::STAFF_OPT ); self::$staff_ok = null; }
+	private static $staff_ok = null;
+	public static function staff_ok() {
+		if ( null !== self::$staff_ok ) { return self::$staff_ok; }
+		self::$staff_ok = false; $t = self::staff_token(); if ( '' === $t ) { return false; }
+		if ( ! empty( $_GET['ansa_bf_staff'] ) && hash_equals( $t, preg_replace( '/[^a-z0-9]/i', '', (string) wp_unslash( $_GET['ansa_bf_staff'] ) ) ) ) { self::$staff_ok = true; }
+		elseif ( ! empty( $_COOKIE[ self::STAFF_COOKIE ] ) && hash_equals( self::staff_sig( $t ), (string) $_COOKIE[ self::STAFF_COOKIE ] ) ) { self::$staff_ok = true; }
+		return self::$staff_ok;
+	}
+	/** Бисквитките на служебния достъп: подписаната (httponly) + маркер за bf.js (за да чака свежия runtime вместо да мига студената страница). */
+	private static function staff_cookies( $on ) {
+		if ( headers_sent() ) { return; }
+		if ( $on ) { $sig = self::staff_sig( self::staff_token() ); setcookie( self::STAFF_COOKIE, $sig, time() + self::STAFF_TTL, '/', '', is_ssl(), true ); setcookie( self::STAFF_ON, '1', time() + self::STAFF_TTL, '/', '', is_ssl(), false ); $_COOKIE[ self::STAFF_COOKIE ] = $sig; }
+		else { setcookie( self::STAFF_COOKIE, '', time() - YEAR_IN_SECONDS, '/', '', is_ssl(), true ); setcookie( self::STAFF_ON, '', time() - YEAR_IN_SECONDS, '/', '', is_ssl(), false ); unset( $_COOKIE[ self::STAFF_COOKIE ] ); }
+		self::$staff_ok = null;
+	}
 	public static function preview_token( $pw ) { return hash_hmac( 'sha256', 'bf|' . (string) $pw, wp_salt( 'auth' ) ); }
 	public static function preview_ok() {
 		if ( null !== self::$pw_ok ) { return self::$pw_ok; }
@@ -125,11 +150,18 @@ final class Page {
 		/* 1.48.0: тайният линк → бисквитка до изтичането му + redirect без параметъра (адресът в лентата остава чист; лентата на прегледа носи ?ansa_bf=draft, който тук минава през бисквитката) */
 		if ( ! empty( $_GET['ansa_bf_share'] ) ) { $tok = (string) wp_unslash( $_GET['ansa_bf_share'] ); $exp = self::share_valid( $tok ); if ( $exp ) { setcookie( self::SHARE_COOKIE, $tok, $exp, '/', '', is_ssl(), true ); $_COOKIE[ self::SHARE_COOKIE ] = $tok; wp_safe_redirect( add_query_arg( 'ansa_bf', 'draft', remove_query_arg( 'ansa_bf_share' ) ) ); exit; } self::$share_err = true; }
 		if ( isset( $_GET['ansa_bf'] ) && 'exit' === $_GET['ansa_bf'] ) { self::remember_phase( '' ); wp_safe_redirect( remove_query_arg( 'ansa_bf' ) ); exit; } /* 1.48.1: „изход от прегледа“ забравя фазата */
-		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published();
+		/* 1.50.0: служебният линк → бисквитка 30 дни + redirect без параметъра (с ?reset=1, за да започне на чисто); ?ansa_bf_staff=exit я маха */
+		if ( isset( $_GET['ansa_bf_staff'] ) ) {
+			$sv = (string) wp_unslash( $_GET['ansa_bf_staff'] );
+			if ( 'exit' === $sv ) { self::staff_cookies( false ); wp_safe_redirect( remove_query_arg( array( 'ansa_bf_staff', 'reset' ) ) ); exit; }
+			if ( self::staff_ok() ) { self::staff_cookies( true ); wp_safe_redirect( add_query_arg( 'reset', '1', remove_query_arg( 'ansa_bf_staff' ) ) ); exit; }
+		}
+		$draft = self::is_draft_request(); $cfg = $draft ? Config::get_draft() : Config::get_published(); $staff = ! $draft && self::staff_ok();
 		if ( $draft && isset( $_GET['phase'] ) ) { self::remember_phase( self::phase_force() ); }
 		status_header( 200 ); header( 'Content-Type: text/html; charset=utf-8' );
-		if ( $draft || ! empty( $_GET['ea'] ) || ! empty( $_GET['ref'] ) ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } } /* маркерите не бива да влизат в кеша като „страница“ */
-		if ( ! $draft && empty( $cfg['enabled'] ) ) { header( 'X-Robots-Tag: noindex' ); nocache_headers(); echo self::soon_html( $cfg ); exit; }
+		if ( $draft || $staff || ! empty( $_GET['ea'] ) || ! empty( $_GET['ref'] ) ) { nocache_headers(); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } } /* маркерите не бива да влизат в кеша като „страница“ */
+		if ( $staff ) { header( 'X-Robots-Tag: noindex' ); }
+		if ( ! $draft && ! $staff && empty( $cfg['enabled'] ) ) { header( 'X-Robots-Tag: noindex' ); nocache_headers(); echo self::soon_html( $cfg ); exit; }
 		if ( $draft ) { header( 'X-Robots-Tag: noindex' ); }
 		/* ?ea=ТОКЕН: бисквитката за ранния достъп се слага тук (сървърно, за всеки случай) и от bf.js */
 		if ( ! empty( $_GET['ea'] ) && self::ea_valid( (string) wp_unslash( $_GET['ea'] ), $cfg ) ) { setcookie( self::EA_COOKIE, (string) $cfg['early']['token'], time() + (int) $cfg['early']['cookie_days'] * DAY_IN_SECONDS, '/', '', is_ssl(), false ); }
@@ -200,11 +232,12 @@ final class Page {
 	/** $phase_force: 1.46.2 — админският преглед на друга фаза (само в чернова; публикуваното не се пипа). */
 	public static function runtime( $cfg, $draft = false, $phase_force = null ) {
 		$prods = self::products( $cfg, $draft ); $phase = ( $draft && $phase_force && in_array( $phase_force, Config::PHASES, true ) ) ? (string) $phase_force : Config::phase_now( $cfg ); $pt = Config::phase_ts( $cfg ); $mask = self::mask( $cfg );
+		$staff = ! $draft && self::staff_ok(); if ( $staff ) { $phase = 'public'; } /* 1.50.0: служебният достъп = магазинът като в публичната фаза, по публикуваното */
 		$cats = array(); foreach ( $prods as $p ) { if ( '' !== $p['cat'] && ! in_array( $p['cat'], $cats, true ) ) { $cats[] = $p['cat']; } }
 		return array(
 			'ver' => ANSA_PROMO_VER, 'id' => $cfg['id'], 'name' => $cfg['name'], 'version' => Config::version(),
 			'ajax' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( self::NONCE ), 'draft' => (bool) $draft, 'enabled' => ! empty( $cfg['enabled'] ),
-			'phase' => $phase, 'phase_end' => Config::phase_end( $cfg, $phase ), 'now' => Config::now(), 'live' => Config::is_live( $cfg ) || $draft,
+			'phase' => $phase, 'phase_end' => Config::phase_end( $cfg, $phase ), 'now' => Config::now(), 'live' => Config::is_live( $cfg ) || $draft || $staff, 'staff' => $staff,
 			'preview' => $draft ? array( 'phase' => ( $phase_force && in_array( $phase_force, Config::PHASES, true ) ) ? (string) $phase_force : '', 'ref' => self::preview_ref(), 'real' => Config::phase_now( $cfg ) ) : null,
 			'dates' => array( 'early_date' => $pt['early_start'] ? wp_date( 'd.m', $pt['early_start'] ) : '', 'early_time' => $pt['early_start'] ? wp_date( 'H:i', $pt['early_start'] ) : '', 'public_date' => $pt['public_start'] ? wp_date( 'd.m', $pt['public_start'] ) : '', 'public_time' => $pt['public_start'] ? wp_date( 'H:i', $pt['public_start'] ) : '' ),
 			'url' => self::url( $cfg ), 'home' => home_url( '/' ), 'shop' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' ), 'logo' => self::logo( $cfg ),
@@ -250,7 +283,7 @@ final class Page {
 			. '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">'
 			. '<link rel="stylesheet" href="' . esc_url( ANSA_PROMO_URL . 'assets/bf.css?ver=' . $ver ) . '">'
 			. '<style>html,body{margin:0;padding:0;background:#faf3ec}</style>' . apply_filters( 'ansa_promo_standalone_head', '', 'bf', $cfg ) . '</head>'
-			. '<body class="ansa-bf-page' . ( $draft ? ' ansa-bf-draft' : '' ) . '"><div class="ansa-bf" id="ansaBf" data-ver="' . esc_attr( $ver ) . '"><noscript><p style="padding:24px;text-align:center;font:700 16px/1.4 Nunito,sans-serif">Страницата има нужда от JavaScript.</p></noscript></div>'
+			. '<body class="ansa-bf-page' . ( $draft ? ' ansa-bf-draft' : '' ) . ( ! $draft && self::staff_ok() ? ' ansa-bf-staff' : '' ) . '"><div class="ansa-bf" id="ansaBf" data-ver="' . esc_attr( $ver ) . '"><noscript><p style="padding:24px;text-align:center;font:700 16px/1.4 Nunito,sans-serif">Страницата има нужда от JavaScript.</p></noscript></div>'
 			. '<script>window.AnsaBfRuntime=' . wp_json_encode( $rt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';</script><script src="' . esc_url( ANSA_PROMO_URL . 'assets/bf.js?ver=' . $ver ) . '"></script>' . apply_filters( 'ansa_promo_standalone_footer', '', 'bf', $cfg ) . '</body></html>';
 	}
 	private static function soon_html( $cfg ) {

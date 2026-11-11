@@ -1,0 +1,971 @@
+<!--
+  ansa.bg · Home page · Black Friday 2026 → Сезонът на ansa (само съдържанието; хедърът и футърът са на темата).
+  Elementor → HTML widget (или темплейт „Elementor Full Width“): постави целия файл.
+  Всичко е затворено в .ansa-home — не пипа хедъра/футъра/менюто на сайта и стои ПОД sticky хедъра.
+
+  Героят се сменя САМ по датата (часова зона София), без да пипаш нищо:
+    до 20.11 10:00        → записване за ранния достъп (ваучер 10 €, брояч „записани“)
+    20.11 10:00 → 23.11   → ранен достъп (за записаните; за всички на 25.11 07:00)
+    24.11 (пауза)         → „Ранният достъп приключи. За всички отваря на 25.11 в 07:00“ + брояч
+    25.11 07:00 → 30.11 10:00 → публичен Black Friday: плащаш 1, получаваш 2
+    30.11 10:00 → 01.12   → „Black Friday приключи. Сезонът се връща на 01.12“
+    от 01.12.2026         → героят на Сезона на ansa (трите кутии, стълбата) — както беше до 10.11
+  Датите са тези от Настройки → Черен петък 2026 (1.48.8). Ако ги смениш там, смени ги и в BF_PHASES долу.
+  Цените и седмиците на Сезона са от конфига на ansa-promo към 23.10.2026.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   ansa™ Home · Black Friday 2026 отгоре (до 30.11), после Сезонът на ansa
+   Layout: едноколонен поток, 1180px контейнер. Цветове = токените на
+   promo mockup v73 + кораловото на сайта (#e8825f); Black Friday = ink + orange.
+   ───────────────────────────────────────────────────────────── */.ansa-home{
+  --o:#e8722a; --o2:#f59e0b; --od:#c2410c; --os:rgba(232,114,42,.07); --ol:rgba(232,114,42,.28);
+  --coral:#e8825f; --coral-d:#c9633f;
+  --cream:#faf3ec; --cream2:#fff6ee; --paper:#ffffff;
+  --ink:#1a1a2e; --ink2:#2d2d3f; --tan:#8a6a55; --tan2:#a88a75; --muted:#6b5f58;
+  --g:#16a34a; --gd:#15803d; --gs:rgba(34,197,94,.08);
+  --gold:#f0b429; --goldd:#b45309; --navy:#0f2238; --navy2:#163352;
+  --sea:#1aa7c4;
+  --font:'Nunito',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --r:16px; --shadow:0 6px 24px rgba(232,114,42,.10),0 1px 3px rgba(67,48,42,.06);
+  --wrap:1180px;
+  color-scheme:light;
+}
+.ansa-home *{box-sizing:border-box;margin:0;padding:0}
+.ansa-home{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.5;overflow-x:hidden;position:relative;z-index:0;isolation:isolate;-webkit-font-smoothing:antialiased}
+.ansa-home img{max-width:100%;height:auto;display:block}
+.ansa-home a{color:inherit}
+.ansa-home button{font-family:inherit;cursor:pointer}
+.ansa-home [hidden]{display:none!important}
+.ansa-home h1,.ansa-home h2,.ansa-home h3,.ansa-home h4{font-family:inherit;color:var(--ink);text-wrap:balance;letter-spacing:-.02em;line-height:1.15;text-transform:none}
+.ansa-home p,.ansa-home li,.ansa-home a,.ansa-home span,.ansa-home small,.ansa-home b{font-family:inherit}
+.ansa-home h1{font-size:clamp(28px,4.6vw,46px);font-weight:900}
+.ansa-home h2{font-size:clamp(23px,3.2vw,34px);font-weight:900}
+.ansa-home h3{font-size:18px;font-weight:800}
+.ansa-home .wrap{max-width:var(--wrap);margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ansa-home .kick{font-size:12px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.09em}
+.ansa-home .lead{font-size:16.5px;color:var(--muted);font-weight:600;max-width:62ch}
+.ansa-home .sec{padding-block:clamp(44px,7vw,84px)}
+.ansa-home .sec-h{display:grid;gap:10px;margin-bottom:28px;max-width:760px}
+.ansa-home .sec-h.center{margin-inline:auto;text-align:center;justify-items:center}
+.ansa-home .muted{color:var(--muted)}
+.ansa-home .nowrap{white-space:nowrap}
+.ansa-home .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.ansa-home :focus-visible{outline:3px solid var(--o2);outline-offset:2px;border-radius:8px}
+
+/* buttons */.ansa-home .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:12px 22px;border-radius:14px;border:2px solid transparent;font-size:15.5px;font-weight:800;text-decoration:none;transition:filter .2s,transform .15s,background .2s;white-space:nowrap}
+.ansa-home .btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.ansa-home .btn-o{background:linear-gradient(135deg,#ef8c4f 0%,#e8722a 50%,#e56b50 100%);color:#fff;box-shadow:0 6px 20px rgba(232,114,42,.28);position:relative;overflow:hidden}
+.ansa-home .btn-o::after{content:"";position:absolute;top:0;left:-100%;width:60%;height:100%;pointer-events:none;background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.12) 40%,rgba(255,255,255,.22) 50%,rgba(255,255,255,.12) 60%,transparent 80%);animation:shim 5s ease-in-out infinite}
+@keyframes shim{0%,70%{left:-100%;opacity:0}78%{opacity:1}100%{left:150%;opacity:0}}
+.ansa-home .btn-soft{background:#fff;color:var(--od);border-color:var(--o)}
+.ansa-home .btn-coral{background:var(--coral);color:#fff;box-shadow:0 6px 18px rgba(232,130,95,.3)}
+.ansa-home .btn-ghost{background:transparent;color:var(--ink);border-color:rgba(26,26,46,.18)}
+.ansa-home .btn-gold{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;box-shadow:0 6px 20px rgba(240,180,41,.35)}
+.ansa-home .btn-dark{background:var(--ink);color:#fff}
+.ansa-home .btn-white{background:#fff;color:var(--ink);border-color:#fff}
+.ansa-home .btn-sm{min-height:42px;padding:8px 16px;font-size:14px;border-radius:11px}
+.ansa-home .btn-block{width:100%}
+
+/* ───── HERO = Black Friday 2026 (до 30.11) · светъл, една колона на телефон: заглавие → бутон → карта ───── */.ansa-home .bf{position:relative;background:var(--cream);overflow:hidden;isolation:isolate}
+.ansa-home .bf::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(900px 500px at 50% -120px,rgba(232,114,42,.16),transparent 60%),radial-gradient(600px 400px at 100% 100%,rgba(245,158,11,.08),transparent 60%)}
+.ansa-home .bf .wrap{padding-block:clamp(28px,4.5vw,56px) clamp(32px,5vw,60px)}
+.ansa-home .bf-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:28px 48px;align-items:center}
+.ansa-home .bf-copy{min-width:0;display:grid;gap:14px;justify-items:start}
+.ansa-home .bf-pills{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ansa-home .pill-bf{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;font-size:12.5px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:7px 13px;white-space:nowrap}
+.ansa-home .bf h1{font-size:clamp(30px,5vw,50px)}
+.ansa-home .bf h1 em{font-style:normal;color:var(--o)}
+.ansa-home .bf-sub{font-size:clamp(16.5px,1.9vw,20px);font-weight:700;color:var(--muted);max-width:52ch;line-height:1.45}
+.ansa-home .bf-sub b{color:var(--od);font-weight:900}
+.ansa-home .bf-cta{display:flex;gap:8px 18px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.ansa-home .bf-cta .btn{min-height:54px;padding:12px 26px;font-size:16px}
+.ansa-home .bf-link{font-size:15px;font-weight:800;color:var(--od);text-decoration:none;border-bottom:2px solid var(--ol);padding-bottom:1px}
+.ansa-home .bf-link:hover{border-color:var(--o)}
+.ansa-home .bf-facts{list-style:none;display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13.5px;font-weight:700;color:var(--tan);margin-top:2px}
+.ansa-home .bf-facts li{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ansa-home .bf-facts b{color:var(--ink);font-weight:900}
+.ansa-home .bf-visual{min-width:0;display:grid;gap:12px;justify-items:stretch}
+.ansa-home .bf-card{position:relative;border-radius:22px;overflow:hidden}
+.ansa-home .vch{background:linear-gradient(135deg,#ef8c4f,#e8722a 55%,#d2581c);box-shadow:0 18px 44px rgba(232,114,42,.3);padding:24px 24px 22px;color:#fff;display:grid;gap:8px;justify-items:start}
+.ansa-home .vch::after{content:"";position:absolute;right:-50px;top:-50px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
+.ansa-home .vch .vch-t{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.92}
+.ansa-home .vch .vch-v{font-size:clamp(58px,8vw,88px);font-weight:900;line-height:1;letter-spacing:-.03em}
+.ansa-home .vch .vch-v small{font-size:.42em;font-weight:800;margin-left:4px}
+.ansa-home .vch .vch-s{font-size:14.5px;font-weight:700;max-width:30ch;line-height:1.35}
+.ansa-home .vch .vch-lock{position:relative;display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.2);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:900;margin-top:4px}
+.ansa-home .eq{background:#fff;border:1.5px solid var(--ol);box-shadow:var(--shadow);padding:18px;display:grid;gap:12px}
+.ansa-home .eq .eq-t{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--tan)}
+.ansa-home .eq .eq-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.ansa-home .eq .eq-box{background:var(--cream2);border:1px solid rgba(232,114,42,.18);border-radius:16px;padding:12px 8px;display:grid;gap:6px;justify-items:center;text-align:center}
+.ansa-home .eq .eq-box img{width:76px;height:76px;border-radius:14px;object-fit:cover;background:#fff}
+.ansa-home .eq .eq-box b{font-size:13.5px;font-weight:900;color:var(--ink);line-height:1.2}
+.ansa-home .eq .eq-box small{font-size:11.5px;font-weight:700;color:var(--tan)}
+.ansa-home .eq .eq-box .z{display:inline-block;background:var(--g);color:#fff;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px}
+.ansa-home .eq .eq-box .z s{opacity:.75;margin-right:4px}
+.ansa-home .eq .eq-plus{font-size:30px;font-weight:900;color:var(--o);line-height:1}
+.ansa-home .eq .eq-math{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.ansa-home .eq .eq-math span{font-size:13.5px;font-weight:900;color:var(--od);background:var(--os);border:1px solid var(--ol);border-radius:999px;padding:5px 11px;font-variant-numeric:tabular-nums}
+.ansa-home .cd{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;background:#fff;border:1.5px solid var(--ol);border-radius:18px;padding:12px 16px;box-shadow:var(--shadow)}
+.ansa-home .cd .cd-l{grid-column:1/-1;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--tan)}
+.ansa-home .cd .cd-n{grid-column:1/-1;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.ansa-home .cd .cd-n span{display:inline-flex;align-items:baseline;gap:3px}
+.ansa-home .cd .cd-n b{font-size:26px;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.02em}
+.ansa-home .cd .cd-n small{font-size:12px;font-weight:800;color:var(--tan)}
+@media(max-width:900px){
+  .ansa-home .bf-grid{grid-template-columns:1fr;gap:22px}
+  .ansa-home .bf-visual{max-width:460px;width:100%}
+  .ansa-home .bf-cta{width:100%}
+  .ansa-home .bf-cta .btn{flex:1 1 100%}
+  .ansa-home .bf-link{margin-inline:auto}
+}
+@media(max-width:560px){
+  .ansa-home .bf h1{font-size:clamp(28px,8vw,34px)}
+  .ansa-home .bf-facts{gap:5px 12px;font-size:12.5px}
+  .ansa-home .eq .eq-box img{width:60px;height:60px}
+  .ansa-home .eq .eq-plus{font-size:24px}
+}
+
+/* ───── Как работи Black Friday (BF only, светла секция под trust) ───── */.ansa-home .bfhow{background:#fff}
+.ansa-home .bf-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ansa-home .bf-step{background:var(--cream2);border:1.5px solid rgba(232,114,42,.18);border-radius:18px;padding:20px 18px;display:grid;gap:8px;align-content:start}
+.ansa-home .bf-step i{font-style:normal;width:38px;height:38px;border-radius:12px;background:var(--o);color:#fff;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center}
+.ansa-home .bf-step p{font-size:14px;font-weight:600;color:var(--muted);line-height:1.45}
+@media(max-width:900px){.ansa-home .bf-steps{grid-template-columns:1fr}}
+
+/* ───── HERO = Сезонът на ansa (от 01.12) ───── */.ansa-home .season{position:relative;background:var(--cream);overflow:hidden;isolation:isolate}
+.ansa-home .season::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(900px 500px at 50% -120px,rgba(232,114,42,.14),transparent 60%),radial-gradient(600px 400px at 100% 100%,rgba(245,158,11,.08),transparent 60%)}
+.ansa-home .season .wrap{padding-block:clamp(28px,4.5vw,56px) clamp(36px,5vw,64px)}
+.ansa-home .s-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.ansa-home .s-brand{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.ansa-home .s-brand b{color:var(--o);font-weight:900}
+.ansa-home .s-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:28px 44px;align-items:center}
+.ansa-home .s-copy{min-width:0;display:grid;gap:16px}
+.ansa-home .s-copy h1 span{color:var(--o)}
+.ansa-home .s-sub{font-size:clamp(17px,2vw,21px);font-weight:800;color:var(--tan)}
+.ansa-home .s-bul{list-style:none;display:grid;gap:9px}
+.ansa-home .s-bul li{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;font-size:15.5px;font-weight:600;color:var(--ink2)}
+.ansa-home .s-bul li i{font-style:normal;width:34px;height:34px;border-radius:10px;background:#fff;border:1.5px solid var(--ol);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;box-shadow:0 2px 8px rgba(232,114,42,.1)}
+.ansa-home .s-bul b{font-weight:900;color:var(--od)}
+.ansa-home .s-cta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ansa-home .s-note{font-size:13px;font-weight:700;color:var(--tan)}
+.ansa-home .s-visual{min-width:0;position:relative}
+.ansa-home .yacht{position:relative;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px rgba(15,34,56,.25);aspect-ratio:1;max-width:100%;background:#9bd6e3}
+.ansa-home .yacht img{width:100%;height:100%;object-fit:cover}
+.ansa-home .yacht .tag{position:absolute;left:14px;top:14px;max-width:calc(100% - 28px);line-height:1.25;background:rgba(255,255,255,.94);color:var(--ink);font-size:12.5px;font-weight:900;border-radius:999px;padding:7px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.ansa-home .yacht .val{position:absolute;right:14px;bottom:14px;background:var(--navy);color:#fff;border-radius:14px;padding:10px 14px;line-height:1.15;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.ansa-home .yacht .val small{display:block;font-size:11px;font-weight:700;opacity:.8;letter-spacing:.06em;text-transform:uppercase}
+.ansa-home .yacht .val b{font-size:20px;font-weight:900;white-space:nowrap}
+.ansa-home .rw{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.ansa-home .rw div{background:#fff;border:1.5px solid var(--ol);border-radius:14px;padding:10px 10px 10px;display:grid;grid-template-columns:44px 1fr;gap:9px;align-items:center;box-shadow:var(--shadow)}
+.ansa-home .rw img,.ansa-home .rw i{width:44px;height:44px;border-radius:10px;object-fit:cover;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:24px;background:linear-gradient(145deg,#fff6ee,#ffe3cf)}
+.ansa-home .rw b{display:block;font-size:13px;font-weight:900;line-height:1.2}
+.ansa-home .rw small{display:block;font-size:11.5px;font-weight:700;color:var(--tan);line-height:1.25;margin-top:2px}
+.ansa-home .rw s{color:var(--tan2);font-weight:600}
+.ansa-home .rw .px{color:var(--od)}
+@media(max-width:900px){
+  .ansa-home .s-grid{grid-template-columns:1fr}
+  .ansa-home .s-visual{order:-1}
+  .ansa-home .yacht{aspect-ratio:4/3}
+  .ansa-home .rw{grid-template-columns:repeat(3,1fr);gap:7px}
+  .ansa-home .rw div{grid-template-columns:36px 1fr;padding:8px}
+  .ansa-home .rw img,.ansa-home .rw i{width:36px;height:36px;font-size:20px}
+  .ansa-home .rw b{font-size:12px}
+  .ansa-home .rw small{font-size:10.5px}
+}
+@media(max-width:560px){
+  .ansa-home .rw{grid-template-columns:1fr 1fr}
+  .ansa-home .s-cta .btn{flex:1 1 100%}
+}
+
+/* boxes */.ansa-home .boxes-h{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:38px 0 22px}
+.ansa-home .boxes-h h2{font-size:clamp(21px,2.6vw,28px)}
+.ansa-home .boxes-h p{font-size:14.5px;color:var(--muted);font-weight:600}
+.ansa-home .boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+.ansa-home .box{position:relative;display:flex;flex-direction:column;background:#fff;border:2px solid var(--ol);border-radius:20px;padding:24px 16px 16px;box-shadow:0 6px 24px rgba(232,114,42,.10);transition:transform .2s,box-shadow .2s}
+.ansa-home .box:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(232,114,42,.18)}
+.ansa-home .box.m{border-color:var(--o)}
+.ansa-home .box.l{border-color:var(--gold);background:linear-gradient(180deg,#fffdf5,#fff)}
+.ansa-home .btag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#fff;border-radius:999px;padding:6px 12px;white-space:nowrap}
+.ansa-home .box.m .btag{background:linear-gradient(135deg,var(--o),var(--o2))}
+.ansa-home .box.l .btag{background:linear-gradient(135deg,#d97706,#f59e0b)}
+.ansa-home .bico{font-size:40px;line-height:1;text-align:center;margin:0 0 6px}
+.ansa-home .bname{text-align:center;font-size:19px;font-weight:900}
+.ansa-home .bpacks{text-align:center;font-size:13px;font-weight:700;color:var(--tan);margin-bottom:8px}
+.ansa-home .bpct{text-align:center;margin:2px 0 12px}
+.ansa-home .bpct b{display:inline-block;font-size:38px;font-weight:900;color:var(--o);line-height:1;font-variant-numeric:tabular-nums}
+.ansa-home .box.l .bpct b{color:var(--goldd)}
+.ansa-home .bpct small{display:block;font-size:12px;font-weight:700;color:var(--tan)}
+.ansa-home .brw{display:grid;gap:6px;margin:0 0 12px;flex:1}
+.ansa-home .br{display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:center;font-size:13px;font-weight:700;color:var(--ink);background:var(--gs);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:6px 9px}
+.ansa-home .br i{font-style:normal;width:28px;height:28px;border-radius:8px;background:#fff;border:1px solid rgba(34,197,94,.25);display:flex;align-items:center;justify-content:center;font-size:15px}
+.ansa-home .br.no{background:#f6f1ec;border-color:rgba(0,0,0,.06);color:#a89a90;text-decoration:line-through}
+.ansa-home .br.no i{filter:grayscale(1);opacity:.5;border-color:rgba(0,0,0,.08)}
+.ansa-home .br small{display:block;font-size:11px;font-weight:600;color:var(--tan);text-decoration:none}
+.ansa-home .br s{color:var(--tan2)}
+.ansa-home .bex{text-align:center;font-size:12.5px;font-weight:700;color:var(--tan);margin-bottom:12px}
+.ansa-home .bex b{color:var(--ink);font-size:15px}
+.ansa-home .bex s{color:var(--tan2);font-weight:600}
+.ansa-home .box .btn{margin-top:auto}
+.ansa-home .guar{text-align:center;font-size:13px;font-weight:700;color:var(--tan);margin-top:16px}
+.ansa-home .guar a{color:var(--od)}
+@media(max-width:900px){
+  .ansa-home .boxes{grid-template-columns:1fr;gap:18px}
+  .ansa-home .box{padding:22px 14px 14px}
+  .ansa-home .box.l{order:-1}
+  .ansa-home .brw{grid-template-columns:1fr 1fr}
+  .ansa-home .br{font-size:12.5px}
+}
+@media(max-width:480px){.ansa-home .brw{grid-template-columns:1fr}}
+
+/* ladder */.ansa-home .ladder{margin-top:28px;background:#fff;border:1.5px solid var(--ol);border-radius:18px;padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:12px 22px;align-items:center;box-shadow:var(--shadow)}
+.ansa-home .ladder .lt b{display:block;font-size:16px;font-weight:900}
+.ansa-home .ladder .lt small{display:block;font-size:13px;color:var(--muted);font-weight:600}
+.ansa-home .ladder .lw{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;min-width:0}
+.ansa-home .ladder .w{flex:1 0 58px;text-align:center;border-radius:10px;padding:7px 4px;background:#f7efe7;font-variant-numeric:tabular-nums}
+.ansa-home .ladder .w small{display:block;font-size:10px;font-weight:800;color:var(--tan2);text-transform:uppercase;letter-spacing:.05em}
+.ansa-home .ladder .w b{display:block;font-size:14px;font-weight:900;color:var(--tan)}
+.ansa-home .ladder .w.past{opacity:.45}
+.ansa-home .ladder .w.now{background:linear-gradient(135deg,#fff3e6,#ffe3cf);border:1.5px solid var(--o);position:relative}
+.ansa-home .ladder .w.now b{color:var(--od)}
+.ansa-home .ladder .w.now::after{content:"ти си тук";position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;background:var(--o);color:#fff;border-radius:999px;padding:2px 7px;white-space:nowrap}
+@media(max-width:700px){.ansa-home .ladder{grid-template-columns:1fr}}
+
+/* ───── trust strip ───── */.ansa-home .trust{background:#fff;border-bottom:1px solid rgba(26,26,46,.07)}
+.ansa-home .trust .wrap{display:flex;gap:10px 28px;justify-content:center;align-items:center;flex-wrap:wrap;padding-block:14px;font-size:13.5px;font-weight:800;color:var(--ink2)}
+.ansa-home .trust span{display:inline-flex;align-items:center;gap:7px}
+.ansa-home .trust .star{color:#f59e0b;letter-spacing:-.05em}
+
+/* ───── brand intro ───── */.ansa-home .intro .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px 56px;align-items:center}
+.ansa-home .intro .copy{display:grid;gap:16px}
+.ansa-home .intro .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.ansa-home .stat{background:var(--cream2);border:1.5px solid rgba(232,130,95,.25);border-radius:14px;padding:14px 12px;text-align:center}
+.ansa-home .stat b{display:block;font-size:26px;font-weight:900;color:var(--coral-d);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ansa-home .stat small{display:block;font-size:12px;font-weight:700;color:var(--tan)}
+.ansa-home .intro .pic{position:relative;border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#fff6ee,#ffe3cf);aspect-ratio:1;max-width:100%}
+.ansa-home .intro .pic img{width:100%;height:100%;object-fit:cover}
+.ansa-home .intro .pic .badge{position:absolute;left:14px;top:14px;background:var(--coral);color:#fff;font-weight:900;font-size:12.5px;border-radius:999px;padding:7px 12px;box-shadow:0 4px 14px rgba(232,130,95,.35)}
+@media(max-width:860px){.ansa-home .intro .wrap{grid-template-columns:1fr}.ansa-home .intro .pic{aspect-ratio:4/3}}
+@media(max-width:480px){.ansa-home .intro .stats{grid-template-columns:1fr 1fr 1fr;gap:6px}.ansa-home .stat b{font-size:20px}.ansa-home .stat{padding:10px 6px}}
+
+/* ───── products ───── */.ansa-home .products{background:var(--cream)}
+.ansa-home .filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:26px}
+.ansa-home .filters button{border:1.5px solid rgba(26,26,46,.12);background:#fff;color:var(--ink2);font-weight:800;font-size:13.5px;border-radius:999px;padding:8px 14px;transition:all .15s}
+.ansa-home .filters button:hover{border-color:var(--coral)}
+.ansa-home .filters button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ansa-home .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.ansa-home .pc{background:#fff;border:1.5px solid rgba(232,114,42,.16);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;text-decoration:none;color:inherit;position:relative}
+.ansa-home .pc:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(232,114,42,.16)}
+.ansa-home .pc.hide{display:none}
+.ansa-home .pc .ph{aspect-ratio:1;background:var(--cream2);overflow:hidden;position:relative}
+.ansa-home .pc .ph img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.ansa-home .pc:hover .ph img{transform:scale(1.04)}
+.ansa-home .pc .ph .lbl{position:absolute;left:10px;top:10px;font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.94);color:var(--od);border-radius:999px;padding:5px 10px}
+.ansa-home .pc .ph .lbl.best{background:var(--ink);color:#fff}
+.ansa-home .pc .ph .lbl.new{background:var(--coral);color:#fff}
+.ansa-home .pc .bd{padding:14px 14px 14px;display:grid;gap:6px;flex:1;align-content:start}
+.ansa-home .pc .bd .cat{font-size:11.5px;font-weight:800;color:var(--tan);text-transform:uppercase;letter-spacing:.06em}
+.ansa-home .pc .bd h3{font-size:17px}
+.ansa-home .pc .bd p{font-size:13.5px;color:var(--muted);font-weight:600;line-height:1.4}
+.ansa-home .pc .rt{font-size:12.5px;font-weight:800;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.ansa-home .pc .rt .star{color:#f59e0b}
+.ansa-home .pc .pr{margin-top:auto;padding-top:10px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.ansa-home .pc .pr b{font-size:18px;font-weight:900}
+.ansa-home .pc .pr .sz{font-size:12px;font-weight:800;color:var(--gd);background:var(--gs);border:1px solid rgba(34,197,94,.22);border-radius:8px;padding:3px 7px;white-space:nowrap}
+.ansa-home .pc .pr .sz s{color:var(--tan2);font-weight:600}
+.ansa-home .pc .pr .bfz{font-size:12px;font-weight:800;color:#fff;background:var(--ink);border-radius:8px;padding:3px 8px;white-space:nowrap}
+.ansa-home .pc .go{margin:0 14px 14px}
+.ansa-home .pmore{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px}
+@media(max-width:1000px){.ansa-home .pgrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:720px){.ansa-home .pgrid{grid-template-columns:repeat(2,1fr);gap:10px}.ansa-home .pc .bd{padding:11px}.ansa-home .pc .bd h3{font-size:15px}.ansa-home .pc .bd p{font-size:12.5px}.ansa-home .pc .go{margin:0 11px 11px}.ansa-home .filters{gap:6px}.ansa-home .filters button{font-size:12.5px;padding:7px 11px}}
+
+/* ───── feature (Daily Greens) ───── */.ansa-home .feat .wrap{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px 56px;align-items:center}
+.ansa-home .feat .pic{border-radius:24px;overflow:hidden;background:#eef8ef;aspect-ratio:1;max-width:100%;position:relative}
+.ansa-home .feat .pic img{width:100%;height:100%;object-fit:cover}
+.ansa-home .feat .copy{display:grid;gap:14px}
+.ansa-home .ticks{list-style:none;display:grid;gap:8px}
+.ansa-home .ticks li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-weight:600;color:var(--ink2)}
+.ansa-home .ticks li::before{content:"✓";width:24px;height:24px;border-radius:50%;background:var(--gs);color:var(--gd);font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(34,197,94,.3);margin-top:1px}
+.ansa-home .pills{display:flex;gap:8px;flex-wrap:wrap}
+.ansa-home .pills span{font-size:13px;font-weight:800;background:var(--cream2);border:1px solid rgba(232,130,95,.25);border-radius:999px;padding:6px 12px}
+@media(max-width:860px){.ansa-home .feat .wrap{grid-template-columns:1fr}.ansa-home .feat .pic{aspect-ratio:4/3}}
+
+/* ───── berberine (new) ───── */.ansa-home .berb{background:var(--ink);color:#f6ebe2;position:relative;overflow:hidden}
+.ansa-home .berb::before{content:"";position:absolute;inset:0;background:radial-gradient(700px 400px at 90% 20%,rgba(232,114,42,.25),transparent 60%)}
+.ansa-home .berb .wrap{position:relative;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:28px 56px;align-items:center}
+.ansa-home .berb .copy{display:grid;gap:16px}
+.ansa-home .berb .kick{color:#ffb570}
+.ansa-home .berb h2{color:#fff}
+.ansa-home .berb .lead{color:#d9c8ba}
+.ansa-home .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ansa-home .facts div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 12px}
+.ansa-home .facts b{display:block;font-size:22px;font-weight:900;color:#ffb570;letter-spacing:-.02em;line-height:1.1}
+.ansa-home .facts small{display:block;font-size:12.5px;font-weight:600;color:#d9c8ba;margin-top:4px;line-height:1.35}
+.ansa-home .berb .pic{border-radius:24px;overflow:hidden;aspect-ratio:1;max-width:100%;background:rgba(255,255,255,.04)}
+.ansa-home .berb .pic img{width:100%;height:100%;object-fit:contain}
+@media(max-width:860px){.ansa-home .berb .wrap{grid-template-columns:1fr}.ansa-home .berb .pic{aspect-ratio:4/3;max-width:420px;margin-inline:auto}}
+@media(max-width:480px){.ansa-home .facts{grid-template-columns:1fr}}
+
+/* ───── why ───── */.ansa-home .why4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.ansa-home .w4{background:#fff;border:1.5px solid rgba(232,130,95,.2);border-radius:18px;padding:20px 18px;display:grid;gap:8px;align-content:start}
+.ansa-home .w4 i{font-style:normal;width:46px;height:46px;border-radius:14px;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:24px;border:1px solid rgba(232,130,95,.25)}
+.ansa-home .w4 p{font-size:14px;color:var(--muted);font-weight:600;line-height:1.45}
+@media(max-width:900px){.ansa-home .why4{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.ansa-home .why4{grid-template-columns:1fr}}
+
+/* ───── cosmetics / season band ───── */.ansa-home .cosm{background:linear-gradient(135deg,#fff8e6,#fff1cc);border-block:1.5px solid rgba(240,180,41,.4)}
+.ansa-home .cosm .wrap{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:28px 48px;align-items:center}
+.ansa-home .cosm .pic{border-radius:24px;overflow:hidden;aspect-ratio:1;max-width:100%;box-shadow:0 18px 44px rgba(180,83,9,.2)}
+.ansa-home .cosm .pic img{width:100%;height:100%;object-fit:cover}
+.ansa-home .cosm .copy{display:grid;gap:14px}
+.ansa-home .cosm .kick{color:var(--goldd)}
+.ansa-home .pricebadge{display:inline-flex;align-items:baseline;gap:10px;background:#fff;border:2px solid var(--gold);border-radius:14px;padding:8px 14px;width:max-content;max-width:100%}
+.ansa-home .pricebadge s{font-size:18px;color:var(--tan2);font-weight:700}
+.ansa-home .pricebadge b{font-size:30px;font-weight:900;color:var(--goldd);line-height:1}
+.ansa-home .pricebadge small{font-size:12.5px;font-weight:800;color:var(--tan)}
+.ansa-home .cosm .ticks li::before{background:#fff;color:var(--goldd);border-color:rgba(240,180,41,.6)}
+@media(max-width:860px){.ansa-home .cosm .wrap{grid-template-columns:1fr}.ansa-home .cosm .pic{aspect-ratio:4/3}}
+
+/* ───── new 4 (Black Friday gifts) ───── */.ansa-home .new4{background:linear-gradient(135deg,#fff3e6,#ffe8d6);border-block:1.5px solid rgba(232,114,42,.3)}
+.ansa-home .n4grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.ansa-home .n4{background:#fff;border:1.5px solid var(--ol);border-radius:18px;padding:18px;display:grid;gap:6px;align-content:start;box-shadow:var(--shadow)}
+.ansa-home .n4 .nw{display:inline-block;width:max-content;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--o);border-radius:999px;padding:3px 8px}
+.ansa-home .n4 i{font-style:normal;font-size:30px;line-height:1}
+.ansa-home .n4 p{font-size:13.5px;color:var(--muted);font-weight:600;line-height:1.4}
+.ansa-home .n4 .gf{font-size:12.5px;font-weight:800;color:var(--gd);background:var(--gs);border:1px solid rgba(34,197,94,.22);border-radius:8px;padding:3px 8px;width:max-content}
+@media(max-width:900px){.ansa-home .n4grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.ansa-home .n4grid{grid-template-columns:1fr}}
+
+/* ───── reviews ───── */.ansa-home .reviews{background:var(--cream)}
+.ansa-home .rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ansa-home .rv{background:#fff;border:1.5px solid rgba(232,114,42,.16);border-radius:18px;padding:18px;display:grid;gap:10px;align-content:start}
+.ansa-home .rv .star{color:#f59e0b;font-size:15px;letter-spacing:-.04em}
+.ansa-home .rv p{font-size:15px;font-weight:600;color:var(--ink2);line-height:1.5}
+.ansa-home .rv .who{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:var(--tan)}
+.ansa-home .rv .who i{font-style:normal;width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#ffe3cf,#ffd1b0);color:var(--od);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px}
+.ansa-home .rv .who small{display:block;font-weight:700;color:var(--tan2)}
+@media(max-width:900px){.ansa-home .rgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.ansa-home .rgrid{grid-template-columns:1fr}}
+
+/* ───── FAQ ───── */.ansa-home .faq{max-width:820px;margin:0 auto;display:grid;gap:10px}
+.ansa-home .faq details{background:#fff;border:1.5px solid rgba(26,26,46,.1);border-radius:14px;padding:0 18px}
+.ansa-home .faq summary{cursor:pointer;list-style:none;font-weight:800;font-size:16px;padding:16px 0;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.ansa-home .faq summary::-webkit-details-marker{display:none}
+.ansa-home .faq summary::after{content:"+";font-size:22px;font-weight:900;color:var(--o);flex:none;transition:transform .2s}
+.ansa-home .faq details[open] summary::after{transform:rotate(45deg)}
+.ansa-home .faq details p{padding:0 0 16px;color:var(--muted);font-weight:600;line-height:1.55}
+.ansa-home .faq details a{color:var(--od)}
+
+/* ───── newsletter ───── */.ansa-home .news{background:var(--coral);color:#fff}
+.ansa-home .news .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 48px;align-items:center}
+.ansa-home .news h2{color:#fff}
+.ansa-home .news p{font-weight:600;color:#fff2ea}
+.ansa-home .news form{display:flex;gap:8px;flex-wrap:wrap}
+.ansa-home .news input{flex:1 1 220px;min-width:0;min-height:50px;border-radius:14px;border:2px solid rgba(255,255,255,.5);padding:0 16px;font:inherit;font-weight:700;background:#fff;color:var(--ink)}
+.ansa-home .news .ok{display:none;font-weight:800}
+.ansa-home .news form.done input,.ansa-home .news form.done .btn{display:none}
+.ansa-home .news form.done .ok{display:block}
+.ansa-home .news small{font-size:12.5px;font-weight:600;color:#fff2ea;opacity:.9}
+@media(max-width:800px){.ansa-home .news .wrap{grid-template-columns:1fr}}
+
+@media(prefers-reduced-motion:reduce){.ansa-home *{animation:none!important;transition:none!important}}
+</style>
+
+
+
+<div class="ansa-home" id="ansaHome" data-mode="bf">
+
+<!-- ═══════════ 1a. BLACK FRIDAY 2026 (hero, до 30.11 / 01.12) ═══════════ -->
+<section class="bf" id="blackfriday" aria-labelledby="bfH" data-only="bf">
+  <div class="wrap">
+    <div class="bf-grid">
+      <div class="bf-copy">
+        <div class="bf-pills"><span class="pill-bf">🖤 Black Friday 2026</span><span class="chip chip-o" id="bfChip">Предварително записване</span></div>
+        <h1 id="bfH">Black Friday на ansa започва <em>първо за теб.</em></h1>
+        <p class="bf-sub" id="bfSub">Всяка платена опаковка = <b>1 подарък по избор</b>. Запиши се за ранния достъп и вземи ваучер 10 € още днес.</p>
+        <div class="bf-cta">
+          <a class="btn btn-o" id="bfBtn1" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=hero&amp;utm_campaign=bf2026-signup&amp;src=cold">Запиши се за ранния достъп →</a>
+          <a class="bf-link" id="bfBtn2" href="#bf-kak">Как работи ›</a>
+        </div>
+        <ul class="bf-facts" id="bfFacts">
+          <li>🎁 <b>Плащаш 1,</b> получаваш 2</li>
+          <li>💶 Ваучер <b>10 €</b> веднага след записването</li>
+          <li>🚚 Безплатна доставка от 2 опаковки</li>
+        </ul>
+      </div>
+
+      <div class="bf-visual">
+        <!-- ваучерът (записване) -->
+        <div class="bf-card vch" id="bfVch">
+          <div class="vch-t">Подарък за записването</div>
+          <div class="vch-v">10<small>€</small></div>
+          <div class="vch-s">за всичко в ansa.bg · важи 30 минути след отключването</div>
+          <span class="vch-lock">🔒 отключваш го с имейла си</span>
+        </div>
+        <!-- уравнението (ранен достъп / пауза / публичен) -->
+        <div class="bf-card eq" id="bfEq" hidden>
+          <div class="eq-t">Така работи Black Friday в ansa</div>
+          <div class="eq-row">
+            <div class="eq-box"><img src="https://www.ansa.bg/wp-content/uploads/2024/06/daily-greens-bg-main-image-3-1200x1200.webp" alt="" width="76" height="76" loading="lazy"><b>1 опаковка</b><small>редовна цена</small></div>
+            <div class="eq-plus">+</div>
+            <div class="eq-box"><img src="https://www.ansa.bg/wp-content/uploads/2025/05/sakura-new-main-color.webp" alt="" width="76" height="76" loading="lazy"><b>1 подарък</b><small>по твой избор</small><span class="z"><s>€49,50</s>0 €</span></div>
+          </div>
+          <div class="eq-math"><span>1 = 2</span><span>2 = 4</span><span>3 = 6</span></div>
+        </div>
+        <!-- броячът -->
+        <div class="cd" id="bfCd" hidden aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 1b. СЕЗОНЪТ НА ANSA (hero, от 01.12) ═══════════ -->
+<section class="season" id="sezon" aria-labelledby="sezonH" data-only="season" hidden>
+  <div class="wrap">
+    <div class="s-top">
+      <div class="s-brand">Сезонът на <b>ansa™</b></div>
+      <span class="chip chip-o" id="chipWeek">⏳ Сезонът на ansa · до 31.12.2026</span>
+      <span class="chip chip-g">🎟️ Всяка кутия = билети за томболата за почивка на яхта</span>
+    </div>
+
+    <div class="s-grid">
+      <div class="s-copy">
+        <div class="kick">Сезонът на ansa · 23 октомври – 31 декември</div>
+        <h1 id="sezonH">Всяка кутия е билет за <span>ол-инклузив почивка на яхта в Гърция.</span></h1>
+        <div class="s-sub">за теб и до 5 твои близки</div>
+        <ul class="s-bul">
+          <li><i>🔥</i><span>До <b>−40%</b> на всички продукти</span></li>
+          <li><i>🎟️</i><span>Всяка кутия носи <b>билети за томболата</b> за почивка на яхта</span></li>
+          <li><i>👑</i><span>Новият ни козметичен комплект за <b>€1</b> вместо €129. Дори не е томбола: всяка, поръчала кутия с 5 продукта, получава офертата!</span></li>
+        </ul>
+        <div class="s-cta">
+          <a class="btn btn-o" href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=hero&amp;utm_content=general">Избери своята кутия →</a>
+          <a class="btn btn-soft" href="https://www.ansa.bg/sezonut-na-ansa/info/">Как работи?</a>
+        </div>
+        <div class="s-note">Без код. Без друга отстъпка. Отстъпката е най-голяма сега и пада всяка седмица.</div>
+      </div>
+
+      <div class="s-visual">
+        <div class="yacht">
+          <img src="https://www.ansa.bg/wp-content/uploads/2026/10/site-photo-catamaran-v2-768x768.webp" alt="Катамаран в тюркоазен залив в Гърция" width="768" height="768" loading="lazy">
+          <span class="tag">⛵ Томбола за почивка на яхта · теглене 25.01.2027, на живо</span>
+          <div class="val"><small>5 дни · 6 души · all-inclusive</small><b>стойност €8 800</b></div>
+        </div>
+        <div class="rw" aria-label="Наградите в сезона">
+          <div><img src="https://www.ansa.bg/wp-content/uploads/2026/10/site-photo-cosmetics-v3-768x768.webp" alt="" width="44" height="44" loading="lazy"><span><b>Козметичен сет</b><small><s>€129</s> <span class="px">€1</span> · с Голяма кутия</small></span></div>
+          <div><img src="https://www.ansa.bg/wp-content/uploads/2026/10/site-photo-recipe-book-v2-768x768.webp" alt="" width="44" height="44" loading="lazy"><span><b>Книга с рецепти</b><small>от Екатерина Стоянова · €19</small></span></div>
+          <div><img src="https://www.ansa.bg/wp-content/uploads/2026/10/goqlmata-otsypka-snimka-768x768.webp" alt="" width="44" height="44" loading="lazy"><span><b>До −40%</b><small>на всичко в кутията</small></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Трите кутии -->
+    <div class="boxes-h">
+      <div>
+        <h2>Трите кутии</h2>
+        <p>Избираш колко продукта. Отстъпките и подаръците идват автоматично.</p>
+      </div>
+      <span class="chip chip-o">🚚 Безплатна доставка за Средна и Голяма</span>
+    </div>
+    <div class="boxes">
+      <article class="box s">
+        <div class="bico">📦</div>
+        <div class="bname">Малка кутия</div>
+        <div class="bpacks">с 1 продукт</div>
+        <div class="bpct"><b>−15%</b><small>на всичко в кутията</small></div>
+        <div class="brw">
+          <div class="br"><i>🎟️</i><span>1 билет за томболата за почивка на яхта</span></div>
+          <div class="br no"><i>📖</i><span>Книгата с рецепти</span></div>
+          <div class="br no"><i>🚚</i><span>Безплатна доставка<small>доставка €2,55</small></span></div>
+          <div class="br no"><i>👑</i><span>Козметичен сет за €1</span></div>
+        </div>
+        <div class="bex">Пример с Daily Greens: <b>€ 37,32</b> вместо <s>€ 43,90</s></div>
+        <a class="btn btn-soft" href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=boxes&amp;utm_content=general">Избери Малка</a>
+      </article>
+
+      <article class="box m">
+        <span class="btag">Най-популярна</span>
+        <div class="bico">🎁</div>
+        <div class="bname">Средна кутия</div>
+        <div class="bpacks">с 3 продукта</div>
+        <div class="bpct"><b>−30%</b><small>на всичко в кутията</small></div>
+        <div class="brw">
+          <div class="br"><i>🎟️</i><span>3 билета за томболата за почивка на яхта<small>троен шанс</small></span></div>
+          <div class="br"><i>📖</i><span>Книгата с рецепти<small>стойност €19</small></span></div>
+          <div class="br"><i>🚚</i><span>Безплатна доставка</span></div>
+          <div class="br no"><i>👑</i><span>Козметичен сет за €1<small>само в Голяма</small></span></div>
+        </div>
+        <div class="bex">Пример с 3× Daily Greens: <b>€ 92,19</b> вместо <s>€ 131,70</s></div>
+        <a class="btn btn-o" href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=boxes&amp;utm_content=general">Избери Средна →</a>
+      </article>
+
+      <article class="box l">
+        <span class="btag">★ Най-изгодна · спестяваш най-много</span>
+        <div class="bico">👑</div>
+        <div class="bname">Голяма кутия</div>
+        <div class="bpacks">с 5 или повече продукта</div>
+        <div class="bpct"><b>−40%</b><small>на всичко в кутията</small></div>
+        <div class="brw">
+          <div class="br"><i>🎟️</i><span>5 билета за томболата за почивка на яхта<small>+1 за всеки продукт над 5</small></span></div>
+          <div class="br"><i>👑</i><span>Козметичен сет за €1<small><s>€129</s> · 5 продукта, през януари</small></span></div>
+          <div class="br"><i>📖</i><span>Книгата с рецепти<small>стойност €19</small></span></div>
+          <div class="br"><i>🚚</i><span>Безплатна доставка</span></div>
+        </div>
+        <div class="bex">Пример с 5× Daily Greens: <b>€ 131,70</b> вместо <s>€ 219,50</s></div>
+        <a class="btn btn-gold" href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=boxes&amp;utm_content=general">Избери Голяма →</a>
+      </article>
+    </div>
+    <p class="guar">Може и 5 бройки от един продукт. Билетите се активират сами, когато вземеш пратката. <a href="https://www.ansa.bg/sezonut-na-ansa/info/">Правила и въпроси ›</a></p>
+
+    <!-- Стълбата на сезона -->
+    <div class="ladder" id="ladder">
+      <div class="lt"><b>Колкото по-рано, толкова по-евтино</b><small>Сезонът е 11 седмици. Всяка седмица отстъпката на Голямата кутия пада. Цената, на която поръчаш, не се променя после.</small></div>
+      <div class="lw" id="ladderW" aria-label="Отстъпка на Голямата кутия по седмици"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── Trust ───────── -->
+<div class="trust" aria-label="Защо ни вярват">
+  <div class="wrap">
+    <span><span class="star">★★★★★</span> 4.85/5</span>
+    <span>❤️ Над 15 000 доволни жени</span>
+    <span>🇧🇬 Направено в България</span>
+    <span>🌿 100% чисти съставки</span>
+    <span>🔬 Тествано и одобрено</span>
+  </div>
+</div>
+
+<!-- ═══════════ 1c. Как работи Black Friday (само до 30.11) ═══════════ -->
+<section class="sec bfhow" id="bf-kak" aria-labelledby="bfHowH" data-only="bf">
+  <div class="wrap">
+    <div class="sec-h center">
+      <div class="kick">🖤 Black Friday 2026 · три стъпки</div>
+      <h2 id="bfHowH">Плащаш 1, получаваш 2. Толкова е просто.</h2>
+    </div>
+    <div class="bf-steps">
+      <div class="bf-step"><i>1</i><h3>Избираш какво купуваш</h3><p>Любимите ти продукти на редовна цена: Daily Greens, Берберин, Sakura, YoniBiotic, ThyroZen, MenoStop, Utera+, Red Routine, Ашваганда. Колкото опаковки искаш.</p></div>
+      <div class="bf-step"><i>2</i><h3>Избираш толкова подаръка</h3><p>За всяка платена опаковка избираш една опаковка подарък: някой от новите 4 продукта или продукт, който вече обичаш. Може и еднакви.</p></div>
+      <div class="bf-step"><i>3</i><h3>Поръчваш. Подаръците са на 0 €</h3><p>Виждаш „Плащаш X € · Спестяваш Y €“, доставката е безплатна от 2 платени опаковки. Без код, без дребен шрифт.</p></div>
+    </div>
+    <div class="pmore" style="margin-top:22px"><a class="btn btn-o" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=how&amp;utm_campaign=bf2026-signup&amp;src=cold" data-bf-link id="bfHowBtn">Запиши се за ранния достъп →</a></div>
+  </div>
+</section>
+
+<!-- ═══════════ 2. Брандът ═══════════ -->
+<section class="sec intro" id="za-nas" aria-labelledby="introH">
+  <div class="wrap">
+    <div class="copy">
+      <div class="kick">❤️ От жени за жени</div>
+      <h2 id="introH">Натурални продукти за твоята красота и здраве</h2>
+      <p class="lead">Суплементи, суперхрани и нутрикозметика с клинично доказани съставки. Всеки продукт е вдъхновен и създаден от жена. Произведени в България, GMP сертифицирано.</p>
+      <div class="stats">
+        <div class="stat"><b>15 000+</b><small>доволни жени</small></div>
+        <div class="stat"><b>4.85★</b><small>средна оценка</small></div>
+        <div class="stat"><b>2 100+</b><small>отзива за ThyroZen</small></div>
+      </div>
+      <div class="s-cta">
+        <a class="btn btn-coral" href="#produkti">Пазарувай</a>
+        <a class="btn btn-ghost" href="https://www.ansa.bg/review/">Виж отзиви</a>
+      </div>
+    </div>
+    <div class="pic">
+      <img src="https://www.ansa.bg/wp-content/uploads/2024/05/Main-AllProducts.jpg" alt="Продуктите на ansa" width="1280" height="1280" loading="lazy">
+      <span class="badge">🇧🇬 Направено в България</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 3. Продукти ═══════════ -->
+<section class="sec products" id="produkti" aria-labelledby="prodH">
+  <div class="wrap">
+    <div class="sec-h center">
+      <div class="kick">✨ Персонализирано за теб</div>
+      <h2 id="prodH">Кой продукт е за теб?</h2>
+      <p class="lead" data-only="bf">Избери какво те притеснява. В Black Friday всяка платена опаковка носи подарък по избор.</p>
+      <p class="lead" data-only="season" hidden>Избери какво те притеснява. Всеки продукт влиза и в кутия от Сезона, с до −40%.</p>
+    </div>
+    <div class="filters" role="group" aria-label="Филтър по проблем">
+      <button type="button" data-f="all" aria-pressed="true">Всички</button>
+      <button type="button" data-f="cherva" aria-pressed="false">Подуване и черва</button>
+      <button type="button" data-f="koja" aria-pressed="false">Кожа, коса, нокти</button>
+      <button type="button" data-f="teglo" aria-pressed="false">Тегло и метаболизъм</button>
+      <button type="button" data-f="san" aria-pressed="false">Сън и стрес</button>
+      <button type="button" data-f="hormoni" aria-pressed="false">Менопауза и ПМС</button>
+      <button type="button" data-f="shtit" aria-pressed="false">Щитовидна жлеза</button>
+      <button type="button" data-f="intimno" aria-pressed="false">Интимно здраве</button>
+    </div>
+
+    <div class="pgrid" id="pgrid">
+      <a class="pc" data-f="cherva koja" href="https://www.ansa.bg/product/daily-greens/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2024/06/daily-greens-bg-main-image-3-1200x1200.webp" alt="Daily Greens" width="600" height="600" loading="lazy"><span class="lbl best">Бестселър #1</span></div>
+        <div class="bd"><div class="cat">Чревно здраве</div><h3>Daily Greens™</h3><p>Вкусна напитка с 69 съставки за чревно здраве, енергия и имунитет. Чао, подут корем.</p><div class="rt"><span class="star">★</span> 4.8 · 214 отзива</div><div class="pr"><b>€ 43,90</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 26,34</span></div></div>
+        <span class="btn btn-sm btn-coral go">Пазарувай</span>
+      </a>
+      <a class="pc" data-f="san cherva" href="https://www.ansa.bg/product/red-routine/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2024/05/reds-new-heading-img.jpg" alt="Reds Routine" width="600" height="600" loading="lazy"><span class="lbl">Сън</span></div>
+        <div class="bd"><div class="cat">Сън и стрес</div><h3>Reds Routine™</h3><p>Антиоксидантна сила от червенини за сън, подуване и имунитет.</p><div class="rt"><span class="star">★</span> 4.8 · 260 отзива</div><div class="pr"><b>€ 39,90</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 23,94</span></div></div>
+        <span class="btn btn-sm btn-coral go">Открий</span>
+      </a>
+      <a class="pc" data-f="koja" href="https://www.ansa.bg/product/sakura-skintonic/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2025/05/sakura-new-main-color.webp" alt="Sakura SkinTonic" width="600" height="600" loading="lazy"><span class="lbl">Красота</span></div>
+        <div class="bd"><div class="cat">Кожа и красота</div><h3>Sakura SkinTonic™</h3><p>Японска напитка с вишна и нар за хидратирана, стегната кожа след 35.</p><div class="rt"><span class="star">★</span> 4.9 · 1 120 отзива</div><div class="pr"><b>€ 49,50</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 29,70</span></div></div>
+        <span class="btn btn-sm btn-coral go">Виж повече</span>
+      </a>
+      <a class="pc" data-f="teglo" href="https://www.ansa.bg/product/dihidro-berberin/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2024/11/berberine-drcaps-new-main-image-1200x1200.webp" alt="ДихидроБерберин" width="600" height="600" loading="lazy"><span class="lbl new">Ново 🔥</span></div>
+        <div class="bd"><div class="cat">Метаболизъм</div><h3>ДихидроБерберин</h3><p>3× по-бионаличен. Изгаря мазнини и стабилизира кръвната захар. AMPK активатор.</p><div class="rt"><span class="star">★</span> 4.6 · 96 отзива</div><div class="pr"><b>€ 59,00</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 35,40</span></div></div>
+        <span class="btn btn-sm btn-coral go">Виж повече</span>
+      </a>
+      <a class="pc" data-f="intimno cherva" href="https://www.ansa.bg/product/ansa-yonibiotic/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2025/02/yoni-main-2.webp" alt="YoniBiotic" width="600" height="600" loading="lazy"><span class="lbl">Интимно здраве</span></div>
+        <div class="bd"><div class="cat">Интимна флора</div><h3>YoniBiotic™</h3><p>Пробиотик за интимна флора с 12 щама лактобацили, пребиотик и боровинка.</p><div class="rt"><span class="star">★</span> свежи партиди всеки месец</div><div class="pr"><b>€ 34,90</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 20,94</span></div></div>
+        <span class="btn btn-sm btn-coral go">Виж повече</span>
+      </a>
+      <a class="pc" data-f="shtit teglo" href="https://www.ansa.bg/product/ansathyroid/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2024/04/Thyrozen-Main-image.webp" alt="ThyroZen" width="600" height="600" loading="lazy"><span class="lbl">№1 при Хашимото</span></div>
+        <div class="bd"><div class="cat">Щитовидна жлеза</div><h3>ThyroZen™</h3><p>Клинично доказана формула за щитовидната жлеза при Хашимото и хипотиреоидит.</p><div class="rt"><span class="star">★</span> 4.7 · 2 100+ отзива</div><div class="pr"><b>€ 33,00</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 19,80</span></div></div>
+        <span class="btn btn-sm btn-coral go">Виж повече</span>
+      </a>
+      <a class="pc" data-f="hormoni san" href="https://www.ansa.bg/product/menostop/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2025/03/menopause-new-main.webp" alt="MenoStop" width="600" height="600" loading="lazy"><span class="lbl">Пери / Менопауза</span></div>
+        <div class="bd"><div class="cat">Менопауза</div><h3>MenoStop™</h3><p>24-часова подкрепа: ден и нощ формула с патентован швейцарски екстракт. Без хормони.</p><div class="rt"><span class="star">★</span> 4.7 · 380 отзива</div><div class="pr"><b>€ 39,90</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 23,94</span></div></div>
+        <span class="btn btn-sm btn-coral go">Разбери повече</span>
+      </a>
+      <a class="pc" data-f="hormoni" href="https://www.ansa.bg/product/utera-plus/">
+        <div class="ph"><img src="https://www.ansa.bg/wp-content/uploads/2025/11/utera-main-image.webp" alt="Utera+" width="600" height="600" loading="lazy"><span class="lbl">Репродуктивно здраве</span></div>
+        <div class="bd"><div class="cat">Репродуктивна система</div><h3>Utera+</h3><p>За здрава репродуктивна система и облекчаване на ПМС. 🩷</p><div class="rt"><span class="star">★</span> ново в ansa</div><div class="pr"><b>€ 39,90</b><span class="bfz" data-only="bf-live" hidden>🎁 + 1 подарък</span><span class="sz" data-only="season" hidden>в Сезона от € 23,94</span></div></div>
+        <span class="btn btn-sm btn-coral go">Виж повече</span>
+      </a>
+    </div>
+    <p id="pempty" class="lead" style="text-align:center;margin:18px auto 0" hidden>Няма продукт с този филтър. Пиши ни и ще ти помогнем с избора.</p>
+    <div class="pmore">
+      <a class="btn btn-dark" href="https://www.ansa.bg/shop/">Виж всички продукти</a>
+      <a class="btn btn-soft" data-only="bf" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=products&amp;utm_campaign=bf2026-signup&amp;src=cold" data-bf-link>Black Friday: 1 опаковка = 1 подарък →</a>
+      <a class="btn btn-soft" data-only="season" hidden href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=products&amp;utm_content=general">Сложи ги в кутия с −40% →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 3b. Новите 4 (само Black Friday) ═══════════ -->
+<section class="sec new4" id="novite" aria-labelledby="n4H" data-only="bf">
+  <div class="wrap">
+    <div class="sec-h center">
+      <div class="kick">🎁 Само като подарък в Black Friday</div>
+      <h2 id="n4H">Четири нови продукта. Опитваш ги безплатно.</h2>
+      <p class="lead">Работихме по тях цяла година. В Black Friday не се продават: вземаш ги само като подарък към платена опаковка. Един подарък по избор за всяка опаковка.</p>
+    </div>
+    <div class="n4grid">
+      <div class="n4"><span class="nw">Ново</span><i>💇‍♀️</i><h3>KeraTonica</h3><p>За коса, мигли и вежди: плътност, блясък, по-малко косопад.</p><span class="gf">🎁 подарък към всяка опаковка</span></div>
+      <div class="n4"><span class="nw">Ново</span><i>🤸‍♀️</i><h3>Alivia</h3><p>При скованост и дискомфорт в ставите и мускулите, за лекота в движението.</p><span class="gf">🎁 подарък към всяка опаковка</span></div>
+      <div class="n4"><span class="nw">Ново</span><i>🦵</i><h3>VenoTonus</h3><p>За здрави кръвоносни съдове, леки крака и по-добро кръвообращение.</p><span class="gf">🎁 подарък към всяка опаковка</span></div>
+      <div class="n4"><span class="nw">Ново</span><i>🛡️</i><h3>AHCC-Бета</h3><p>Имунитет с гъбен комплекс AHCC и бета-глюкани, за сезона на вирусите.</p><span class="gf">🎁 подарък към всяка опаковка</span></div>
+    </div>
+    <div class="pmore">
+      <a class="btn btn-o" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=new4&amp;utm_campaign=bf2026-signup&amp;src=cold" data-bf-link>Вземи ги като подарък →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 4. Daily Greens ═══════════ -->
+<section class="sec feat" aria-labelledby="featH">
+  <div class="wrap">
+    <div class="pic">
+      <img src="https://www.ansa.bg/wp-content/uploads/2024/06/daily-greens-bg-main-image-3-1200x1200.webp" alt="Daily Greens – 69 съставки в едно саше" width="800" height="800" loading="lazy">
+    </div>
+    <div class="copy">
+      <div class="kick">Най-продаваният greens продукт в България</div>
+      <h2 id="featH">Защо над 15 000 жени са очаровани</h2>
+      <p class="lead">Защото сме истински. Бяхме първите, които премахнаха подуването и върнаха енергията на хиляди жени с една вкусна, натурална напитка. Зеленчуци, плодове, ензими, пробиотици, адаптогени, кореноплодни и билки. Без йо-йо ефект, без вредни химикали.</p>
+      <ul class="ticks">
+        <li>69 подбрани съставки в 1 саше</li>
+        <li>Произведено в България, GMP сертифицирано</li>
+        <li>Без ГМО, без изкуствени оцветители</li>
+        <li>Страхотен вкус. Разлика още след първата кутия</li>
+      </ul>
+      <div class="pills"><span>🥬 69 съставки</span><span>⚡ Повишена енергия</span><span>💪 Чревно здраве</span><span>✨ Сияйна кожа</span><span>😋 Страхотен вкус</span></div>
+      <div class="s-cta">
+        <a class="btn btn-coral" href="https://www.ansa.bg/product/daily-greens/">Разгледай продукта</a>
+        <a class="btn btn-ghost" data-only="bf" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=greens&amp;utm_campaign=bf2026-signup&amp;src=cold&amp;p=greens" data-bf-link>Black Friday: 1 Greens + 1 подарък</a>
+        <a class="btn btn-ghost" data-only="season" hidden href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=greens&amp;utm_content=greens">В кутия от Сезона: от € 26,34</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 5. НОВО: Дихидроберберин ═══════════ -->
+<section class="sec berb" aria-labelledby="berbH">
+  <div class="wrap">
+    <div class="copy">
+      <div class="kick">Ново · наричат го „натуралния оземпик“</div>
+      <h2 id="berbH">Дихидроберберин: атакувай мазнините.</h2>
+      <p class="lead">Единственият в България AMPK активатор. Реално постижими резултати: рекомпозирано тяло, до 5 кила по-малко за 50 дни. Дългосрочно. Продуктът, който помогна на над 9 000 българки да отслабнат без инжекции и без глад.</p>
+      <div class="facts">
+        <div><b>500%</b><small>по-концентрирано от стандартните продукти с берберин</small></div>
+        <div><b>Гиностема</b><small>мощен AMPK активатор в комбинация с дихидроберберин</small></div>
+        <div><b>50 дни</b><small>до видим ефект, без обещания за свръхрезултати</small></div>
+      </div>
+      <div class="s-cta">
+        <a class="btn btn-o" href="https://www.ansa.bg/product/dihidro-berberin/">Виж продукта</a>
+        <a class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.3)" data-only="bf" href="https://www.ansa.bg/cheren-petak-2026/?utm_source=home&amp;utm_medium=berber&amp;utm_campaign=bf2026-signup&amp;src=cold&amp;p=berber" data-bf-link>Black Friday: 1 Берберин + 1 подарък по избор</a>
+        <a class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.3)" data-only="season" hidden href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=berber&amp;utm_content=berber">В Голяма кутия: € 35,40 вместо € 59</a>
+      </div>
+    </div>
+    <div class="pic">
+      <img src="https://www.ansa.bg/wp-content/uploads/2025/04/berberine-transp3.webp" alt="ДихидроБерберин на ansa" width="600" height="600" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 6. Защо ansa ═══════════ -->
+<section class="sec" id="zashto" aria-labelledby="whyH">
+  <div class="wrap">
+    <div class="sec-h center">
+      <div class="kick">Мечтаеш за промяна? Започни днес!</div>
+      <h2 id="whyH">Защо всички обожаваме ansa™ и я избираме за своето женско здраве</h2>
+    </div>
+    <div class="why4">
+      <div class="w4"><i>👩‍👩‍👧</i><h3>От жени за жени</h3><p>Всеки продукт е вдъхновен и концептуализиран от жена. Знаем какво те боли, защото и нас ни е боляло.</p></div>
+      <div class="w4"><i>🤝</i><h3>Гаранция</h3><p>Нашите продукти просто работят. Ако пък си недоволна, пиши ни. Ще оправим проблема 🙂</p></div>
+      <div class="w4"><i>🌿</i><h3>100% натурално</h3><p>Залагаме на природата и я обгръщаме с науката. Без захар, без глутен, с 100% прозрачност на съставките.</p></div>
+      <div class="w4"><i>💛</i><h3>С кауза</h3><p>Всяка поръчка участва като анонимен дарител в различни социални каузи. Бъди ansa.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 7. Комплектът за €1 (само Сезонът, от 01.12) ═══════════ -->
+<section class="sec cosm" id="komplekt" aria-labelledby="cosmH" data-only="season" hidden>
+  <div class="wrap">
+    <div class="pic">
+      <img src="https://www.ansa.bg/wp-content/uploads/2026/10/site-photo-cosmetics-v3-768x768.webp" alt="Първият козметичен комплект на ansa: пет продукта" width="768" height="768" loading="lazy">
+    </div>
+    <div class="copy">
+      <div class="kick">Първата козметика на ansa · само през Сезона</div>
+      <h2 id="cosmH">Комплект на стойност €129. Само за €1.</h2>
+      <div class="pricebadge"><s>€129</s><b>€1</b><small>с Голямата кутия</small></div>
+      <p class="lead">Не е томбола. Всяка, която вземе голяма кутия, го получава. Работим по него повече от година: пет продукта, разработени от нас, пристигат през януари 2027.</p>
+      <ul class="ticks">
+        <li>Гарантирано за всяка Голяма кутия през Сезона на ansa, по един на човек</li>
+        <li>Резервираш го сега с поръчката. Днес не плащаш нищо за него</li>
+        <li>До изчерпване на количествата. Като свършат, свършват</li>
+      </ul>
+      <div class="s-cta">
+        <a class="btn btn-gold" href="https://www.ansa.bg/sezonut-na-ansa/?utm_source=home&amp;utm_medium=cosm&amp;utm_content=cosm">Вземи комплекта с Голямата кутия →</a>
+        <a class="btn btn-ghost" href="https://www.ansa.bg/sezonut-na-ansa/kozmetika/">Какво има вътре?</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 8. Отзиви ═══════════ -->
+<section class="sec reviews" id="otzivi" aria-labelledby="rvH">
+  <div class="wrap">
+    <div class="sec-h center">
+      <div class="kick">💬 Какво казват клиентките</div>
+      <h2 id="rvH">Над 14 800 жени са доволни от ansa™</h2>
+    </div>
+    <div class="rgrid">
+      <div class="rv"><div class="star">★★★★★</div><p>„Ъъъъ ВЕЛИКО! Продуктите ви са просто жестоки, много ме кефи, че е нещо изцяло женско.“</p><div class="who"><i>С</i><span>Силвена<small>клиентка на ansa</small></span></div></div>
+      <div class="rv"><div class="star">★★★★★</div><p>„От втората седмица подуването изчезна. Пия го сутрин с вода.“</p><div class="who"><i>М</i><span>Мария, 47<small>Daily Greens™</small></span></div></div>
+      <div class="rv"><div class="star">★★★★★</div><p>„Кожата ми е по-стегната, приятелки питат какво ползвам.“</p><div class="who"><i>Е</i><span>Елена, 52<small>Sakura SkinTonic™</small></span></div></div>
+      <div class="rv"><div class="star">★★★★★</div><p>„Вълните станаха два пъти по-редки. Спя спокойно.“</p><div class="who"><i>К</i><span>Красимира, 51<small>MenoStop™</small></span></div></div>
+      <div class="rv"><div class="star">★★★★★</div><p>„Най-накрая нещо, което помага при тежест след обяд.“</p><div class="who"><i>Д</i><span>Десислава<small>Daily Greens™</small></span></div></div>
+      <div class="rv"><div class="star">★★★★★</div><p>„Без хормони, което беше важно за мен.“</p><div class="who"><i>Р</i><span>Румяна<small>MenoStop™</small></span></div></div>
+    </div>
+    <div class="pmore"><a class="btn btn-ghost" href="https://www.ansa.bg/review/">Виж всички ревюта</a></div>
+  </div>
+</section>
+
+<!-- ═══════════ 9. Въпроси ═══════════ -->
+<section class="sec" id="vaprosi" aria-labelledby="faqH">
+  <div class="wrap">
+    <div class="sec-h center"><h2 id="faqH">А ти чудиш ли се?</h2></div>
+    <div class="faq">
+      <details data-only="bf"><summary>Как работи Black Friday в ansa?</summary><p>Просто уравнение: плащаш 1, получаваш 2. За всяка платена опаковка на редовна цена избираш една опаковка подарък: някой от новите 4 продукта или продукт, който вече обичаш. 2 = 4, 3 = 6. Подаръците влизат в количката на 0 €, без код. Доставката е безплатна от 2 платени опаковки.</p></details>
+      <details data-only="bf"><summary>Какво е ранният достъп?</summary><p>Записаните получават личен линк по имейл и избират продуктите и подаръците си преди всички. Записването дава и ваучер 10 € за всичко в ansa.bg, който важи 30 минути след отключването.</p></details>
+      <details data-only="season" hidden><summary>Как работи Сезонът на ansa?</summary><p>Три стъпки, нищо за регистриране. Избираш кутия (Малка, Средна или Голяма) и любимите си продукти. Получаваш пратката и билетите ти за томболата се активират сами в момента, в който я вземеш. На 25.01.2027 теглим томболата за почивка на яхта на живо и се обаждаме на победителката в ефир. <a href="https://www.ansa.bg/sezonut-na-ansa/info/">Пълните правила и 15 въпроса ›</a></p></details>
+      <details data-only="season" hidden><summary>Ще има ли още отстъпки до края на годината?</summary><p>Не. Отстъпката на кутиите пада всяка седмица до 31.12.2026. Цената, която виждаш сега, е най-ниската до края на сезона.</p></details>
+      <details><summary>Защо е важно да се грижиш за своето женско здраве?</summary><p>Често те наляга умора и не се чувстваш „на себе си“? През повечето дни си подута и не ти се става от леглото? Всяка една от нас е изпитвала тези симптоми. Не трябва да чакаш първите сериозни сигнали. Правилното хранене е в основата, а в забързаното ежедневие рядко ни остава време за него. Затова се погрижи за себе си с нашите зеленини <a href="https://www.ansa.bg/product/daily-greens/">Daily Greens</a>: зеленчуци, плодове, водорасли и растителни екстракти, витамини, минерали, пре- и пробиотици, ензими, фибри, колаген и антиоксиданти.</p></details>
+      <details><summary>Защо да избереш ansa™ за своето женско здраве?</summary><p>На пазара ще откриеш голям избор от хранителни добавки, но не можеш да си сигурна, че ще ти подействат добре. Ние гарантираме 100% прозрачност за съставките, лично инспектираме суровините и избираме само най-добрите. Не използваме захар или глутен, а всеки продукт е от 100% натурални веган съставки. За това свидетелстват хиляди доволни българки.</p></details>
+      <details><summary>Как да се доверя? Защо се мислите за различни?</summary><p>Отговор от основателката на ansa, Екатерина: „Като майка на 2 деца бях категорична в едно: ще направя продукти за женско здраве, но искам да са безупречни. Искам децата ми да се гордеят с мен един ден.“ Четири неща ни правят различни: прозрачност и научен подход, висококачествени съставки без компромиси, производство със строг контрол и гаранция за удовлетвореност. А най-хубавото: производството е в прекрасната ни България.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 10. Абонамент ═══════════ -->
+<section class="sec news" aria-labelledby="newsH">
+  <div class="wrap">
+    <div>
+      <h2 id="newsH">Абонирай се &amp; спести</h2>
+      <p>Никога няма да досаждаме. Използваме имейла ти, за да споделяме хитри съвети за здравето или да ти изпратим тайна оферта, на която няма да можеш да устоиш.</p>
+    </div>
+    <div>
+      <form id="newsForm" novalidate>
+        <label class="sr" for="newsEmail">Имейл</label>
+        <input id="newsEmail" type="email" name="email" placeholder="твоят@имейл.bg" autocomplete="email" required>
+        <button class="btn btn-dark" type="submit">Спести</button>
+        <div class="ok">✓ Готово! Провери пощата си за първата оферта.</div>
+      </form>
+      <small>Съгласна си да получаваш оферти от ansa™. Отписване по всяко време.</small>
+    </div>
+  </div>
+</section>
+
+</div>
+
+
+
+<script>
+(function(){
+  var root=document.getElementById('ansaHome'); if(!root) return;
+  var now=new Date();
+  function sofia(s){ return new Date(s.replace(' ','T')+':00+02:00'); } /* ноември/декември = EET, UTC+2 */
+
+  /* ── Black Friday 2026: датите от Настройки → Черен петък 2026 (1.48.8). Смениш ли ги там, смени ги и тук. ── */
+  var BF_PHASES={ early_start:sofia('2026-11-20 10:00'), early_end:sofia('2026-11-23 23:59'), public_start:sofia('2026-11-25 07:00'), public_end:sofia('2026-11-30 10:00') };
+  var SEASON_BACK=sofia('2026-12-01 00:00'); /* от тук героят на Сезона се връща */
+  var BF_URL='https://www.ansa.bg/cheren-petak-2026/';
+  var phase='prep';
+  if(now>=SEASON_BACK) phase='season';
+  else if(now>=BF_PHASES.public_end) phase='over';
+  else if(now>=BF_PHASES.public_start) phase='public';
+  else if(now>=BF_PHASES.early_end) phase='pause';
+  else if(now>=BF_PHASES.early_start) phase='early';
+  var mode=phase==='season'?'season':'bf';
+  var bfLive=phase==='early'||phase==='public';
+  root.setAttribute('data-mode',mode);
+
+  /* показва/скрива елементите по режим: data-only="bf" | "season" | "bf-live" */
+  var all=root.querySelectorAll('[data-only]');
+  for(var i=0;i<all.length;i++){ var o=all[i].getAttribute('data-only'); var show=(o==='bf'&&mode==='bf')||(o==='season'&&mode==='season')||(o==='bf-live'&&bfLive); if(show) all[i].removeAttribute('hidden'); else all[i].setAttribute('hidden',''); }
+
+  /* ── героят на Black Friday по фаза ── */
+  function q(id){ return document.getElementById(id); }
+  function text(id,html){ var el=q(id); if(el) el.innerHTML=html; }
+  function pad(n){ return (n<10?'0':'')+n; }
+  var utm=function(c){ return BF_URL+'?utm_source=home&utm_medium=hero&utm_campaign='+c; };
+  var chip=q('bfChip'), vch=q('bfVch'), eq=q('bfEq'), cd=q('bfCd');
+  var cdTarget=null, cdLabel='';
+
+  if(mode==='bf'){
+    /* BF линковете по секциите: в живия публичен Black Friday водят към магазина; преди това (вкл. в ранния достъп) към записването,
+       защото страницата без личен линк е „затворена“, а със src=cold показва записването (ваучер + линк за 25.11) */
+    var links=root.querySelectorAll('[data-bf-link]');
+    for(var l=0;l<links.length;l++){ var h=links[l].getAttribute('href'); if(phase==='public'||phase==='over'){ links[l].setAttribute('href',h.replace('bf2026-signup','bf2026-public').replace('&src=cold','')); } }
+    var howBtn=q('bfHowBtn');
+
+    if(phase==='prep'){
+      /* броячът „записани“ — същата формула като на страницата: n = 440 − 128·e^(−d/9), d = дни от 04.11 */
+      var d0=sofia('2026-11-04 00:00'); var d=Math.max(0,Math.floor((now-d0)/864e5)); var seats=Math.min(439,Math.round(440-128*Math.exp(-d/9))); var left=440-seats;
+      chip.innerHTML='<b>'+seats+'</b>/440 записани · остават <b>'+left+'</b> места';
+    } else if(phase==='early'){
+      chip.textContent='Тече Черен петък · ранен достъп'; chip.className='chip chip-g';
+      text('bfH','Черен петък тече. <em>Всяка опаковка = 1 подарък по избор.</em>');
+      text('bfSub','Записаните вече пазаруват с личния линк от имейла. Запиши се и вземи <b>ваучер 10 €</b> веднага.');
+      var b1=q('bfBtn1'); b1.textContent='Запиши се и вземи ваучер 10 € →'; b1.setAttribute('href',utm('bf2026-signup')+'&src=cold');
+      var b2=q('bfBtn2'); b2.textContent='Имам линк от имейла ›'; b2.setAttribute('href',utm('bf2026-early'));
+      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>💶 Ваучер <b>10 €</b> веднага след записването</li><li>🚚 Безплатна доставка от 2 опаковки</li>');
+      if(howBtn){ howBtn.textContent='Запиши се и вземи ваучер 10 € →'; }
+      vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
+    } else if(phase==='pause'){
+      chip.textContent='Черен петък · отваря на 25.11 в 07:00';
+      text('bfH','За всички отваря на <em>25.11 в 07:00.</em>');
+      text('bfSub','Всяка платена опаковка = <b>1 подарък по избор</b>. Остави имейла си и ще ти пратим линка точно в 07:00.');
+      var p1=q('bfBtn1'); p1.textContent='Прати ми линка →'; p1.setAttribute('href',utm('bf2026-reminder'));
+      var p2=q('bfBtn2'); p2.textContent='Как работи ›'; p2.setAttribute('href','#bf-kak');
+      text('bfFacts','<li>🎁 <b>Плащаш 1,</b> получаваш 2</li><li>🚚 Безплатна доставка от 2 опаковки</li><li>✅ Без код, подаръците са на <b>0 €</b></li>');
+      if(howBtn){ howBtn.textContent='Прати ми линка →'; howBtn.setAttribute('href',utm('bf2026-reminder')); }
+      vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
+      cdTarget=BF_PHASES.public_start; cdLabel='Отваря след';
+    } else if(phase==='public'){
+      chip.textContent='Тече Черен петък'; chip.className='chip chip-g';
+      text('bfH','Плащаш 1, <em>получаваш 2.</em>');
+      text('bfSub','Всяка поръчана опаковка = <b>1 опаковка подарък по избор</b>: новите 4 продукта или любимите ти. 2 = 4, 3 = 6.');
+      var u1=q('bfBtn1'); u1.textContent='Избери продуктите и подаръците →'; u1.setAttribute('href',utm('bf2026-public'));
+      var u2=q('bfBtn2'); u2.textContent='Как работи ›'; u2.setAttribute('href','#bf-kak');
+      text('bfFacts','<li>🎁 Подаръкът е <b>по избор</b></li><li>🚚 Безплатна доставка от 2 опаковки</li><li>✅ Без код, подаръците са на <b>0 €</b></li>');
+      if(howBtn){ howBtn.textContent='Избери продуктите и подаръците →'; }
+      vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
+      cdTarget=BF_PHASES.public_end; cdLabel='Черен петък свършва след';
+    } else if(phase==='over'){
+      chip.textContent='Черен петък приключи'; chip.className='chip chip-hot';
+      text('bfH','Черен петък в ansa приключи. <em>Благодарим.</em>');
+      text('bfSub','Поръчките и подаръците вече пътуват към вас. Продуктите са в магазина.');
+      var o1=q('bfBtn1'); o1.textContent='Към магазина'; o1.setAttribute('href','https://www.ansa.bg/shop/');
+      var o2=q('bfBtn2'); o2.textContent=''; o2.setAttribute('hidden','');
+      text('bfFacts','');
+      if(howBtn){ howBtn.textContent='Към магазина'; howBtn.setAttribute('href','https://www.ansa.bg/shop/'); }
+      vch.setAttribute('hidden',''); eq.removeAttribute('hidden');
+    }
+
+    /* брояч: „след 9 дни 20 ч 00 мин“, една карта под визуала */
+    if(cdTarget&&cd){
+      cd.removeAttribute('hidden');
+      var tick=function(){
+        var ms=cdTarget-new Date(); if(ms<0) ms=0;
+        var dd=Math.floor(ms/864e5), hh=Math.floor(ms%864e5/36e5), mm=Math.floor(ms%36e5/6e4), ss=Math.floor(ms%6e4/1e3);
+        cd.innerHTML='<div class="cd-l">'+cdLabel+'</div><div class="cd-n">'+
+          (dd>0?'<span><b>'+dd+'</b><small>'+(dd===1?'ден':'дни')+'</small></span>':'')+
+          '<span><b>'+pad(hh)+'</b><small>ч</small></span><span><b>'+pad(mm)+'</b><small>мин</small></span><span><b>'+pad(ss)+'</b><small>сек</small></span></div>';
+        if(ms===0){ clearInterval(iv); setTimeout(function(){ location.reload(); },1500); } /* фазата се смени → презарежда с новия герой */
+      };
+      tick(); var iv=setInterval(tick,1000);
+    }
+  }
+
+  /* ── Сезонът (от 01.12): седмици и стълбата (от конфига на ansa-promo; седмица = петък→четвъртък) ── */
+  if(mode==='season'){
+    var LADDER=[
+      {i:1,from:'16.10',to:'20.10',l:45,d:'2026-10-16'},
+      {i:2,from:'21.10',to:'29.10',l:40,d:'2026-10-21'},
+      {i:3,from:'30.10',to:'5.11', l:40,d:'2026-10-30'},
+      {i:4,from:'6.11', to:'12.11',l:39,d:'2026-11-06'},
+      {i:5,from:'13.11',to:'19.11',l:38,d:'2026-11-13'},
+      {i:6,from:'20.11',to:'26.11',l:37,d:'2026-11-20'},
+      {i:7,from:'27.11',to:'3.12', l:36,d:'2026-11-27'},
+      {i:8,from:'4.12', to:'10.12',l:35,d:'2026-12-04'},
+      {i:9,from:'11.12',to:'17.12',l:34,d:'2026-12-11'},
+      {i:10,from:'18.12',to:'24.12',l:33,d:'2026-12-18'},
+      {i:11,from:'25.12',to:'31.12',l:32,d:'2026-12-25'}
+    ];
+    var DEADLINE=new Date('2026-12-31T23:59:59+02:00');
+    var cur=LADDER[0];
+    for(var w=0;w<LADDER.length;w++){ if(now>=new Date(LADDER[w].d+'T00:00:00+02:00')) cur=LADDER[w]; }
+    var next=LADDER[cur.i]||null;
+    var nextStart=next?new Date(next.d+'T00:00:00+02:00'):DEADLINE;
+    var daysLeft=Math.max(0,Math.ceil((nextStart-now)/864e5));
+    var wchip=q('chipWeek');
+    if(wchip){
+      if(now>DEADLINE){ wchip.textContent='Сезонът приключи на 31.12.2026'; }
+      else if(!next){ wchip.textContent='⏳ Последна седмица на сезона · до 31.12.2026'; wchip.className='chip chip-hot'; }
+      else { wchip.innerHTML='⏳ Седмица <b>'+cur.i+'</b> от 11 · още <b>'+daysLeft+'</b> '+(daysLeft===1?'ден':'дни')+' на тези цени'; if(daysLeft<=2) wchip.className='chip chip-hot'; }
+    }
+    var lw=q('ladderW');
+    if(lw){
+      LADDER.forEach(function(wk){
+        var el=document.createElement('div');
+        el.className='w'+(wk.i<cur.i?' past':'')+(wk.i===cur.i?' now':'');
+        el.innerHTML='<small>'+wk.from+'</small><b>−'+wk.l+'%</b>';
+        lw.appendChild(el);
+      });
+      var nowEl=lw.querySelector('.now'); if(nowEl){ lw.scrollLeft=Math.max(0,nowEl.offsetLeft-(lw.clientWidth-nowEl.offsetWidth)/2); }
+    }
+  }
+
+  /* ── Филтър на продуктите ── */
+  var fbtns=root.querySelectorAll('.filters button'), cards=root.querySelectorAll('#pgrid .pc'), empty=q('pempty');
+  fbtns.forEach(function(b){
+    b.addEventListener('click',function(){
+      var f=b.getAttribute('data-f'), n=0;
+      fbtns.forEach(function(x){ x.setAttribute('aria-pressed',x===b?'true':'false'); });
+      cards.forEach(function(c){ var ok=f==='all'||(' '+c.getAttribute('data-f')+' ').indexOf(' '+f+' ')>-1; c.classList.toggle('hide',!ok); if(ok)n++; });
+      if(empty) empty.hidden=n>0;
+    });
+  });
+
+  /* ── Абонамент (демо: в WordPress се закача към FunnelKit / формата на темата) ── */
+  var nf=q('newsForm');
+  if(nf){ nf.addEventListener('submit',function(e){ e.preventDefault(); var em=q('newsEmail'); if(!em.value||em.value.indexOf('@')<1){ em.focus(); em.setAttribute('aria-invalid','true'); return; } nf.classList.add('done'); }); }
+})();
+</script>
