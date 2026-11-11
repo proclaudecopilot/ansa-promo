@@ -95,5 +95,26 @@ $ok( 'validate хваща непознат плейсхолдър', Copy::valida
 $ok( 'validate хваща небалансирани скоби', Copy::validate( 'x {{voucher' ) );
 $ok( 'render слага стойностите', false !== strpos( Copy::render( $reg['cold.seats'], array( 'seats' => 312, 'max' => 440, 'left' => 128 ) ), '312' ) );
 
+/* ── 1.50.0: служебен достъп — таен линк, бисквитка, смяна/спиране ── */
+if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $v ) { return $v; } }
+if ( ! function_exists( 'delete_option' ) ) { function delete_option( $k ) { unset( $GLOBALS['opts'][ $k ] ); return true; } }
+if ( ! function_exists( 'is_ssl' ) ) { function is_ssl() { return true; } }
+if ( ! function_exists( 'get_current_user_id' ) ) { function get_current_user_id() { return 7; } }
+use AnsaPromo\BF\Page;
+$ok( 'служебен достъп: няма линк по подразбиране', '' === Page::staff_link() && ! Page::staff_ok() );
+$link = Page::new_staff_link();
+$tok = Page::staff_token();
+$ok( 'нов служебен линк: токен 24 знака [a-z0-9]', 24 === strlen( $tok ) && preg_match( '/^[a-z0-9]+$/i', $tok ) );
+$ok( 'линкът носи ?ansa_bf_staff=ТОКЕН&reset=1 към страницата', false !== strpos( $link, 'cheren-petak-2026' ) && false !== strpos( $link, 'ansa_bf_staff=' . $tok ) && false !== strpos( $link, 'reset=1' ) );
+$reset = function () { $r = new ReflectionProperty( Page::class, 'staff_ok' ); $r->setAccessible( true ); $r->setValue( null, null ); };
+$_GET['ansa_bf_staff'] = $tok; $reset(); $ok( 'валиден токен в адреса → служебен достъп', Page::staff_ok() );
+$_GET['ansa_bf_staff'] = 'x' . $tok; $reset(); $ok( 'грешен токен → не', ! Page::staff_ok() );
+unset( $_GET['ansa_bf_staff'] ); $_COOKIE['ansa_bf_staff'] = Page::staff_sig( $tok ); $reset(); $ok( 'подписаната бисквитка → служебен достъп', Page::staff_ok() );
+$_COOKIE['ansa_bf_staff'] = Page::staff_sig( 'друг' ); $reset(); $ok( 'чужд подпис → не', ! Page::staff_ok() );
+$_COOKIE['ansa_bf_staff'] = Page::staff_sig( $tok ); $link2 = Page::new_staff_link(); $reset(); $ok( 'нов линк → старата бисквитка умира', $link2 !== $link && ! Page::staff_ok() );
+$_COOKIE['ansa_bf_staff'] = Page::staff_sig( Page::staff_token() ); $reset(); $ok( 'новата бисквитка важи', Page::staff_ok() );
+Page::stop_staff(); $reset(); $ok( 'спиране → нито линк, нито достъп', '' === Page::staff_link() && ! Page::staff_ok() );
+unset( $_COOKIE['ansa_bf_staff'] );
+
 if ( $fail ) { echo "ГРЕШКИ:\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

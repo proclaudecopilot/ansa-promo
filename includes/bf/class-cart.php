@@ -58,6 +58,7 @@ final class Cart {
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'order_created' ) );
 		add_filter( 'woocommerce_order_item_name', array( __CLASS__, 'order_label' ), 10, 2 );
 		add_action( 'woocommerce_thankyou', array( __CLASS__, 'thankyou' ), 6 );
+		add_filter( 'pcp_skip_order', array( __CLASS__, 'pixel_skip_staff' ), 10, 2 ); /* 1.50.0: служебните поръчки не пращат Purchase към Meta (Pixel CAPI Pro) */
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'clear_ctx' ), 99 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'clear_ctx' ), 99 );
 	}
@@ -93,7 +94,7 @@ final class Cart {
 		foreach ( $cart->get_cart() as $key => $item ) {
 			if ( empty( $item[ self::META ] ) || ! is_array( $item[ self::META ] ) ) { $foreign[] = $key; continue; }
 			$m = $item[ self::META ];
-			if ( null === $g ) { $g = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'group' => (string) ( $m['group'] ?? '' ), 'mode' => (string) ( $m['mode'] ?? 'promo' ), 'phase' => (string) ( $m['phase'] ?? '' ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'base' => array(), 'gifts' => array(), 'pgift' => '', 'lucky' => '', 'paid' => 0, 'ngifts' => 0 ); }
+			if ( null === $g ) { $g = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'group' => (string) ( $m['group'] ?? '' ), 'mode' => (string) ( $m['mode'] ?? 'promo' ), 'phase' => (string) ( $m['phase'] ?? '' ), 'draft' => ! empty( $m['draft'] ), 'staff' => ! empty( $m['staff'] ), 't' => (int) ( $m['t'] ?? 0 ), 'base' => array(), 'gifts' => array(), 'pgift' => '', 'lucky' => '', 'paid' => 0, 'ngifts' => 0 ); }
 			$role = (string) ( $m['role'] ?? '' );
 			if ( 'base' === $role ) { $g['base'][ $key ] = $item; $g['paid'] += (int) $item['quantity']; }
 			elseif ( 'gift' === $role ) { $g['gifts'][ $key ] = $item; $g['ngifts'] += (int) $item['quantity']; }
@@ -136,10 +137,11 @@ final class Cart {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) { return array( 'ok' => false, 'code' => 'add', 'msg' => 'WooCommerce' ); }
 		$may_draft = ! empty( $a['trusted'] ) || current_user_can( \AnsaPromo\Plugin::CAP ) || Page::preview_ok() || Page::share_ok(); /* 1.48.0: тайният линк */
 		$draft = ! empty( $a['draft'] ) && $may_draft; $cfg = $draft ? Config::get_draft() : Config::get_published(); $copy = Copy::effective( $cfg['copy'] );
+		$staff = ! $draft && Page::staff_ok(); /* 1.50.0: служебният линк — поръчка по публикуваното преди старта, белязана „служебна“ */
 		$err = function ( $code, $vars = array() ) use ( $copy ) { return array( 'ok' => false, 'code' => $code, 'msg' => Copy::render( $copy[ 'err.' . $code ] ?? $code, $vars ) ); };
-		$mode = 'wallet' === (string) ( $a['mode'] ?? '' ) ? 'wallet' : 'promo'; $phase = Config::phase_now( $cfg );
-		if ( ! $draft && empty( $cfg['enabled'] ) ) { return $err( 'live' ); }
-		if ( 'promo' === $mode && ! $draft ) {
+		$mode = 'wallet' === (string) ( $a['mode'] ?? '' ) ? 'wallet' : 'promo'; $phase = Config::phase_now( $cfg ); if ( $staff && 'promo' === $mode ) { $phase = 'public'; }
+		if ( ! $draft && ! $staff && empty( $cfg['enabled'] ) ) { return $err( 'live' ); }
+		if ( 'promo' === $mode && ! $draft && ! $staff ) {
 			if ( ! in_array( $phase, array( 'early', 'public' ), true ) ) { return $err( 'live' ); }
 			if ( 'early' === $phase && ! Page::early_ok( $cfg ) ) { return $err( 'early' ); }
 		}
@@ -160,13 +162,13 @@ final class Cart {
 		$ref = strtoupper( preg_replace( '/[^a-z0-9_\-]/i', '', (string) ( $a['ref'] ?? '' ) ) ) ?: (string) ( $prev['ref'] ?? '' );
 		$affgift = in_array( (string) ( $a['affgift'] ?? '' ), array( 'v5', 'mask' ), true ) ? (string) $a['affgift'] : (string) ( $prev['affgift'] ?? '' );
 		$partner = ( '' !== $ref && ! empty( $cfg['aff']['enabled'] ) ) ? Page::partner( $ref ) : null; if ( ! $partner ) { $affgift = ''; }
-		$ctx = array_merge( $prev, array( 'mode' => $mode, 'promo' => $cfg['id'], 'phase' => $phase, 'variant' => sanitize_key( (string) ( $a['variant'] ?? '' ) ), 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 't' => time(), 'ref' => $ref, 'affgift' => $affgift ) );
+		$ctx = array_merge( $prev, array( 'mode' => $mode, 'promo' => $cfg['id'], 'phase' => $phase, 'variant' => sanitize_key( (string) ( $a['variant'] ?? '' ) ), 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 'staff' => $staff, 't' => time(), 'ref' => $ref, 'affgift' => $affgift ) );
 		$email = sanitize_email( (string) ( $a['email'] ?? '' ) ); if ( '' !== $email ) { $ctx['email'] = $email; } if ( ! empty( $a['lead'] ) ) { $ctx['lead'] = (int) $a['lead']; }
 		self::$mutating = true;
 		$_POST['ansa_no_gift'] = 1; /* Shrine Cart_Gift: без подаръци по вариация */
 		WC()->cart->empty_cart();
 		$group = 'bf_' . substr( md5( uniqid( '', true ) ), 0, 10 );
-		$meta = array( 'promo' => $cfg['id'], 'group' => $group, 'mode' => $mode, 'phase' => $phase, 'draft' => $draft, 'cv' => (int) Config::version(), 't' => time() );
+		$meta = array( 'promo' => $cfg['id'], 'group' => $group, 'mode' => $mode, 'phase' => $phase, 'draft' => $draft, 'staff' => $staff, 'cv' => (int) Config::version(), 't' => time() );
 		$added = 0;
 		foreach ( $items as $pid => $q ) { $p = $allowed[ $pid ]; $src = self::line_src( $p ); $vid = $src->is_type( 'variation' ) ? $src->get_id() : 0; $k = WC()->cart->add_to_cart( (int) $pid, $q, $vid, self::variation_attrs( $src ), array( self::META => array_merge( $meta, array( 'role' => 'base', 'key' => $p['key'] ) ) ) ); if ( $k ) { $added++; } }
 		if ( ! $added ) { self::$mutating = false; WC()->cart->empty_cart(); return $err( 'add' ); }
@@ -252,7 +254,7 @@ final class Cart {
 			$cart->add_fee( self::copy( 'co.fee.cold', array( 'voucher' => self::fmt( $v['amount'] ), 'code' => (string) $v['code'] ) ), -self::fee_net( $cart, $amt ), false );
 		}
 		/* партньорският ваучер: само в публичната промоция, при промо група с платени опаковки */
-		if ( $g && 'promo' === $g['mode'] && 'v5' === (string) ( $ctx['affgift'] ?? '' ) && (int) $g['paid'] > 0 && ( 'public' === Config::phase_now( $cfg ) || $g['draft'] ) && ! empty( $cfg['aff']['enabled'] ) && (float) $cfg['aff']['voucher'] > 0 && $sub > 0 ) {
+		if ( $g && 'promo' === $g['mode'] && 'v5' === (string) ( $ctx['affgift'] ?? '' ) && (int) $g['paid'] > 0 && ( 'public' === Config::phase_now( $cfg ) || $g['draft'] || ! empty( $g['staff'] ) ) && ! empty( $cfg['aff']['enabled'] ) && (float) $cfg['aff']['voucher'] > 0 && $sub > 0 ) {
 			$p = Page::partner( (string) ( $ctx['ref'] ?? '' ) );
 			if ( $p ) { $amt = min( (float) $cfg['aff']['voucher'], $sub ); $cart->add_fee( self::copy( 'co.fee.aff', array( 'aff_voucher' => self::fmt( $cfg['aff']['voucher'] ), 'partner' => $p['name'] ) ), -self::fee_net( $cart, $amt ), false ); }
 		}
@@ -273,7 +275,7 @@ final class Cart {
 	public static function check_cart() {
 		$g = self::group(); if ( ! $g ) { return; }
 		$cfg = self::cfg(); $url = esc_url( Page::url( $cfg ) );
-		if ( 'promo' === $g['mode'] && ! $g['draft'] && ! current_user_can( \AnsaPromo\Plugin::CAP ) ) {
+		if ( 'promo' === $g['mode'] && ! $g['draft'] && empty( $g['staff'] ) && ! current_user_can( \AnsaPromo\Plugin::CAP ) ) { /* 1.50.0: служебната група минава и преди старта */
 			if ( ! Config::is_live( $cfg ) ) { wc_add_notice( wp_kses_post( self::copy( 'co.closed', array( 'url' => $url ) ) ), 'error' ); }
 			elseif ( 'early' === Config::phase_now( $cfg ) && ! Page::early_ok( $cfg ) ) { wc_add_notice( esc_html( self::copy( 'err.early' ) ), 'error' ); }
 		}
@@ -344,7 +346,7 @@ final class Cart {
 		$meta = array(
 			'promo' => $cfg['id'], 'group' => $g['group'], 'mode' => $g['mode'], 'phase' => $g['phase'], 'variant' => (string) ( $ctx['variant'] ?? '' ), 'paid' => (int) $g['paid'], 'ngifts' => (int) $g['ngifts'], 'gifts' => $gifts,
 			'pgift' => $g['pgift'] ? 'mask' : '', 'lucky' => $g['lucky'] ? 1 : 0, 'voucher' => $v, 'aff' => $p ? array( 'code' => $p['code'], 'name' => $p['name'], 'gift' => (string) ( $ctx['affgift'] ?? '' ) ) : null,
-			'savings' => $sv, 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
+			'savings' => $sv, 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'staff' => ! empty( $g['staff'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 		);
 		return apply_filters( 'ansa_promo_bf_order_meta', $meta, $g, $cfg );
 	}
@@ -353,6 +355,7 @@ final class Cart {
 		$order->update_meta_data( '_ansa_bf_promo', $m['promo'] ); $order->update_meta_data( '_ansa_bf_mode', $m['mode'] ); $order->update_meta_data( '_ansa_bf_phase', $m['phase'] ); $order->update_meta_data( '_ansa_bf_variant', $m['variant'] );
 		$order->update_meta_data( '_ansa_bf_paid', (int) $m['paid'] ); $order->update_meta_data( '_ansa_bf_gifts', (int) $m['ngifts'] ); $order->update_meta_data( '_ansa_bf_savings', (float) ( $m['savings']['total'] ?? 0 ) );
 		$order->update_meta_data( '_ansa_bf_voucher', $m['voucher'] ? $m['voucher']['code'] : '' ); $order->update_meta_data( '_ansa_bf_ref', $m['aff'] ? $m['aff']['code'] : '' ); $order->update_meta_data( '_ansa_bf_lead', (int) $m['lead_id'] );
+		$order->update_meta_data( '_ansa_bf_staff', ! empty( $m['staff'] ) ? 1 : 0 ); /* 1.50.0 */
 	}
 	public static function order_meta( $order, $data ) { $m = self::build_meta(); if ( $m ) { self::write_meta( $order, $m ); } }
 	public static function order_meta_store_api( $order, $request ) { $m = self::build_meta(); if ( $m ) { self::write_meta( $order, $m ); } }
@@ -366,9 +369,12 @@ final class Cart {
 		$m = $order->get_meta( '_ansa_promo_bf' ); if ( ! is_array( $m ) ) { return; }
 		Leads::on_order( $order, $m );
 		$order->add_order_note( sprintf( 'ansa™ Черен петък: %s · фаза %s · %d платени + %d подаръка%s%s · спестени %s €', $m['mode'], $m['phase'], (int) $m['paid'], (int) $m['ngifts'], $m['pgift'] ? ' + маска' : '', $m['voucher'] ? ' · ваучер ' . $m['voucher']['code'] . ' (−' . self::fmt( $m['voucher']['amount'] ) . ' €)' : '', self::fmt( $m['savings']['total'] ?? 0 ) ) . ( $m['aff'] ? ' · партньор ' . $m['aff']['code'] : '' ) );
-		try { Insights::hit( 'created', 'bf', (string) $m['variant'] ); } catch ( \Throwable $e ) {}
+		if ( ! empty( $m['staff'] ) ) { $order->add_order_note( 'ansa™ Черен петък: СЛУЖЕБНА поръчка (служебен линк, преди старта) — не влиза в Insights и не праща Purchase към Meta.' ); }
+		else { try { Insights::hit( 'created', 'bf', (string) $m['variant'] ); } catch ( \Throwable $e ) {} }
 		do_action( 'ansa_promo_bf_order_created', $order, $m );
 	}
+	/** 1.50.0: Pixel CAPI Pro — служебните поръчки не са Purchase за Meta (както операторските на Сезона). */
+	public static function pixel_skip_staff( $skip, $order ) { return $skip || ( is_object( $order ) && method_exists( $order, 'get_meta' ) && (int) $order->get_meta( '_ansa_bf_staff' ) > 0 ); }
 	public static function order_label( $name, $item ) {
 		if ( ! is_object( $item ) || ! method_exists( $item, 'get_meta' ) ) { return $name; }
 		$role = (string) $item->get_meta( '_ansa_bf_role' ); if ( '' === $role ) { return $name; }

@@ -412,8 +412,9 @@ a.cta,a.cta:visited{color:#fff}
 .bfadm a:hover{background:rgba(255,255,255,.22)}
 .bfadm-x{margin-left:auto;opacity:.8;flex:none}
 .bfadm-g a{font-size:11px}
-body.ansa-bf-draft .ansa-bf{padding-top:36px}
-@media (min-width:1024px){body.ansa-bf-draft .ansa-bf{padding-top:44px}}
+body.ansa-bf-draft .ansa-bf,body.ansa-bf-staff .ansa-bf{padding-top:36px}
+@media (min-width:1024px){body.ansa-bf-draft .ansa-bf,body.ansa-bf-staff .ansa-bf{padding-top:44px}}
+.bfadm--staff{background:#14532d}.bfadm--staff b{background:#16a34a}.bfadm-t{white-space:nowrap;opacity:.9}.bfadm--staff .bfadm-x{margin-left:auto}
 /* 1.46.8: стъпка 2 — подаръци навсякъде */
 .hdr.gifts{background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 6px 20px rgba(21,128,61,.25)}
 .hdr.gifts small{opacity:.92}

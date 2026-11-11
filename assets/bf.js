@@ -35,7 +35,8 @@
   /* 1.48.1: избраната фаза в прегледа се помни в бисквитка от сървъра (1 ч): UTM/продуктов адрес без ?ansa_bf=draft идва от кеша (draft:false) и я взема през ajax-а, който с бисквитката пита като чернова */
   var PV = 'ansa_bf_pv'; var pvOn = function () { return R.draft || !!cookie(PV); };
   var phParam = pvOn() ? (q.has('phase') ? (q.get('phase') || '') : cookie(PV)).replace(/[^a-z]/g, '') : '';
-  if (R.draft && q.get('reset')) { try { sessionStorage.removeItem('ansa_bf_s_' + (R.version || 0)); } catch (e) {} } /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
+  var staffCookie = function () { return !!cookie('ansa_bf_staff_on'); }; /* 1.50.0: служебният достъп (маркерът; подписаната бисквитка е httponly) */
+  if ((R.draft || R.staff || (staffCookie() && q.get('reset'))) && q.get('reset')) { try { sessionStorage.removeItem('ansa_bf_s_' + (R.version || 0)); } catch (e) {} } /* 1.46.0: личният линк — подписаният имейл → ваучерът влиза сам */
   if (eaParam) setCookie('ansa_bf_ea', eaParam, 7);
   var utm = (q.get('utm_content') || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '');
   /* 1.47.0: продуктов вход — ?p=berber (или utm_content=berber): един голям продукт с избор 1–5 опаковки = 1–5 подаръка; „Не искам този продукт. Виж други“ → пълният списък */
@@ -328,6 +329,8 @@
       + '<span class="bfadm-g">' + ORDER.filter(function (k) { return P[k] && !P[k].giftOnly; }).map(function (k) { return link(cur || 'public', 'utm_medium=paid&utm_content=' + encodeURIComponent(k), '🛒 ' + P[k].name.split(' ')[0], (pParam || utm) === k); }).join('') + '</span>'
       + '<a class="bfadm-x" href="' + esc(location.pathname + '?ansa_bf=exit') + '">✕ изход от прегледа</a></div>';
   }
+  /* 1.50.0: лентата на служебния достъп */
+  function vStaffBar() { return '<div class="bfadm bfadm--staff"><b>СЛУЖЕБЕН ДОСТЪП</b><span class="bfadm-t">поръчките оттук се отбелязват като служебни</span><a class="bfadm-x" href="' + esc(location.pathname + '?ansa_bf_staff=exit') + '">✕ изход</a></div>'; }
   /* ── кой екран ── */
   var signed = function () { return !!(ctx.email || S.signed); };
   function decide() {
@@ -353,7 +356,7 @@
     var html = sc === 'cold' ? vCold() : sc === 'wallet' ? vWallet() : sc === 'aff' ? vAff() : sc === 'affwait' ? vAffWait() : sc === 'shop' ? vShop() : sc === 'gifts' ? vGifts() : sc === 'over' ? vOver() : sc === 'pause' ? vPause() : vClosed();
     if (S.sheet) html += vSheet();
     if (S.luckyOpen) html += vLucky();
-    if (R.draft) html += vAdminBar();
+    if (R.draft) html += vAdminBar(); else if (R.staff) html += vStaffBar(); /* 1.50.0 */
     if (S.coErr) { html = html.replace(/(<button class="cta[^"]*" data-act="(?:checkout|wallet-go)")/, '<div class="ferr co">' + esc(S.coErr) + '</div>$1'); }
     root.innerHTML = html; document.body.classList.toggle('bf-gifts', sc === 'gifts');
     if (keep) window.scrollTo(0, keep); else window.scrollTo(0, 0);
@@ -394,7 +397,8 @@
       if (!j || !j.success || !j.data) return;
       var rt = j.data; P = rt.products || P; ORDER = rt.order || ORDER; copy = rt.copy || copy; phase = rt.phase || phase; phaseEnd = (rt.phase_end || 0) * 1000; seats = rt.seats || seats; offset = (rt.now ? rt.now * 1000 : Date.now()) - Date.now(); R.cats = rt.cats || R.cats; R.aff = rt.aff || R.aff; R.cold = rt.cold || R.cold; R.ship = rt.ship || R.ship; R.dates = rt.dates || R.dates; dates = R.dates;
       if (rt.nonce) { R.nonce = rt.nonce; }
-      if (rt.draft) { if (!R.draft) { R.draft = true; document.body.classList.add('ansa-bf-draft'); } R.preview = rt.preview || R.preview; phParam = (rt.preview && rt.preview.phase) || ''; } /* 1.48.1: кеширана страница + бисквитка за прегледа → чернова */
+      if (rt.draft) { if (!R.draft) { R.draft = true; document.body.classList.add('ansa-bf-draft'); } R.preview = rt.preview || R.preview; phParam = (rt.preview && rt.preview.phase) || ''; }
+      if (rt.staff && !R.staff) { R.staff = true; document.body.classList.add('ansa-bf-staff'); } /* 1.50.0: кеширана страница + служебна бисквитка → магазинът като в публичната фаза */ /* 1.48.1: кеширана страница + бисквитка за прегледа → чернова */
       if (rt.partner) { partner = rt.partner; setCookie('ansa_bf_aff', partner.code, (R.aff && R.aff.cookie_days) || 7); }
       earlyOk = !!rt.early_ok; applyCtx(rt.ctx); S._exp.phase = false; render();
     }).catch(function () {});
@@ -472,5 +476,5 @@
   document.addEventListener('mouseout', function (e) { if (R.lucky && R.lucky.exit && !e.relatedTarget && e.clientY <= 0) openLucky(); });
   document.addEventListener('visibilitychange', function () { if (R.lucky && R.lucky.exit && document.visibilityState === 'visible') openLucky(); });
 
-  if (!R.draft && cookie(PV)) { refresh().then(function () { if (!root.children.length) render(); }); } else { render(); refresh(); } /* 1.48.1: с бисквитка за прегледа — първо свежият runtime, без да мига публичният екран */
+  if (!R.draft && (cookie(PV) || (!R.staff && staffCookie()))) { refresh().then(function () { if (!root.children.length) render(); }); } else { render(); refresh(); } /* 1.50.0: и със служебна бисквитка — чака runtime-а, не мига студената страница */ /* 1.48.1: с бисквитка за прегледа — първо свежият runtime, без да мига публичният екран */
 })();
