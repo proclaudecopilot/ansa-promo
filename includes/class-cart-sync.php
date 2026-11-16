@@ -177,7 +177,7 @@ final class Cart_Sync {
 	public static function status_label( $status, $order_id = 0 ) {
 		if ( (int) $order_id > 0 ) { return array( 'възстановена', 'ok' ); }
 		switch ( (int) $status ) {
-			case 5: return array( 'в чекаута', 'info' );
+			case 5: case 0: return array( 'в чекаута', 'info' ); /* 1.51.1: 0 = FKA още я пълни (без имейл/15 мин) */
 			case 1: return array( 'изоставена', 'warn' );
 			case 3: return array( 'пропусната от FKA', 'info' );
 			case 2: return array( 'изгубена', 'muted' );
@@ -272,7 +272,7 @@ final class Cart_Sync {
 		foreach ( (array) $rows as $r ) {
 			$s['all']++; if ( $r['tagged'] ) { $s['tagged']++; }
 			if ( $r['order_id'] > 0 || 4 === $r['status'] ) { $s['recovered']++; $s['sum_recovered'] += $r['total']; continue; }
-			if ( 5 === $r['status'] ) { $s['open']++; } elseif ( 1 === $r['status'] ) { $s['abandoned']++; $s['sum_abandoned'] += $r['total']; } elseif ( 3 === $r['status'] ) { $s['skipped']++; $s['sum_abandoned'] += $r['total']; } elseif ( 2 === $r['status'] ) { $s['lost']++; }
+			if ( 5 === $r['status'] || 0 === $r['status'] ) { $s['open']++; } elseif ( 1 === $r['status'] ) { $s['abandoned']++; $s['sum_abandoned'] += $r['total']; } elseif ( 3 === $r['status'] ) { $s['skipped']++; $s['sum_abandoned'] += $r['total']; } elseif ( 2 === $r['status'] ) { $s['lost']++; }
 		}
 		return $s;
 	}
