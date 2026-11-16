@@ -15,6 +15,7 @@ function current_user_can( $c ) { return false; }
 /* ── $wpdb: leads таблица в паметта + термините на FKA ── */
 class FakeWPDB {
 	public $prefix = 'wp_'; public $insert_id = 0; public $last_error = ''; public $leads = array(); public $terms = array(); public $log = array();
+	function esc_like( $s ) { return addcslashes( (string) $s, '_%\\' ); }
 	function prepare( $q, ...$a ) { foreach ( $a as $v ) { $q = preg_replace( '/%[ds]/', is_int( $v ) ? $v : "'" . addslashes( (string) $v ) . "'", $q, 1 ); } return $q; }
 	function get_var( $q ) { if ( preg_match( "/SHOW TABLES LIKE '([^']+)'/", $q, $m ) ) { return false !== strpos( $m[1], 'bwfan_terms' ) || false !== strpos( $m[1], 'leads' ) || false !== strpos( $m[1], 'bwfan_abandonedcarts' ) ? $m[1] : null; } if ( false !== strpos( $q, 'COUNT(*)' ) ) { return count( $this->leads ); } return null; }
 	function get_col( $q ) { if ( false !== strpos( $q, 'SHOW COLUMNS FROM wp_bwfan_terms' ) ) { return array( 'ID', 'name', 'type' ); } if ( false !== strpos( $q, 'SHOW COLUMNS' ) ) { return array( 'id', 'email', 'fka', 'contact_id' ); } return array(); }
@@ -184,6 +185,12 @@ $ab = Cart_Sync::abandoned_rows( 30 );
 ok( 'abandoned_rows: само промо (c отпада), полетата са разбрани', 3 === count( $ab ) && 21 === $ab[0]['id'] && 'a@example.com' === $ab[0]['email'] && 'Ана 0888' === trim( $ab[0]['name'] . ' ' . $ab[0]['phone'] ) && 137.54 === $ab[0]['total'] && 'изоставена' === $ab[0]['status_label'] && 'възстановена' === $ab[1]['status_label'] && 777 === $ab[1]['order_id'] && 'l' === $ab[0]['meta']['box'], json_encode( array_map( function ( $r ) { return $r['email'] . ':' . $r['status_label']; }, $ab ) ) );
 ok( 'abandoned_rows: tagged = контактът носи тага (a да, d не)', true === $ab[0]['tagged'] && false === $ab[2]['tagged'] );
 ok( 'abandoned_rows: заявката е по created_time за 30 дни', false !== strpos( end( $wpdb->log ), 'INTERVAL 30 DAY' ) && false !== strpos( end( $wpdb->log ), 'ansa_promo' ) );
+/* 1.50.2: търсенето — стъбът връща всички редове, значи тук се проверява точната PHP проверка; SQL-ът е в insights-test (SQLite) */
+$abq = Cart_Sync::abandoned_rows( 0, 200, 'ана' ); ok( 'abandoned_rows(q=ана) → само 21 (Ана); заявката носи LIKE', 1 === count( $abq ) && 21 === $abq[0]['id'] && false !== strpos( end( $wpdb->log ), 'LIKE' ) && false === strpos( end( $wpdb->log ), 'INTERVAL' ), json_encode( array_map( function ( $r ) { return $r['id']; }, $abq ) ) );
+$abq = Cart_Sync::abandoned_rows( 0, 200, '0888' ); ok( 'abandoned_rows(q=0888) → само 21 по телефона', 1 === count( $abq ) && 21 === $abq[0]['id'] );
+$abq = Cart_Sync::abandoned_rows( 0, 200, 'B@EXAMPLE' ); ok( 'abandoned_rows(q=B@EXAMPLE) → 20 по имейла, без значение на главните', 1 === count( $abq ) && 20 === $abq[0]['id'] );
+$abq = Cart_Sync::abandoned_rows( 0, 200, 'example.com' ); ok( 'abandoned_rows(q=example.com) → трите промо (c пак отпада)', 3 === count( $abq ) );
+$abq = Cart_Sync::abandoned_rows( 30, 200, '' ); ok( 'abandoned_rows без q → както преди (3, по created_time)', 3 === count( $abq ) && false !== strpos( end( $wpdb->log ), 'INTERVAL 30 DAY' ) && false === strpos( end( $wpdb->log ), 'LIKE \'%' . 'a' ) );
 $st = Cart_Sync::abandoned_stats( $ab );
 ok( 'abandoned_stats: 3 общо · 1 изоставена (€137.54) · 1 възстановена (€90) · 1 в чекаута · 1 с таг', 3 === $st['all'] && 1 === $st['abandoned'] && 137.54 === $st['sum_abandoned'] && 1 === $st['recovered'] && 90.0 === $st['sum_recovered'] && 1 === $st['open'] && 1 === $st['tagged'], json_encode( $st ) );
 

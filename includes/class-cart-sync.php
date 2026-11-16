@@ -205,19 +205,51 @@ final class Cart_Sync {
 	 * Промо количките от таблицата на FKA за период (0 = всички), последни първи. Всеки ред: id, email, status, status_label,
 	 * tone, order_id, created, modified, total, name, phone, consent, meta (box/packs/pct/week), lines, tagged (контактът носи тага).
 	 */
-	public static function abandoned_rows( $days = 30, $limit = 200 ) {
-		global $wpdb; $t = self::table();
+	public static function abandoned_rows( $days = 30, $limit = 200, $q = '' ) {
+		global $wpdb; $t = self::table(); $q = self::search_norm( $q );
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
-		$w = "WHERE items LIKE '%\"" . Cart::META . "\"%'" . ( $days > 0 ? $wpdb->prepare( ' AND created_time > DATE_SUB( NOW(), INTERVAL %d DAY )', (int) $days ) : '' );
+		$w = "WHERE items LIKE '%\"" . Cart::META . "\"%'" . ( $days > 0 ? $wpdb->prepare( ' AND created_time > DATE_SUB( NOW(), INTERVAL %d DAY )', (int) $days ) : '' ) . self::search_sql( $q );
 		$rows = (array) $wpdb->get_results( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} {$w} ORDER BY last_modified DESC, ID DESC LIMIT " . (int) $limit, ARRAY_A );
 		$tid = self::tag_id( false ); $out = array();
 		foreach ( $rows as $r ) {
 			$p = self::parse_items( $r['items'] ); if ( ! $p['promo'] ) { continue; } /* LIKE е по-широк (secret/book ред без base) */
 			$c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
 			$email = strtolower( (string) $r['email'] );
+			if ( '' !== $q && ! self::search_match( $q, $email, $c['name'], $c['phone'] ) ) { continue; } /* 1.50.2: SQL-ът е само предварителна мрежа, тук е точната проверка */
 			$out[] = array( 'id' => (int) $r['ID'], 'email' => $email, 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'currency' => (string) ( $r['currency'] ?? '' ), 'name' => $c['name'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'], 'tagged' => $tid > 0 && self::available() && Merge::contact_has( $email, 'tags', $tid ) );
 		}
 		return $out;
+	}
+	/* ── 1.50.2: 🔎 търсене по име / телефон / имейл (човекът: „В Insights нямаш търсачка за изоставени колички… по име, телефон, имейл“) ──
+	   Телефонът се сравнява по цифри („+359 888 123 456“ = „0888123456“ = „888123456“), името и имейлът — без главни/малки.
+	   SQL-ът само стеснява (LIKE по email/checkout_data, за кирилица и по \uXXXX формата на JSON), точната проверка е в PHP. */
+	/** Нормализира заявката: без излишни интервали, най-много 80 знака. */
+	public static function search_norm( $q ) { $q = trim( preg_replace( '/\s+/u', ' ', (string) $q ) ); return function_exists( 'mb_substr' ) ? mb_substr( $q, 0, 80 ) : substr( $q, 0, 80 ); }
+	/** Телефон → само цифри; 00359… / +359… → 0…; празно, ако са под 3 цифри. */
+	public static function phone_digits( $s ) { $d = preg_replace( '/\D+/', '', (string) $s ); if ( '' === $d ) { return ''; } if ( 0 === strpos( $d, '00' ) ) { $d = substr( $d, 2 ); } if ( 0 === strpos( $d, '359' ) && strlen( $d ) >= 9 ) { $d = '0' . substr( $d, 3 ); } return strlen( $d ) >= 3 ? $d : ''; }
+	/** Заявката изглежда като телефон: само цифри/интервали/+/-/( ) и поне 3 цифри. */
+	public static function search_is_phone( $q ) { return '' !== $q && (bool) preg_match( '/^[\d\s\+\-\(\)\.]+$/', $q ) && '' !== self::phone_digits( $q ); }
+	/** WHERE парчето (с водещо AND) — предварителната мрежа; '' без заявка. */
+	public static function search_sql( $q ) {
+		global $wpdb; $q = self::search_norm( $q ); if ( '' === $q ) { return ''; }
+		if ( self::search_is_phone( $q ) ) { $d = self::phone_digits( $q ); $d = substr( $d, -7 ); return $wpdb->prepare( ' AND checkout_data LIKE %s', '%' . implode( '%', str_split( $d ) ) . '%' ); } /* цифрите в ред с каквото и да е между тях — интервали/тирета/скоби */
+		$w = ''; foreach ( preg_split( '/\s+/u', $q ) as $x ) { if ( strlen( $x ) > strlen( $w ) ) { $w = $x; } } /* „иванка петрова“ са в отделни полета на JSON-а — SQL-ът гледа най-дългата дума, PHP — всички */
+		$like = '%' . $wpdb->esc_like( $w ) . '%'; $u = trim( (string) json_encode( $w ), '"' ); /* кирилицата в checkout_data може да е \u0418… (wp_json_encode без UNESCAPED_UNICODE) */
+		$parts = array( $wpdb->prepare( 'email LIKE %s', $like ), $wpdb->prepare( 'checkout_data LIKE %s', $like ) );
+		if ( $u !== $w && function_exists( 'mb_strtolower' ) ) { /* \uXXXX формата е с точни кодове — главна/малка буква са различни, затова и трите изписвания */
+			$forms = array( $w, mb_strtolower( $w ), mb_convert_case( $w, MB_CASE_TITLE ), mb_strtoupper( $w ) ); $seen = array();
+			foreach ( $forms as $f ) { $j = trim( (string) json_encode( $f ), '"' ); if ( isset( $seen[ $j ] ) ) { continue; } $seen[ $j ] = 1; $parts[] = $wpdb->prepare( 'checkout_data LIKE %s', '%' . $wpdb->esc_like( $j ) . '%' ); }
+		}
+		return ' AND ( ' . implode( ' OR ', $parts ) . ' )';
+	}
+	/** Точната проверка за един ред. */
+	public static function search_match( $q, $email, $name, $phone ) {
+		$q = self::search_norm( $q ); if ( '' === $q ) { return true; }
+		if ( self::search_is_phone( $q ) ) { $d = self::phone_digits( $q ); $p = self::phone_digits( $phone ); return '' !== $p && false !== strpos( $p, $d ); }
+		$lc = function ( $s ) { return function_exists( 'mb_strtolower' ) ? mb_strtolower( (string) $s ) : strtolower( (string) $s ); };
+		$hay = $lc( $email . ' ' . $name ); $needle = $lc( $q );
+		foreach ( preg_split( '/\s+/u', $needle ) as $word ) { if ( '' !== $word && false === strpos( $hay, $word ) ) { return false; } } /* „иванка петрова“ — всяка дума поотделно */
+		return true;
 	}
 	/** 1.29.0: една количка по ID на FKA — същия ред като abandoned_rows() (+ first/last). null = няма / не е промо. */
 	public static function cart_by_id( $id ) {
