@@ -466,5 +466,23 @@ $_GET = array( 'view' => 'sessions', 'from' => '2026-10-20', 'to' => '2026-10-20
 $ok( 'екранът 🧾 Сесии: чипът „лендър“ със стар избран', (bool) preg_match( '/ap-chip on"[^>]*>стар</u', $h ) );
 $_GET = array();
 
+/* ══ 1.50.2: 🔎 търсене в 🛒 Изоставени колички по име / телефон / имейл (човекът: „В Insights нямаш търсачка за изоставени колички… по име, телефон, имейл“) ══ */
+$CS = '\AnsaPromo\Cart_Sync';
+$ok( 'phone_digits: +359 888 123 456 / 00359888123456 / 0888-123-456 → 0888123456; „12“ → празно', '0888123456' === $CS::phone_digits( '+359 888 123 456' ) && '0888123456' === $CS::phone_digits( '00359888123456' ) && '0888123456' === $CS::phone_digits( '0888-123-456' ) && '' === $CS::phone_digits( '12' ) );
+$ok( 'search_match: телефон с/без +359, част от номера; име без главни; имейл; две думи; друго → не', $CS::search_match( '+359888123456', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) && $CS::search_match( '123 456', 'ivanka@example.com', 'Иванка Петрова', '+359 888 123 456' ) && $CS::search_match( 'петрова', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) && $CS::search_match( 'IVANKA@', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) && $CS::search_match( 'иванка петрова', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) && ! $CS::search_match( 'мария', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) && ! $CS::search_match( '0899', 'ivanka@example.com', 'Иванка Петрова', '0888123456' ) );
+$ok( 'search_sql: телефон → цифрите с % между тях; име → email/checkout_data LIKE и \\u формата; празно → нищо', false !== strpos( $CS::search_sql( '0888 123' ), "'%0%8%8%8%1%2%3%'" ) && false !== strpos( $CS::search_sql( '+359 888 123 456' ), "'%8%1%2%3%4%5%6%'" ) && false !== strpos( $CS::search_sql( 'Петрова' ), "email LIKE '%Петрова%'" ) && false !== strpos( $CS::search_sql( 'Петрова' ), '\\u041f\\u0435' ) && false !== strpos( $CS::search_sql( 'петрова' ), '\\u041f\\u0435' ) && false !== strpos( $CS::search_sql( 'петрова' ), '\\u043f\\u0435' ) && '' === $CS::search_sql( '  ' ), $CS::search_sql( 'Петрова' ) );
+$abq = $CS::abandoned_rows( 0, 100, 'петрова' ); $ok( 'abandoned_rows(q=петрова) → само Иванка', is_array( $abq ) && 1 === count( $abq ) && 'ivanka@example.com' === $abq[0]['email'], json_encode( array_map( function ( $r ) { return $r['email']; }, (array) $abq ) ) );
+$abq = $CS::abandoned_rows( 0, 100, '+359 888 777 666' ); $ok( 'abandoned_rows(q=+359 888 777 666) → само flow@ (телефонът е 0888777666)', is_array( $abq ) && 1 === count( $abq ) && 'flow@example.com' === $abq[0]['email'], json_encode( array_map( function ( $r ) { return $r['email']; }, (array) $abq ) ) );
+$abq = $CS::abandoned_rows( 0, 100, 'example.com' ); $ok( 'abandoned_rows(q=example.com) → и двете', is_array( $abq ) && 2 === count( $abq ) );
+$abq = $CS::abandoned_rows( 0, 100, 'никой' ); $ok( 'abandoned_rows(q=никой) → празно', array() === $abq );
+$_GET = array( 'view' => 'carts', 'q' => ' 0888123456 ' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с ?q=0888123456: полето носи заявката, чипът „🔎 … ✕“, 1 количка, само Иванка', false !== strpos( $hc, 'name="q" value="0888123456"' ) && false !== strpos( $hc, '🔎 0888123456 ✕' ) && false !== strpos( $hc, '1 количка' ) && false !== strpos( $hc, 'ivanka@example.com' ) && false === strpos( $hc, 'flow@example.com' ) && false !== strpos( $hc, 'търсене „0888123456“ · целият период' ) );
+$ok( 'екранът 🛒: линкът „изчисти“ и чипът махат q, но пазят изгледа', false !== strpos( $hc, '>изчисти</a>' ) && ! preg_match( '/href="[^"]*[?&]q=[^"]*"[^>]*title="махни търсенето"/u', $hc ) && (bool) preg_match( '/href="[^"]*view=carts[^"]*"[^>]*title="махни търсенето"/u', $hc ) );
+$_GET = array( 'view' => 'carts', 'q' => 'никой' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с ?q=никой: „няма промо количка с „никой““', false !== strpos( $hc, 'няма промо количка с „никой“' ) );
+$_GET = array( 'view' => 'carts' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 без q: полето е празно, няма чип за търсене, периодът е в заглавието', false !== strpos( $hc, 'name="q" value=""' ) && false === strpos( $hc, 'махни търсенето' ) && false === strpos( $hc, 'търсене „' ) );
+$_GET = array();
+
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
