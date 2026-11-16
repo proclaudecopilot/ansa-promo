@@ -493,7 +493,7 @@ $ab = $CS::abandoned_rows( 0, 100 ); $ok( 'abandoned_rows по подразби�
 $ab = $CS::abandoned_rows( 0, 100, '', 'bf' ); $ok( 'abandoned_rows(kind=bf) → само deti_67', is_array( $ab ) && 1 === count( $ab ) && 'deti_67@abv.bg' === $ab[0]['email'] && 'bf' === $ab[0]['kind'] && false === $ab[0]['tagged'] );
 $ab = $CS::abandoned_rows( 0, 100, '', 'shop' ); $ok( 'abandoned_rows(kind=shop) → само shop@', is_array( $ab ) && 1 === count( $ab ) && 'shop@example.com' === $ab[0]['email'] && 'shop' === $ab[0]['kind'] );
 $ab = $CS::abandoned_rows( 0, 100, '', 'all' ); $ok( 'abandoned_rows(kind=all) → и четирите', is_array( $ab ) && 4 === count( $ab ) );
-$ab = $CS::abandoned_rows( 0, 100, 'deti_67@abv.bg' ); $ok( 'abandoned_rows(q=deti_67@abv.bg) с вида по подразбиране (Сезонът) → празно — затова екранът при търсене гледа всички', array() === $ab );
+$ab = $CS::abandoned_rows( 0, 100, 'deti_67@abv.bg' ); $ok( 'abandoned_rows(q=deti_67@abv.bg) с вида по подразбиране на функцията (Сезонът) → празно', array() === $ab );
 $ab = $CS::abandoned_rows( 0, 100, 'deti_67@abv.bg', 'all' ); $ok( 'abandoned_rows(q=deti_67@abv.bg, all) → намира я (долна черта в имейла не пречи)', is_array( $ab ) && 1 === count( $ab ) && $cidBF === $ab[0]['id'], json_encode( array_column( (array) $ab, 'email' ) ) );
 $ab = $CS::abandoned_rows( 0, 100, '0877 111 222', 'all' ); $ok( 'abandoned_rows(q=телефон, all) → deti_67', is_array( $ab ) && 1 === count( $ab ) && $cidBF === $ab[0]['id'] );
 $_GET = array( 'view' => 'carts', 'q' => 'deti_67@abv.bg' ); $hc = Insights::carts_html();
@@ -506,7 +506,19 @@ $ok( 'екранът 🛒 с ?kind=shop: чипът „магазин“ е из
 $_GET = array( 'view' => 'carts', 'q' => 'example', 'kind' => 'shop' ); $hc = Insights::carts_html();
 $ok( 'екранът 🛒 с ?q=example&kind=shop: „🛍️ магазин“ ред за shop@, без Иванка и без deti_67', false !== strpos( $hc, '🛍️ магазин' ) && false !== strpos( $hc, 'shop@example.com' ) && false === strpos( $hc, 'ivanka@' ) && false === strpos( $hc, 'deti_67' ) && false !== strpos( $hc, '1 количка · магазин' ) );
 $_GET = array( 'view' => 'carts' ); $hc = Insights::carts_html();
-$ok( 'екранът 🛒 без kind: Сезонът е избран, заглавието е „промо колички“, deti_67 не е там', (bool) preg_match( '/ap-chip on" href="[^"]*kind=season[^"]*">Сезонът</u', $hc ) && false !== strpos( $hc, 'Изоставени промо колички' ) && false === strpos( $hc, 'deti_67' ) );
+$ok( 'екранът 🛒 без kind (1.50.4): „всички“ е избран, заглавието е „колички · всички“', (bool) preg_match( '/ap-chip on" href="[^"]*kind=all[^"]*">всички</u', $hc ) && false !== strpos( $hc, 'Изоставени колички · всички' ) && false === strpos( $hc, 'Изоставени промо колички' ) );
+$_GET = array( 'view' => 'carts', 'kind' => 'season' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с ?kind=season: Сезонът е избран, заглавието е „промо колички“', (bool) preg_match( '/ap-chip on" href="[^"]*kind=season[^"]*">Сезонът</u', $hc ) && false !== strpos( $hc, 'Изоставени промо колички' ) );
+/* 1.50.4: при търсене — и сесиите на човека (лийд от попъпа): lead@example.com е лийд 1 със сесии (D е с lead_id 1) */
+$_GET = array( 'view' => 'carts', 'q' => 'lead@example.com' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с ?q=lead@example.com: 0 колички, но секцията „🧾 Сесии в промото“ с „✏️ Редактирай поръчка“ за сесията D', false !== strpos( $hc, '0 колички · всички' ) && false !== strpos( $hc, '🧾 Сесии в промото · „lead@example.com“' ) && false !== strpos( $hc, 'id="apInsCartSess"' ) && false !== strpos( $hc, '✏️ Редактирай поръчка' ), ( preg_match( '/🧾 Сесии в промото.{0,200}/su', $hc, $mm ) ? $mm[0] : 'NOSEC' ) );
+$ok( 'feed(email=lead@example.com) → само сесиите на лийд 1; feed(email=никой) → празно', count( Insights::feed( 50, array( 'email' => 'lead@example.com' ) ) ) > 0 && ! array_filter( Insights::feed( 50, array( 'email' => 'lead@example.com' ) ), function ( $x ) { return 'lead@example.com' !== $x['email']; } ) && array() === Insights::feed( 50, array( 'email' => 'nikoi@example.com' ) ) );
+$_GET = array( 'view' => 'carts', 'q' => 'Дети lead@example.com' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с две думи: имейлът (думата с @) търси сесиите', false !== strpos( $hc, '🧾 Сесии в промото · „lead@example.com“' ) );
+$_GET = array( 'view' => 'carts', 'q' => '0888123456' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с телефон: количката на Иванка + бележка, че сесиите са само по имейл', false !== strpos( $hc, 'ivanka@example.com' ) && false !== strpos( $hc, 'Сесиите се търсят по имейл' ) );
+$_GET = array( 'view' => 'carts', 'q' => 'nikoi@example.com' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒 с непознат имейл: „няма сесия с имейл …“', false !== strpos( $hc, 'няма сесия с имейл „nikoi@example.com“' ) );
 $_GET = array( 'view' => 'carts', 'q' => 'example.com' ); $hc = Insights::carts_html();
 $ok( 'екранът 🛒 с ?q=example.com (без kind → всички): Иванка, flow@, shop@ (3), deti_67 не (abv.bg)', false !== strpos( $hc, 'ivanka@' ) && false !== strpos( $hc, 'flow@example.com' ) && false !== strpos( $hc, 'shop@example.com' ) && false === strpos( $hc, 'deti_67' ) && false !== strpos( $hc, '3 колички · всички' ) );
 $_GET = array();
