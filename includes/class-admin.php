@@ -229,10 +229,10 @@ final class Admin {
 				$msg = $r ? sprintf( '⭐ %s → {{ansa_promo_fav}} = „%s“ (%s %s в %d поръчки от %d; последно %s) · всички: %s · {{ansa_promo_fav_url}} = %s', $em, $r['name'], Cart::fmt( $r['score'] ), 'spent' === $r['metric'] ? '€' : ( 'orders' === $r['metric'] ? 'поръчки' : ( 'qty' === $r['metric'] ? 'бр.' : 'опаковки' ) ), $r['orders'], $r['all_orders'], $r['last'] ? wp_date( 'd.m.Y', $r['last'] ) : '—', implode( ', ', array_map( function ( $k, $v ) { return $k . ' ' . Cart::fmt( $v ); }, array_keys( $r['breakdown'] ), $r['breakdown'] ) ), $r['url'] )
 					: sprintf( '⭐ %s → няма поръчки с продукт от картата (%d поръчки общо) → {{ansa_promo_fav}} = „%s“ (текстът „когато няма“ / fallback на тага).', $em, count( Favorite::orders_for( $em ) ), Favorite::settings()['fallback'] );
 				break;
-			case 'ins_spend_add': case 'ins_spend_del': case 'ins_snap_add': case 'ins_snap_del': /* 1.28.0: разход, замразени отчети */
-				$r = Insights::handle_action( substr( $do, 4 ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id' ) ) ) ) ) ); $msg = $r[1];
+			case 'ins_spend_add': case 'ins_spend_del': case 'ins_snap_add': case 'ins_snap_del': case 'ins_cart_work': /* 1.28.0: разход, замразени отчети; 1.51.0: работата по количката */
+				$r = Insights::handle_action( substr( $do, 4 ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( Insights::ACTION_FIELDS ) ) ) ) ); $msg = $r[1];
 				set_transient( 'ansa_promo_admin_msg_' . get_current_user_id(), $msg, 60 );
-				wp_safe_redirect( self::url( 'ins_snap_add' === $do && ! empty( $r[2] ) ? array( 'tab' => 'insights', 'view' => 'snap', 'snap' => $r[2] ) : array( 'tab' => 'insights', 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ) ) ) ); exit;
+				wp_safe_redirect( self::url( 'ins_snap_add' === $do && ! empty( $r[2] ) ? array( 'tab' => 'insights', 'view' => 'snap', 'snap' => $r[2] ) : array( 'tab' => 'insights' ) + Insights::action_return_args( $_POST ) ) ); exit;
 			case 'export_breakdown': /* 1.28.0: CSV по UTM / кампания / дни / … */
 				$which = sanitize_key( (string) ( $_POST['which'] ?? 'utm' ) ); $_GET['attr'] = (string) ( $_POST['attr'] ?? '' ); $_GET['internal'] = (string) ( $_POST['internal'] ?? '' );
 				nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' ); header( 'Content-Disposition: attachment; filename="ansa-promo-' . $which . '-' . gmdate( 'Ymd-Hi' ) . '.csv"' );

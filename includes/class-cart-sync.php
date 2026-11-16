@@ -153,7 +153,7 @@ final class Cart_Sync {
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
 		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT ID, email, status, order_id, items FROM {$t} WHERE last_modified > DATE_SUB( NOW(), INTERVAL %d HOUR ) ORDER BY last_modified DESC, ID DESC LIMIT %d", (int) $hours, (int) $limit ), ARRAY_A );
 		$out = array();
-		foreach ( $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( '' === $e || isset( $out[ $e ] ) ) { continue; } $out[ $e ] = array( 'promo' => (int) ( $r['order_id'] ?? 0 ) <= 0 && self::items_is_promo( $r['items'] ), /* възстановена (с поръчка) → вече не е промо количка */ 'status' => (int) $r['status'], 'id' => (int) $r['ID'] ); }
+		foreach ( $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( '' === $e || isset( $out[ $e ] ) ) { continue; } $out[ $e ] = array( 'promo' => (int) ( $r['order_id'] ?? 0 ) <= 0 && in_array( (int) $r['status'], array( 1, 3, 5 ), true ) && self::items_is_promo( $r['items'] ), /* възстановена (с поръчка / статус 4) или изгубена (2, и от 📋 „отказала“) → вече не е промо количка */ 'status' => (int) $r['status'], 'id' => (int) $r['ID'] ); }
 		return $out;
 	}
 	/** Кронът: промо → таг, обикновена → без таг. → броячи. */
