@@ -40,7 +40,7 @@ final class Schema {
 	}
 
 	public static function tables() {
-		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ), 'referrals' => self::table( 'referrals' ), 'sessions' => self::table( 'sessions' ), 'events' => self::table( 'events' ) );
+		return array( 'tickets' => self::table( 'tickets' ), 'leads' => self::table( 'leads' ), 'stats' => self::table( 'stats' ), 'referrals' => self::table( 'referrals' ), 'sessions' => self::table( 'sessions' ), 'events' => self::table( 'events' ), 'cart_work' => self::table( 'cart_work' ) ); /* 1.51.0: cart_work */
 	}
 
 	/** SQL за dbDelta (формат: два интервала преди PRIMARY KEY, KEY на отделен ред). */
@@ -173,6 +173,26 @@ final class Schema {
   KEY at (at),
   KEY ev (ev),
   KEY ev_k (ev,k)
+) $collate;",
+			/* 1.51.0: 📋 работата по изоставените колички от Insights — един запис на количка (FKA, src=cart) или сесия (src=sess) */
+			"CREATE TABLE {$t['cart_work']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  src varchar(8) NOT NULL DEFAULT 'cart',
+  src_id bigint(20) unsigned NOT NULL,
+  email varchar(191) NOT NULL DEFAULT '',
+  status varchar(16) NOT NULL DEFAULT 'new',
+  note text NULL,
+  callback_at datetime NULL,
+  order_id bigint(20) unsigned NULL,
+  by_user varchar(64) NOT NULL DEFAULT '',
+  log longtext NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY src_id (src,src_id),
+  KEY email (email),
+  KEY status (status),
+  KEY callback_at (callback_at)
 ) $collate;",
 		);
 	}

@@ -352,8 +352,8 @@ final class Insights_Portal {
 		/* 1.28.0: действия от портала (разход, замразяване) — POST с CSRF на сесията */
 		if ( $post && isset( $_POST['ap_action'] ) ) {
 			if ( ! self::authed() || ! self::csrf_ok( (string) ( $_POST['csrf'] ?? '' ) ) ) { self::redirect_self( array( 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ) ) ); }
-			$r = Insights::handle_action( sanitize_key( (string) $_POST['ap_action'] ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id' ) ) ) ) ) );
-			$args = array( 'view' => sanitize_key( (string) ( $_POST['view'] ?? 'overview' ) ), 'msg' => substr( (string) $r[1], 0, 160 ) ); if ( ! empty( $r[2] ) && 'snap_add' === $_POST['ap_action'] ) { $args = array( 'view' => 'snap', 'snap' => $r[2] ); }
+			$r = Insights::handle_action( sanitize_key( (string) $_POST['ap_action'] ), array_map( 'sanitize_text_field', array_map( 'wp_unslash', array_intersect_key( $_POST, array_flip( Insights::ACTION_FIELDS ) ) ) ) );
+			$args = Insights::action_return_args( $_POST ) + array( 'msg' => substr( (string) $r[1], 0, 160 ) ); /* 1.51.0: връща се на същия екран (q/kind/work/период) */ if ( ! empty( $r[2] ) && 'snap_add' === $_POST['ap_action'] ) { $args = array( 'view' => 'snap', 'snap' => $r[2] ); }
 			self::redirect_self( $args );
 		}
 		if ( ! self::authed() ) { self::login_page( '' ); }

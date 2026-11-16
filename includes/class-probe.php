@@ -713,6 +713,9 @@ final class Probe {
 			$ab = Cart_Sync::abandoned_rows( 30, 100 ); $st = is_array( $ab ) ? Cart_Sync::abandoned_stats( $ab ) : null;
 			$t->ok( 'Insights 🛒: промо количките се четат и разбират', is_array( $ab ) && ( ! $ab || ( '' !== $ab[0]['status_label'] && ! empty( $ab[0]['lines'] ) ) ), $st ? count( $ab ) . ' за 30 дни · изоставени ' . ( $st['abandoned'] + $st['skipped'] ) . ' (€ ' . number_format( $st['sum_abandoned'], 2 ) . ') · възстановени ' . $st['recovered'] . ' · с таг ' . $st['tagged'] : 'таблицата липсва' );
 			$html = Insights::carts_html( 30 ); $t->ok( 'Insights 🛒: екранът се рендира', false !== strpos( $html, 'Изоставени промо колички' ) && false !== strpos( $html, '<table' ), strlen( $html ) . ' байта' );
+			/* 1.51.0: 📋 работата по количките */
+			$t->ok( 'Cart_Work: таблицата ansa_promo_cart_work (DB ver ' . ANSA_PROMO_DB_VER . ')', Cart_Work::table_ok(), Cart_Work::table() );
+			$t->ok( 'Insights 🛒: колоната „📋 работа“ и формата за статус са на екрана', false !== strpos( $html, '📋 работа' ) && false !== strpos( $html, 'ap-work' ) );
 			/* 1.50.2: 🔎 търсене по име / телефон / имейл */
 			$t->ok( 'Insights 🛒: полето за търсене е на екрана', false !== strpos( $html, 'name="q"' ) && false !== strpos( $html, 'име, телефон или имейл' ) );
 			$t->ok( 'Cart_Sync: търсенето разбира телефон с/без +359 и име без главни', Cart_Sync::search_match( '+359 888 123 456', 'x@example.com', 'Иванка Петрова', '0888123456' ) && Cart_Sync::search_match( 'петрова', 'x@example.com', 'Иванка Петрова', '0888123456' ) && ! Cart_Sync::search_match( 'мария', 'x@example.com', 'Иванка Петрова', '0888123456' ) );
