@@ -191,6 +191,8 @@ $abq = Cart_Sync::abandoned_rows( 0, 200, '0888' ); ok( 'abandoned_rows(q=0888) 
 $abq = Cart_Sync::abandoned_rows( 0, 200, 'B@EXAMPLE' ); ok( 'abandoned_rows(q=B@EXAMPLE) → 20 по имейла, без значение на главните', 1 === count( $abq ) && 20 === $abq[0]['id'] );
 $abq = Cart_Sync::abandoned_rows( 0, 200, 'example.com' ); ok( 'abandoned_rows(q=example.com) → трите промо (c пак отпада)', 3 === count( $abq ) );
 $abq = Cart_Sync::abandoned_rows( 30, 200, '' ); ok( 'abandoned_rows без q → както преди (3, по created_time)', 3 === count( $abq ) && false !== strpos( end( $wpdb->log ), 'INTERVAL 30 DAY' ) && false === strpos( end( $wpdb->log ), 'LIKE \'%' . 'a' ) );
+$abq = Cart_Sync::abandoned_rows( 30, 200, '', 'all' ); ok( 'abandoned_rows(kind=all) → и обикновената c (4), без items LIKE в заявката; kind shop/season', 4 === count( $abq ) && false === strpos( end( $wpdb->log ), 'items LIKE' ) && 'shop' === $abq[2]['kind'] && 19 === $abq[2]['id'] && 'season' === $abq[0]['kind'], json_encode( array_map( function ( $r ) { return $r['id'] . ':' . $r['kind']; }, $abq ) ) );
+$abq = Cart_Sync::abandoned_rows( 30, 200, '', 'shop' ); ok( 'abandoned_rows(kind=shop) → само c', 1 === count( $abq ) && 19 === $abq[0]['id'] );
 $st = Cart_Sync::abandoned_stats( $ab );
 ok( 'abandoned_stats: 3 общо · 1 изоставена (€137.54) · 1 възстановена (€90) · 1 в чекаута · 1 с таг', 3 === $st['all'] && 1 === $st['abandoned'] && 137.54 === $st['sum_abandoned'] && 1 === $st['recovered'] && 90.0 === $st['sum_recovered'] && 1 === $st['open'] && 1 === $st['tagged'], json_encode( $st ) );
 
