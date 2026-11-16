@@ -546,6 +546,7 @@ final class Insights {
 		$ord = (string) ( $q['ord'] ?? '' ); if ( 'yes' === $ord ) { $w[] = '(s.order_id IS NOT NULL AND s.order_id > 0)'; } elseif ( 'no' === $ord ) { $w[] = '(s.order_id IS NULL OR s.order_id = 0)'; }
 		$dev = (string) ( $q['dev'] ?? '' ); if ( in_array( $dev, array( 'mobile', 'desktop' ), true ) ) { $w[] = $wpdb->prepare( 's.device = %s', $dev ); }
 		$ld = self::tok( $q['lander'] ?? '', 8, '/[^a-z]/' ); if ( in_array( $ld, array( 'new', 'old', 'sx' ), true ) ) { $w[] = $wpdb->prepare( 's.landers LIKE %s', '%' . $ld . '%' ); } /* 1.42.0: отворили този лендър */
+		$em = trim( (string) ( $q['email'] ?? '' ) ); if ( '' !== $em ) { $w[] = $wpdb->prepare( 's.lead_id IN (SELECT id FROM ' . Schema::table( 'leads' ) . ' WHERE email LIKE %s)', '%' . $wpdb->esc_like( $em ) . '%' ); } /* 1.50.4: сесиите на човека с този имейл (лийд от попъпа) — за търсачката на 🛒 */
 		if ( ! empty( $q['filter'] ) || array_key_exists( 'internal', $q ) ) { $w = array_merge( $w, self::filter_where( array( 'internal' => ! empty( $q['internal'] ), 'attr' => $q['attr'] ?? 'first', 'filter' => $q['filter'] ?? array() ), 's' ) ); } /* 1.28.0: вътрешният трафик и филтрите на екрана */
 		return $w ? 'WHERE ' . implode( ' AND ', $w ) : '';
 	}
@@ -1127,7 +1128,7 @@ final class Insights {
 		if ( null === $rows ) { return $h . '<div class="ap-sec"><div class="ap-sec__b"><p>Няма таблица на FunnelKit Automations (<code>bwfan_abandonedcarts</code>) — изоставените колички се записват от FKA, не от промото.</p></div></div>'; }
 		$s = Cart_Sync::abandoned_stats( $rows ); $tag = Cart_Sync::tag_name(); $boxes = self::box_names();
 		$kc = ''; foreach ( Cart_Sync::KINDS as $kk => $kv ) { $kc .= '<a class="ap-chip' . ( $kk === $kind ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'kind' => $kk ) ) ) . '">' . esc_html( $kv ) . '</a>'; }
-		$h .= '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">вид</span><div class="ap-chips">' . $kc . '<small>Сезонът = с промо кутия · Черен петък = от офертата · магазин = обикновена количка без промо · всички = каквото FunnelKit е записал' . ( '' === $q ? '; при търсене гледа всички' : '' ) . '</small></div></div>';
+		$h .= '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">вид</span><div class="ap-chips">' . $kc . '<small>Сезонът = с промо кутия · Черен петък = от офертата · магазин = обикновена количка без промо · всички = каквото FunnelKit е записал (по подразбиране)</small></div></div>';
 		if ( '' !== $q ) { $h .= '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">търсене</span><div class="ap-chips"><a class="ap-chip on" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '" title="махни търсенето">🔎 ' . esc_html( $q ) . ' ✕</a><small>' . count( $rows ) . ' ' . ( 1 === count( $rows ) ? 'количка' : 'колички' ) . ' · ' . esc_html( $kl ) . ' · в целия период (не само в избрания) · по име, телефон (с или без +359) и имейл</small></div></div>'; }
 		$tiles = self::tile( 'season' === $kind ? 'промо колички' : 'колички · ' . $kl, $s['all'], 'с имейл в чекаута', '', '', true )
 			. self::tile( 'изоставени', $s['abandoned'] + $s['skipped'], 'FKA: recoverable ' . $s['abandoned'] . ' · пропуснати ' . $s['skipped'], 'warn' )
@@ -1148,12 +1149,25 @@ final class Insights {
 			$h .= '<tr><td>' . esc_html( self::dt_short( $r['modified'] ) ) . '<br><small>от ' . esc_html( self::dt_short( $r['created'] ) ) . '</small></td><td>' . $who . '</td><td>' . esc_html( $box ) . '</td><td>' . implode( '<br>', $lines ) . '</td><td>' . esc_html( self::money( $r['total'] ) ) . '</td><td><span class="ap-pill' . ( $r['tone'] ? ' ap-pill--' . $r['tone'] : '' ) . '">' . esc_html( $r['status_label'] ) . '</span></td><td>' . ( $r['tagged'] ? '🏷️ да' : ( 'season' === $rk ? '<small>не</small>' : '<small>—</small>' ) ) . '</td><td>' . $sess . '</td><td>' . $ord . '</td></tr>';
 		}
 		if ( ! $rows ) { $h .= '<tr><td colspan="9"><small>' . ( '' !== $q ? 'няма количка (' . esc_html( $kl ) . ') с „' . esc_html( $q ) . '“ — търси се по име, телефон (с или без +359) и имейл в целия период; FunnelKit записва количката чак когато човекът напише имейла си в чекаута' : 'няма колички (' . esc_html( $kl ) . ') за периода — появяват се, когато човекът напише имейла си в чекаута (гост) или е логнат' ) . '</small></td></tr>'; }
-		return $h . '</tbody></table></div></div><style>.ap-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef0f2;color:#50575e}.ap-pill--ok{background:#e6f6ec;color:#1a7f37}.ap-pill--warn{background:#fff3e0;color:#a86b09}.ap-pill--info{background:#e8f1fb;color:#1d5fa8}.ap-pill--muted{background:#f0f0f1;color:#8c8f94}</style>';
+		$h .= '</tbody></table></div></div>';
+		if ( '' !== $q ) { $h .= self::carts_sessions_html( $q ); } /* 1.50.4: и сесиите на човека в промото — количката може да е само в сесията (не е писал имейла в чекаута), пак се пресъздава с 📞 */
+		return $h . '<style>.ap-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef0f2;color:#50575e}.ap-pill--ok{background:#e6f6ec;color:#1a7f37}.ap-pill--warn{background:#fff3e0;color:#a86b09}.ap-pill--info{background:#e8f1fb;color:#1d5fa8}.ap-pill--muted{background:#f0f0f1;color:#8c8f94}</style>';
+	}
+	/** 1.50.4 (човекът: „deti_67@abv.bg … даже сме си я записали за прозвъняване“ — имаше две сесии с попълнена кутия, но без имейл в чекаута, т.е. без количка във FKA):
+	 *  при търсене в 🛒 — и сесиите в промото с този имейл (лийд от попъпа), със същите редове и 📞 бутони като в 🧾 Сесии. Телефонът не се записва в сесията, затова само по имейл/име-с-@. */
+	public static function carts_sessions_html( $q ) {
+		$q = Cart_Sync::search_norm( $q ); if ( '' === $q ) { return ''; }
+		$hint = '<div class="ap-sec__hint">Сесиите в промото на човека с този имейл (имейлът от попъпа). Количката може да е само тук — FunnelKit я записва чак когато човекът напише имейла си в чекаута. „✏️ Редактирай поръчка“ / „✅ Завърши поръчка“ я пресъздават от сесията.</div>';
+		if ( Cart_Sync::search_is_phone( $q ) ) { return '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🧾 Сесии в промото</span></div>' . $hint . '<div class="ap-sec__b"><p><small>Сесиите се търсят по имейл — телефонът не се записва в сесията (само в количката/поръчката). Потърси по имейла или името.</small></p></div></div>'; }
+		$words = array_values( array_filter( preg_split( '/\s+/u', $q ) ) ); $em = ''; foreach ( $words as $wd ) { if ( false !== strpos( $wd, '@' ) ) { $em = $wd; break; } } if ( '' === $em ) { $em = $words[0] ?? $q; }
+		$list = self::feed( 50, array( 'email' => $em, 'sort' => 'started' ) ); $n = count( $list );
+		return '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🧾 Сесии в промото · „' . esc_html( $em ) . '“</span><small><b>' . $n . '</b> ' . ( 1 === $n ? 'сесия' : 'сесии' ) . ( 50 === $n ? ' (първите 50)' : '' ) . '</small></div>' . $hint
+			. '<div class="ap-sec__b">' . self::feed_table_html( 'apInsCartSess', $list ? self::feed_rows( $list ) : '<tr><td colspan="8"><small>няма сесия с имейл „' . esc_html( $em ) . '“ — човекът не е написал имейла си нито в попъпа, нито в чекаута</small></td></tr>' ) . '</div></div>';
 	}
 	/** 1.50.2: заявката за търсене на екрана 🛒 (?q=). */
 	public static function carts_query() { return Cart_Sync::search_norm( sanitize_text_field( (string) wp_unslash( $_GET['q'] ?? '' ) ) ); }
-	/** 1.50.3: видът на екрана 🛒 (?kind=season|bf|shop|all); без избор — Сезонът, а при търсене — всички. */
-	public static function carts_kind( $q = '' ) { $k = self::tok( $_GET['kind'] ?? '', 8, '/[^a-z]/' ); return isset( Cart_Sync::KINDS[ $k ] ) ? $k : ( '' !== $q ? 'all' : 'season' ); }
+	/** 1.50.3: видът на екрана 🛒 (?kind=season|bf|shop|all); 1.50.4 (човекът: „всичко да е на 1 място“): без избор — всички. */
+	public static function carts_kind( $q = '' ) { $k = self::tok( $_GET['kind'] ?? '', 8, '/[^a-z]/' ); return isset( Cart_Sync::KINDS[ $k ] ) ? $k : 'all'; }
 	/** 1.50.2: формата 🔎 (име / телефон / имейл) — в лентата с периода; GET към същия екран, периодът и филтрите се носят. */
 	private static function carts_search_form( $q ) {
 		$p = self::period(); $keep = '';
