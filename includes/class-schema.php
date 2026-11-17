@@ -181,6 +181,7 @@ final class Schema {
   src_id bigint(20) unsigned NOT NULL,
   email varchar(191) NOT NULL DEFAULT '',
   status varchar(16) NOT NULL DEFAULT 'new',
+  gesture varchar(8) NOT NULL DEFAULT '',
   note text NULL,
   callback_at datetime NULL,
   order_id bigint(20) unsigned NULL,

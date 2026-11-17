@@ -716,6 +716,9 @@ final class Probe {
 			/* 1.51.0: 📋 работата по количките */
 			$t->ok( 'Cart_Work: таблицата ansa_promo_cart_work (DB ver ' . ANSA_PROMO_DB_VER . ')', Cart_Work::table_ok(), Cart_Work::table() );
 			$t->ok( 'Insights 🛒: колоната „📋 работа“ и формата за статус са на екрана', false !== strpos( $html, '📋 работа' ) && false !== strpos( $html, 'ap-work' ) );
+			/* 1.52.0: скриптът за обаждане */
+			$gp = Phone_Orders::gift_product(); $t->ok( 'Phone_Orders: подаръкът за жеста (колагенова маска) е намерен и наличен', $gp && $gp['stock'], $gp ? $gp['name'] . ' (#' . $gp['id'] . ')' : 'няма — провери 🧰 → 📞 Обаждания (SKU) или маската в Черния петък' );
+			$t->ok( 'Insights 🛒: баджът редовен/нов и „✅ Възстанови количката“ са на екрана', ( false !== strpos( $html, 'редовен · А' ) || false !== strpos( $html, 'нов · Б' ) || false === strpos( $html, '<tr><td>' ) ) && ( false !== strpos( $html, 'Възстанови количката' ) || false === strpos( $html, 'data-op=' ) ) );
 			/* 1.50.2: 🔎 търсене по име / телефон / имейл */
 			$t->ok( 'Insights 🛒: полето за търсене е на екрана', false !== strpos( $html, 'name="q"' ) && false !== strpos( $html, 'име, телефон или имейл' ) );
 			$t->ok( 'Cart_Sync: търсенето разбира телефон с/без +359 и име без главни', Cart_Sync::search_match( '+359 888 123 456', 'x@example.com', 'Иванка Петрова', '0888123456' ) && Cart_Sync::search_match( 'петрова', 'x@example.com', 'Иванка Петрова', '0888123456' ) && ! Cart_Sync::search_match( 'мария', 'x@example.com', 'Иванка Петрова', '0888123456' ) );

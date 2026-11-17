@@ -197,7 +197,7 @@ final class Cart_Sync {
 			$name = '';
 			if ( function_exists( 'wc_get_product' ) ) { $p = wc_get_product( $vid ?: $pid ); if ( $p ) { $name = $p->get_name(); } }
 			if ( '' === $name ) { $name = ( $m['key'] ?? '' ) ? (string) $m['key'] : '#' . ( $vid ?: $pid ); }
-			$out['lines'][] = array( 'name' => $name, 'qty' => $qty, 'role' => (string) ( $m['role'] ?? '' ), 'key' => (string) ( $m['key'] ?? '' ), 'pid' => $pid, 'vid' => $vid, 'total' => (float) ( $it['line_total'] ?? 0 ) );
+			$out['lines'][] = array( 'name' => $name, 'qty' => $qty, 'role' => (string) ( $m['role'] ?? '' ), 'key' => (string) ( $m['key'] ?? '' ), 'pid' => $pid, 'vid' => $vid, 'total' => (float) ( $it['line_total'] ?? 0 ), 'bf' => is_array( $it[ self::BF_META ] ?? null ) ? $it[ self::BF_META ] : null ); /* 1.52.0: bf = метата на Черния петък (за пресъздаване) */
 			if ( $m && 'base' === (string) ( $m['role'] ?? 'base' ) && is_array( $it[ Cart::META ] ?? null ) ) { $out['promo'] = true; $out['kind'] = 'season'; if ( ! $out['meta'] ) { $out['meta'] = array( 'promo' => (string) ( $m['promo'] ?? '' ), 'box' => (string) ( $m['box'] ?? '' ), 'packs' => (int) ( $m['packs'] ?? 0 ), 'pct' => (float) ( $m['pct'] ?? 0 ), 'week' => (int) ( $m['week'] ?? 0 ), 'draft' => ! empty( $m['draft'] ), 't' => (int) ( $m['t'] ?? 0 ), 'flow' => ! empty( $m['flow'] ) ); } } /* 1.49.0: flow = количката е от дизайна „поток“ (кутията по броя) */
 		}
 		return $out;
@@ -260,11 +260,11 @@ final class Cart_Sync {
 		return true;
 	}
 	/** 1.29.0: една количка по ID на FKA — същия ред като abandoned_rows() (+ first/last). null = няма / не е промо. */
-	public static function cart_by_id( $id ) {
+	public static function cart_by_id( $id, $kind = 'season' ) { /* 1.52.0: $kind = 'all' → и колички извън Сезона (пресъздаване по телефона) */
 		global $wpdb; $t = self::table(); $id = (int) $id; if ( $id <= 0 || $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
 		$r = $wpdb->get_row( $wpdb->prepare( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} WHERE ID = %d", $id ), ARRAY_A ); if ( ! $r ) { return null; }
-		$p = self::parse_items( $r['items'] ); if ( ! $p['promo'] ) { return null; } $c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
-		return array( 'id' => (int) $r['ID'], 'email' => strtolower( (string) $r['email'] ), 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'name' => $c['name'], 'first' => $c['first'], 'last' => $c['last'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'] );
+		$p = self::parse_items( $r['items'] ); if ( 'all' !== $kind && $p['kind'] !== $kind ) { return null; } $c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
+		return array( 'id' => (int) $r['ID'], 'kind' => $p['kind'], 'email' => strtolower( (string) $r['email'] ), 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'name' => $c['name'], 'first' => $c['first'], 'last' => $c['last'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'] );
 	}
 	/** Обобщение за плочките: брой по състояние, сума на изоставените, с таг. */
 	public static function abandoned_stats( $rows ) {
