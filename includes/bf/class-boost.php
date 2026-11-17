@@ -115,13 +115,24 @@ final class Boost {
 	}
 	/** Сумата на ваучера по реда: ВИП/възобновен = listv.amount, студен = cold.voucher. */
 	public static function amount_for( $row, $cfg ) { return in_array( (string) ( $row['bonus'] ?? '' ), array( 'revived', 'vip' ), true ) ? (float) $cfg['listv']['amount'] : (float) $cfg['cold']['voucher']; }
-	/** Слага ваучера на реда в контекста на сесията (както при отключването). */
-	public static function apply_row( $row, $cfg ) {
+	/**
+	 * Слага ваучера на реда в контекста на сесията (както при отключването).
+	 * 1.54.7: $with_email = false при въведен код (ajax_claim) — кодът не доказва чий е имейлът. Досега имейлът на реда
+	 * влизаше в сесията и се връщаше в отговора (ctx.email) и в полето за имейл на чекаута: налучкан код = чужд имейл.
+	 * При подписания личен линк (?u=, identify) имейлът е доказан и остава.
+	 */
+	public static function apply_row( $row, $cfg, $with_email = true ) {
 		$ctx = Cart::ctx(); $exp = strtotime( (string) $row['voucher_exp'] . ' UTC' );
 		$ctx['voucher'] = array( 'code' => (string) $row['voucher'], 'amount' => self::amount_for( $row, $cfg ), 'exp' => (int) $exp, 'lead' => (int) $row['id'] );
-		if ( empty( $ctx['email'] ) ) { $ctx['email'] = (string) $row['email']; } if ( empty( $ctx['lead'] ) ) { $ctx['lead'] = (int) $row['id']; }
+		if ( $with_email && empty( $ctx['email'] ) ) { $ctx['email'] = (string) $row['email']; } if ( empty( $ctx['lead'] ) ) { $ctx['lead'] = (int) $row['id']; }
 		Cart::set_ctx( $ctx ); return $ctx;
 	}
+
+	/* 1.54.7: общ таван на грешните кодове (от всички адреси) — кодът е къс и лимитът по IP не спира налучкване от много адреси.
+	   CLAIM_FAILS грешни за CLAIM_WINDOW секунди → въвеждането на код спира до изтичането; личният линк от имейла работи. */
+	const CLAIM_FAILS = 100; const CLAIM_WINDOW = 600; const CLAIM_KEY = 'ansa_bf_claim_fails';
+	public static function claim_locked() { return (int) get_transient( self::CLAIM_KEY ) >= (int) apply_filters( 'ansa_promo_bf_claim_fails', self::CLAIM_FAILS ); }
+	public static function claim_failed() { $n = (int) get_transient( self::CLAIM_KEY ) + 1; set_transient( self::CLAIM_KEY, $n, self::CLAIM_WINDOW ); return $n; }
 
 	/* ═══ ВРЪЩАНЕ ОТ ИМЕЙЛА ЗА ИЗОСТАВЕНА КОЛИЧКА (1.54.4) ═══
 	 * Ваучерът е отрицателна такса, вързана за WC сесията (ctx.voucher). Линкът на FunnelKit Automations (/checkout/?bwfan-ab-id=<token>&bwfan-uid=<uid>)
@@ -238,12 +249,12 @@ final class Boost {
 	/** ajax ansa_bf_claim: кодът от имейла → ваучерът в сесията. */
 	public static function ajax_claim() {
 		if ( ! check_ajax_referer( Page::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'nonce' ), 403 ); }
-		if ( \AnsaPromo\Leads::rate_limited( 'bf_claim', 12 ) ) { wp_send_json_error( array( 'code' => 'rate' ), 429 ); }
+		if ( \AnsaPromo\Leads::rate_limited( 'bf_claim', 12 ) || self::claim_locked() ) { wp_send_json_error( array( 'code' => 'rate' ), 429 ); }
 		$draft = Page::is_draft_request() || ( ! empty( $_POST['draft'] ) && current_user_can( \AnsaPromo\Plugin::CAP ) ); $cfg = $draft ? Config::get_draft() : Config::get_published();
 		$code = strtoupper( preg_replace( '/[^a-z0-9\-]/i', '', (string) wp_unslash( $_POST['code'] ?? '' ) ) );
 		$row = '' !== $code ? Leads::voucher_row( $code ) : null;
-		if ( ! $row || ! Leads::voucher_valid( $code ) ) { wp_send_json_error( array( 'code' => 'code', 'msg' => Copy::render( Copy::effective( $cfg['copy'] )['err.code'], array() ) ), 400 ); }
-		self::apply_row( $row, $cfg );
+		if ( ! $row || ! Leads::voucher_valid( $code ) ) { self::claim_failed(); wp_send_json_error( array( 'code' => 'code', 'msg' => Copy::render( Copy::effective( $cfg['copy'] )['err.code'], array() ) ), 400 ); }
+		self::apply_row( $row, $cfg, false );
 		nocache_headers(); wp_send_json_success( array( 'ctx' => Cart::ctx_public() ) );
 	}
 

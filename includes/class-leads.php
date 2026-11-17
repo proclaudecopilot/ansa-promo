@@ -22,9 +22,9 @@ final class Leads {
 		add_action( 'ansa_promo_daily', array( __CLASS__, 'cron_expire' ) );
 	}
 
+	/** 1.54.7: CF-Connecting-IP само когато заявката идва от Cloudflare (Client_IP) — иначе header-ът нулираше всеки лимит. */
 	public static function ip() {
-		$ip = isset( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ? $_SERVER['HTTP_CF_CONNECTING_IP'] : ( $_SERVER['REMOTE_ADDR'] ?? '' );
-		return substr( preg_replace( '/[^0-9a-fA-F:.]/', '', (string) $ip ), 0, 45 );
+		return substr( preg_replace( '/[^0-9a-fA-F:.]/', '', Client_IP::get() ), 0, 45 );
 	}
 
 	/** true ако лимитът е надвишен. */
