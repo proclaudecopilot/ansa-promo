@@ -43,6 +43,17 @@ body.ap-portal-login { min-height: 100dvh; display: flex; align-items: center; j
 
 @media (max-width: 900px) {
   body.ap-portal-body #ansa-promo-app { position: static; height: auto; min-height: 100dvh; }
+  /* 1.53.0: на телефон менюто е една лента с хоризонтален скрол (беше цял екран преди съдържанието); изходът остава горе вдясно */
+  #ansa-promo-app.ap-portal .ap-nav { margin: 8px 8px 0; padding: 10px 0 8px; border-radius: 16px; }
+  #ansa-promo-app.ap-portal .ap-nav .ap-brand { padding: 0 14px 6px; font-size: 16px; }
+  #ansa-promo-app.ap-portal .ap-nav .ap-brand small, #ansa-promo-app.ap-portal .ap-state, #ansa-promo-app.ap-portal .ap-nav__label, #ansa-promo-app.ap-portal .ap-nav__foot { display: none; }
+  #ansa-promo-app.ap-portal .ap-nav__list { display: flex; gap: 4px; overflow-x: auto; max-height: none; padding: 0 8px 2px; scrollbar-width: none; }
+  #ansa-promo-app.ap-portal .ap-nav__list::-webkit-scrollbar { display: none; }
+  #ansa-promo-app.ap-portal .ap-nav__it { flex: none; margin: 0; padding: 8px 12px; gap: 6px; white-space: nowrap; }
+  #ansa-promo-app.ap-portal .ap-nav__it .ic { width: auto; }
+  #ansa-promo-app.ap-portal .ap-top { padding: 14px 14px 4px; }
+  #ansa-promo-app.ap-portal .ap-top h1 { font-size: 19px; min-width: 0; }
+  #ansa-promo-app.ap-portal .ap-body { padding: 8px 10px 40px; }
 }
 
 /* 1.38.0: 📅 По дни × откъде идват */

@@ -1118,46 +1118,141 @@ final class Insights {
 	   вътре). Екранът ги чете оттам (Cart_Sync::abandoned_rows), само промо количките: кой, кога, кутия, продукти, сума, статусът на FKA,
 	   поръчката при възстановяване и дали контактът носи тага sezon-kolichka (условието на flow-а). Нищо не се дублира и не се пише. */
 	public static function carts_html( $days = 30 ) {
-		$rg = self::period(); $days = max( 1, (int) round( ( current_time( 'timestamp' ) - strtotime( $rg['from'] ) ) / DAY_IN_SECONDS ) + 1 ); /* 1.28.0: глобалният период (от „от“ до днес — FKA таблицата е по последна промяна) */
+		$rg = self::period(); /* 1.28.0: глобалният период (FKA таблицата е по последна промяна) */
 		$q = self::carts_query(); /* 1.50.2: 🔎 търсене по име / телефон / имейл — в целия период, не само в избрания */
-		$kind = self::carts_kind( $q ); $kl = Cart_Sync::kind_label( $kind ); /* 1.50.3: видът — Сезонът (по подразбиране) / Черен петък / магазин / всички; при търсене — всички */
+		$kind = self::carts_kind( $q ); $kl = Cart_Sync::kind_label( $kind ); /* 1.50.3: видът — Сезонът / Черен петък / магазин / всички (по подразбиране) */
 		$work = Cart_Work::filter_key( $_GET['work'] ?? '', '' !== $q ? 'all' : 'open' ); /* 1.51.0: 📋 работата — по подразбиране без възстановените и отказалите; при търсене — всички */
-		$h = self::period_bar( self::carts_search_form( $q ) );
 		if ( '' !== $q ) { $rows = Cart_Sync::abandoned_rows( 0, 1000, $q, $kind ); }
 		else { $rows = Cart_Sync::abandoned_rows( 0, 300, '', $kind, array( 'from' => $rg['from'], 'to' => $rg['to'] ) ); } /* 1.52.2: периодът е в заявката (по последна промяна), LIMIT-ът важи вътре в периода */
-		$steps = self::steps_by_email( array_map( function ( $x ) { return (string) $x['email']; }, (array) $rows ) );
-		if ( null === $rows ) { return $h . '<div class="ap-sec"><div class="ap-sec__b"><p>Няма таблица на FunnelKit Automations (<code>bwfan_abandonedcarts</code>) — изоставените колички се записват от FKA, не от промото.</p></div></div>'; }
-		$s = Cart_Sync::abandoned_stats( $rows ); $tag = Cart_Sync::tag_name(); $boxes = self::box_names();
-		$wm = Cart_Work::get_many( 'cart', array_map( function ( $x ) { return (int) $x['id']; }, $rows ) ); $ws = array( 'recovered' => 0, 'declined' => 0, 'callback' => 0, 'noanswer' => 0 ); foreach ( $wm as $w ) { if ( isset( $ws[ $w['status'] ] ) ) { $ws[ $w['status'] ]++; } elseif ( 'promised' === $w['status'] ) { $ws['callback']++; } }
-		$all_n = count( $rows ); $rows = array_values( array_filter( $rows, function ( $x ) use ( $work, $wm ) { return Cart_Work::passes( $work, $wm[ (int) $x['id'] ] ?? null, $x['order_id'] ); } ) ); $ret = self::action_return_fields(); /* 1.51.0 */
-		$cust = Phone_Orders::customers( array_map( function ( $x ) { return (string) $x['email']; }, $rows ) ); /* 1.52.0 (скриптът): редовен / нов */
-		$kc = ''; foreach ( Cart_Sync::KINDS as $kk => $kv ) { $kc .= '<a class="ap-chip' . ( $kk === $kind ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'kind' => $kk ) ) ) . '">' . esc_html( $kv ) . '</a>'; }
-		$h .= '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">вид</span><div class="ap-chips">' . $kc . '<small>Сезонът = с промо кутия · Черен петък = от офертата · магазин = обикновена количка без промо · всички = каквото FunnelKit е записал (по подразбиране)</small></div></div>' . Cart_Work::filter_chips( $work );
-		if ( '' !== $q ) { $h .= '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">търсене</span><div class="ap-chips"><a class="ap-chip on" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '" title="махни търсенето">🔎 ' . esc_html( $q ) . ' ✕</a><small>' . count( $rows ) . ' ' . ( 1 === count( $rows ) ? 'количка' : 'колички' ) . ' · ' . esc_html( $kl ) . ' · в целия период (не само в избрания) · по име, телефон (с или без +359) и имейл</small></div></div>'; }
-		$tiles = self::tile( 'season' === $kind ? 'промо колички' : 'колички · ' . $kl, $s['all'], 'с имейл в чекаута', '', '', true )
-			. self::tile( 'изоставени', $s['abandoned'] + $s['skipped'], 'FKA: recoverable ' . $s['abandoned'] . ' · пропуснати ' . $s['skipped'], 'warn' )
-			. self::tile( 'стойност на изоставените', self::money( $s['sum_abandoned'] ), 'без възстановените', 'warn' )
-			. self::tile( 'възстановени', $s['recovered'], self::money( $s['sum_recovered'] ) . ' · ' . self::pct( $s['recovered'], max( 1, $s['all'] - $s['open'] ) ) . ' от приключилите', 'ok' )
-			. self::tile( 'още в чекаута', $s['open'], 'FKA ги обявява изоставени след 15 мин', '' )
-			. self::tile( 'с таг „' . ( $tag ?: '—' ) . '“', $s['tagged'], 'контактът носи тага сега (условието на flow-а)', $s['tagged'] === $s['abandoned'] + $s['skipped'] + $s['open'] ? 'ok' : '' )
-			. self::tile( '📋 от екипа', $ws['recovered'] + $ws['declined'] + $ws['callback'] + $ws['noanswer'], '✅ ' . $ws['recovered'] . ' · ✖ ' . $ws['declined'] . ' · 🔁 ' . $ws['callback'] . ' · 📵 ' . $ws['noanswer'], $ws['recovered'] ? 'ok' : '' ); /* 1.51.0 */
-		$h .= '<div class="ap-dash">' . self::group_html( '🛒 Изоставени ' . ( 'season' === $kind ? 'промо колички' : 'колички · ' . $kl ) . ' · ' . ( '' !== $q ? 'търсене „' . $q . '“ · целият период' : self::period_label( $rg ) . ' (по последна промяна)' ), $tiles, 'Данните са от FunnelKit Automations (таблицата на изоставените колички), само количките с промо кутия. Тагът е това, по което flow-ът „Cart Abandoned“ ги различава.' ) . '</div>';
-		$h .= '<div class="ap-sec ap-sec--table"><div class="ap-sec__h"><span class="ap-sec__t">🛒 Количките</span><small><b>' . count( $rows ) . '</b> от ' . $all_n . ( 300 === $all_n && '' === $q ? ' (последните 300 за периода — стесни периода или търси)' : '' ) . ' · работа: ' . esc_html( Cart_Work::FILTERS[ $work ] ) . '</small></div><div class="ap-sec__hint">📞 <b>Обаждане по скрипта:</b> първо виж клиента (<b>🟢 редовен · А</b> — лек, приятелски, първо мнението за продуктите; <b>🆕 нов · Б</b> — учтив, кратък), количката (продуктите, от кога е, има ли вече <b>🎭 маска</b>). „✅ Възстанови количката“ прави количката на човека наново и отваря чекаута с имейл, телефон и имена — остава офисът. Първо пита за жеста: <b>🎁 колагенова маска</b> (ако няма) / <b>🚚 безплатна доставка</b> (ако маската вече е вътре) / <b>без жест</b> (Вид 1 — готов за поръчка). Един жест на поръчка. „✏️ Редактирай“ (само Сезонът) отваря промо страницата за корекции. След поръчката количката става 📋 „възстановена“ сама (и във FunnelKit). Линкът важи 24 ч. Статусът е на FKA: <b>в чекаута</b> (още не са минали 15 мин) · <b>изоставена</b> (recoverable, flow-ът може да тръгне) · <b>пропусната</b> (FKA: без активна автоматизация или cool-off) · <b>изгубена</b> (след 15 дни) · <b>възстановена</b> (има поръчка). Последно променените първи.</div><div class="ap-sec__b"><table class="widefat striped"><thead><tr><th>кога</th><th>кой</th><th>кутия</th><th>продукти</th><th>сума</th><th>статус</th><th>таг</th><th>сесия</th><th>поръчка</th><th>📋 работа</th></tr></thead><tbody>';
-		foreach ( $rows as $r ) {
-			$m = $r['meta']; $box = $m ? ( $boxes[ $m['box'] ] ?? $m['box'] ) . ( $m['packs'] ? ' · ' . $m['packs'] . ' оп.' : '' ) . ( $m['pct'] ? ' · −' . Cart::fmt( $m['pct'] ) . '%' : '' ) . ( $m['week'] ? ' · седм. ' . $m['week'] : '' ) . ( $m['draft'] ? ' · чернова' : '' ) : '—';
-			$rk = (string) ( $r['kind'] ?? 'season' ); if ( 'bf' === $rk ) { $box = '🖤 Черен петък'; } elseif ( 'shop' === $rk ) { $box = '🛍️ магазин'; } /* 1.50.3: видът на количката вместо кутия */
-			$lines = array(); foreach ( $r['lines'] as $l ) { $lines[] = esc_html( $l['name'] ) . ( $l['qty'] > 1 ? ' ×' . $l['qty'] : '' ) . ( 'secret' === $l['role'] ? ' <small>сет</small>' : ( 'book' === $l['role'] ? ' <small>книга</small>' : ( '' === $l['role'] ? ' <small>друго</small>' : '' ) ) ); }
-			$who = '<a href="mailto:' . esc_attr( $r['email'] ) . '">' . esc_html( $r['email'] ) . '</a>' . ( $r['name'] || $r['phone'] ? '<br><small>' . esc_html( trim( $r['name'] . ' ' . $r['phone'] ) ) . '</small>' : '' ) . '<br>' . Phone_Orders::customer_html( $cust[ strtolower( (string) $r['email'] ) ] ?? null ); /* 1.52.0: Сценарий А/Б */
-			$mask = Phone_Orders::has_mask( $r['lines'] ); if ( $mask ) { $lines[] = '<small class="ap-pill ap-pill--muted" title="скриптът: вече има маска → жестът е безплатна доставка">🎭 маската е вътре</small>'; }
-			$ord = $r['order_id'] > 0 ? ( self::$portal ? '<b>#' . (int) $r['order_id'] . '</b>' : '<a href="' . esc_url( admin_url( 'post.php?post=' . (int) $r['order_id'] . '&action=edit' ) ) . '">#' . (int) $r['order_id'] . '</a>' ) : '—';
-			$sess = $steps[ strtolower( (string) $r['email'] ) ] ?? ''; $sess = $sess ? '<small>' . esc_html( self::SHORT[ $sess ] ?? $sess ) . '</small>' : '<small>—</small>'; /* 1.28.0 (т. 27): докъде е стигнала сесията на същия имейл */
-			if ( $r['order_id'] <= 0 ) { $ord = Phone_Orders::buttons( 'cart', (int) $r['id'], trim( $r['email'] . ' ' . $r['phone'] ), $rk, $mask ); } /* 1.29.0: 📞 обаждане; 1.52.0: „✅ Възстанови количката“ за всякакъв вид, ✏️ само за Сезона */
-			$h .= '<tr><td>' . esc_html( self::dt_short( $r['modified'] ) ) . '<br><small>от ' . esc_html( self::dt_short( $r['created'] ) ) . '</small><br><b><small>' . esc_html( Phone_Orders::age_label( $r['created'] ) ) . '</small></b></td><td>' . $who . '</td><td>' . esc_html( $box ) . '</td><td>' . implode( '<br>', $lines ) . '</td><td>' . esc_html( self::money( $r['total'] ) ) . '</td><td><span class="ap-pill' . ( $r['tone'] ? ' ap-pill--' . $r['tone'] : '' ) . '">' . esc_html( $r['status_label'] ) . '</span></td><td>' . ( $r['tagged'] ? '🏷️ да' : ( 'season' === $rk ? '<small>не</small>' : '<small>—</small>' ) ) . '</td><td>' . $sess . '</td><td>' . $ord . '</td><td>' . Cart_Work::widget( 'cart', (int) $r['id'], $r['email'], $wm[ (int) $r['id'] ] ?? null, $ret ) . '</td></tr>'; /* 1.51.0: 📋 */
+		/* 1.53.0 (човекът: „претъпкано, не можеш да се ориентираш, няма ясна йерархия, не се знае кое се цъка“): екранът е опашка за обаждане —
+		   ① лента (търсене · период · вид) ② четири числа, които водят към списъка ③ табове „работа“ с броячи ④ редове: клиент → количка → сума → състояние → действие.
+		   Правилото: заоблен бутон с цвят/контур = цъка се; малък етикет с прави ъгли = само информация. */
+		$h = '<div class="apc">' . self::carts_toolbar( $rg, $q, $kind );
+		if ( null === $rows ) { return $h . '<div class="apc-card"><div class="apc-empty"><b>Няма таблица на FunnelKit Automations</b><p>Изоставените колички се записват от FunnelKit (<code>bwfan_abandonedcarts</code>), не от промото.</p></div></div></div>'; }
+		$now = current_time( 'timestamp' ); $boxes = self::box_names(); $tag = Cart_Sync::tag_name(); $ret = self::action_return_fields();
+		$s = Cart_Sync::abandoned_stats( $rows ); $all_n = count( $rows );
+		$wm = Cart_Work::get_many( 'cart', array_map( function ( $x ) { return (int) $x['id']; }, $rows ) );
+		$cnt = Cart_Work::filter_counts( $rows, $wm );
+		/* числата на опашката: чакат първо обаждане · не вдигат · уговорени (и колко от тях просрочени) · възстановени от екипа */
+		$fresh = 0; $noans = 0; $due = 0; $team = 0;
+		foreach ( $rows as $x ) {
+			$w = $wm[ (int) $x['id'] ] ?? null; $st = $w ? $w['status'] : '';
+			if ( 'recovered' === $st ) { $team++; }
+			if ( ! Cart_Work::passes( 'open', $w, $x['order_id'] ) ) { continue; }
+			if ( '' === $st || 'new' === $st ) { $fresh++; } elseif ( 'noanswer' === $st ) { $noans++; }
+			if ( Cart_Work::is_due( $w, $now ) ) { $due++; }
 		}
-		if ( ! $rows ) { $h .= '<tr><td colspan="10"><small>' . ( $all_n ? 'всичките ' . $all_n . ' са извън филтъра „работа: ' . esc_html( Cart_Work::FILTERS[ $work ] ) . '“ — цъкни „всички“' : ( '' !== $q ? 'няма количка (' . esc_html( $kl ) . ') с „' . esc_html( $q ) . '“ — търси се по име, телефон (с или без +359) и имейл в целия период; FunnelKit записва количката чак когато човекът напише имейла си в чекаута' : 'няма колички (' . esc_html( $kl ) . ') за периода — появяват се, когато човекът напише имейла си в чекаута (гост) или е логнат' ) ) . '</small></td></tr>'; }
-		$h .= '</tbody></table></div></div>';
+		$rows = array_values( array_filter( $rows, function ( $x ) use ( $work, $wm ) { return Cart_Work::passes( $work, $wm[ (int) $x['id'] ] ?? null, $x['order_id'] ); } ) ); /* 1.51.0 */
+		if ( in_array( $work, array( 'open', 'callback' ), true ) ) { /* просрочените обратни обаждания са първи (останалото — както идва: последно променените първи) */
+			usort( $rows, function ( $a, $b ) use ( $wm, $now ) { return (int) Cart_Work::is_due( $wm[ (int) $b['id'] ] ?? null, $now ) <=> (int) Cart_Work::is_due( $wm[ (int) $a['id'] ] ?? null, $now ); } );
+		}
+		$steps = self::steps_by_email( array_map( function ( $x ) { return (string) $x['email']; }, $rows ) );
+		$cust = Phone_Orders::customers( array_map( function ( $x ) { return (string) $x['email']; }, $rows ) ); /* 1.52.0 (скриптът): редовен / нов */
+		$n = count( $rows ); $word = function ( $c ) { return 1 === (int) $c ? 'количка' : 'колички'; };
+
+		/* ② числата */
+		$ab = $s['abandoned'] + $s['skipped'];
+		$h .= '<div class="apc-kpis">'
+			. self::carts_kpi( 'За спасяване', self::money( $s['sum_abandoned'] ), '<b>' . $ab . '</b> изоставени ' . $word( $ab ) . ' без поръчка', 'hero' )
+			. self::carts_kpi( 'Чакат първо обаждане', $fresh, $noans ? '+ <b>' . $noans . '</b> „не вдига“ — опитай пак' : ( $fresh ? 'никой не ги е търсил още' : 'всички са потърсени' ), $fresh ? 'warn' : 'ok', self::url( array( 'work' => 'open' ) ), 'open' === $work, 'виж опашката' )
+			. self::carts_kpi( 'Уговорени обаждания', $cnt['callback'], $due ? '<b class="apc-bad">' . $due . ' просрочени</b> — звънни първо на тях' : 'няма просрочени', $due ? 'bad' : '', self::url( array( 'work' => 'callback' ) ), 'callback' === $work, 'виж ги' )
+			. self::carts_kpi( 'Възстановени', $s['recovered'], '<b>' . esc_html( self::money( $s['sum_recovered'] ) ) . '</b> · ' . self::pct( $s['recovered'], max( 1, $s['all'] - $s['open'] ) ) . ' от приключилите' . ( $team ? ' · <span title="отбелязани от екипа след обаждане">📋 от екипа ' . $team . '</span>' : '' ), 'ok', self::url( array( 'work' => 'done' ) ), 'done' === $work, 'виж ги' )
+			. '</div>';
+		$h .= '<p class="apc-fk"><span class="apc-fk__l" title="Данните са от FunnelKit Automations (таблицата на изоставените колички). Количка се записва, когато човекът напише имейла си в чекаута.">FunnelKit</span>'
+			. '<span><b>' . (int) $s['all'] . '</b> ' . $word( $s['all'] ) . ' · ' . esc_html( $kl ) . '</span>'
+			. '<span title="още не са минали 15 мин — FunnelKit ги обявява изоставени след това">в чекаута <b>' . (int) $s['open'] . '</b></span>'
+			. '<span title="recoverable — flow-ът „Cart Abandoned“ може да тръгне">изоставени <b>' . (int) $s['abandoned'] . '</b></span>'
+			. '<span title="без активна автоматизация или в cool-off">пропуснати <b>' . (int) $s['skipped'] . '</b></span>'
+			. '<span title="след 15 дни или отбелязани „отказала“">изгубени <b>' . (int) $s['lost'] . '</b></span>'
+			. ( '' !== $tag ? '<span title="контактът носи тага сега — по него flow-ът „Cart Abandoned“ различава промо количките">с таг „' . esc_html( $tag ) . '“ <b>' . (int) $s['tagged'] . '</b></span>' : '' )
+			. '</p>';
+
+		/* ③ опашката */
+		$h .= '<div class="apc-card"><div class="apc-card__h">' . Cart_Work::filter_tabs( $work, $cnt, $due ) . '</div>' . self::carts_help_html();
+		$ctx = '' !== $q
+			? 'Резултати за <b>„' . esc_html( $q ) . '“</b>: <b>' . $n . ' ' . $word( $n ) . ' · ' . esc_html( $kl ) . '</b> <span class="apc-ctx__m">търси се в целия период (не само в избрания) — по име, телефон (с или без +359) и имейл</span> <a class="ap-abtn ap-abtn--line ap-abtn--sm" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '" title="махни търсенето">✕ Изчисти търсенето</a>'
+			: '<b>' . $n . '</b> ' . $word( $n ) . ( $n !== $all_n ? ' от ' . $all_n : '' ) . ' · ' . esc_html( $kl ) . ' · ' . esc_html( self::period_label( $rg ) ) . ' <span class="apc-ctx__m">(по последна промяна' . ( 300 === $all_n ? '; показани са последните 300 — стесни периода или търси' : '' ) . ')</span>';
+		$h .= '<div class="apc-ctx">' . $ctx . '</div>';
+		if ( ! $rows ) {
+			if ( $all_n ) { $msg = '<b>Няма колички в „' . esc_html( Cart_Work::FILTERS[ $work ] ) . '“</b><p>всичките ' . $all_n . ' са извън филтъра „работа: ' . esc_html( Cart_Work::FILTERS[ $work ] ) . '“.</p><a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'work' => 'all' ) ) ) . '">Покажи всички ' . $all_n . '</a>'; }
+			elseif ( '' !== $q ) { $msg = '<b>няма количка (' . esc_html( $kl ) . ') с „' . esc_html( $q ) . '“</b><p>Търси се по име, телефон (с или без +359) и имейл в целия период. FunnelKit записва количката чак когато човекът напише имейла си в чекаута.</p><a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '">✕ Изчисти търсенето</a>'; }
+			else { $msg = '<b>няма колички (' . esc_html( $kl ) . ') за периода</b><p>Появяват се, когато човекът напише имейла си в чекаута (гост) или е логнат.</p>'; }
+			$h .= '<div class="apc-empty"><span class="apc-empty__ic" aria-hidden="true">🛒</span>' . $msg . '</div>';
+		} else {
+			$h .= '<table class="apc-table"><thead><tr><th>Клиент</th><th>Количка</th><th class="apc-r">Сума</th><th>Изоставена</th><th>Състояние</th><th>Действие</th></tr></thead><tbody>';
+			foreach ( $rows as $r ) { $h .= self::carts_row_html( $r, $wm[ (int) $r['id'] ] ?? null, $cust[ strtolower( (string) $r['email'] ) ] ?? null, $steps[ strtolower( (string) $r['email'] ) ] ?? '', $boxes, $ret, $now ); }
+			$h .= '</tbody></table>';
+		}
+		$h .= '</div>';
 		if ( '' !== $q ) { $h .= self::carts_sessions_html( $q ); } /* 1.50.4: и сесиите на човека в промото — количката може да е само в сесията (не е писал имейла в чекаута), пак се пресъздава с 📞 */
-		return $h . '<style>.ap-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef0f2;color:#50575e}.ap-pill--ok{background:#e6f6ec;color:#1a7f37}.ap-pill--warn{background:#fff3e0;color:#a86b09}.ap-pill--info{background:#e8f1fb;color:#1d5fa8}.ap-pill--muted{background:#f0f0f1;color:#8c8f94}</style>';
+		return $h . '</div>';
+	}
+	/** 1.53.0: една плочка на 🛒 — етикет, число, пояснение; с $href цялата плочка е линк към списъка (и го казва: „виж ги →“). */
+	private static function carts_kpi( $label, $value, $sub, $tone = '', $href = '', $on = false, $cta = '' ) {
+		$in = '<span class="apc-kpi__l">' . esc_html( $label ) . '</span><b class="apc-kpi__v">' . esc_html( (string) $value ) . '</b><span class="apc-kpi__s">' . $sub . '</span>' . ( $href && $cta ? '<span class="apc-kpi__go">' . esc_html( $cta ) . ' →</span>' : '' );
+		$cls = 'apc-kpi' . ( $tone ? ' apc-kpi--' . $tone : '' ) . ( $on ? ' on' : '' );
+		return $href ? '<a class="' . $cls . '" href="' . esc_url( $href ) . '">' . $in . '</a>' : '<div class="' . $cls . '">' . $in . '</div>';
+	}
+	/** 1.53.0: един ред на опашката. $w = работата (или null), $c = профилът на клиента, $step = докъде е стигнала сесията на същия имейл. */
+	private static function carts_row_html( $r, $w, $c, $step, $boxes, $ret, $now ) {
+		$id = (int) $r['id']; $st = $w ? $w['status'] : ''; $rk = (string) ( $r['kind'] ?? 'season' ); $m = $r['meta'];
+		$due = Cart_Work::is_due( $w, $now ); $done = Cart_Work::is_done( $st ) || $r['order_id'] > 0;
+		/* клиент: името, телефонът (tel: — това се набира), имейлът, редовен / нов по скрипта */
+		$name = trim( (string) $r['name'] ); $phone = trim( (string) $r['phone'] ); $tel = preg_replace( '/[^\d+]/', '', $phone );
+		$mail = '<a class="apc-mail" href="mailto:' . esc_attr( $r['email'] ) . '" title="напиши имейл">' . esc_html( $r['email'] ) . '</a>';
+		$telh = '' !== $tel ? '<a class="apc-tel" href="tel:' . esc_attr( $tel ) . '" title="набери номера"><span aria-hidden="true">📞</span> ' . esc_html( $phone ) . '</a>' : '<span class="apc-tel apc-tel--no" title="човекът не е стигнал до полето за телефон в чекаута">няма телефон — само имейл</span>';
+		$who = '<div class="apc-who">' . ( '' !== $name ? '<b class="apc-name">' . esc_html( $name ) . '</b>' . $telh . $mail : $mail . $telh ) /* без име — имейлът е водещият ред */
+			. '<span class="apc-cust">' . Phone_Orders::customer_html( $c ) . '</span></div>'; /* 1.52.0: Сценарий А/Б */
+		/* количка: видът / кутията, продуктите, маската */
+		if ( 'bf' === $rk ) { $box = '🖤 Черен петък'; $bm = ''; } elseif ( 'shop' === $rk ) { $box = '🛍️ магазин'; $bm = ''; } /* 1.50.3: видът на количката вместо кутия */
+		else { $box = $m ? (string) ( $boxes[ $m['box'] ] ?? $m['box'] ) : 'Сезонът'; $bm = $m ? implode( ' · ', array_filter( array( $m['packs'] ? $m['packs'] . ' оп.' : '', $m['pct'] ? '−' . Cart::fmt( $m['pct'] ) . '%' : '', $m['week'] ? 'седм. ' . $m['week'] : '', $m['draft'] ? 'чернова' : '' ) ) ) : ''; }
+		$lines = ''; foreach ( $r['lines'] as $l ) { $lines .= '<li>' . esc_html( $l['name'] ) . ( $l['qty'] > 1 ? ' <b>×' . (int) $l['qty'] . '</b>' : '' ) . ( 'secret' === $l['role'] ? ' <i>сет</i>' : ( 'book' === $l['role'] ? ' <i>книга</i>' : '' ) ) . '</li>'; }
+		$mask = Phone_Orders::has_mask( $r['lines'] );
+		$cart = '<div class="apc-cart"><span class="apc-box">' . esc_html( $box ) . '</span>' . ( '' !== $bm ? '<small class="apc-boxm">' . esc_html( $bm ) . '</small>' : '' ) . ( $lines ? '<ul class="apc-lines">' . $lines . '</ul>' : '' )
+			. ( $mask ? '<span class="ap-pill ap-pill--muted" title="скриптът: вече има маска → жестът е безплатна доставка">🎭 маската е вътре</span>' : '' ) . '</div>';
+		/* от кога е: „днес / вчера / преди N дни“ по скрипта + точният час */
+		$age = '<b class="apc-age">' . esc_html( Phone_Orders::age_label( $r['created'] ) ) . '</b><small title="последна промяна ' . esc_attr( self::dt_short( $r['modified'] ) ) . '">' . esc_html( self::dt_short( $r['created'] ) ) . '</small>';
+		/* състояние: работата на екипа (водещо) + статусът във FunnelKit, тагът и сесията (второстепенни, само ако има какво да кажат) */
+		$fk = '<span class="apc-fkst" title="статусът на количката във FunnelKit"><i class="apc-dot' . ( $r['tone'] ? ' apc-dot--' . esc_attr( $r['tone'] ) : '' ) . '"></i>' . esc_html( $r['status_label'] ) . '</span>'
+			. ( $r['tagged'] ? '<span title="контактът носи тага на flow-а „Cart Abandoned“">🏷️ с таг</span>' : '' )
+			. ( $step ? '<span title="докъде е стигнала сесията в промото на същия имейл">' . esc_html( self::SHORT[ $step ] ?? $step ) . '</span>' : '' ); /* 1.28.0 (т. 27) */
+		$state = '<div class="ap-work">' . Cart_Work::status_html( $w, $now ) . '</div><div class="apc-meta">' . $fk . '</div>';
+		/* действие: с поръчка — номерът; без — „Възстанови количката“ (основното), „Редактирай“ (само Сезонът), „Отбележи резултат“ */
+		if ( $r['order_id'] > 0 ) { $act = '<span class="apc-order">✅ Поръчка ' . ( self::$portal ? '<b>#' . (int) $r['order_id'] . '</b>' : '<a href="' . esc_url( admin_url( 'post.php?post=' . (int) $r['order_id'] . '&action=edit' ) ) . '">#' . (int) $r['order_id'] . '</a>' ) . '</span>'; }
+		else { $act = Phone_Orders::buttons( 'cart', $id, trim( $r['email'] . ' ' . $r['phone'] ), $rk, $mask ); } /* 1.29.0: 📞 обаждане; 1.52.0: „✅ Възстанови количката“ за всякакъв вид, ✏️ само за Сезона */
+		$act .= Cart_Work::form_html( 'cart', $id, $r['email'], $w, $ret ); /* 1.51.0: 📋 */
+		return '<tr class="apc-row' . ( $due ? ' is-due' : '' ) . ( $done ? ' is-done' : '' ) . ( in_array( $st, array( 'callback', 'promised' ), true ) && ! $due ? ' is-cb' : '' ) . '" data-id="' . $id . '">'
+			. '<td class="apc-c-who">' . $who . '</td><td class="apc-c-cart">' . $cart . '</td><td class="apc-c-sum apc-r"><b class="apc-sum">' . esc_html( self::money( $r['total'] ) ) . '</b></td><td class="apc-c-age">' . $age . '</td><td class="apc-c-state">' . $state . '</td><td class="apc-c-act"><div class="apc-acts">' . $act . '</div></td></tr>';
+	}
+	/** 1.53.0: лентата на 🛒 — търсенето (водещо), периодът и видът като сегменти; обясненията са в подсказките, не в текст под всеки ред. */
+	private static function carts_toolbar( $rg, $q, $kind ) {
+		$today = current_time( 'Y-m-d' ); $base = self::$portal ? Insights_Portal::url() : admin_url( 'admin.php' );
+		$hid = ( self::$portal ? '' : '<input type="hidden" name="page" value="' . esc_attr( Plugin::MENU_SLUG ) . '"><input type="hidden" name="tab" value="insights">' ) . '<input type="hidden" name="view" value="carts">';
+		$keep = function ( $keys ) { $o = ''; foreach ( $keys as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $o .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } } return $o; };
+		/* 🔎 търсене (GET към същия екран; периодът, видът и работата се носят) */
+		$h = '<div class="apc-bar"><form method="get" action="' . esc_url( $base ) . '" class="apc-search" role="search">' . $hid . '<input type="hidden" name="from" value="' . esc_attr( $rg['from'] ) . '"><input type="hidden" name="to" value="' . esc_attr( $rg['to'] ) . '">' . $keep( array_merge( self::FILTER_KEYS, array( 'kind', 'work' ) ) )
+			. '<label class="apc-search__f"><span class="apc-search__ic" aria-hidden="true">🔎</span><span class="apc-sr">Търси количка</span><input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Търси по име, телефон или имейл" maxlength="80" autocomplete="off"></label>'
+			. '<button class="ap-abtn ap-abtn--dark" type="submit">Търси</button>' . ( '' !== $q ? '<a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '">✕ Изчисти</a>' : '' ) . '</form>';
+		/* период */
+		$seg = ''; foreach ( self::quick_ranges() as $k => $v ) { $seg .= '<a class="apc-seg__it' . ( (string) $k === $rg['key'] ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'from' => $v[0], 'to' => $v[1] ) ) ) . '">' . esc_html( $v[2] ) . '</a>'; }
+		$custom = '' === $rg['key']; $span = date_i18n( 'd.m', strtotime( $rg['from'] ) ) . ' – ' . date_i18n( 'd.m.Y', strtotime( $rg['to'] ) );
+		$h .= '<div class="apc-filters"><div class="apc-fg' . ( '' !== $q ? ' is-off' : '' ) . '"' . ( '' !== $q ? ' title="търсенето гледа целия период — периодът важи пак, щом изчистиш търсенето"' : '' ) . '><span class="apc-fg__l">Период</span><div class="apc-seg">' . $seg . '</div>'
+			. '<details class="apc-range ap-pop"><summary class="apc-seg__it apc-range__s' . ( $custom ? ' on' : '' ) . '" title="избери дати от – до">📅 ' . esc_html( $span ) . '</summary>'
+			. '<form method="get" action="' . esc_url( $base ) . '" class="apc-range__p">' . $hid . $keep( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work' ) ) )
+			. '<label><span>от</span><input type="date" name="from" value="' . esc_attr( $rg['from'] ) . '" max="' . esc_attr( $today ) . '"></label><label><span>до</span><input type="date" name="to" value="' . esc_attr( $rg['to'] ) . '" max="' . esc_attr( $today ) . '"></label><button class="ap-abtn ap-abtn--dark" type="submit">Покажи</button></form></details></div>';
+		/* вид */
+		$tip = array( 'all' => 'каквото FunnelKit е записал (по подразбиране)', 'season' => 'с промо кутия от „Сезонът на ansa“', 'bf' => 'от офертата за Черен петък', 'shop' => 'обикновена количка без промо' );
+		$seg = ''; foreach ( array( 'all', 'season', 'bf', 'shop' ) as $kk ) { $seg .= '<a class="apc-seg__it' . ( $kk === $kind ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'kind' => $kk ) ) ) . '" title="' . esc_attr( $tip[ $kk ] ) . '">' . esc_html( Cart_Sync::KINDS[ $kk ] ) . '</a>'; }
+		return $h . '<div class="apc-fg"><span class="apc-fg__l">Вид</span><div class="apc-seg">' . $seg . '</div></div></div></div>';
+	}
+	/** 1.53.0: скриптът за обаждане и статусите — сгънати (който ги знае, не ги чете всеки път), подредени по стъпки вместо един абзац. */
+	private static function carts_help_html() {
+		return '<details class="apc-help"><summary>💡 Как се работи с опашката <span>скриптът за обаждане и какво значат статусите</span></summary><div class="apc-help__b">'
+			. '<div><h4>1 · Преди да звъннеш</h4><ul><li><b>🟢 редовен · А</b> — лек, приятелски тон; първо питай за мнението за продуктите.</li><li><b>🆕 нов · Б</b> — учтив и кратък.</li><li>Виж количката: продуктите, от кога е, има ли вече <b>🎭 маска</b>.</li></ul></div>'
+			. '<div><h4>2 · По време на разговора</h4><ul><li><b>„Възстанови количката“</b> прави количката на човека наново и отваря чекаута с имейл, телефон и имена — остава офисът. Линкът важи 24 ч.</li><li>Първо пита за жеста: <b>🎁 колагенова маска</b> (ако няма) · <b>🚚 безплатна доставка</b> (ако маската вече е вътре) · <b>без жест</b> (Вид 1 — готов за поръчка). Един жест на поръчка.</li><li><b>„Редактирай“</b> (само Сезонът) отваря промо страницата за корекции.</li></ul></div>'
+			. '<div><h4>3 · След разговора</h4><ul><li><b>„Отбележи резултат“</b>: не вдига · обратно обаждане (с час) · ще поръча · отказа.</li><li>След поръчката количката става „възстановена“ сама (и във FunnelKit).</li><li>Просрочените обратни обаждания излизат най-горе.</li></ul></div>'
+			. '<div><h4>Статуси на FunnelKit</h4><dl><dt>в чекаута</dt><dd>още не са минали 15 мин</dd><dt>изоставена</dt><dd>recoverable — flow-ът може да тръгне</dd><dt>пропусната</dt><dd>без активна автоматизация или cool-off</dd><dt>изгубена</dt><dd>след 15 дни</dd><dt>възстановена</dt><dd>има поръчка</dd></dl></div>'
+			. '</div></details>';
 	}
 	/** 1.50.4 (човекът: „deti_67@abv.bg … даже сме си я записали за прозвъняване“ — имаше две сесии с попълнена кутия, но без имейл в чекаута, т.е. без количка във FKA):
 	 *  при търсене в 🛒 — и сесиите в промото с този имейл (лийд от попъпа), със същите редове и 📞 бутони като в 🧾 Сесии. Телефонът не се записва в сесията, затова само по имейл/име-с-@. */
@@ -1174,13 +1269,6 @@ final class Insights {
 	public static function carts_query() { return Cart_Sync::search_norm( sanitize_text_field( (string) wp_unslash( $_GET['q'] ?? '' ) ) ); }
 	/** 1.50.3: видът на екрана 🛒 (?kind=season|bf|shop|all); 1.50.4 (човекът: „всичко да е на 1 място“): без избор — всички. */
 	public static function carts_kind( $q = '' ) { $k = self::tok( $_GET['kind'] ?? '', 8, '/[^a-z]/' ); return isset( Cart_Sync::KINDS[ $k ] ) ? $k : 'all'; }
-	/** 1.50.2: формата 🔎 (име / телефон / имейл) — в лентата с периода; GET към същия екран, периодът и филтрите се носят. */
-	private static function carts_search_form( $q ) {
-		$p = self::period(); $keep = '';
-		foreach ( array_merge( array( 'from' => $p['from'], 'to' => $p['to'] ), array_intersect_key( $_GET, array_flip( array_merge( self::FILTER_KEYS, array( 'kind', 'work' ) ) ) ) ) as $k => $v ) { $v = sanitize_text_field( (string) wp_unslash( $v ) ); if ( '' !== $v ) { $keep .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( $v ) . '">'; } }
-		return '<form method="get" action="' . esc_url( self::$portal ? Insights_Portal::url() : admin_url( 'admin.php' ) ) . '" class="ap-ins-range ap-ins-search" role="search">' . ( self::$portal ? '' : '<input type="hidden" name="page" value="' . esc_attr( Plugin::MENU_SLUG ) . '"><input type="hidden" name="tab" value="insights">' ) . '<input type="hidden" name="view" value="carts">' . $keep
-			. '<label>🔎 <input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="име, телефон или имейл" maxlength="80" autocomplete="off"></label><button class="button">Търси</button>' . ( '' !== $q ? '<a class="ap-chip" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '">изчисти</a>' : '' ) . '</form>';
-	}
 	/** 1.28.0 (т. 27): най-далечната стъпка на сесиите с този имейл (лийд от попъпа) — [email => step]. */
 	public static function steps_by_email( $emails ) {
 		global $wpdb; $emails = array_values( array_unique( array_filter( array_map( 'strtolower', (array) $emails ) ) ) ); if ( ! $emails ) { return array(); } $out = array();
@@ -1441,6 +1529,13 @@ final class Insights {
 			. 'function kd(ev){if(ev.key==="Escape")close()}function close(){w.remove();document.removeEventListener("keydown",kd)}document.addEventListener("keydown",kd);var f=w.querySelector("button");if(f)f.focus();'
 			. 'w.addEventListener("click",function(ev){if(ev.target===w){close();return}var b=ev.target.closest?ev.target.closest("[data-b]"):null;if(!b)return;var v=b.getAttribute("data-b");close();if(v==="x")return;'
 			. 'var u=new URL(a.getAttribute("href"),location.href);if(v)u.searchParams.set(go?"bonus":"ansa_bonus",v);var l=document.createElement("a");l.href=u.toString();l.target="_blank";l.rel="noopener";document.body.appendChild(l);l.click();l.remove()})});'
+			/* 1.53.0: изскачащите панели (details.ap-pop — „Отбележи резултат“, датите): един отворен, затварят се с клик навън и Esc; формата на 📋 показва „Звънни пак на“ само при обратно обаждане и „Поръчка №“ само при възстановена */
+			. 'function wsync(f){var s=f&&f.querySelector("select[name=status]");if(s)f.setAttribute("data-st",s.value)}document.querySelectorAll(".ap-work__form").forEach(wsync);'
+			. 'document.addEventListener("change",function(e){var t=e.target;if(t&&t.name==="status"&&t.form&&t.form.classList.contains("ap-work__form"))wsync(t.form)});'
+			. 'document.addEventListener("toggle",function(e){var d=e.target;if(!d||!d.classList||!d.classList.contains("ap-pop")||!d.open)return;document.querySelectorAll("details.ap-pop[open]").forEach(function(x){if(x!==d)x.open=false});wsync(d.querySelector(".ap-work__form"))},true);'
+			. 'document.addEventListener("click",function(e){document.querySelectorAll("details.ap-pop[open]").forEach(function(d){if(!d.contains(e.target))d.open=false})});'
+			. 'document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;document.querySelectorAll("details.ap-pop[open]").forEach(function(d){d.open=false;var s=d.querySelector("summary");if(s&&d.contains(document.activeElement))s.focus()})});'
+			. 'document.addEventListener("submit",function(e){var f=e.target;if(f&&f.classList&&f.classList.contains("ap-work__form"))setTimeout(function(){f.classList.add("is-busy")},0)});'
 			/* сортиране */
 			. 'document.querySelectorAll("table.ap-sort").forEach(function(t){t.querySelectorAll("thead th").forEach(function(th,i){if(i===0||!th.hasAttribute("data-sort"))return;th.classList.add("ap-sortable");th.addEventListener("click",function(){var tb=t.tBodies[0],rows=Array.prototype.slice.call(tb.rows),asc=th.classList.contains("desc");t.querySelectorAll("thead th").forEach(function(x){x.classList.remove("asc","desc")});th.classList.add(asc?"asc":"desc");rows.sort(function(a,b){var av=parseFloat((a.cells[i]||{}).getAttribute&&a.cells[i].getAttribute("data-v")||"-1"),bv=parseFloat((b.cells[i]||{}).getAttribute&&b.cells[i].getAttribute("data-v")||"-1");return asc?av-bv:bv-av});rows.forEach(function(r){tb.appendChild(r)})})})});'
 			/* групи колони */
@@ -1467,8 +1562,7 @@ final class Insights {
 	/** Стиловете на екрана (веднъж). */
 	public static function styles() {
 		static $done = false; if ( $done ) { return; } $done = true;
-		echo '<style>' . Cart_Work::styles() . '.ap-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef0f2;color:#50575e}.ap-pill--ok{background:#e6f6ec;color:#1a7f37}.ap-pill--warn{background:#fff3e0;color:#a86b09}.ap-pill--info{background:#e8f1fb;color:#1d5fa8}.ap-pill--muted{background:#f0f0f1;color:#8c8f94}' /* 1.51.0: пиловете и 📋 са и в 🧾 Сесии */
-			. '.ap-ins-views .ap-chip{font-size:12.5px;padding:8px 16px}'
+		echo '<style>.ap-ins-views .ap-chip{font-size:12.5px;padding:8px 16px}'
 			/* 1.23.0: дашбордът — групи карти с плочки; лентата отляво носи тона (добро / внимание / лошо / инфо), числата са в мастило */
 			. '.ap-dash{display:grid;gap:14px;margin:0 0 16px}.ap-stg{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(224,96,44,.09);padding:14px 20px 16px}.ap-stg__h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 10px}.ap-stg__t{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a08579;font-weight:800}.ap-stg__hint{font-size:11px;font-weight:700;color:#a08579}'
 			. '.ap-stg__g{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.ap-st{position:relative;background:#fdebe9;border-radius:14px;padding:12px 14px 12px 18px;min-height:88px;display:flex;flex-direction:column;gap:5px;overflow:hidden}.ap-st::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:#f47a49}'
@@ -1492,7 +1586,8 @@ final class Insights {
 			. '.ap-trend__svg{width:100%;height:220px;display:block}.ap-trend__legend{display:flex;gap:14px;flex-wrap:wrap;padding:6px 0 0;font-size:11.5px;font-weight:800;color:#a08579}.ap-trend__legend i{display:inline-block;width:12px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}.ap-trend__c select{font-size:12px;font-weight:700;border-radius:999px;border:0;background:#fdebe9;padding:4px 10px;margin-right:6px}'
 			. '.ap-gloss summary{cursor:pointer;list-style:none}.ap-gloss summary::-webkit-details-marker{display:none}.ap-gloss dl{columns:2;column-gap:28px;font-size:12.5px}.ap-gloss dt{font-weight:900;break-after:avoid}.ap-gloss dd{margin:0 0 10px;color:#6b5f58;font-weight:600}'
 			. '@media(max-width:900px){.ap-gloss dl{columns:1}.ap-fn__drop{padding-left:0}}'
-			. '@media(max-width:600px){.ap-stg__g{grid-template-columns:repeat(2,1fr)}.ap-st__v{font-size:21px}.ap-st--hero .ap-st__v{font-size:28px}.ap-sec--table .ap-sec__b table{min-width:560px}.ap-sec--table .ap-sec__b table th:first-child,.ap-sec--table .ap-sec__b table td:first-child{position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 0 #fdebe9}.ap-sec--table .ap-sec__b table.striped tbody tr:nth-child(odd) td:first-child{background:#fff8f5}}</style>';
+			. '@media(max-width:600px){.ap-stg__g{grid-template-columns:repeat(2,1fr)}.ap-st__v{font-size:21px}.ap-st--hero .ap-st__v{font-size:28px}.ap-sec--table .ap-sec__b table{min-width:560px}.ap-sec--table .ap-sec__b table th:first-child,.ap-sec--table .ap-sec__b table td:first-child{position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 0 #fdebe9}.ap-sec--table .ap-sec__b table.striped tbody tr:nth-child(odd) td:first-child{background:#fff8f5}}'
+			. Cart_Work::styles() . '</style>'; /* 1.53.0: бутоните (.ap-abtn), етикетите (.ap-pill), 📋 и екранът 🛒 — assets/insights-carts.css, накрая (по-силни от горните) */
 	}
 	/** 1.28.0 (т. 27): изоставените колички от FunnelKit по имейл (само без поръчка) — за фийда и списъка. Веднъж на заявка. */
 	public static function carts_by_email() {
@@ -1514,7 +1609,7 @@ final class Insights {
 			$chx = is_array( $s['ch'] ?? null ) ? $s['ch'] : null; $campc = ( $chx ? '<small><b>' . esc_html( $chx['l'] ) . '</b>' . ( '' !== $chx['d'] ? ' · ' . esc_html( $chx['d'] ) : '' ) . '</small><br>' : '' ) . ( ! empty( $s['camp'] ) ? '<small>' . esc_html( $s['camp'] ) . '</small>' : ( $chx ? '' : '<small>директно</small>' ) ) . ( $s['ref'] ? '<br><small>↩ ' . esc_html( $s['ref'] ) . '</small>' : '' );
 			$tl = '<div class="ap-tl">' . ( ! empty( $s['nosess'] ) ? ( Phone_Orders::is_phone_sid( $s['sid'] ) ? '<small title="поръчка, направена от оператор по телефона">📞 поръчка по телефон</small> ' : '<small title="поръчка преди 16.10 следобед или от стар promo.js (кеш): пътят до нея не е записан">🧾 само поръчката, сесията не е проследена</small> ' ) : '' ); foreach ( $s['timeline'] as $e ) { $cls = in_array( $e['ev'], array( 'created', 'paid', 'activated' ), true ) ? ' hi' : ( in_array( $e['ev'], array( 'add', 'order' ), true ) ? ' ord' : '' ); $tl .= '<span class="' . $cls . '" title="' . esc_attr( $e['t'] ) . '">' . esc_html( $e['l'] . ( $e['x'] ? ' ' . $e['x'] : '' ) ) . '</span>'; } $tl .= '</div>';
 			$onum = '#' . esc_html( $s['order']['number'] ?? '' ); $ord = $s['order'] ? ( self::$portal ? '<b>' . $onum . '</b>' : '<a href="' . esc_url( $s['order']['edit'] ) . '">' . $onum . '</a>' ) . '<br><small>' . esc_html( $s['order']['status'] ) . ' · ' . esc_html( number_format( (float) $s['order']['total'], 2, ',', '' ) ) . ' €</small>' : '<small>' . esc_html( $s['step_label'] ) . '</small>' . ( ! empty( $s['cart'] ) ? '<br><span class="ap-cart" title="изоставена количка във FunnelKit за същия имейл">🛒 количка: ' . esc_html( $s['cart'] ) . '</span>' : '' ); /* 1.28.0: в портала без линк към wp-admin */
-			if ( ! $s['order'] && '' !== (string) $s['email'] && ( self::ORDER[ $s['step'] ] ?? 0 ) >= self::ORDER['box'] && empty( $s['nosess'] ) ) { $ord .= '<br>' . Phone_Orders::buttons( 'sess', (int) $s['id'], $s['email'] ) . '<br>' . Cart_Work::widget( 'sess', (int) $s['id'], $s['email'], $wm[ (int) $s['id'] ] ?? null, $ret ); } /* 1.29.0: 📞 обаждане; 1.51.0: 📋 работата */
+			if ( ! $s['order'] && '' !== (string) $s['email'] && ( self::ORDER[ $s['step'] ] ?? 0 ) >= self::ORDER['box'] && empty( $s['nosess'] ) ) { $ord .= '<div class="ap-rowact">' . Phone_Orders::buttons( 'sess', (int) $s['id'], $s['email'] ) . Cart_Work::widget( 'sess', (int) $s['id'], $s['email'], $wm[ (int) $s['id'] ] ?? null, $ret ) . '</div>'; } /* 1.29.0: 📞 обаждане; 1.51.0: 📋 работата */
 			$h .= '<tr data-id="' . (int) $s['id'] . '" data-vis="' . esc_attr( (string) ( $s['visitor'] ?? '' ) ) . '"><td><b>' . esc_html( substr( $s['last'], 11, 5 ) ) . '</b><br><small>' . esc_html( substr( $s['started'], 0, 10 ) ) . ' · преди ' . esc_html( $s['ago'] ) . '</small></td><td>' . $who . '</td><td>' . $from . '</td><td>' . $campc . '</td><td>' . ( 'mobile' === $s['device'] ? '📱' : ( 'desktop' === $s['device'] ? '🖥️' : '—' ) ) . '</td><td>' . ( $s['box'] ? '<b>' . esc_html( $s['box_name'] ) . '</b>' : '<small>—</small>' ) . ( $s['items'] ? '<br><small>' . esc_html( implode( ', ', $s['items'] ) ) . '</small>' : '' ) . '</td><td>' . $tl . '</td><td>' . $ord . '</td></tr>';
 		}
 		return $h;
