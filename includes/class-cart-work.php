@@ -38,6 +38,9 @@ final class Cart_Work {
 	/** Филтърът „работа“ на екрана 🛒. */
 	const FILTERS = array( 'open' => 'отворени', 'callback' => 'за обаждане', 'done' => 'приключени', 'all' => 'всички' );
 	const LOG_MAX = 20;
+	/** 1.52.0 (скриптът): жестът за Вид 2 — ключ → етикет. */
+	const GESTURES = array( '' => 'без жест', 'gift' => '🎁 колагенова маска', 'ship' => '🚚 безплатна доставка', 'pct' => '💶 отстъпка' );
+	public static function gesture_label( $g ) { return self::GESTURES[ $g ] ?? (string) $g; }
 
 	public static function table() { global $wpdb; return $wpdb->prefix . 'ansa_promo_cart_work'; }
 	public static function label( $st ) { return self::STATUSES[ $st ][0] ?? ( '' === (string) $st ? self::STATUSES['new'][0] : (string) $st ); }
@@ -63,7 +66,7 @@ final class Cart_Work {
 	}
 	private static function row( $r ) {
 		$log = json_decode( (string) ( $r['log'] ?? '' ), true );
-		return array( 'id' => (int) $r['id'], 'src' => (string) $r['src'], 'src_id' => (int) $r['src_id'], 'email' => (string) $r['email'], 'status' => (string) $r['status'], 'note' => (string) $r['note'], 'callback_at' => (string) ( $r['callback_at'] ?? '' ), 'order_id' => (int) ( $r['order_id'] ?? 0 ), 'by' => (string) ( $r['by_user'] ?? '' ), 'updated_at' => (string) $r['updated_at'], 'created_at' => (string) $r['created_at'], 'log' => is_array( $log ) ? $log : array() );
+		return array( 'id' => (int) $r['id'], 'src' => (string) $r['src'], 'src_id' => (int) $r['src_id'], 'email' => (string) $r['email'], 'status' => (string) $r['status'], 'gesture' => (string) ( $r['gesture'] ?? '' ), 'note' => (string) $r['note'], 'callback_at' => (string) ( $r['callback_at'] ?? '' ), 'order_id' => (int) ( $r['order_id'] ?? 0 ), 'by' => (string) ( $r['by_user'] ?? '' ), 'updated_at' => (string) $r['updated_at'], 'created_at' => (string) $r['created_at'], 'log' => is_array( $log ) ? $log : array() );
 	}
 
 	/* ── запис ── */
@@ -76,7 +79,9 @@ final class Cart_Work {
 		if ( ! self::table_ok() ) { return array( false, 'Няма таблица за работата по количките (ansa_promo_cart_work) — деактивирай и активирай плъгина.' ); }
 		$src = 'sess' === ( $d['src'] ?? '' ) ? 'sess' : 'cart'; $id = (int) ( $d['id'] ?? 0 ); if ( $id <= 0 ) { return array( false, 'Количка: липсва ID.' ); }
 		$st = sanitize_key( (string) ( $d['status'] ?? 'new' ) ); if ( ! isset( self::STATUSES[ $st ] ) ) { $st = 'new'; }
-		$note = substr( trim( wp_strip_all_tags( (string) ( $d['note'] ?? '' ) ) ), 0, 500 );
+		$was = self::get( $src, $id );
+		$note = array_key_exists( 'note', $d ) ? substr( trim( wp_strip_all_tags( (string) $d['note'] ) ), 0, 500 ) : ( $was ? $was['note'] : '' ); /* 1.52.0: без подадена бележка — старата остава (автоматичното „възстановена“ от поръчката) */
+		$gest = array_key_exists( 'gesture', $d ) ? (string) $d['gesture'] : ( $was ? $was['gesture'] : '' ); if ( ! isset( self::GESTURES[ $gest ] ) ) { $gest = ''; }
 		$cb = self::parse_dt( (string) ( $d['cb'] ?? '' ) ); if ( 'callback' !== $st ) { $cb = ''; }
 		$order = (int) preg_replace( '/\D+/', '', (string) ( $d['order'] ?? '' ) );
 		/* редът: имейл + статус във FKA / сесията */
@@ -86,9 +91,9 @@ final class Cart_Work {
 		/* ✅ възстановена без посочена поръчка → търси се поръчка със същия имейл след количката */
 		if ( 'recovered' === $st && $order <= 0 && '' !== $email ) { $order = self::find_order( $email, $fka ? (string) $fka['created_time'] : '' ); }
 		if ( $order > 0 && function_exists( 'wc_get_order' ) ) { $o = wc_get_order( $order ); if ( ! $o ) { return array( false, 'Поръчка #' . $order . ' не съществува.' ); } if ( '' === $email && method_exists( $o, 'get_billing_email' ) ) { $email = strtolower( (string) $o->get_billing_email() ); } }
-		$was = self::get( $src, $id ); $now = current_time( 'mysql' ); $by = substr( (string) $by, 0, 64 );
-		$log = $was ? $was['log'] : array(); array_unshift( $log, array( 'at' => $now, 'by' => $by, 'st' => $st, 'note' => $note, 'cb' => $cb, 'order' => $order ) ); $log = array_slice( $log, 0, self::LOG_MAX );
-		$data = array( 'src' => $src, 'src_id' => $id, 'email' => substr( $email, 0, 191 ), 'status' => $st, 'note' => $note, 'callback_at' => '' !== $cb ? $cb : null, 'order_id' => $order > 0 ? $order : null, 'by_user' => $by, 'updated_at' => $now, 'log' => wp_json_encode( $log ) );
+		$now = current_time( 'mysql' ); $by = substr( (string) $by, 0, 64 );
+		$log = $was ? $was['log'] : array(); array_unshift( $log, array( 'at' => $now, 'by' => $by, 'st' => $st, 'note' => $note, 'cb' => $cb, 'order' => $order, 'g' => $gest ) ); $log = array_slice( $log, 0, self::LOG_MAX );
+		$data = array( 'src' => $src, 'src_id' => $id, 'email' => substr( $email, 0, 191 ), 'status' => $st, 'gesture' => $gest, 'note' => $note, 'callback_at' => '' !== $cb ? $cb : null, 'order_id' => $order > 0 ? $order : null, 'by_user' => $by, 'updated_at' => $now, 'log' => wp_json_encode( $log ) );
 		if ( $was ) { $r = $wpdb->update( self::table(), $data, array( 'id' => $was['id'] ) ); } else { $data['created_at'] = $now; $r = $wpdb->insert( self::table(), $data ); }
 		if ( false === $r ) { return array( false, 'Количка: записът не мина (' . $wpdb->last_error . ').' ); }
 		/* FunnelKit: възстановена / изгубена / пак recoverable; тагът на контакта */
@@ -96,7 +101,7 @@ final class Cart_Work {
 		if ( $fka ) { $fx = self::sync_fka( $fka, $st, $order ); }
 		if ( '' !== $email && class_exists( __NAMESPACE__ . '\\Cart_Sync' ) && Cart_Sync::enabled() && Cart_Sync::available() && ( self::is_done( $st ) || 'wrong' === $st ) ) { try { Cart_Sync::sync_email( $email, false, 'work' ); } catch ( \Throwable $e ) { /* тагът не е критичен */ } }
 		$what = ( 'cart' === $src ? 'Количка #' : 'Сесия #' ) . $id . ( '' !== $email ? ' (' . $email . ')' : '' );
-		return array( true, $what . ': ' . self::icon( $st ) . ' ' . self::label( $st ) . ( 'callback' === $st && '' !== $cb ? ' на ' . date_i18n( 'd.m H:i', strtotime( $cb ) ) : '' ) . ( $order > 0 ? ' · поръчка #' . $order : ( 'recovered' === $st ? ' · поръчка не е намерена по имейла — впиши я в полето' : '' ) ) . ( '' !== $note ? ' · „' . $note . '“' : '' ) . $fx );
+		return array( true, $what . ': ' . self::icon( $st ) . ' ' . self::label( $st ) . ( '' !== $gest ? ' · ' . self::gesture_label( $gest ) : '' ) . ( 'callback' === $st && '' !== $cb ? ' на ' . date_i18n( 'd.m H:i', strtotime( $cb ) ) : '' ) . ( $order > 0 ? ' · поръчка #' . $order : ( 'recovered' === $st ? ' · поръчка не е намерена по имейла — впиши я в полето' : '' ) ) . ( '' !== $note ? ' · „' . $note . '“' : '' ) . $fx );
 	}
 	/** Статусът във FunnelKit според работата. Връща текст за съобщението. */
 	private static function sync_fka( $fka, $st, $order ) {
@@ -144,6 +149,7 @@ final class Cart_Work {
 		$h = '<div class="ap-work"><span class="ap-pill' . ( $tone ? ' ap-pill--' . $tone : '' ) . '" title="' . esc_attr( $w ? ( $w['by'] ? $w['by'] . ' · ' : '' ) . $w['updated_at'] : 'още никой не е работил по нея' ) . '">' . self::icon( $st ) . ' ' . esc_html( $lbl ) . '</span>';
 		if ( $w ) {
 			if ( 'callback' === $st && $w['callback_at'] ) { $h .= '<br><small>🔁 ' . esc_html( date_i18n( 'd.m H:i', strtotime( $w['callback_at'] ) ) ) . '</small>'; }
+			if ( '' !== $w['gesture'] ) { $h .= '<br><small>' . esc_html( self::gesture_label( $w['gesture'] ) ) . '</small>'; }
 			if ( $w['order_id'] > 0 ) { $h .= '<br><small>поръчка #' . (int) $w['order_id'] . '</small>'; }
 			if ( '' !== $w['note'] ) { $h .= '<br><small class="ap-work__n">„' . esc_html( $w['note'] ) . '“</small>'; }
 			$h .= '<br><small class="ap-small">' . esc_html( ( $w['by'] ? $w['by'] . ' · ' : '' ) . date_i18n( 'd.m H:i', strtotime( $w['updated_at'] ) ) ) . '</small>';
@@ -151,13 +157,14 @@ final class Cart_Work {
 		ob_start(); Insights::action_form_open( 'cart_work' );
 		foreach ( array_merge( array( 'src' => $src, 'id' => (int) $id, 'email' => (string) $email ), $ret ) as $k => $v ) { if ( '' !== (string) $v ) { echo '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( (string) $v ) . '">'; } }
 		echo '<select name="status">'; foreach ( self::STATUSES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $st ?: 'new' ) ? ' selected' : '' ) . '>' . esc_html( $v[2] . ' ' . $v[0] ) . '</option>'; } echo '</select>';
-		echo '<input type="text" name="note" value="' . esc_attr( $w ? $w['note'] : '' ) . '" placeholder="бележка" maxlength="500">';
+		echo '<select name="gesture" title="жестът по скрипта — само за Вид 2 (колебае се); един на поръчка">'; foreach ( self::GESTURES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $w ? $w['gesture'] : '' ) ? ' selected' : '' ) . '>' . esc_html( 'жест: ' . $v ) . '</option>'; } echo '</select>';
+		echo '<input type="text" name="note" value="' . esc_attr( $w ? $w['note'] : '' ) . '" placeholder="мнение · въпроси · защо не е минала · обещано обаждане" maxlength="500" title="записките по скрипта: мнението за продуктите, въпросите и притесненията, защо поръчката не е завършена, предложен ли е жест, обещано обратно обаждане">';
 		echo '<label title="кога да се звъни пак (при „обратно обаждане“)">🔁 <input type="datetime-local" name="cb" value="' . esc_attr( $w && $w['callback_at'] ? str_replace( ' ', 'T', substr( $w['callback_at'], 0, 16 ) ) : '' ) . '"></label>';
 		echo '<label title="номер на поръчката при „възстановена“ — празно = търси се по имейла">📦 #<input type="text" name="order" value="' . esc_attr( $w && $w['order_id'] > 0 ? (string) $w['order_id'] : '' ) . '" size="6" inputmode="numeric"></label>';
 		echo '<button class="button button-primary">Запази</button> <span class="ap-work__q"><button class="ap-chip ap-chip--sm" name="status" value="noanswer" title="не вдига">📵</button><button class="ap-chip ap-chip--sm" name="status" value="recovered" title="възстановена — поръча (и във FunnelKit)">✅</button><button class="ap-chip ap-chip--sm" name="status" value="declined" title="отказала (във FunnelKit: изгубена)">✖</button></span></form>';
 		$form = ob_get_clean();
 		$hist = '';
-		if ( $w && count( $w['log'] ) > 1 ) { $hist = '<ul class="ap-work__h">'; foreach ( array_slice( $w['log'], 1, 6 ) as $l ) { $hist .= '<li><small>' . esc_html( date_i18n( 'd.m H:i', strtotime( $l['at'] ) ) . ' · ' . ( $l['by'] ?: '—' ) . ' · ' . self::label( $l['st'] ) . ( $l['note'] ? ' · „' . $l['note'] . '“' : '' ) ) . '</small></li>'; } $hist .= '</ul>'; }
+		if ( $w && count( $w['log'] ) > 1 ) { $hist = '<ul class="ap-work__h">'; foreach ( array_slice( $w['log'], 1, 6 ) as $l ) { $hist .= '<li><small>' . esc_html( date_i18n( 'd.m H:i', strtotime( $l['at'] ) ) . ' · ' . ( $l['by'] ?: '—' ) . ' · ' . self::label( $l['st'] ) . ( ! empty( $l['g'] ) ? ' · ' . self::gesture_label( $l['g'] ) : '' ) . ( $l['note'] ? ' · „' . $l['note'] . '“' : '' ) ) . '</small></li>'; } $hist .= '</ul>'; }
 		return $h . '<details class="ap-work__d"><summary>✎ ' . ( $w ? 'промени' : 'отбележи' ) . '</summary><div class="ap-work__p">' . $form . $hist . '</div></details></div>'; /* 1.51.2: панелът е absolute — не разширява колоната */
 	}
 	public static function styles() {
