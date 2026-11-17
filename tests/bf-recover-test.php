@@ -86,9 +86,9 @@ $ok( 'жив ваучер: в сесията, срокът не е пипан', 
 $lead( 'off@example.com', 'BF10-OFF1', -60 ); $cart( 'off@example.com', 'tokenOFF00001', $fee( 'BF10-OFF1' ) );
 $ctx = $req( array( 'bwfan-ab-id' => 'tokenOFF00001' ) ); $ok( 'причина off', 'off' === $why() ); $ok( 'recover_minutes = 0: изтеклият остава изтекъл', empty( $ctx['voucher'] ) && ! Leads::voucher_valid( 'BF10-OFF1', true ) && empty( $GLOBALS['cookies_set'][ Boost::AB_COOKIE ] ) );
 $save( $pub );
-/* 5) писмото НЕ е показало ваучера (няма го в снимката) → не се възобновява */
+/* 5) 1.54.6: кодът го няма в снимката (FKA я е презаписал без ваучера — случаят на живо) → възобновява се пак */
 $lead( 'nosnap@example.com', 'BF10-NOSN', -60 ); $cart( 'nosnap@example.com', 'tokenNOSNAP01', '' );
-$ctx = $req( array( 'bwfan-ab-id' => 'tokenNOSNAP01' ) ); $ok( 'причина not-in-email', 'not-in-email' === $why() ); $ok( 'изтекъл, но не е в снимката: не се възобновява', empty( $ctx['voucher'] ) && ! Leads::voucher_valid( 'BF10-NOSN', true ) );
+$ctx = $req( array( 'bwfan-ab-id' => 'tokenNOSNAP01' ) ); $ok( 'причина ok-revived и без кода в снимката', 'ok-revived' === $why() ); $ok( 'изтекъл и не е в снимката: възобновява се', 'BF10-NOSN' === ( $ctx['voucher']['code'] ?? '' ) && Leads::voucher_valid( 'BF10-NOSN', true ) );
 /* 6) използван ваучер / имейл с поръчка по промото → не */
 $lead( 'used@example.com', 'BF10-USED', -60, array( 'voucher_order_id' => 501 ) ); $cart( 'used@example.com', 'tokenUSED0001', $fee( 'BF10-USED' ) );
 $ctx = $req( array( 'bwfan-ab-id' => 'tokenUSED0001' ) ); $ok( 'причина no-voucher (използван)', 'no-voucher' === $why() ); $ok( 'използван ваучер: не се връща', empty( $ctx['voucher'] ) && ! Leads::voucher_valid( 'BF10-USED', true ) );
@@ -106,6 +106,8 @@ $save( $pub ); $ctx = $req( array( 'bwfan-ab-id' => 'tokenOVER0001' ) ); $ok( '�
 /* 8) два кода на един имейл: връща се този от снимката, не най-новият */
 $lead( 'two@example.com', 'BF10-AAAA', -900 ); $lead( 'two@example.com', 'BF10-BBBB', -300 ); $cart( 'two@example.com', 'tokenTWO00001', $fee( 'BF10-AAAA' ) );
 $ctx = $req( array( 'bwfan-ab-id' => 'tokenTWO00001' ) ); $ok( 'два кода: възобновен е този от писмото', 'BF10-AAAA' === ( $ctx['voucher']['code'] ?? '' ) && ! Leads::voucher_valid( 'BF10-BBBB', true ) );
+$lead( 'two2@example.com', 'BF10-CCCC', -900 ); $lead( 'two2@example.com', 'BF10-DDDD', -300 ); $cart( 'two2@example.com', 'tokenTWO00002', '' );
+$ctx = $req( array( 'bwfan-ab-id' => 'tokenTWO00002' ) ); $ok( 'два кода, нито един в снимката: най-новият', 'BF10-DDDD' === ( $ctx['voucher']['code'] ?? '' ) && ! Leads::voucher_valid( 'BF10-CCCC', true ) );
 /* 9) чужд / непознат / счупен токен; uid без количка */
 $ctx = $req( array( 'bwfan-ab-id' => 'nosuchtoken123' ) ); $ok( 'причина no-cart, записана в лога без да вдига брояча', 'no-cart' === $why() && 'no-cart' === Boost::recover_log()['last'][0]['why'] ); $ok( 'непознат токен: нищо, без бисквитка', empty( $ctx ) && empty( $GLOBALS['cookies_set'] ) );
 $ctx = $req( array( 'bwfan-ab-id' => "x' OR '1'='1" ) ); $ok( 'инжекция в токена: нищо', empty( $ctx ) );
