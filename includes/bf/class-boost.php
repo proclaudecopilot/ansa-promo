@@ -134,13 +134,23 @@ final class Boost {
 	const OPT_RECOVER     = 'ansa_promo_bf_recover_log';
 	const RECOVER_MAX_AGE = 259200; /* 3 дни */
 	private static $recover_done = false;
+	private static $recover_why  = ''; /* 1.54.5: защо (не) е върнат ваучерът — за header-а X-Ansa-Bf-Recover и лога в диагностиката */
 
 	private static function ab_token( $t ) { if ( ! is_scalar( $t ) ) { return ''; } $t = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $t ); return ( strlen( $t ) >= 8 && strlen( $t ) <= 64 ) ? $t : ''; }
-	public static function recover_log() { $l = get_option( self::OPT_RECOVER ); return is_array( $l ) && ! empty( $l['n'] ) ? $l : null; }
+	public static function recover_log() { $l = get_option( self::OPT_RECOVER ); return is_array( $l ) && ( ! empty( $l['n'] ) || ! empty( $l['last'] ) ) ? $l : null; }
+	/** 1.54.5: последните 20 опита: [t, why, email (маскиран), tok (първите 4 знака)] — най-новият е първи. */
+	private static function recover_note( $why, $email = '', $token = '', $ok = false, $revived = false ) {
+		self::$recover_why = (string) $why;
+		$l = get_option( self::OPT_RECOVER ); $l = is_array( $l ) ? $l : array(); $l['n'] = (int) ( $l['n'] ?? 0 ) + ( $ok ? 1 : 0 ); $l['revived'] = (int) ( $l['revived'] ?? 0 ) + ( $revived ? 1 : 0 ); if ( $ok ) { $l['at'] = current_time( 'mysql' ); }
+		$last = is_array( $l['last'] ?? null ) ? $l['last'] : array(); array_unshift( $last, array( 't' => current_time( 'mysql' ), 'why' => (string) $why, 'email' => '' !== (string) $email ? \AnsaPromo\Cart_Sync::mask( $email ) : '', 'tok' => substr( (string) $token, 0, 4 ) ) ); $l['last'] = array_slice( $last, 0, 20 );
+		update_option( self::OPT_RECOVER, $l, false );
+	}
+	public static function recover_why_label( $why ) { $m = array( 'ok-live' => 'върнат (жив)', 'ok-revived' => 'възобновен', 'in-session' => 'вече е в сесията', 'no-cart' => 'няма такава количка във FunnelKit', 'no-email' => 'количката е без имейл', 'no-voucher' => 'имейлът няма неизползван ваучер', 'off' => 'възобновяването е изключено / промото не върви', 'order' => 'количката вече е поръчка', 'old' => 'количката е по-стара от 3 дни', 'converted' => 'имейлът вече има поръчка по промото', 'not-in-email' => 'ваучерът не е в снимката на количката', 'db' => 'записът не мина', 'no-session' => 'няма WC сесия' ); return $m[ $why ] ?? (string) $why; }
 	/** woocommerce_init / wp_loaded: ?bwfan-ab-id= (или нашата бисквитка от предната заявка) → ваучерът в сесията. Веднъж на заявка. */
 	public static function recover_request() {
 		if ( self::$recover_done ) { return; }
-		if ( ( is_admin() && ! ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) || ! function_exists( 'WC' ) || ! WC()->session ) { return; }
+		if ( is_admin() && ! ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) { return; }
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) { if ( isset( $_GET['bwfan-ab-id'] ) && function_exists( 'doing_action' ) && doing_action( 'wp_loaded' ) && ! headers_sent() ) { header( 'X-Ansa-Bf-Recover: no-session' ); } return; }
 		$get = isset( $_GET['bwfan-ab-id'] ) ? self::ab_token( wp_unslash( $_GET['bwfan-ab-id'] ) ) : '';
 		$token = '' !== $get ? $get : ( isset( $_COOKIE[ self::AB_COOKIE ] ) ? self::ab_token( wp_unslash( $_COOKIE[ self::AB_COOKIE ] ) ) : '' );
 		if ( '' === $token ) { return; }
@@ -148,6 +158,9 @@ final class Boost {
 		try {
 			$ctx = Cart::ctx(); $cur = is_array( $ctx['voucher'] ?? null ) ? $ctx['voucher'] : null; $applied = false;
 			if ( ! $cur || ! Leads::voucher_valid( (string) $cur['code'] ) ) { $applied = (bool) self::recover( $token, isset( $_GET['bwfan-uid'] ) && is_scalar( $_GET['bwfan-uid'] ) ? (string) wp_unslash( $_GET['bwfan-uid'] ) : '' ); }
+			else { self::$recover_why = 'in-session'; }
+			/* 1.54.5: причината — само код, без данни; вижда я който държи линка (за проверка отвън) */
+			if ( '' !== $get && '' !== self::$recover_why && ! headers_sent() ) { header( 'X-Ansa-Bf-Recover: ' . preg_replace( '/[^a-z\-]/', '', self::$recover_why ) ); }
 			/* Бисквитката пази токена за ЕДНА следваща заявка: ако възстановяването на FKA подмени сесията, ваучерът се връща пак (и спира дотам). */
 			if ( '' !== $get && $applied ) { self::ab_cookie( $token, time() + HOUR_IN_SECONDS ); }
 			elseif ( '' === $get ) { self::ab_cookie( '', time() - DAY_IN_SECONDS ); }
@@ -168,35 +181,35 @@ final class Boost {
 	}
 	/** token (+uid) → ваучерът на клиента в контекста на сесията. Връща [code, revived, exp, email] или null (няма какво да се върне). */
 	public static function recover( $token, $uid = '' ) {
-		$cart = self::fka_cart( $token, $uid ); if ( ! $cart ) { return null; }
-		$email = strtolower( sanitize_email( (string) ( $cart['email'] ?? '' ) ) ); if ( ! is_email( $email ) ) { return null; }
+		$cart = self::fka_cart( $token, $uid ); if ( ! $cart ) { self::recover_note( 'no-cart', '', $token ); return null; }
+		$email = strtolower( sanitize_email( (string) ( $cart['email'] ?? '' ) ) ); if ( ! is_email( $email ) ) { self::recover_note( 'no-email', '', $token ); return null; }
 		$cfg = Config::get_published(); $row = self::voucher_for( $email ); $revived = false;
-		if ( ! $row ) { $row = self::revive_for_cart( $email, $cart, $cfg ); $revived = (bool) $row; }
-		if ( ! $row ) { return null; }
+		if ( ! $row ) { $why = ''; $row = self::revive_for_cart( $email, $cart, $cfg, $why ); $revived = (bool) $row; if ( ! $row ) { self::recover_note( $why, $email, $token ); return null; } }
 		self::apply_row( $row, $cfg );
-		$l = self::recover_log() ?: array( 'n' => 0, 'revived' => 0 ); $l['n'] = (int) $l['n'] + 1; $l['revived'] = (int) ( $l['revived'] ?? 0 ) + ( $revived ? 1 : 0 ); $l['at'] = current_time( 'mysql' ); update_option( self::OPT_RECOVER, $l, false );
+		self::recover_note( $revived ? 'ok-revived' : 'ok-live', $email, $token, true, $revived );
 		$out = array( 'code' => (string) $row['voucher'], 'revived' => $revived, 'exp' => (int) strtotime( (string) $row['voucher_exp'] . ' UTC' ), 'email' => $email );
 		do_action( 'ansa_promo_bf_voucher_recovered', $out, $row, $cart );
 		return $out;
 	}
 	/** Изтеклият ваучер, който писмото е показало в количката → срокът му става клик + cold.recover_minutes. Връща обновения ред или null. */
-	private static function revive_for_cart( $email, $cart, $cfg ) {
+	private static function revive_for_cart( $email, $cart, $cfg, &$why = '' ) {
 		global $wpdb; $min = (int) ( $cfg['cold']['recover_minutes'] ?? 0 );
-		if ( $min <= 0 || empty( $cfg['enabled'] ) || 'over' === Config::phase_now( $cfg ) ) { return null; }
-		if ( (int) ( $cart['order_id'] ?? 0 ) > 0 ) { return null; } /* количката вече е поръчка */
-		$mod = strtotime( (string) ( $cart['last_modified'] ?? '' ) . ' UTC' ); if ( $mod && $mod < time() - (int) apply_filters( 'ansa_promo_bf_recover_max_age', self::RECOVER_MAX_AGE, $cart ) ) { return null; }
+		if ( $min <= 0 || empty( $cfg['enabled'] ) || 'over' === Config::phase_now( $cfg ) ) { $why = 'off'; return null; }
+		if ( (int) ( $cart['order_id'] ?? 0 ) > 0 ) { $why = 'order'; return null; } /* количката вече е поръчка */
+		$mod = strtotime( (string) ( $cart['last_modified'] ?? '' ) . ' UTC' ); if ( $mod && $mod < time() - (int) apply_filters( 'ansa_promo_bf_recover_max_age', self::RECOVER_MAX_AGE, $cart ) ) { $why = 'old'; return null; }
 		$t = Schema::table( 'leads' );
-		if ( (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE promo = %s AND email = %s AND converted_order_id IS NOT NULL", Leads::PROMO, $email ) ) > 0 ) { return null; }
+		if ( (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE promo = %s AND email = %s AND converted_order_id IS NOT NULL", Leads::PROMO, $email ) ) > 0 ) { $why = 'converted'; return null; }
 		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE promo = %s AND email = %s AND voucher <> '' AND voucher_order_id IS NULL ORDER BY id DESC LIMIT 10", Leads::PROMO, $email ), ARRAY_A );
+		if ( ! $rows ) { $why = 'no-voucher'; return null; }
 		$snap = implode( ' ', array_filter( $cart, 'is_scalar' ) ); /* снимката: FKA пази таксите на количката (името на таксата носи кода) */
 		foreach ( $rows as $row ) {
 			$code = (string) $row['voucher']; if ( '' === $code || false === stripos( $snap, $code ) ) { continue; }
 			$exp = max( (int) strtotime( (string) $row['voucher_exp'] . ' UTC' ), time() + $min * MINUTE_IN_SECONDS ); $sql = gmdate( 'Y-m-d H:i:s', $exp );
-			if ( false === $wpdb->update( $t, array( 'voucher_exp' => $sql ), array( 'id' => (int) $row['id'] ), array( '%s' ), array( '%d' ) ) ) { return null; }
+			if ( false === $wpdb->update( $t, array( 'voucher_exp' => $sql ), array( 'id' => (int) $row['id'] ), array( '%s' ), array( '%d' ) ) ) { $why = 'db'; return null; }
 			$row['voucher_exp'] = $sql; Leads::voucher_valid( $code, true );
 			return $row;
 		}
-		return null;
+		$why = 'not-in-email'; return null;
 	}
 
 	/* ── личният линк: ?u=<base64url(email)>.<hmac> ── */
