@@ -62,7 +62,8 @@ final class Phone_Orders {
 	/** Продуктът подарък: по ID, по SKU, по име (search). [id, name, price] или null. */
 	public static function gift_product() {
 		if ( false !== self::$gift ) { return self::$gift; } self::$gift = null; $s = self::settings(); if ( ! function_exists( 'wc_get_product' ) ) { return null; }
-		$id = (int) $s['gift_id']; if ( ! $id && '' !== $s['gift_sku'] ) { $id = Catalog::find_by_sku( $s['gift_sku'] ); }
+		$id = (int) $s['gift_id']; if ( ! $id && 0 === strpos( $s['gift_sku'], 'PATCH01' ) && class_exists( __NAMESPACE__ . '\\BF\\Page' ) ) { $s['gift_sku'] = ''; } /* 1.52.1: старият подарък по подразбиране (EyeFresh) отстъпва на маската по скрипта */
+		if ( ! $id && '' !== $s['gift_sku'] ) { $id = Catalog::find_by_sku( $s['gift_sku'] ); }
 		if ( ! $id && '' !== $s['gift_sku'] ) { $r = Catalog::search( preg_replace( '/^[A-Z0-9]+\s+/', '', $s['gift_sku'] ) ?: $s['gift_sku'], 1 ); if ( $r ) { $id = (int) $r[0]['id']; } }
 		if ( ! $id && class_exists( __NAMESPACE__ . '\\BF\\Page' ) ) { try { $mk = BF\Page::mask( BF\Config::get_published() ); if ( $mk ) { $id = (int) ( $mk['vid'] ?: $mk['id'] ); } } catch ( \Throwable $e ) {} } /* 1.52.0: скриптът — „колагенова маска като подарък“ */
 		if ( $id ) { $p = wc_get_product( $id ); if ( $p && $p->is_purchasable() ) { self::$gift = array( 'id' => (int) $p->get_id(), 'pid' => (int) ( $p->get_parent_id() ?: $p->get_id() ), 'name' => (string) $p->get_name(), 'price' => (float) $p->get_price(), 'stock' => (bool) $p->is_in_stock() ); } }
@@ -149,7 +150,8 @@ final class Phone_Orders {
 	/** 1.52.0: количката вече съдържа маската (подарък или купена)? $lines = редовете на Cart_Sync::parse_items. */
 	public static function has_mask( $lines ) {
 		$g = self::gift_product(); $ids = $g ? array_filter( array( (int) $g['id'], (int) ( $g['pid'] ?? 0 ) ) ) : array();
-		foreach ( (array) $lines as $l ) { if ( 'mask' === (string) ( $l['key'] ?? '' ) || 'pgift' === (string) ( $l['role'] ?? '' ) ) { return true; } if ( $ids && ( in_array( (int) ( $l['vid'] ?? 0 ), $ids, true ) || in_array( (int) ( $l['pid'] ?? 0 ), $ids, true ) ) ) { return true; } }
+		foreach ( (array) $lines as $l ) { if ( 'mask' === (string) ( $l['key'] ?? '' ) || 'pgift' === (string) ( $l['role'] ?? '' ) ) { return true; } if ( $ids && ( in_array( (int) ( $l['vid'] ?? 0 ), $ids, true ) || in_array( (int) ( $l['pid'] ?? 0 ), $ids, true ) ) ) { return true; }
+			$n = function_exists( 'mb_strtolower' ) ? mb_strtolower( (string) ( $l['name'] ?? '' ) ) : strtolower( (string) ( $l['name'] ?? '' ) ); if ( false !== strpos( $n, 'collamask' ) || false !== strpos( $n, 'колагенова маска' ) ) { return true; } } /* 1.52.1: и по името — купена маска в количка от магазина */
 		return false;
 	}
 	/** 1.52.0 (скриптът, „1. Преди да звъннеш — има ли и други поръчки, редовен ли е?“): профилът на клиента по billing имейл —
