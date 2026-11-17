@@ -3,12 +3,12 @@
  * 🛒 Изоставени колички в портала (📈 Insights URL) като статична страница — за Playwright скрийншоти и проверки на дизайна.
  * Без WordPress: $wpdb е SQLite в паметта, количките на FunnelKit, работата на екипа и поръчките са измислени (но правдоподобни).
  * php tests/harness/carts-page.php [query] > /tmp/carts.html ; node tests/harness/carts-check.js /tmp/carts.html [shots-dir]
- *   query — като в адреса: "work=all", "q=ivanka", "kind=season&work=done" …
+ *   query — като в адреса: "work=all", "q=ivanka", "cust=regular", "kind=season&work=done" …; "admin=1" = рамката на wp-admin; "profile=<ID>" = JSON-ът на панела „👤 Профил“
  */
 require dirname( __DIR__ ) . '/wpstub.php';
 use AnsaPromo\Insights; use AnsaPromo\Insights_Portal; use AnsaPromo\Cart; use AnsaPromo\Cart_Work;
 
-$GLOBALS['opts'][ \AnsaPromo\Plugin::OPTION ] = array( 'draft' => null, 'published' => array( 'page_id' => 42, 'name' => 'Сезонът на ansa™', 'enabled' => true ), 'published_at' => time(), 'version' => 1, 'history' => array() ); /* промо страницата има ID → „✏️ Редактирай“ се показва за количките от Сезона */
+$GLOBALS['opts'][ \AnsaPromo\Plugin::OPTION ] = array( 'draft' => null, 'published' => array( 'page_id' => 42, 'name' => 'Сезонът на ansa™', 'enabled' => true, 'tombola' => array( 'statuses' => array( 'completed' ) ) ), 'published_at' => time(), 'version' => 1, 'history' => array() ); /* промо страницата има ID → „✏️ Редактирай“ се показва за количките от Сезона */
 define( 'ARRAY_A', 'ARRAY_A' ); define( 'ANSA_PROMO_DB_VER', '11' );
 function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF-8' ); } function esc_attr( $s ) { return esc_html( $s ); } function esc_url( $u ) { return (string) $u; } function esc_textarea( $s ) { return esc_html( $s ); }
 function admin_url( $p = '' ) { return 'http://x/wp-admin/' . $p; } function add_query_arg( $a, $u ) { return $u . ( strpos( $u, '?' ) === false ? '?' : '&' ) . http_build_query( $a ); }
@@ -17,12 +17,13 @@ function human_time_diff( $a, $b ) { return 'малко'; } function wp_salt( $s
 function current_user_can( $c ) { return false; } function wp_date( $f, $t = null ) { return date( $f, $t ?? time() ); } function is_admin() { return false; } function is_ssl() { return true; } function home_url( $p = '/' ) { return 'https://ansa.test' . $p; }
 function is_user_logged_in() { return false; } function delete_option( $k ) { unset( $GLOBALS['opts'][ $k ] ); return true; } function wp_next_scheduled() { return 1; } function wp_unslash( $v ) { return $v; }
 function get_transient( $k ) { return $GLOBALS['tr'][ $k ] ?? false; } function set_transient( $k, $v, $t = 0 ) { $GLOBALS['tr'][ $k ] = $v; return true; } function wp_timezone() { return new DateTimeZone( date_default_timezone_get() ); }
-function wc_get_order_status_name( $s ) { return $s; } function wc_get_order_statuses() { return array( 'wc-processing' => 'Pr', 'wc-completed' => 'C' ); } function wc_get_product_id_by_sku( $sku ) { return 0; }
+function wc_get_order_status_name( $s ) { return array( 'completed' => 'Доставена', 'processing' => 'Обработва се', 'cancelled' => 'Отказана', 'shipped' => 'Изпратена' )[ $s ] ?? $s; } function wc_get_order_statuses() { return array( 'wc-processing' => 'Pr', 'wc-completed' => 'C' ); } function wc_get_product_id_by_sku( $sku ) { return 0; }
 class HFakeDate { private $d; function __construct( $d ) { $this->d = $d; } function date( $f ) { return date( $f, strtotime( $this->d ) ); } }
-class HFakeOrder { public $id; public $email; public $date; public $total; function __construct( $id, $email, $date, $total ) { $this->id = $id; $this->email = $email; $this->date = $date; $this->total = $total; } function get_id() { return $this->id; } function get_status() { return 'completed'; } function get_total() { return $this->total; } function get_date_created() { return new HFakeDate( $this->date ); } function get_billing_email() { return $this->email; } function get_billing_first_name() { return ''; } function get_billing_last_name() { return ''; } function get_billing_phone() { return ''; } function get_meta( $k ) { return ''; } }
+class HFakeItem { private $n; private $q; function __construct( $n, $q ) { $this->n = $n; $this->q = $q; } function get_name() { return $this->n; } function get_quantity() { return $this->q; } }
+class HFakeOrder { public $id; public $email; public $date; public $total; public $st; public $items; function __construct( $id, $email, $date, $total, $st = 'completed', $items = array() ) { $this->id = $id; $this->email = $email; $this->date = $date; $this->total = $total; $this->st = $st; $this->items = $items; } function get_id() { return $this->id; } function get_order_number() { return (string) $this->id; } function get_status() { return $this->st; } function get_total() { return $this->total; } function get_date_created() { return new HFakeDate( $this->date ); } function get_billing_email() { return $this->email; } function get_billing_first_name() { return ''; } function get_billing_last_name() { return ''; } function get_billing_phone() { return ''; } function get_meta( $k ) { return ''; } function get_items() { $o = array(); foreach ( $this->items as $n => $q ) { $o[] = new HFakeItem( $n, $q ); } return $o; } }
 $GLOBALS['orders'] = array();
 function wc_get_order( $id ) { return $GLOBALS['orders'][ (int) $id ] ?? null; }
-function wc_get_orders( $a ) { $out = array(); foreach ( $GLOBALS['orders'] as $id => $o ) { if ( ! empty( $a['billing_email'] ) && strtolower( $a['billing_email'] ) !== $o->email ) { continue; } $out[ $id ] = $o; } krsort( $out ); return 'ids' === ( $a['return'] ?? '' ) ? array_keys( $out ) : array_values( $out ); }
+function wc_get_orders( $a ) { $out = array(); foreach ( $GLOBALS['orders'] as $id => $o ) { if ( ! empty( $a['billing_email'] ) && strtolower( $a['billing_email'] ) !== $o->email ) { continue; } $out[ $id ] = $o; } uasort( $out, function ( $a, $b ) { return strcmp( $b->date, $a->date ); } ); if ( ! empty( $a['limit'] ) && $a['limit'] > 0 ) { $out = array_slice( $out, 0, (int) $a['limit'], true ); } return 'ids' === ( $a['return'] ?? '' ) ? array_keys( $out ) : array_values( $out ); }
 class HFakeProduct { private $n; function __construct( $n ) { $this->n = $n; } function get_name() { return $this->n; } }
 $GLOBALS['pnames'] = array( 501 => 'ansa™ Daily Greens', 502 => 'ansa™ Витамин D3 + K2', 503 => 'ansa™ Магнезий Бисглицинат', 504 => 'ansa™ Колаген Sakura', 505 => 'ansa™ Омега-3', 9 => 'Книга „Сезонът на ansa“', 20 => 'Таен козметичен сет', 601 => 'ansa™ Daily Greens — оферта Черен петък', 602 => 'ansa™ – CollaMask - Попиваща колагенова маска', 701 => 'ansa™ Пробиотик 30 капсули', 702 => 'ansa™ EyeFresh пачове' );
 function wc_get_product( $id ) { return isset( $GLOBALS['pnames'][ (int) $id ] ) ? new HFakeProduct( $GLOBALS['pnames'][ (int) $id ] ) : null; }
@@ -74,7 +75,16 @@ $id['l'] = $C( 'viktoria.angelova@gmail.com', 1, 0, 60 * 170, 60 * 169, 247.5, $
 $wpdb->insert( 'wp_ansa_promo_leads', array( 'email' => 'maria.georgieva@gmail.com' ) ); $wpdb->insert( 'wp_ansa_promo_leads', array( 'email' => 'samo.sesia@abv.bg' ) );
 foreach ( array( array( 'hsessM001', 1, 'full', 60 * 27, '["dg","dg","vit"]' ), array( 'hsessS001', 2, 'box', 60 * 3, '["dg"]' ) ) as $x ) { $wpdb->insert( 'wp_ansa_promo_sessions', array( 'sid' => $x[0], 'started_at' => $ago( $x[3] + 12 ), 'last_at' => $ago( $x[3] ), 'step' => $x[2], 'ip' => '10.0.0.' . $x[1], 'device' => 'mobile', 'box' => 'm', 'lead_id' => $x[1], 'items' => $x[4], 'src' => 'facebook', 'med' => 'paid', 'camp' => 'sezon-sakura' ) ); }
 /* ── предишните поръчки (редовен / нов) ── */
-foreach ( array( array( 8001, 'maria.georgieva@gmail.com', '-40 days', 96.4 ), array( 8002, 'maria.georgieva@gmail.com', '-120 days', 54 ), array( 8003, 'maria.georgieva@gmail.com', '-200 days', 160 ), array( 8004, 'tsvetelina.koleva@gmail.com', '-15 days', 71.5 ), array( 8005, 'viktoria.angelova@gmail.com', '-60 days', 310 ), array( 8006, 'viktoria.angelova@gmail.com', '-90 days', 120 ), array( 9101, 'silviya.todorova@abv.bg', '-20 hours', 89.4 ) ) as $o ) { $GLOBALS['orders'][ $o[0] ] = new HFakeOrder( $o[0], $o[1], date( 'Y-m-d H:i:s', strtotime( $o[2] ) ), $o[3] ); }
+foreach ( array(
+	array( 8001, 'maria.georgieva@gmail.com', '-40 days', 96.4, 'completed', array( 'ansa™ Daily Greens' => 2, 'ansa™ Витамин D3 + K2' => 1 ) ),
+	array( 8002, 'maria.georgieva@gmail.com', '-120 days', 54, 'completed', array( 'ansa™ Магнезий Бисглицинат' => 2 ) ),
+	array( 8003, 'maria.georgieva@gmail.com', '-200 days', 160, 'completed', array( 'ansa™ Daily Greens' => 3, 'ansa™ Омега-3' => 2, 'ansa™ – CollaMask - Попиваща колагенова маска' => 1 ) ),
+	array( 8007, 'maria.georgieva@gmail.com', '-150 days', 48, 'cancelled', array( 'ansa™ Пробиотик 30 капсули' => 2 ) ),
+	array( 8004, 'tsvetelina.koleva@gmail.com', '-15 days', 71.5, 'processing', array( 'ansa™ Колаген Sakura' => 1, 'ansa™ EyeFresh пачове' => 1 ) ),
+	array( 8005, 'viktoria.angelova@gmail.com', '-60 days', 310, 'completed', array( 'ansa™ Колаген Sakura' => 5, 'Таен козметичен сет' => 1 ) ),
+	array( 8006, 'viktoria.angelova@gmail.com', '-90 days', 120, 'completed', array( 'ansa™ Колаген Sakura' => 2, 'ansa™ Daily Greens' => 1 ) ),
+	array( 9101, 'silviya.todorova@abv.bg', '-20 hours', 89.4, 'processing', array( 'ansa™ Daily Greens' => 3 ) ),
+) as $o ) { $GLOBALS['orders'][ $o[0] ] = new HFakeOrder( $o[0], $o[1], date( 'Y-m-d H:i:s', strtotime( $o[2] ) ), $o[3], $o[4], $o[5] ); }
 
 /* ── работата на екипа ── */
 Cart_Work::save( array( 'src' => 'cart', 'id' => $id['b'], 'status' => 'noanswer', 'note' => 'звънях 2 пъти, не вдига' ), 'maria' );
@@ -94,7 +104,9 @@ if ( ! empty( $qs['admin'] ) ) { /* admin=1: същият екран в рамк
 	echo '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="' . $a . 'fonts/nunito.css"><link rel="stylesheet" href="' . $a . 'admin-app.css"></head><body><div id="ansa-promo-app" class="ap-tab-insights"><aside class="ap-nav"><div class="ap-brand"><span class="dot"></span>ansa™ Промо<small>wp-admin</small></div></aside><div class="ap-page ap-page--insights"><div class="ap-top"><h1>📈 Insights<small>wp-admin</small></h1></div><div class="ap-body"><div class="ap-body-inner ap-body-inner--wide">' . $inner . '</div></div></div></div></body></html>';
 	return;
 }
-Insights::$portal = true; if ( 'sessions' === $_GET['view'] ) { $_GET += array( 'from' => date( 'Y-m-d', $now - 5 * 86400 ), 'to' => date( 'Y-m-d' ) ); }
+Insights::$portal = true;
+if ( ! empty( $qs['profile'] ) ) { echo json_encode( array( 'success' => true, 'data' => Insights::customer_payload( 'cart', (int) $qs['profile'] ) ), JSON_UNESCAPED_UNICODE ); return; } /* profile=<ID на количка>: отговорът на ajax-а за панела „👤 Профил“ */
+if ( 'sessions' === $_GET['view'] ) { $_GET += array( 'from' => date( 'Y-m-d', $now - 5 * 86400 ), 'to' => date( 'Y-m-d' ) ); }
 $m = new ReflectionMethod( Insights_Portal::class, 'page_html' ); $m->setAccessible( true ); $html = $m->invoke( null );
 if ( ! empty( $qs['msg'] ) ) { /* съобщението след действие идва от адреса — вече е в страницата */ }
 $assets = 'file://' . dirname( __DIR__, 2 ) . '/assets/';

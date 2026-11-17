@@ -70,6 +70,7 @@ final class Insights {
 		add_action( 'wp_ajax_ansa_promo_beacon', array( __CLASS__, 'ajax_beacon' ) );
 		add_action( 'wp_ajax_nopriv_ansa_promo_beacon', array( __CLASS__, 'ajax_beacon' ) );
 		add_action( 'wp_ajax_ansa_promo_insights_feed', array( __CLASS__, 'ajax_feed' ) );
+		add_action( 'wp_ajax_ansa_promo_insights_customer', array( __CLASS__, 'ajax_customer' ) ); /* 1.54.0: 👤 профилът на клиента в 🛒 */
 		add_action( 'wp_ajax_ansa_promo_insights_selftest', array( __CLASS__, 'ajax_selftest' ) ); /* 1.17.1 */
 		add_action( 'wp_ajax_ansa_promo_insights_backfill', array( __CLASS__, 'ajax_backfill' ) ); /* 1.21.1: сверка с поръчките */
 		add_action( 'ansa_promo_order_created', array( __CLASS__, 'on_order' ), 10, 2 );
@@ -838,7 +839,7 @@ final class Insights {
 		$p = self::period(); $chips = '';
 		foreach ( self::quick_ranges() as $k => $v ) { $chips .= '<a class="ap-chip' . ( (string) $k === $p['key'] ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'from' => $v[0], 'to' => $v[1] ) ) ) . '">' . esc_html( $v[2] ) . '</a>'; }
 		$today = current_time( 'Y-m-d' ); $view = self::current_view();
-		$keep = ''; foreach ( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work' ) ) as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $keep .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } }
+		$keep = ''; foreach ( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work', 'cust' ) ) as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $keep .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } }
 		return '<div class="ap-actions ap-period" style="padding:0 0 12px"><div class="ap-chips">' . $chips . '</div>'
 			. '<form method="get" action="' . esc_url( self::$portal ? Insights_Portal::url() : admin_url( 'admin.php' ) ) . '" class="ap-ins-range">' . ( self::$portal ? '' : '<input type="hidden" name="page" value="' . esc_attr( Plugin::MENU_SLUG ) . '"><input type="hidden" name="tab" value="insights">' ) . '<input type="hidden" name="view" value="' . esc_attr( $view ) . '">' . $keep
 			. '<label>от <input type="date" name="from" value="' . esc_attr( $p['from'] ) . '" max="' . esc_attr( $today ) . '"></label><label>до <input type="date" name="to" value="' . esc_attr( $p['to'] ) . '" max="' . esc_attr( $today ) . '"></label><button class="button">Покажи</button></form><span class="sp"></span>' . $extra . '</div>';
@@ -979,7 +980,7 @@ final class Insights {
 		/* 1.28.0: периодът и филтрите вървят с линковете (ако не са подменени); null в $args = махни */
 		$keep = array(); $g = $_GET;
 		if ( ! isset( $args['from'] ) && ! isset( $args['to'] ) && ! isset( $args['days'] ) && null !== self::$period && self::$period_explicit ) { $keep['from'] = self::$period['from']; $keep['to'] = self::$period['to']; }
-		foreach ( array_merge( array( 'view', 'q', 'kind', 'work' ), self::FILTER_KEYS ) as $k ) { if ( isset( $g[ $k ] ) && '' !== $g[ $k ] && ! array_key_exists( $k, $args ) ) { $keep[ $k ] = sanitize_text_field( (string) wp_unslash( $g[ $k ] ) ); } } /* 1.50.2: q = търсенето на 🛒 */
+		foreach ( array_merge( array( 'view', 'q', 'kind', 'work', 'cust' ), self::FILTER_KEYS ) as $k ) { if ( isset( $g[ $k ] ) && '' !== $g[ $k ] && ! array_key_exists( $k, $args ) ) { $keep[ $k ] = sanitize_text_field( (string) wp_unslash( $g[ $k ] ) ); } } /* 1.50.2: q = търсенето на 🛒 */
 		if ( isset( $keep['view'] ) && 'history' === $keep['view'] ) { $keep['view'] = 'sessions'; }
 		$args = array_merge( $keep, $args ); foreach ( $args as $k => $v ) { if ( null === $v || '' === $v ) { unset( $args[ $k ] ); } }
 		if ( isset( $args['days'] ) ) { unset( $args['from'], $args['to'] ); }
@@ -1127,9 +1128,15 @@ final class Insights {
 		/* 1.53.0 (човекът: „претъпкано, не можеш да се ориентираш, няма ясна йерархия, не се знае кое се цъка“): екранът е опашка за обаждане —
 		   ① лента (търсене · период · вид) ② четири числа, които водят към списъка ③ табове „работа“ с броячи ④ редове: клиент → количка → сума → състояние → действие.
 		   Правилото: заоблен бутон с цвят/контур = цъка се; малък етикет с прави ъгли = само информация. */
-		$h = '<div class="apc">' . self::carts_toolbar( $rg, $q, $kind );
+		$cf = self::carts_cust(); /* 1.54.0: клиентът — всички / редовни (имат предишна поръчка) / нови */
+		$h = '<div class="apc">' . self::carts_toolbar( $rg, $q, $kind, $cf );
 		if ( null === $rows ) { return $h . '<div class="apc-card"><div class="apc-empty"><b>Няма таблица на FunnelKit Automations</b><p>Изоставените колички се записват от FunnelKit (<code>bwfan_abandonedcarts</code>), не от промото.</p></div></div></div>'; }
 		$now = current_time( 'timestamp' ); $boxes = self::box_names(); $tag = Cart_Sync::tag_name(); $ret = self::action_return_fields();
+		/* 1.54.0: редовен / нов за ВСИЧКИ редове (една заявка) — преди плочките и табовете, за да броят само избраните клиенти */
+		$cust = self::carts_customers( $rows ); $cn = array( 'regular' => 0, 'new' => 0 );
+		foreach ( $rows as $x ) { $cn[ ! empty( $cust[ (int) $x['id'] ]['regular'] ) ? 'regular' : 'new' ]++; }
+		if ( 'all' !== $cf ) { $rows = array_values( array_filter( $rows, function ( $x ) use ( $cust, $cf ) { return ( 'regular' === $cf ) === ! empty( $cust[ (int) $x['id'] ]['regular'] ); } ) ); }
+		$cl = 'regular' === $cf ? ' · редовни клиенти' : ( 'new' === $cf ? ' · нови клиенти' : '' );
 		$s = Cart_Sync::abandoned_stats( $rows ); $all_n = count( $rows );
 		$wm = Cart_Work::get_many( 'cart', array_map( function ( $x ) { return (int) $x['id']; }, $rows ) );
 		$cnt = Cart_Work::filter_counts( $rows, $wm );
@@ -1147,7 +1154,6 @@ final class Insights {
 			usort( $rows, function ( $a, $b ) use ( $wm, $now ) { return (int) Cart_Work::is_due( $wm[ (int) $b['id'] ] ?? null, $now ) <=> (int) Cart_Work::is_due( $wm[ (int) $a['id'] ] ?? null, $now ); } );
 		}
 		$steps = self::steps_by_email( array_map( function ( $x ) { return (string) $x['email']; }, $rows ) );
-		$cust = Phone_Orders::customers( array_map( function ( $x ) { return (string) $x['email']; }, $rows ) ); /* 1.52.0 (скриптът): редовен / нов */
 		$n = count( $rows ); $word = function ( $c ) { return 1 === (int) $c ? 'количка' : 'колички'; };
 
 		/* ② числата */
@@ -1159,7 +1165,8 @@ final class Insights {
 			. self::carts_kpi( 'Възстановени', $s['recovered'], '<b>' . esc_html( self::money( $s['sum_recovered'] ) ) . '</b> · ' . self::pct( $s['recovered'], max( 1, $s['all'] - $s['open'] ) ) . ' от приключилите' . ( $team ? ' · <span title="отбелязани от екипа след обаждане">📋 от екипа ' . $team . '</span>' : '' ), 'ok', self::url( array( 'work' => 'done' ) ), 'done' === $work, 'виж ги' )
 			. '</div>';
 		$h .= '<p class="apc-fk"><span class="apc-fk__l" title="Данните са от FunnelKit Automations (таблицата на изоставените колички). Количка се записва, когато човекът напише имейла си в чекаута.">FunnelKit</span>'
-			. '<span><b>' . (int) $s['all'] . '</b> ' . $word( $s['all'] ) . ' · ' . esc_html( $kl ) . '</span>'
+			. '<span><b>' . (int) $s['all'] . '</b> ' . $word( $s['all'] ) . ' · ' . esc_html( $kl . $cl ) . '</span>'
+			. '<span title="редовен = има поне една предишна поръчка със същия имейл (без отказаните); нов = няма">клиенти: редовни <b>' . (int) $cn['regular'] . '</b> · нови <b>' . (int) $cn['new'] . '</b></span>'
 			. '<span title="още не са минали 15 мин — FunnelKit ги обявява изоставени след това">в чекаута <b>' . (int) $s['open'] . '</b></span>'
 			. '<span title="recoverable — flow-ът „Cart Abandoned“ може да тръгне">изоставени <b>' . (int) $s['abandoned'] . '</b></span>'
 			. '<span title="без активна автоматизация или в cool-off">пропуснати <b>' . (int) $s['skipped'] . '</b></span>'
@@ -1170,22 +1177,48 @@ final class Insights {
 		/* ③ опашката */
 		$h .= '<div class="apc-card"><div class="apc-card__h">' . Cart_Work::filter_tabs( $work, $cnt, $due ) . '</div>' . self::carts_help_html();
 		$ctx = '' !== $q
-			? 'Резултати за <b>„' . esc_html( $q ) . '“</b>: <b>' . $n . ' ' . $word( $n ) . ' · ' . esc_html( $kl ) . '</b> <span class="apc-ctx__m">търси се в целия период (не само в избрания) — по име, телефон (с или без +359) и имейл</span> <a class="ap-abtn ap-abtn--line ap-abtn--sm" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '" title="махни търсенето">✕ Изчисти търсенето</a>'
-			: '<b>' . $n . '</b> ' . $word( $n ) . ( $n !== $all_n ? ' от ' . $all_n : '' ) . ' · ' . esc_html( $kl ) . ' · ' . esc_html( self::period_label( $rg ) ) . ' <span class="apc-ctx__m">(по последна промяна' . ( 300 === $all_n ? '; показани са последните 300 — стесни периода или търси' : '' ) . ')</span>';
+			? 'Резултати за <b>„' . esc_html( $q ) . '“</b>: <b>' . $n . ' ' . $word( $n ) . ' · ' . esc_html( $kl . $cl ) . '</b> <span class="apc-ctx__m">търси се в целия период (не само в избрания) — по име, телефон (с или без +359) и имейл</span> <a class="ap-abtn ap-abtn--line ap-abtn--sm" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '" title="махни търсенето">✕ Изчисти търсенето</a>'
+			: '<b>' . $n . '</b> ' . $word( $n ) . ( $n !== $all_n ? ' от ' . $all_n : '' ) . ' · ' . esc_html( $kl . $cl ) . ' · ' . esc_html( self::period_label( $rg ) ) . ' <span class="apc-ctx__m">(по последна промяна' . ( 300 === $all_n ? '; показани са последните 300 — стесни периода или търси' : '' ) . ')</span>';
 		$h .= '<div class="apc-ctx">' . $ctx . '</div>';
 		if ( ! $rows ) {
 			if ( $all_n ) { $msg = '<b>Няма колички в „' . esc_html( Cart_Work::FILTERS[ $work ] ) . '“</b><p>всичките ' . $all_n . ' са извън филтъра „работа: ' . esc_html( Cart_Work::FILTERS[ $work ] ) . '“.</p><a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'work' => 'all' ) ) ) . '">Покажи всички ' . $all_n . '</a>'; }
+			elseif ( 'all' !== $cf && $cn[ 'regular' === $cf ? 'new' : 'regular' ] ) { $o = $cn[ 'regular' === $cf ? 'new' : 'regular' ]; $msg = '<b>Няма колички на ' . ( 'regular' === $cf ? 'редовни' : 'нови' ) . ' клиенти</b><p>' . ( '' !== $q ? 'За това търсене' : 'За периода' ) . ' има ' . $o . ' на ' . ( 'regular' === $cf ? 'нови' : 'редовни' ) . ' клиенти.</p><a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'cust' => null ) ) ) . '">Покажи всички клиенти</a>'; }
 			elseif ( '' !== $q ) { $msg = '<b>няма количка (' . esc_html( $kl ) . ') с „' . esc_html( $q ) . '“</b><p>Търси се по име, телефон (с или без +359) и имейл в целия период. FunnelKit записва количката чак когато човекът напише имейла си в чекаута.</p><a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '">✕ Изчисти търсенето</a>'; }
 			else { $msg = '<b>няма колички (' . esc_html( $kl ) . ') за периода</b><p>Появяват се, когато човекът напише имейла си в чекаута (гост) или е логнат.</p>'; }
 			$h .= '<div class="apc-empty"><span class="apc-empty__ic" aria-hidden="true">🛒</span>' . $msg . '</div>';
 		} else {
 			$h .= '<table class="apc-table"><thead><tr><th>Клиент</th><th>Количка</th><th class="apc-r">Сума</th><th>Изоставена</th><th>Състояние</th><th>Действие</th></tr></thead><tbody>';
-			foreach ( $rows as $r ) { $h .= self::carts_row_html( $r, $wm[ (int) $r['id'] ] ?? null, $cust[ strtolower( (string) $r['email'] ) ] ?? null, $steps[ strtolower( (string) $r['email'] ) ] ?? '', $boxes, $ret, $now ); }
+			foreach ( $rows as $r ) { $h .= self::carts_row_html( $r, $wm[ (int) $r['id'] ] ?? null, $cust[ (int) $r['id'] ] ?? null, $steps[ strtolower( (string) $r['email'] ) ] ?? '', $boxes, $ret, $now ); }
 			$h .= '</tbody></table>';
 		}
 		$h .= '</div>';
 		if ( '' !== $q ) { $h .= self::carts_sessions_html( $q ); } /* 1.50.4: и сесиите на човека в промото — количката може да е само в сесията (не е писал имейла в чекаута), пак се пресъздава с 📞 */
 		return $h . '</div>';
+	}
+	/** 1.54.0: филтърът „клиент“ на 🛒 (?cust=regular|new): ключ → [етикет, подсказка]. */
+	const CARTS_CUST = array( 'all' => array( 'всички', 'и редовни, и нови клиенти' ), 'regular' => array( '🟢 редовни', 'имат поне една предишна поръчка със същия имейл — Сценарий А' ), 'new' => array( '🆕 нови', 'нямат поръчка досега — Сценарий Б' ) );
+	public static function carts_cust() { $c = self::tok( $_GET['cust'] ?? '', 8, '/[^a-z]/' ); return isset( self::CARTS_CUST[ $c ] ) && 'all' !== $c ? $c : 'all'; }
+	/** 1.54.0: профилът на клиента за всеки ред — [ID на количка => [n, last, total, regular]]. Ако единствената му поръчка е тази от същата количка
+	 *  (възстановена: количката носи поръчка, а „последна“ не е преди количката), човекът е бил нов — не става „редовен“ от собствената си поръчка. */
+	public static function carts_customers( $rows ) {
+		$m = Phone_Orders::customers( array_map( function ( $x ) { return (string) $x['email']; }, (array) $rows ) ); $out = array();
+		foreach ( (array) $rows as $x ) {
+			$c = $m[ strtolower( (string) $x['email'] ) ] ?? array( 'n' => 0, 'last' => '', 'total' => 0.0, 'regular' => false );
+			if ( (int) $x['order_id'] > 0 && 1 === (int) $c['n'] && '' !== $c['last'] && $c['last'] >= substr( (string) $x['created'], 0, 10 ) ) { $c = array( 'n' => 0, 'last' => '', 'total' => 0.0, 'regular' => false ); }
+			$out[ (int) $x['id'] ] = $c;
+		}
+		return $out;
+	}
+	/** 1.54.0: данните за панела „👤 Профил на клиента“ (ajax в админа, ?action=ansa_promo_insights_customer в портала): src=cart, id = количката във FunnelKit
+	 *  (имейлът се взима на сървъра — не пътува в адреса). */
+	public static function customer_payload( $src, $id ) {
+		$row = 'cart' === $src ? Cart_Sync::cart_by_id( (int) $id, 'all' ) : null; if ( ! $row || '' === (string) $row['email'] ) { return null; }
+		return array( 'html' => Phone_Orders::profile_html( $row['email'], (string) $row['name'], ! self::$portal ) );
+	}
+	public static function ajax_customer() {
+		if ( ! current_user_can( Plugin::CAP ) || ! check_ajax_referer( self::NONCE, 'nonce', false ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
+		$r = self::customer_payload( sanitize_key( (string) ( $_GET['src'] ?? '' ) ), (int) ( $_GET['id'] ?? 0 ) ); if ( ! $r ) { wp_send_json_error( array( 'code' => 'notfound' ), 404 ); }
+		wp_send_json_success( $r );
 	}
 	/** 1.53.0: една плочка на 🛒 — етикет, число, пояснение; с $href цялата плочка е линк към списъка (и го казва: „виж ги →“). */
 	private static function carts_kpi( $label, $value, $sub, $tone = '', $href = '', $on = false, $cta = '' ) {
@@ -1202,7 +1235,10 @@ final class Insights {
 		$mail = '<a class="apc-mail" href="mailto:' . esc_attr( $r['email'] ) . '" title="напиши имейл">' . esc_html( $r['email'] ) . '</a>';
 		$telh = '' !== $tel ? '<a class="apc-tel" href="tel:' . esc_attr( $tel ) . '" title="набери номера"><span aria-hidden="true">📞</span> ' . esc_html( $phone ) . '</a>' : '<span class="apc-tel apc-tel--no" title="човекът не е стигнал до полето за телефон в чекаута">няма телефон — само имейл</span>';
 		$who = '<div class="apc-who">' . ( '' !== $name ? '<b class="apc-name">' . esc_html( $name ) . '</b>' . $telh . $mail : $mail . $telh ) /* без име — имейлът е водещият ред */
-			. '<span class="apc-cust">' . Phone_Orders::customer_html( $c ) . '</span></div>'; /* 1.52.0: Сценарий А/Б */
+			. '<span class="apc-cust">' . Phone_Orders::customer_html( $c ) . '</span>'
+			/* 1.54.0: профилът на редовния клиент — бутон → панел с поръчките му и какво е купувал (зарежда се при клик) */
+			. ( $c && ! empty( $c['regular'] ) ? '<details class="apc-prof ap-pop" data-prof="cart:' . $id . '"><summary class="ap-abtn ap-abtn--line" title="колко поръчки има, кога е последната и какво е купувал">👤 Профил на клиента</summary><div class="apc-prof__p" aria-live="polite"><p class="apc-prof__wait">Зареждам поръчките…</p></div></details>' : '' )
+			. '</div>'; /* 1.52.0: Сценарий А/Б */
 		/* количка: видът / кутията, продуктите, маската */
 		if ( 'bf' === $rk ) { $box = '🖤 Черен петък'; $bm = ''; } elseif ( 'shop' === $rk ) { $box = '🛍️ магазин'; $bm = ''; } /* 1.50.3: видът на количката вместо кутия */
 		else { $box = $m ? (string) ( $boxes[ $m['box'] ] ?? $m['box'] ) : 'Сезонът'; $bm = $m ? implode( ' · ', array_filter( array( $m['packs'] ? $m['packs'] . ' оп.' : '', $m['pct'] ? '−' . Cart::fmt( $m['pct'] ) . '%' : '', $m['week'] ? 'седм. ' . $m['week'] : '', $m['draft'] ? 'чернова' : '' ) ) ) : ''; }
@@ -1225,12 +1261,12 @@ final class Insights {
 			. '<td class="apc-c-who">' . $who . '</td><td class="apc-c-cart">' . $cart . '</td><td class="apc-c-sum apc-r"><b class="apc-sum">' . esc_html( self::money( $r['total'] ) ) . '</b></td><td class="apc-c-age">' . $age . '</td><td class="apc-c-state">' . $state . '</td><td class="apc-c-act"><div class="apc-acts">' . $act . '</div></td></tr>';
 	}
 	/** 1.53.0: лентата на 🛒 — търсенето (водещо), периодът и видът като сегменти; обясненията са в подсказките, не в текст под всеки ред. */
-	private static function carts_toolbar( $rg, $q, $kind ) {
+	private static function carts_toolbar( $rg, $q, $kind, $cf = 'all' ) {
 		$today = current_time( 'Y-m-d' ); $base = self::$portal ? Insights_Portal::url() : admin_url( 'admin.php' );
 		$hid = ( self::$portal ? '' : '<input type="hidden" name="page" value="' . esc_attr( Plugin::MENU_SLUG ) . '"><input type="hidden" name="tab" value="insights">' ) . '<input type="hidden" name="view" value="carts">';
 		$keep = function ( $keys ) { $o = ''; foreach ( $keys as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $o .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } } return $o; };
 		/* 🔎 търсене (GET към същия екран; периодът, видът и работата се носят) */
-		$h = '<div class="apc-bar"><form method="get" action="' . esc_url( $base ) . '" class="apc-search" role="search">' . $hid . '<input type="hidden" name="from" value="' . esc_attr( $rg['from'] ) . '"><input type="hidden" name="to" value="' . esc_attr( $rg['to'] ) . '">' . $keep( array_merge( self::FILTER_KEYS, array( 'kind', 'work' ) ) )
+		$h = '<div class="apc-bar"><form method="get" action="' . esc_url( $base ) . '" class="apc-search" role="search">' . $hid . '<input type="hidden" name="from" value="' . esc_attr( $rg['from'] ) . '"><input type="hidden" name="to" value="' . esc_attr( $rg['to'] ) . '">' . $keep( array_merge( self::FILTER_KEYS, array( 'kind', 'work', 'cust' ) ) )
 			. '<label class="apc-search__f"><span class="apc-search__ic" aria-hidden="true">🔎</span><span class="apc-sr">Търси количка</span><input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Търси по име, телефон или имейл" maxlength="80" autocomplete="off"></label>'
 			. '<button class="ap-abtn ap-abtn--dark" type="submit">Търси</button>' . ( '' !== $q ? '<a class="ap-abtn ap-abtn--line" href="' . esc_url( self::url( array( 'q' => null ) ) ) . '">✕ Изчисти</a>' : '' ) . '</form>';
 		/* период */
@@ -1238,12 +1274,15 @@ final class Insights {
 		$custom = '' === $rg['key']; $span = date_i18n( 'd.m', strtotime( $rg['from'] ) ) . ' – ' . date_i18n( 'd.m.Y', strtotime( $rg['to'] ) );
 		$h .= '<div class="apc-filters"><div class="apc-fg' . ( '' !== $q ? ' is-off' : '' ) . '"' . ( '' !== $q ? ' title="търсенето гледа целия период — периодът важи пак, щом изчистиш търсенето"' : '' ) . '><span class="apc-fg__l">Период</span><div class="apc-seg">' . $seg . '</div>'
 			. '<details class="apc-range ap-pop"><summary class="apc-seg__it apc-range__s' . ( $custom ? ' on' : '' ) . '" title="избери дати от – до">📅 ' . esc_html( $span ) . '</summary>'
-			. '<form method="get" action="' . esc_url( $base ) . '" class="apc-range__p">' . $hid . $keep( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work' ) ) )
+			. '<form method="get" action="' . esc_url( $base ) . '" class="apc-range__p">' . $hid . $keep( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work', 'cust' ) ) )
 			. '<label><span>от</span><input type="date" name="from" value="' . esc_attr( $rg['from'] ) . '" max="' . esc_attr( $today ) . '"></label><label><span>до</span><input type="date" name="to" value="' . esc_attr( $rg['to'] ) . '" max="' . esc_attr( $today ) . '"></label><button class="ap-abtn ap-abtn--dark" type="submit">Покажи</button></form></details></div>';
 		/* вид */
 		$tip = array( 'all' => 'каквото FunnelKit е записал (по подразбиране)', 'season' => 'с промо кутия от „Сезонът на ansa“', 'bf' => 'от офертата за Черен петък', 'shop' => 'обикновена количка без промо' );
 		$seg = ''; foreach ( array( 'all', 'season', 'bf', 'shop' ) as $kk ) { $seg .= '<a class="apc-seg__it' . ( $kk === $kind ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'kind' => $kk ) ) ) . '" title="' . esc_attr( $tip[ $kk ] ) . '">' . esc_html( Cart_Sync::KINDS[ $kk ] ) . '</a>'; }
-		return $h . '<div class="apc-fg"><span class="apc-fg__l">Вид</span><div class="apc-seg">' . $seg . '</div></div></div></div>';
+		$h .= '<div class="apc-fg"><span class="apc-fg__l">Вид</span><div class="apc-seg">' . $seg . '</div></div>';
+		/* клиент (1.54.0) */
+		$seg = ''; foreach ( self::CARTS_CUST as $ck => $cv ) { $seg .= '<a class="apc-seg__it' . ( $ck === $cf ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'cust' => 'all' === $ck ? null : $ck ) ) ) . '" title="' . esc_attr( $cv[1] ) . '">' . esc_html( $cv[0] ) . '</a>'; }
+		return $h . '<div class="apc-fg"><span class="apc-fg__l">Клиент</span><div class="apc-seg">' . $seg . '</div></div></div></div>';
 	}
 	/** 1.53.0: скриптът за обаждане и статусите — сгънати (който ги знае, не ги чете всеки път), подредени по стъпки вместо един абзац. */
 	private static function carts_help_html() {
@@ -1479,9 +1518,9 @@ final class Insights {
 		Admin::form_open_public( 'ins_' . $do, 'insights', $extra ); echo '<input type="hidden" name="view" value="' . esc_attr( self::current_view() ) . '">';
 	}
 	/** 1.51.0: полетата, които действията приемат (admin-post и порталът минават през един списък). */
-	const ACTION_FIELDS = array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id', 'src', 'status', 'cb', 'order', 'email', 'gesture', 'q', 'kind', 'work', 'step', 'mode', 'ord', 'pg', 'view' ); /* 1.52.0: + gesture */
+	const ACTION_FIELDS = array( 'type', 'key', 'from', 'to', 'amount', 'note', 'id', 'src', 'status', 'cb', 'order', 'email', 'gesture', 'q', 'kind', 'work', 'cust', 'step', 'mode', 'ord', 'pg', 'view' ); /* 1.52.0: + gesture */
 	/** 1.51.0: GET параметрите на екрана, които формата на действието носи, за да се върне на същото място (скрити полета → ACTION_RETURN). */
-	const ACTION_RETURN = array( 'q', 'kind', 'work', 'from', 'to', 'step', 'mode', 'ord', 'pg', 'f_utm', 'f_src', 'f_med', 'f_camp', 'f_dev', 'f_box', 'lander', 'attr', 'internal' );
+	const ACTION_RETURN = array( 'q', 'kind', 'work', 'cust', 'from', 'to', 'step', 'mode', 'ord', 'pg', 'f_utm', 'f_src', 'f_med', 'f_camp', 'f_dev', 'f_box', 'lander', 'attr', 'internal' );
 	public static function action_return_fields() { $o = array(); foreach ( self::ACTION_RETURN as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $o[ $k ] = sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ); } } return $o; }
 	/** Адресните аргументи за връщане след действие — от POST-а (view + ACTION_RETURN). */
 	public static function action_return_args( $post ) { $a = array( 'view' => sanitize_key( (string) ( $post['view'] ?? 'overview' ) ) ); foreach ( self::ACTION_RETURN as $k ) { if ( isset( $post[ $k ] ) && '' !== $post[ $k ] ) { $a[ $k ] = sanitize_text_field( (string) wp_unslash( $post[ $k ] ) ); } } return $a; }
@@ -1533,6 +1572,11 @@ final class Insights {
 			. 'function wsync(f){var s=f&&f.querySelector("select[name=status]");if(s)f.setAttribute("data-st",s.value)}document.querySelectorAll(".ap-work__form").forEach(wsync);'
 			. 'document.addEventListener("change",function(e){var t=e.target;if(t&&t.name==="status"&&t.form&&t.form.classList.contains("ap-work__form"))wsync(t.form)});'
 			. 'document.addEventListener("toggle",function(e){var d=e.target;if(!d||!d.classList||!d.classList.contains("ap-pop")||!d.open)return;document.querySelectorAll("details.ap-pop[open]").forEach(function(x){if(x!==d)x.open=false});wsync(d.querySelector(".ap-work__form"))},true);'
+			/* 1.54.0: 👤 профилът на клиента се зарежда при първото отваряне на панела */
+			. self::ajax_vars()
+			. 'document.addEventListener("toggle",function(e){var d=e.target;if(!d||!d.getAttribute||!d.open||d.getAttribute("data-ok"))return;var k=d.getAttribute("data-prof");if(!k)return;var b=d.querySelector(".apc-prof__p"),a=k.split(":");d.setAttribute("data-ok","1");'
+			. 'fetch(ajax+"action=ansa_promo_insights_customer&nonce="+encodeURIComponent(nonce)+"&src="+encodeURIComponent(a[0])+"&id="+encodeURIComponent(a[1]),{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(!r||!r.success||!r.data||!r.data.html)throw 0;b.innerHTML=r.data.html})'
+			. '.catch(function(){d.removeAttribute("data-ok");b.innerHTML="<p class=\"apc-prof__none\">Не успях да заредя профила — затвори и отвори пак.</p>"})},true);'
 			. 'document.addEventListener("click",function(e){document.querySelectorAll("details.ap-pop[open]").forEach(function(d){if(!d.contains(e.target))d.open=false})});'
 			. 'document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;document.querySelectorAll("details.ap-pop[open]").forEach(function(d){d.open=false;var s=d.querySelector("summary");if(s&&d.contains(document.activeElement))s.focus()})});'
 			. 'document.addEventListener("submit",function(e){var f=e.target;if(f&&f.classList&&f.classList.contains("ap-work__form"))setTimeout(function(){f.classList.add("is-busy")},0)});'
