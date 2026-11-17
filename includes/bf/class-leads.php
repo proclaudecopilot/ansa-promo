@@ -101,7 +101,7 @@ final class Leads {
 	const CODE_LEN = 6;
 	public static function new_voucher_code( $cfg, $pre = null ) {
 		$pre = null === $pre ? (string) $cfg['cold']['prefix'] . (int) round( (float) $cfg['cold']['voucher'] ) . '-' : (string) $pre; $alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-		/* 1.54.3: 6 знака (32^6 ≈ 1 млрд.) вместо 4 (≈ 1 млн.) — кодът се налучкваше; старите 4-знакови кодове важат */
+		/* 1.54.4: 6 знака (32^6 ≈ 1 млрд.) вместо 4 (≈ 1 млн.) — кодът се налучкваше; старите 4-знакови кодове важат */
 		for ( $i = 0; $i < 5; $i++ ) { $c = ''; for ( $j = 0; $j < self::CODE_LEN; $j++ ) { $c .= $alpha[ random_int( 0, strlen( $alpha ) - 1 ) ]; } if ( ! self::voucher_row( $pre . $c ) ) { return $pre . $c; } }
 		return $pre . strtoupper( bin2hex( random_bytes( 4 ) ) );
 	}

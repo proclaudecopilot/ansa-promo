@@ -96,7 +96,7 @@ for ( $i = 1; $i <= 5; $i++ ) { $r = Insights_Portal::attempt( $USER, 'spoof', a
 $ok( 'подправен CF IP (5 различни) със същия REMOTE_ADDR → блок по REMOTE_ADDR', 'locked' === $r['code'] && Insights_Portal::locked( '198.51.100.50', $T2 + 6 ) > 0 && Insights_Portal::locked( array( '203.0.113.99', '198.51.100.50' ), $T2 + 6 ) > 0 && 0 === Insights_Portal::locked( '203.0.113.99', $T2 + 6 ), json_encode( $r ) );
 $ok( 'общият брояч се вдига веднъж на опит, не по ключ', 0 === Insights_Portal::locks( $T2 + 6 )['all_until'] );
 Insights_Portal::clear_ip( array( '198.51.100.50', '203.0.113.1' ) ); $ok( 'clear_ip със списък', 0 === Insights_Portal::locked( array( '203.0.113.1', '198.51.100.50' ), $T2 + 6 ) );
-$_SERVER['HTTP_CF_CONNECTING_IP'] = '192.0.2.77'; $ok( 'client_ips: подправен CF header от обикновен адрес се игнорира (1.54.3)', array( '203.0.113.7' ) === Insights_Portal::client_ips() );
+$_SERVER['HTTP_CF_CONNECTING_IP'] = '192.0.2.77'; $ok( 'client_ips: подправен CF header от обикновен адрес се игнорира (1.54.4)', array( '203.0.113.7' ) === Insights_Portal::client_ips() );
 $ra = $_SERVER['REMOTE_ADDR']; $_SERVER['REMOTE_ADDR'] = '172.68.1.1'; $ok( 'client_ips: от Cloudflare → истинският IP + адресът на Cloudflare', array( '192.0.2.77', '172.68.1.1' ) === Insights_Portal::client_ips() ); $_SERVER['REMOTE_ADDR'] = $ra; unset( $_SERVER['HTTP_CF_CONNECTING_IP'] );
 $ok( 'client_ips: без CF → само REMOTE_ADDR', array( '203.0.113.7' ) === Insights_Portal::client_ips() );
 /* дневникът е ограничен */

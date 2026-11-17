@@ -114,7 +114,7 @@ final class Boost {
 	public static function amount_for( $row, $cfg ) { return in_array( (string) ( $row['bonus'] ?? '' ), array( 'revived', 'vip' ), true ) ? (float) $cfg['listv']['amount'] : (float) $cfg['cold']['voucher']; }
 	/**
 	 * Слага ваучера на реда в контекста на сесията (както при отключването).
-	 * 1.54.3: $with_email = false при въведен код (ajax_claim) — кодът не доказва чий е имейлът. Досега имейлът на реда
+	 * 1.54.4: $with_email = false при въведен код (ajax_claim) — кодът не доказва чий е имейлът. Досега имейлът на реда
 	 * влизаше в сесията и се връщаше в отговора (ctx.email) и в полето за имейл на чекаута: налучкан код = чужд имейл.
 	 * При подписания личен линк (?u=, identify) имейлът е доказан и остава.
 	 */
@@ -125,7 +125,7 @@ final class Boost {
 		Cart::set_ctx( $ctx ); return $ctx;
 	}
 
-	/* 1.54.3: общ таван на грешните кодове (от всички адреси) — кодът е къс и лимитът по IP не спира налучкване от много адреси.
+	/* 1.54.4: общ таван на грешните кодове (от всички адреси) — кодът е къс и лимитът по IP не спира налучкване от много адреси.
 	   CLAIM_FAILS грешни за CLAIM_WINDOW секунди → въвеждането на код спира до изтичането; личният линк от имейла работи. */
 	const CLAIM_FAILS = 100; const CLAIM_WINDOW = 600; const CLAIM_KEY = 'ansa_bf_claim_fails';
 	public static function claim_locked() { return (int) get_transient( self::CLAIM_KEY ) >= (int) apply_filters( 'ansa_promo_bf_claim_fails', self::CLAIM_FAILS ); }
