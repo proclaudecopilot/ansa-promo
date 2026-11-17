@@ -1141,11 +1141,14 @@ final class Insights {
 		$wm = Cart_Work::get_many( 'cart', array_map( function ( $x ) { return (int) $x['id']; }, $rows ) );
 		$cnt = Cart_Work::filter_counts( $rows, $wm );
 		/* числата на опашката: чакат първо обаждане · не вдигат · уговорени (и колко от тях просрочени) · възстановени от екипа */
-		$fresh = 0; $noans = 0; $due = 0; $team = 0;
+		$fresh = 0; $noans = 0; $due = 0; $team = 0; $qn = 0; $qsum = 0.0; $qlost = 0;
 		foreach ( $rows as $x ) {
 			$w = $wm[ (int) $x['id'] ] ?? null; $st = $w ? $w['status'] : '';
 			if ( 'recovered' === $st ) { $team++; }
 			if ( ! Cart_Work::passes( 'open', $w, $x['order_id'] ) ) { continue; }
+			/* 1.54.1 (човекът: „защо „за спасяване“ сумата стои на нула“ — 59 колички в опашката, а 0,00 €): сумата е на ОПАШКАТА (всичко отворено без поръчка),
+			   не само на количките със статус „изоставена/пропусната“ във FunnelKit — след 15 дни той ги прави „изгубена“ (имейлите спират), но те пак са за обаждане */
+			$qn++; $qsum += (float) $x['total']; if ( 2 === (int) $x['status'] ) { $qlost++; }
 			if ( '' === $st || 'new' === $st ) { $fresh++; } elseif ( 'noanswer' === $st ) { $noans++; }
 			if ( Cart_Work::is_due( $w, $now ) ) { $due++; }
 		}
@@ -1157,9 +1160,8 @@ final class Insights {
 		$n = count( $rows ); $word = function ( $c ) { return 1 === (int) $c ? 'количка' : 'колички'; };
 
 		/* ② числата */
-		$ab = $s['abandoned'] + $s['skipped'];
 		$h .= '<div class="apc-kpis">'
-			. self::carts_kpi( 'За спасяване', self::money( $s['sum_abandoned'] ), '<b>' . $ab . '</b> изоставени ' . $word( $ab ) . ' без поръчка', 'hero' )
+			. self::carts_kpi( 'За спасяване', self::money( $qsum ), '<b>' . $qn . '</b> ' . $word( $qn ) . ' в опашката без поръчка' . ( $qlost ? ' <span class="apc-kpi__n" title="FunnelKit ги води „изгубена“ (минали са 15 дни) — имейлите му са спрели, остава обаждането">· ' . ( $qlost === $qn && $qn > 1 ? 'всички са' : ( 1 === $qlost ? '1 е' : $qlost . ' са' ) ) . ' извън имейлите на FunnelKit</span>' : '' ), 'hero' )
 			. self::carts_kpi( 'Чакат първо обаждане', $fresh, $noans ? '+ <b>' . $noans . '</b> „не вдига“ — опитай пак' : ( $fresh ? 'никой не ги е търсил още' : 'всички са потърсени' ), $fresh ? 'warn' : 'ok', self::url( array( 'work' => 'open' ) ), 'open' === $work, 'виж опашката' )
 			. self::carts_kpi( 'Уговорени обаждания', $cnt['callback'], $due ? '<b class="apc-bad">' . $due . ' просрочени</b> — звънни първо на тях' : 'няма просрочени', $due ? 'bad' : '', self::url( array( 'work' => 'callback' ) ), 'callback' === $work, 'виж ги' )
 			. self::carts_kpi( 'Възстановени', $s['recovered'], '<b>' . esc_html( self::money( $s['sum_recovered'] ) ) . '</b> · ' . self::pct( $s['recovered'], max( 1, $s['all'] - $s['open'] ) ) . ' от приключилите' . ( $team ? ' · <span title="отбелязани от екипа след обаждане">📋 от екипа ' . $team . '</span>' : '' ), 'ok', self::url( array( 'work' => 'done' ) ), 'done' === $work, 'виж ги' )

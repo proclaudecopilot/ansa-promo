@@ -118,6 +118,7 @@
 #ansa-promo-app .apc-kpi__s { font-size: 12px; font-weight: 700; color: #6b5148; line-height: 1.4; }
 #ansa-promo-app .apc-kpi__s b { color: #43302a; font-weight: 900; }
 #ansa-promo-app .apc-kpi__s b.apc-bad { color: #b3261e; }
+#ansa-promo-app .apc-kpi__n { color: #876b5f; cursor: help; }
 #ansa-promo-app .apc-kpi__go { margin-top: auto; padding-top: 6px; font-size: 11.5px; font-weight: 800; color: #b3441a; }
 #ansa-promo-app a.apc-kpi { cursor: pointer; transition: border-color .13s, transform .13s, box-shadow .13s; }
 #ansa-promo-app a.apc-kpi:hover { border-color: #f4b99f; transform: translateY(-1px); box-shadow: 0 12px 28px rgba(224, 96, 44, .14); }
