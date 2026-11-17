@@ -42,6 +42,9 @@ final class Phone_Orders {
 		add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'price_gift' ), 30 );
 		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'gift_price_html' ), 20, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( __CLASS__, 'gift_line_meta' ), 20, 3 );
+		/* 1.54.2: мостът към „ANSA Checkout“ (новият чекаут в три стъпки) — той не чете клиента от WC()->customer, а при празни полета ги пълни от паметта на браузъра */
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'checkout_bridge_enqueue' ), PHP_INT_MAX );
+		add_action( 'wp_footer', array( __CLASS__, 'checkout_bridge_footer' ), 1 );
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'on_any_order' ), 25 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'on_any_order' ), 25 );
 	}
@@ -321,6 +324,49 @@ final class Phone_Orders {
 			if ( '' !== $d['last'] ) { $c->set_billing_last_name( $d['last'] ); $c->set_shipping_last_name( $d['last'] ); }
 			$c->save();
 		} catch ( \Throwable $e ) {}
+	}
+	/* ── 1.54.2 (човекът: „като натисна възстанови поръчката … попълва някакви дъми данни, вместо данните на клиента“) ──
+	   Чекаутът вече е „ANSA Checkout“ (plugins/ansa-checkout, скрипт с handle ansa-co): държи получателя в браузъра (#nm „Име и фамилия“, #ph, #em) и НЕ чете
+	   WC()->customer / woocommerce_checkout_get_value. При празни полета ги пълни от localStorage (ansa_co_me — „последната поръчка на това устройство“), т.е.
+	   операторът виждаше СВОИТЕ запомнени данни. Мостът пише данните на клиента в трите полета ПРЕДИ скрипта на чекаута (тогава той не посяга към паметта),
+	   а ако все пак е закъснял — след „ansa:ready“ ги връща и отваря стъпка 1. Докато е отворен такъв чекаут, клиентът НЕ се запомня на устройството на оператора. */
+	/** Данните за моста: [name, phone, email] от контекста на обаждането (ctx.op) — или null, ако няма такъв / не сме в чекаута. */
+	public static function bridge_data() {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) ) { return null; }
+		$ctx = Cart::ctx(); $op = isset( $ctx['op'] ) && is_array( $ctx['op'] ) ? $ctx['op'] : null; if ( ! $op ) { return null; }
+		$d = array( 'name' => trim( (string) ( $op['first'] ?? '' ) . ' ' . (string) ( $op['last'] ?? '' ) ), 'phone' => self::bridge_phone( (string) ( $op['phone'] ?? '' ) ), 'email' => trim( (string) ( $op['email'] ?? '' ) ) );
+		return '' === $d['name'] . $d['phone'] . $d['email'] ? null : $d;
+	}
+	/** Телефонът за полето с префикс +359: „+359 888 123 456“ / „00359888123456“ / „888123456“ → „0888 123 456“; друг номер — както е. */
+	public static function bridge_phone( $v ) {
+		$d = preg_replace( '/\D+/', '', (string) $v ); if ( 0 === strpos( $d, '00359' ) ) { $d = substr( $d, 5 ); } elseif ( 0 === strpos( $d, '359' ) && strlen( $d ) >= 12 ) { $d = substr( $d, 3 ); } $d = ltrim( $d, '0' );
+		return 9 === strlen( $d ) ? '0' . substr( $d, 0, 3 ) . ' ' . substr( $d, 3, 3 ) . ' ' . substr( $d, 6 ) : trim( (string) $v );
+	}
+	/** Скриптът на моста (без <script>). Безопасен за повторно пускане (window.__apOpFill). */
+	public static function bridge_js( $d ) {
+		return '(function(){if(window.__apOpFill)return;window.__apOpFill=1;var D=' . wp_json_encode( array( 'nm' => (string) $d['name'], 'ph' => (string) $d['phone'], 'em' => (string) $d['email'] ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) . ',K=["nm","ph","em"];'
+			/* клиентът не се запомня на устройството на оператора (и собствените му запомнени данни остават както са) */
+			. 'try{var si=Storage.prototype.setItem;Storage.prototype.setItem=function(k){if(k==="ansa_co_me")return;return si.apply(this,arguments)}}catch(e){}'
+			. 'function el(k){return document.getElementById(k)}function same(){return K.every(function(k){var e=el(k);return e&&(!D[k]||e.value===D[k])})}'
+			. 'function fill(ev){if(!K.every(el))return false;K.forEach(function(k){var e=el(k);if(D[k]){e.value=D[k];if(ev){try{e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))}catch(x){}}}});var n=el("meNote");if(n)n.classList.add("hidden");return true}'
+			/* преди скрипта на чекаута: само стойностите (той сам ги проверява при старта) */
+			. 'var early=fill(false);'
+			/* след старта му: ако е бил по-бърз и е сложил запомнените на устройството — върни клиента и покажи стъпка 1 */
+			. 'function late(){if(same()&&early)return;fill(true);try{if(window.ansaCheckout&&window.ansaCheckout.goStep)window.ansaCheckout.goStep(1)}catch(x){}}'
+			. 'if(window.ansaCheckout){early=false;late()}else{document.addEventListener("ansa:ready",late);if(!early)document.addEventListener("DOMContentLoaded",function(){if(!early&&!window.ansaCheckout)early=fill(true)})}'
+			. '})();';
+	}
+	private static $bridge_done = false;
+	/** Точно преди скрипта на „ANSA Checkout“ (ако е регистриран като WP скрипт ansa-co). */
+	public static function checkout_bridge_enqueue() {
+		if ( self::$bridge_done || ! function_exists( 'wp_script_is' ) || ! ( wp_script_is( 'ansa-co', 'enqueued' ) || wp_script_is( 'ansa-co', 'registered' ) ) ) { return; }
+		$d = self::bridge_data(); if ( ! $d ) { return; }
+		if ( wp_add_inline_script( 'ansa-co', self::bridge_js( $d ), 'before' ) ) { self::$bridge_done = true; }
+	}
+	/** Резерва: в началото на футъра (полетата вече са в страницата, скриптовете на футъра се печатат след това). */
+	public static function checkout_bridge_footer() {
+		if ( self::$bridge_done ) { return; } $d = self::bridge_data(); if ( ! $d ) { return; } self::$bridge_done = true;
+		echo '<script id="ansa-promo-op-bridge">' . self::bridge_js( $d ) . '</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 	/** Резерва за чекаута: полетата от ctx.op (ако WC()->customer не ги е дал). */
 	public static function checkout_value( $value, $input ) {

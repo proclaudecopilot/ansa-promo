@@ -662,5 +662,13 @@ Insights::handle_action( 'cart_work', array( 'src' => 'cart', 'id' => $cidN, 'st
 $ok( 'екранът 🛒: отказалата излиза от опашката и от сумата — 25,00 €, 1 количка', (bool) preg_match( '/За спасяване<\/span><b class="apc-kpi__v">25,00 €<\/b>/u', $hc ) && false !== strpos( $hc, '<b>1</b> количка в опашката без поръчка' ), ( preg_match( '/За спасяване.{0,400}/su', $hc, $mm ) ? $mm[0] : '' ) );
 $_GET = array();
 
+/* ══ 1.54.2: мостът към „ANSA Checkout“ (човекът: „като натисна възстанови поръчката … попълва някакви дъми данни, вместо данните на клиента“ — новият чекаут пълнеше
+   полетата от паметта на браузъра на оператора). Самото попълване е проверено срещу живия чекаут с Playwright; тук — данните и скриптът. ══ */
+$ok( 'bridge_phone: +359 / 00359 / 0 / без водеща нула → „0888 123 456“; чужд или къс номер остава както е', '0888 123 456' === $PO::bridge_phone( '+359 888 123 456' ) && '0888 123 456' === $PO::bridge_phone( '00359888123456' ) && '0888 123 456' === $PO::bridge_phone( '0888-123-456' ) && '0888 123 456' === $PO::bridge_phone( '888123456' ) && '+40 721 000 000 1' === $PO::bridge_phone( ' +40 721 000 000 1 ' ) && '' === $PO::bridge_phone( '' ) );
+$bj = $PO::bridge_js( array( 'name' => 'Иванка "Ива" </script><b>', 'phone' => '0888 123 456', 'email' => "iv'anka@example.com" ) );
+$ok( 'bridge_js: трите полета на чекаута (nm/ph/em) с данните на клиента, екранирани за <script>; не запомня клиента на устройството (ansa_co_me); връща стъпка 1 след ansa:ready; пуска се веднъж', false !== strpos( $bj, '"nm":"Иванка' ) && false !== strpos( $bj, '"ph":"0888 123 456"' ) && false === strpos( $bj, '</script>' ) && false === strpos( $bj, '<b>' ) && false === strpos( $bj, "iv'anka" ) && false !== strpos( $bj, 'k==="ansa_co_me"' ) && false !== strpos( $bj, '"ansa:ready"' ) && false !== strpos( $bj, 'goStep(1)' ) && false !== strpos( $bj, 'window.__apOpFill' ), $bj );
+$ok( 'bridge_data: извън чекаута (няма is_checkout) → null — скриптът с личните данни не се печата другаде', null === $PO::bridge_data() );
+ob_start(); $PO::checkout_bridge_footer(); $PO::checkout_bridge_enqueue(); $bo = ob_get_clean(); $ok( 'мостът не печата нищо извън чекаута', '' === $bo );
+
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
