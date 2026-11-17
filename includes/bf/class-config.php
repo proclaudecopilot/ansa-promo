@@ -35,7 +35,7 @@ final class Config {
 			   падащото меню), gift_only (само подарък — новите 4), is_new, fav (Най-продавани — първи в списъка), enabled, img (attachment id или URL) */
 			'products' => self::seed_products(),
 			/* студеният трафик (prep): ваучер в портфейла за N минути след отключване; landing_minutes = таймерът на страницата преди отключване */
-			'cold'     => array( 'enabled' => true, 'voucher' => 10, 'minutes' => 30, 'landing_minutes' => 17, 'prefix' => 'BF' ),
+			'cold'     => array( 'enabled' => true, 'voucher' => 10, 'minutes' => 30, 'landing_minutes' => 17, 'prefix' => 'BF', 'recover_minutes' => 30 ), /* 1.54.4: recover_minutes — колко важи ваучерът след връщане от имейла за изоставена количка (0 = не се възобновява) */
 			/* броячът „записани жени“: start в ден 0 (from), клони към max без да го стига: n = max − (max − start)·e^(−d/k) */
 			'seats'    => array( 'enabled' => true, 'start' => 312, 'max' => 440, 'k' => 9, 'from' => '2026-11-04' ),
 			/* партньорският трафик (?ref=КОД на ansa Partner): подарък по избор в публичната промоция — ваучер или маската (CollaMask „10 маски“ #11163; SKU-то на продукта е MASK02) */
@@ -108,7 +108,7 @@ final class Config {
 			$prods[] = $p;
 		}
 		$out['products'] = $prods;
-		$c = is_array( $out['cold'] ?? null ) ? $out['cold'] : array(); $out['cold'] = array( 'enabled' => ! isset( $c['enabled'] ) || ! empty( $c['enabled'] ), 'voucher' => max( 0, round( (float) ( $c['voucher'] ?? 10 ), 2 ) ), 'minutes' => max( 1, min( 1440, (int) ( $c['minutes'] ?? 30 ) ) ), 'landing_minutes' => max( 1, min( 180, (int) ( $c['landing_minutes'] ?? 17 ) ) ), 'prefix' => strtoupper( preg_replace( '/[^A-Z0-9]/i', '', (string) ( $c['prefix'] ?? 'BF' ) ) ) ?: 'BF' );
+		$c = is_array( $out['cold'] ?? null ) ? $out['cold'] : array(); $out['cold'] = array( 'enabled' => ! isset( $c['enabled'] ) || ! empty( $c['enabled'] ), 'voucher' => max( 0, round( (float) ( $c['voucher'] ?? 10 ), 2 ) ), 'minutes' => max( 1, min( 1440, (int) ( $c['minutes'] ?? 30 ) ) ), 'landing_minutes' => max( 1, min( 180, (int) ( $c['landing_minutes'] ?? 17 ) ) ), 'prefix' => strtoupper( preg_replace( '/[^A-Z0-9]/i', '', (string) ( $c['prefix'] ?? 'BF' ) ) ) ?: 'BF', 'recover_minutes' => max( 0, min( 1440, (int) ( $c['recover_minutes'] ?? 30 ) ) ) );
 		$s = is_array( $out['seats'] ?? null ) ? $out['seats'] : array(); $from = trim( (string) ( $s['from'] ?? '' ) );
 		$out['seats'] = array( 'enabled' => ! isset( $s['enabled'] ) || ! empty( $s['enabled'] ), 'start' => max( 0, (int) ( $s['start'] ?? 312 ) ), 'max' => max( 1, (int) ( $s['max'] ?? 440 ) ), 'k' => max( 0.5, (float) ( $s['k'] ?? 9 ) ), 'from' => preg_match( '/^\d{4}-\d{2}-\d{2}$/', $from ) ? $from : $d['seats']['from'] );
 		if ( $out['seats']['start'] >= $out['seats']['max'] ) { $out['seats']['start'] = max( 0, $out['seats']['max'] - 1 ); }

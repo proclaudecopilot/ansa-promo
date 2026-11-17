@@ -1,6 +1,6 @@
 <?php
 /**
- * ansa™ Промо 1.54.4 — IP-то на посетителя за лимитите (Leads::rate_limited: ticket, tombola, book, lead, add, beacon,
+ * ansa™ Промо 1.54.7 — IP-то на посетителя за лимитите (Leads::rate_limited: ticket, tombola, book, lead, add, beacon,
  * bf_claim, bf_lead, Insights API).
  *
  * Досега Leads::ip() четеше `CF-Connecting-IP` на доверие. Header-ът се праща от клиента: ansa.bg не е зад Cloudflare

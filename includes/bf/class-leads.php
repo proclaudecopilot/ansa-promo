@@ -101,7 +101,7 @@ final class Leads {
 	const CODE_LEN = 6;
 	public static function new_voucher_code( $cfg, $pre = null ) {
 		$pre = null === $pre ? (string) $cfg['cold']['prefix'] . (int) round( (float) $cfg['cold']['voucher'] ) . '-' : (string) $pre; $alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-		/* 1.54.4: 6 знака (32^6 ≈ 1 млрд.) вместо 4 (≈ 1 млн.) — кодът се налучкваше; старите 4-знакови кодове важат */
+		/* 1.54.7: 6 знака (32^6 ≈ 1 млрд.) вместо 4 (≈ 1 млн.) — кодът се налучкваше; старите 4-знакови кодове важат */
 		for ( $i = 0; $i < 5; $i++ ) { $c = ''; for ( $j = 0; $j < self::CODE_LEN; $j++ ) { $c .= $alpha[ random_int( 0, strlen( $alpha ) - 1 ) ]; } if ( ! self::voucher_row( $pre . $c ) ) { return $pre . $c; } }
 		return $pre . strtoupper( bin2hex( random_bytes( 4 ) ) );
 	}
@@ -117,9 +117,9 @@ final class Leads {
 	/* ── ваучери ── */
 	public static function voucher_row( $code ) { global $wpdb; $code = strtoupper( trim( (string) $code ) ); if ( '' === $code ) { return null; } $r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . ' WHERE voucher = %s LIMIT 1', $code ), ARRAY_A ); return is_array( $r ) ? $r : null; }
 	/** Жив = има го, не е ползван и не е изтекъл (voucher_exp е UTC). */
-	public static function voucher_valid( $code ) {
+	public static function voucher_valid( $code, $fresh = false ) { /* 1.54.4: $fresh — без кеша (след като срокът е удължен в същата заявка) */
 		static $cache = array(); $code = strtoupper( trim( (string) $code ) ); if ( '' === $code ) { return false; }
-		if ( isset( $cache[ $code ] ) && $cache[ $code ][0] > time() - 5 ) { return $cache[ $code ][1]; }
+		if ( ! $fresh && isset( $cache[ $code ] ) && $cache[ $code ][0] > time() - 5 ) { return $cache[ $code ][1]; }
 		$r = self::voucher_row( $code ); $ok = $r && empty( $r['voucher_order_id'] ) && ! empty( $r['voucher_exp'] ) && strtotime( $r['voucher_exp'] . ' UTC' ) > time();
 		$cache[ $code ] = array( time(), (bool) $ok ); return (bool) $ok;
 	}

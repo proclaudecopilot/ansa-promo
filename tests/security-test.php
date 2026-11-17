@@ -1,6 +1,6 @@
 <?php
 /**
- * Офлайн тест на сигурността (1.54.4): Client_IP (CF header само от Cloudflare), Leads::ip(), кодът на ваучера
+ * Офлайн тест на сигурността (1.54.7): Client_IP (CF header само от Cloudflare), Leads::ip(), кодът на ваучера
  * (6 знака), ajax claim-ът не слага чужд имейл в сесията, общият таван на грешните кодове. Без WordPress.
  * php tests/security-test.php → „OK n проверки“ или списък с грешки (exit 1).
  */
