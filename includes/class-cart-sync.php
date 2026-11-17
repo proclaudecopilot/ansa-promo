@@ -211,12 +211,15 @@ final class Cart_Sync {
 	 * Количките от таблицата на FKA за период (0 = всички), последни първи; $kind = season (промо „Сезонът“, по подразбиране) / bf / shop / all.
 	 * Всеки ред: id, email, kind, status, status_label, tone, order_id, created, modified, total, name, phone, consent, meta (box/packs/pct/week), lines, tagged.
 	 */
-	public static function abandoned_rows( $days = 30, $limit = 200, $q = '', $kind = 'season' ) {
+	public static function abandoned_rows( $days = 30, $limit = 200, $q = '', $kind = 'season', $rg = null ) {
 		global $wpdb; $t = self::table(); $q = self::search_norm( $q ); if ( ! isset( self::KINDS[ $kind ] ) ) { $kind = 'season'; }
+		/* 1.52.2 (човекът: „пише нула колички, това е абсурдно“ — период в миналото): $rg = [from, to] (Y-m-d) → периодът е В заявката по last_modified,
+		   не след LIMIT-а (иначе 300-те най-нови редове са извън периода и всички отпадат) */
+		$rw = ''; if ( is_array( $rg ) && ! empty( $rg['from'] ) && ! empty( $rg['to'] ) ) { $rw = $wpdb->prepare( ' AND last_modified >= %s AND last_modified < %s', $rg['from'] . ' 00:00:00', gmdate( 'Y-m-d', strtotime( $rg['to'] ) + DAY_IN_SECONDS ) . ' 00:00:00' ); $days = 0; }
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
 		/* 1.50.3 (човекът: „deti_67@abv.bg излиза че няма изоставена, а има“): видът — season = само със „Сезонът“ ред (както досега), bf = Черният петък, shop = без промо ред, all = всички колички на FKA */
 		$kw = 'season' === $kind ? "items LIKE '%\"" . Cart::META . "\"%'" : ( 'bf' === $kind ? "items LIKE '%\"" . self::BF_META . "\"%'" : '1=1' );
-		$w = 'WHERE ' . $kw . ( $days > 0 ? $wpdb->prepare( ' AND created_time > DATE_SUB( NOW(), INTERVAL %d DAY )', (int) $days ) : '' ) . self::search_sql( $q );
+		$w = 'WHERE ' . $kw . ( $days > 0 ? $wpdb->prepare( ' AND created_time > DATE_SUB( NOW(), INTERVAL %d DAY )', (int) $days ) : '' ) . $rw . self::search_sql( $q );
 		$rows = (array) $wpdb->get_results( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} {$w} ORDER BY last_modified DESC, ID DESC LIMIT " . (int) $limit, ARRAY_A );
 		$tid = self::tag_id( false ); $out = array();
 		foreach ( $rows as $r ) {
