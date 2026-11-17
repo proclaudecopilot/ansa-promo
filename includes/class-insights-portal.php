@@ -366,6 +366,11 @@ final class Insights_Portal {
 			if ( ! self::csrf_ok( (string) ( $_GET['nonce'] ?? '' ) ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
 			wp_send_json_success( Insights::feed_payload( (int) ( $_GET['days'] ?? 1 ), (int) ( $_GET['limit'] ?? 40 ) ) );
 		}
+		if ( isset( $_GET['action'] ) && 'ansa_promo_insights_customer' === $_GET['action'] ) { /* 1.54.0: 👤 профилът на клиента в 🛒 — само за влезлия, с CSRF на сесията */
+			if ( ! self::csrf_ok( (string) ( $_GET['nonce'] ?? '' ) ) ) { wp_send_json_error( array( 'code' => 'auth' ), 403 ); }
+			$r = Insights::customer_payload( sanitize_key( (string) ( $_GET['src'] ?? '' ) ), (int) ( $_GET['id'] ?? 0 ) ); if ( ! $r ) { wp_send_json_error( array( 'code' => 'notfound' ), 404 ); }
+			wp_send_json_success( $r );
+		}
 		status_header( 200 ); header( 'Content-Type: text/html; charset=utf-8' );
 		echo self::page_html(); exit;
 	}

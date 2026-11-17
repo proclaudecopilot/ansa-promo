@@ -1,13 +1,15 @@
 // 1.53.0: Playwright проверка на 📈 Insights → 🛒 Изоставени колички (tests/harness/carts-page.php) — без хоризонтален скрол на 1440/1280/1024/390,
 // без JS грешки, всеки ред има основен бутон, „Отбележи резултат“ се отваря (само един наведнъж, Esc затваря), полетата следват статуса,
-// бутоните се различават от етикетите (заобленост), телефонът е tel: линк. node tests/harness/carts-check.js /tmp/carts.html [shots-dir]
-const { chromium } = require('playwright'); const path = require('path');
+// бутоните се различават от етикетите (заобленост), телефонът е tel: линк; 1.54.0: сегментът „Клиент“ и панелът „👤 Профил на клиента“ (ajax-ът се отговаря от харнеса). node tests/harness/carts-check.js /tmp/carts.html [shots-dir]
+const { chromium } = require('playwright'); const path = require('path'); const { execFileSync } = require('child_process');
 (async () => {
   const file = 'file://' + path.resolve(process.argv[2]); const shots = process.argv[3] || ''; const fails = []; let n = 0;
   const ok = (name, cond, info = '') => { n++; if (!cond) fails.push(name + (info ? ' — ' + info : '')); };
   const browser = await chromium.launch();
   for (const [w, h, tag] of [[1440, 900, 'desk'], [1280, 800, 'laptop'], [1024, 768, 'tablet'], [390, 844, 'mob']]) {
     const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: shots ? 2 : 1 }); const errs = []; page.on('pageerror', e => errs.push(String(e)));
+    // 1.54.0: ajax-ът на „👤 Профил на клиента“ — отговаря харнесът (profile=<ID на количка>)
+    await page.route(u => /action=ansa_promo_insights_customer/.test(u.href), route => { const id = new URL(route.request().url()).searchParams.get('id'); route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: execFileSync('php', [path.join(__dirname, 'carts-page.php'), 'profile=' + parseInt(id, 10)], { stdio: ['ignore', 'pipe', 'ignore'] }).toString() }); });
     await page.goto(file); await page.waitForTimeout(250);
     // рамката е position:fixed със свой скрол — за цял скрийншот и за мерене я разпъваме
     await page.addStyleTag({ content: '#ansa-promo-app{position:static!important;height:auto!important;overflow:visible!important}.ap-page{height:auto!important;overflow:visible!important}.ap-body{overflow:visible!important}.ap-nav{max-height:none!important}' });
@@ -49,6 +51,15 @@ const { chromium } = require('playwright'); const path = require('path');
     // жестът по скрипта: бутонът „Възстанови количката“ първо пита
     await page.locator('.apc-row [data-op=go]').first().click(); await page.waitForTimeout(80);
     ok(tag + ': „Възстанови количката“ пита за жеста', await page.evaluate(() => !!document.getElementById('apOpPick')));
+    await page.keyboard.press('Escape');
+    // 1.54.0: филтърът „Клиент“ и профилът на редовния клиент
+    const cu = await page.evaluate(() => { const q = s => [...document.querySelectorAll(s)]; const seg = q('.apc-fg').find(g => /Клиент/.test(g.querySelector('.apc-fg__l').textContent)); const rows = q('.apc-row'); return { seg: seg ? [...seg.querySelectorAll('.apc-seg__it')].map(a => a.textContent.trim() + '|' + (new URL(a.href).searchParams.get('cust') || '')) : [], regBtn: rows.filter(r => /редовен/.test(r.querySelector('.apc-cust').textContent)).every(r => !!r.querySelector('.apc-prof')), newBtn: rows.filter(r => /нов · Б/.test(r.querySelector('.apc-cust').textContent)).some(r => !!r.querySelector('.apc-prof')), n: q('.apc-prof').length }; });
+    ok(tag + ': сегментът „Клиент“ — всички / редовни / нови с ?cust=', cu.seg.length === 3 && /\|$/.test(cu.seg[0]) && /редовни\|regular$/.test(cu.seg[1]) && /нови\|new$/.test(cu.seg[2]), JSON.stringify(cu.seg));
+    ok(tag + ': „👤 Профил на клиента“ има всеки редовен и никой нов', cu.n > 0 && cu.regBtn && !cu.newBtn, JSON.stringify(cu));
+    const pr = page.locator('.apc-row .apc-prof').first(); await pr.locator('summary').click(); await page.waitForSelector('.apc-prof[open] .apc-prof__o', { timeout: 5000 }).catch(() => {});
+    const pf = await page.evaluate(() => { const d = document.querySelector('.apc-prof[open]'); if (!d) return null; const p = d.querySelector('.apc-prof__p'), b = p.getBoundingClientRect(); return { txt: p.textContent, nums: p.querySelectorAll('.apc-prof__nums span').length, last: p.querySelectorAll('.apc-prof__o.is-last li').length, left: b.left, right: b.right, iw: innerWidth, open: document.querySelectorAll('details.ap-pop[open]').length }; });
+    ok(tag + ': профилът се зарежда при клик — 3 числа, „Последна поръчка“ с продуктите, вътре в екрана', !!pf && pf.nums === 3 && /Последна поръчка/.test(pf.txt) && pf.last > 0 && pf.left >= 0 && pf.right <= pf.iw + 1 && pf.open === 1, JSON.stringify(pf));
+    if (shots) { await pr.locator('.apc-prof__p').scrollIntoViewIfNeeded(); await page.screenshot({ path: path.join(shots, 'carts-' + tag + '-profile.png'), fullPage: w < 500 }); }
     await page.keyboard.press('Escape');
     await page.locator('.apc-help > summary').click(); await page.waitForTimeout(60);
     ok(tag + ': помощта се разгъва (4 колони текст)', await page.evaluate(() => document.querySelectorAll('.apc-help[open] .apc-help__b > div').length) === 4);

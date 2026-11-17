@@ -168,6 +168,12 @@ final class Phone_Orders {
 			if ( $hpos && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) === $t ) {
 				foreach ( array_chunk( $todo, 300 ) as $chunk ) { $in = implode( ',', array_fill( 0, count( $chunk ), '%s' ) ); $nb = implode( ',', array_fill( 0, count( $bad ), '%s' ) );
 					foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT LOWER(billing_email) AS e, COUNT(*) AS n, MAX(date_created_gmt) AS last, SUM(total_amount) AS total FROM {$t} WHERE type = 'shop_order' AND LOWER(billing_email) IN ($in) AND status NOT IN ($nb) GROUP BY LOWER(billing_email)", array_merge( $chunk, $bad ) ), ARRAY_A ) as $r ) { self::$cust[ $r['e'] ] = array( 'n' => (int) $r['n'], 'last' => substr( (string) $r['last'], 0, 10 ), 'total' => (float) $r['total'], 'regular' => (int) $r['n'] >= 1 ); } }
+			} elseif ( ! $hpos && self::posts_orders_ok() ) {
+				/* 1.54.0: HPOS изключен (сайтът) → една заявка по posts + postmeta за всички имейли (беше wc_get_orders за първите 80 имейла, останалите излизаха „нов“ —
+				   с филтъра „редовни / нови“ това трябва да е вярно за всеки ред) */
+				$tp = isset( $wpdb->posts ) ? $wpdb->posts : $wpdb->prefix . 'posts'; $tm = isset( $wpdb->postmeta ) ? $wpdb->postmeta : $wpdb->prefix . 'postmeta';
+				foreach ( array_chunk( $todo, 300 ) as $chunk ) { $in = implode( ',', array_fill( 0, count( $chunk ), '%s' ) ); $nb = implode( ',', array_fill( 0, count( $bad ), '%s' ) );
+					foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT LOWER(pm.meta_value) AS e, COUNT(*) AS n, MAX(p.post_date_gmt) AS last, SUM(CAST(pt.meta_value AS DECIMAL(20,2))) AS total FROM {$tp} p INNER JOIN {$tm} pm ON pm.post_id = p.ID AND pm.meta_key = '_billing_email' LEFT JOIN {$tm} pt ON pt.post_id = p.ID AND pt.meta_key = '_order_total' WHERE p.post_type = 'shop_order' AND p.post_status NOT IN ($nb) AND LOWER(pm.meta_value) IN ($in) GROUP BY LOWER(pm.meta_value)", array_merge( $bad, $chunk ) ), ARRAY_A ) as $r ) { self::$cust[ $r['e'] ] = array( 'n' => (int) $r['n'], 'last' => substr( (string) $r['last'], 0, 10 ), 'total' => (float) $r['total'], 'regular' => (int) $r['n'] >= 1 ); } }
 			} elseif ( function_exists( 'wc_get_orders' ) ) {
 				foreach ( array_slice( $todo, 0, 80 ) as $e ) { try { $os = (array) wc_get_orders( array( 'limit' => 50, 'orderby' => 'date', 'order' => 'DESC', 'billing_email' => $e, 'return' => 'objects' ) ); } catch ( \Throwable $x ) { $os = array(); } $n = 0; $tot = 0.0; $last = '';
 					foreach ( $os as $o ) { if ( in_array( 'wc-' . $o->get_status(), $bad, true ) || in_array( $o->get_status(), $bad, true ) ) { continue; } $n++; $tot += (float) $o->get_total(); $d = $o->get_date_created(); $ds = $d ? $d->date( 'Y-m-d' ) : ''; if ( $ds > $last ) { $last = $ds; } }
@@ -175,6 +181,50 @@ final class Phone_Orders {
 			}
 		}
 		$out = array(); foreach ( $emails as $e ) { $out[ $e ] = self::$cust[ $e ]; } return $out;
+	}
+	/** 1.54.0: има ли таблиците posts + postmeta (поръчките без HPOS). */
+	private static function posts_orders_ok() { global $wpdb; static $ok = false; if ( ! $ok ) { $tp = isset( $wpdb->posts ) ? $wpdb->posts : $wpdb->prefix . 'posts'; $tm = isset( $wpdb->postmeta ) ? $wpdb->postmeta : $wpdb->prefix . 'postmeta'; $ok = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tp ) ) === $tp && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tm ) ) === $tm; } return $ok; }
+	/** 1.54.0 (човекът: „за стари клиенти … колко поръчки са имали и кога им е последната поръчка и с какво, нещо като профил на клиента“):
+	 *  последните поръчки на клиента по billing имейл, с продуктите — [orders => [[id, number, date, status, status_name, grp (delivered|open|lost), total, items [[name, qty]]]],
+	 *  delivered, open, lost (брой), top (най-купуваното: име => брой), more (има и по-стари)]. Зарежда се при клик (една заявка), не за всеки ред. */
+	public static function profile( $email, $limit = 8 ) {
+		$email = strtolower( trim( (string) $email ) ); $out = array( 'email' => $email, 'orders' => array(), 'delivered' => 0, 'open' => 0, 'lost' => 0, 'top' => array(), 'more' => false );
+		if ( '' === $email || ! function_exists( 'wc_get_orders' ) ) { return $out; }
+		try { $os = (array) wc_get_orders( array( 'limit' => (int) $limit + 1, 'orderby' => 'date', 'order' => 'DESC', 'billing_email' => $email, 'return' => 'objects' ) ); } catch ( \Throwable $e ) { $os = array(); }
+		foreach ( $os as $o ) {
+			if ( ! is_object( $o ) || ! method_exists( $o, 'get_status' ) ) { continue; } $st = (string) $o->get_status(); if ( in_array( $st, array( 'checkout-draft', 'trash', 'auto-draft' ), true ) ) { continue; }
+			if ( method_exists( $o, 'get_billing_email' ) && strtolower( (string) $o->get_billing_email() ) !== $email ) { continue; } /* точната проверка — заявката може да е по-широка */
+			if ( count( $out['orders'] ) >= $limit ) { $out['more'] = true; break; }
+			$grp = class_exists( __NAMESPACE__ . '\\Tombola' ) && Tombola::delivered( $o ) ? 'delivered' : ( in_array( $st, Insights::LOST_STATUSES, true ) ? 'lost' : 'open' ); $out[ $grp ]++;
+			$items = array(); if ( method_exists( $o, 'get_items' ) ) { foreach ( (array) $o->get_items() as $it ) { if ( ! is_object( $it ) || ! method_exists( $it, 'get_name' ) ) { continue; } $nm = (string) $it->get_name(); $q = max( 1, (int) ( method_exists( $it, 'get_quantity' ) ? $it->get_quantity() : 1 ) ); $items[] = array( 'name' => $nm, 'qty' => $q ); if ( 'lost' !== $grp ) { $out['top'][ $nm ] = ( $out['top'][ $nm ] ?? 0 ) + $q; } } }
+			$d = method_exists( $o, 'get_date_created' ) ? $o->get_date_created() : null;
+			$out['orders'][] = array( 'id' => (int) $o->get_id(), 'number' => method_exists( $o, 'get_order_number' ) ? (string) $o->get_order_number() : (string) $o->get_id(), 'date' => $d ? $d->date( 'Y-m-d' ) : '', 'status' => $st, 'status_name' => function_exists( 'wc_get_order_status_name' ) ? (string) wc_get_order_status_name( $st ) : $st, 'grp' => $grp, 'total' => (float) $o->get_total(), 'items' => $items );
+		}
+		arsort( $out['top'] ); $out['top'] = array_slice( $out['top'], 0, 4, true );
+		return $out;
+	}
+	/** 1.54.0: профилът като HTML (в изскачащия панел на 🛒). $link = линк към поръчката в wp-admin (в портала — само номерът). */
+	public static function profile_html( $email, $name = '', $link = false ) {
+		$p = self::profile( $email ); $c = self::customer( $email ); $n = count( $p['orders'] );
+		$h = '<div class="apc-prof__h"><b>' . esc_html( '' !== trim( (string) $name ) ? $name : $p['email'] ) . '</b>' . ( '' !== trim( (string) $name ) ? '<small>' . esc_html( $p['email'] ) . '</small>' : '' ) . '</div>';
+		if ( ! $n ) { return $h . '<p class="apc-prof__none">Няма предишни поръчки с този имейл — нов клиент (Сценарий Б: учтив, кратък).</p>'; }
+		/* „последна“ = последната истинска поръчка (не отказана) — тя е откроена най-горе; останалите са по дата, с отказаните */
+		$li = 0; foreach ( $p['orders'] as $i => $o ) { if ( 'lost' !== $o['grp'] ) { $li = $i; break; } }
+		$last = $p['orders'][ $li ]; $rest = $p['orders']; unset( $rest[ $li ] );
+		$h .= '<div class="apc-prof__nums"><span><b>' . (int) $c['n'] . '</b>' . ( 1 === (int) $c['n'] ? 'поръчка' : 'поръчки' ) . '</span><span><b>' . esc_html( Insights::money( $c['total'] ) ) . '</b>общо</span><span><b>' . esc_html( $last['date'] ? date_i18n( 'd.m.Y', strtotime( $last['date'] ) ) : '—' ) . '</b>последна</span></div>';
+		$h .= '<div class="apc-prof__grp"><span class="ap-pill ap-pill--ok" title="получени пратки">✅ взети ' . (int) $p['delivered'] . '</span> <span class="ap-pill ap-pill--info" title="между поръчка и получаване">🚚 в път ' . (int) $p['open'] . '</span> <span class="ap-pill' . ( $p['lost'] ? ' ap-pill--bad' : ' ap-pill--muted' ) . '" title="отказани, върнати или неуспешни">✕ отказани ' . (int) $p['lost'] . '</span>' . ( $p['more'] ? ' <small>от последните ' . $n . '</small>' : '' ) . '</div>';
+		$tone = array( 'delivered' => 'ok', 'open' => 'info', 'lost' => 'bad' );
+		$one = function ( $o, $big ) use ( $link, $tone ) {
+			$num = '#' . esc_html( $o['number'] ); if ( $link && function_exists( 'admin_url' ) ) { $num = '<a href="' . esc_url( admin_url( 'post.php?post=' . (int) $o['id'] . '&action=edit' ) ) . '" target="_blank" rel="noopener">' . $num . '</a>'; }
+			$items = array(); foreach ( $o['items'] as $it ) { $items[] = esc_html( $it['name'] ) . ( $it['qty'] > 1 ? ' <b>×' . (int) $it['qty'] . '</b>' : '' ); }
+			return '<div class="apc-prof__o' . ( $big ? ' is-last' : '' ) . '"><div class="apc-prof__oh"><span><b>' . ( $o['date'] ? esc_html( date_i18n( 'd.m.Y', strtotime( $o['date'] ) ) ) : '—' ) . '</b> · ' . $num . '</span><span class="ap-pill ap-pill--' . $tone[ $o['grp'] ] . '">' . esc_html( $o['status_name'] ) . '</span><b class="apc-prof__sum">' . esc_html( Insights::money( $o['total'] ) ) . '</b></div>'
+				. ( $items ? ( $big ? '<ul><li>' . implode( '</li><li>', $items ) . '</li></ul>' : '<p>' . implode( ' · ', $items ) . '</p>' ) : '' ) . '</div>';
+		};
+		$h .= '<div class="apc-prof__l">Последна поръчка</div>' . $one( $last, true );
+		if ( $rest ) { $h .= '<div class="apc-prof__l">Други поръчки</div>'; foreach ( $rest as $o ) { $h .= $one( $o, false ); } }
+		if ( $p['more'] ) { $h .= '<p class="apc-prof__more">…и по-стари поръчки (показани са последните ' . $n . ').</p>'; }
+		if ( $n > 1 && $p['top'] ) { $t = array(); foreach ( $p['top'] as $nm => $q ) { $t[] = esc_html( $nm ) . ' <b>×' . (int) $q . '</b>'; } $h .= '<div class="apc-prof__l">Най-често купува</div><p class="apc-prof__top">' . implode( ' · ', $t ) . '</p>'; }
+		return $h;
 	}
 	public static function customer( $email ) { $m = self::customers( array( $email ) ); return $m[ strtolower( trim( (string) $email ) ) ] ?? array( 'n' => 0, 'last' => '', 'total' => 0.0, 'regular' => false ); }
 	/** HTML баджът по скрипта: 🟢 редовен (Сценарий А) / 🆕 нов (Сценарий Б). */
