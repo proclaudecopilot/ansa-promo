@@ -128,8 +128,8 @@ final class Boost {
 	 * възстановява само редовете и купоните: в нова сесия (друг браузър, изтекла сесия) или след срока на ваучера чекаутът излизаше БЕЗ „Ваучер 10 €“,
 	 * а имейлът показва количката С него (FKA пази таксите в снимката на количката) — клиентът вижда „Общо 5,90“ в писмото и 15,90 в чекаута.
 	 * Тук: token → количката на FKA → имейлът → ваучерът на лийда → в сесията. Жив ваучер се връща винаги. Изтекъл се възобновява за
-	 * cold.recover_minutes от клика само ако: писмото го е показало (кодът е в снимката на количката), не е ползван, имейлът няма поръчка по промото,
-	 * промото е включено и не е свършило, и количката не е по-стара от RECOVER_MAX_AGE. bonus не се пипа (issue() на 20.11 пак го възобновява). */
+	 * cold.recover_minutes от клика, ако: не е ползван, имейлът няма поръчка по промото, промото е включено и не е свършило, количката не е
+	 * станала поръчка и не е по-стара от RECOVER_MAX_AGE (1.54.6: без „кодът е в снимката“ — FKA я презаписва без ваучера). bonus не се пипа (issue() на 20.11 пак го възобновява). */
 	const AB_COOKIE       = 'ansa_bf_ab';
 	const OPT_RECOVER     = 'ansa_promo_bf_recover_log';
 	const RECOVER_MAX_AGE = 259200; /* 3 дни */
@@ -145,7 +145,7 @@ final class Boost {
 		$last = is_array( $l['last'] ?? null ) ? $l['last'] : array(); array_unshift( $last, array( 't' => current_time( 'mysql' ), 'why' => (string) $why, 'email' => '' !== (string) $email ? \AnsaPromo\Cart_Sync::mask( $email ) : '', 'tok' => substr( (string) $token, 0, 4 ) ) ); $l['last'] = array_slice( $last, 0, 20 );
 		update_option( self::OPT_RECOVER, $l, false );
 	}
-	public static function recover_why_label( $why ) { $m = array( 'ok-live' => 'върнат (жив)', 'ok-revived' => 'възобновен', 'in-session' => 'вече е в сесията', 'no-cart' => 'няма такава количка във FunnelKit', 'no-email' => 'количката е без имейл', 'no-voucher' => 'имейлът няма неизползван ваучер', 'off' => 'възобновяването е изключено / промото не върви', 'order' => 'количката вече е поръчка', 'old' => 'количката е по-стара от 3 дни', 'converted' => 'имейлът вече има поръчка по промото', 'not-in-email' => 'ваучерът не е в снимката на количката', 'db' => 'записът не мина', 'no-session' => 'няма WC сесия' ); return $m[ $why ] ?? (string) $why; }
+	public static function recover_why_label( $why ) { $m = array( 'ok-live' => 'върнат (жив)', 'ok-revived' => 'възобновен', 'in-session' => 'вече е в сесията', 'no-cart' => 'няма такава количка във FunnelKit', 'no-email' => 'количката е без имейл', 'no-voucher' => 'имейлът няма неизползван ваучер', 'off' => 'възобновяването е изключено / промото не върви', 'order' => 'количката вече е поръчка', 'old' => 'количката е по-стара от 3 дни', 'converted' => 'имейлът вече има поръчка по промото', 'db' => 'записът не мина', 'no-session' => 'няма WC сесия' ); return $m[ $why ] ?? (string) $why; }
 	/** woocommerce_init / wp_loaded: ?bwfan-ab-id= (или нашата бисквитка от предната заявка) → ваучерът в сесията. Веднъж на заявка. */
 	public static function recover_request() {
 		if ( self::$recover_done ) { return; }
@@ -191,7 +191,7 @@ final class Boost {
 		do_action( 'ansa_promo_bf_voucher_recovered', $out, $row, $cart );
 		return $out;
 	}
-	/** Изтеклият ваучер, който писмото е показало в количката → срокът му става клик + cold.recover_minutes. Връща обновения ред или null. */
+	/** Изтеклият неизползван ваучер на имейла → срокът му става клик + cold.recover_minutes. Връща обновения ред или null ($why = причината). */
 	private static function revive_for_cart( $email, $cart, $cfg, &$why = '' ) {
 		global $wpdb; $min = (int) ( $cfg['cold']['recover_minutes'] ?? 0 );
 		if ( $min <= 0 || empty( $cfg['enabled'] ) || 'over' === Config::phase_now( $cfg ) ) { $why = 'off'; return null; }
@@ -201,15 +201,15 @@ final class Boost {
 		if ( (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE promo = %s AND email = %s AND converted_order_id IS NOT NULL", Leads::PROMO, $email ) ) > 0 ) { $why = 'converted'; return null; }
 		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE promo = %s AND email = %s AND voucher <> '' AND voucher_order_id IS NULL ORDER BY id DESC LIMIT 10", Leads::PROMO, $email ), ARRAY_A );
 		if ( ! $rows ) { $why = 'no-voucher'; return null; }
-		$snap = implode( ' ', array_filter( $cart, 'is_scalar' ) ); /* снимката: FKA пази таксите на количката (името на таксата носи кода) */
-		foreach ( $rows as $row ) {
-			$code = (string) $row['voucher']; if ( '' === $code || false === stripos( $snap, $code ) ) { continue; }
-			$exp = max( (int) strtotime( (string) $row['voucher_exp'] . ' UTC' ), time() + $min * MINUTE_IN_SECONDS ); $sql = gmdate( 'Y-m-d H:i:s', $exp );
-			if ( false === $wpdb->update( $t, array( 'voucher_exp' => $sql ), array( 'id' => (int) $row['id'] ), array( '%s' ), array( '%d' ) ) ) { $why = 'db'; return null; }
-			$row['voucher_exp'] = $sql; Leads::voucher_valid( $code, true );
-			return $row;
-		}
-		$why = 'not-in-email'; return null;
+		/* 1.54.6: без условието „кодът е в снимката“ — FKA презаписва снимката при всяко отваряне на количката без ваучера (на живо: not-in-email
+		   за линк, чието писмо го е показало). При няколко кода на имейла: този от снимката, иначе най-новият. */
+		$snap = implode( ' ', array_filter( $cart, 'is_scalar' ) ); $row = $rows[0];
+		foreach ( $rows as $r ) { if ( '' !== (string) $r['voucher'] && false !== stripos( $snap, (string) $r['voucher'] ) ) { $row = $r; break; } }
+		$code = (string) $row['voucher'];
+		$exp = max( (int) strtotime( (string) $row['voucher_exp'] . ' UTC' ), time() + $min * MINUTE_IN_SECONDS ); $sql = gmdate( 'Y-m-d H:i:s', $exp );
+		if ( false === $wpdb->update( $t, array( 'voucher_exp' => $sql ), array( 'id' => (int) $row['id'] ), array( '%s' ), array( '%d' ) ) ) { $why = 'db'; return null; }
+		$row['voucher_exp'] = $sql; Leads::voucher_valid( $code, true );
+		return $row;
 	}
 
 	/* ── личният линк: ?u=<base64url(email)>.<hmac> ── */
