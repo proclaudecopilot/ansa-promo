@@ -69,7 +69,7 @@ $id['h'] = $C( 'radostina.v@gmail.com', 1, 0, 60 * 122, 60 * 121, 148.5, $season
 $id['i'] = $C( 'silviya.todorova@abv.bg', 4, 9101, 60 * 54, 60 * 20, 89.4, $season( 'm', 3, 30, array( array( 501, 3 ) ) ), $chk( 'Силвия', 'Тодорова', '0888 404 040' ) );
 $id['j'] = $C( 'gergana.m@icloud.com', 2, 0, 60 * 140, 60 * 46, 68, $shop, $chk( 'Гергана', 'Маринова', '0879 333 444' ) );
 $id['k'] = $C( 'no.phone@example.com', 1, 0, 60 * 5, 60 * 4, 59.6, $season( 's', 2, 20, array( array( 502, 2 ) ) ), '' );
-$id['l'] = $C( 'viktoria.angelova@gmail.com', 1, 0, 60 * 170, 60 * 169, 247.5, $season( 'l', 5, 40, array( array( 504, 5 ), array( 501, 2 ), array( 20, 1, 'secret' ), array( 9, 1, 'book' ) ) ), $chk( 'Виктория', 'Ангелова', '0887 700 700' ) );
+$id['l'] = $C( 'viktoria.angelova@gmail.com', 2, 0, 60 * 170, 60 * 169, 247.5, $season( 'l', 5, 40, array( array( 504, 5 ), array( 501, 2 ), array( 20, 1, 'secret' ), array( 9, 1, 'book' ) ) ), $chk( 'Виктория', 'Ангелова', '0887 700 700' ) );
 
 /* ── сесии в промото (лийд от попъпа): излизат при търсене и в 🧾 Сесии ── */
 $wpdb->insert( 'wp_ansa_promo_leads', array( 'email' => 'maria.georgieva@gmail.com' ) ); $wpdb->insert( 'wp_ansa_promo_leads', array( 'email' => 'samo.sesia@abv.bg' ) );

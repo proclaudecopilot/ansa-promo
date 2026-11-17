@@ -654,6 +654,13 @@ $ok( 'profile_html с линк (wp-admin): номерът води към пор
 $cp = Insights::customer_payload( 'cart', $cidR );
 $ok( 'customer_payload(cart, редовната): HTML на профила с името от количката; несъществуваща количка / друг src → null', is_array( $cp ) && false !== strpos( $cp['html'], 'Рени Редовна' ) && false !== strpos( $cp['html'], 'reg54@example.com' ) && false !== strpos( $cp['html'], 'Последна поръчка' ) && null === Insights::customer_payload( 'cart', 999999 ) && null === Insights::customer_payload( 'sess', $cidR ) );
 unset( $GLOBALS['orders'][5401], $GLOBALS['orders'][5402], $GLOBALS['orders'][5403] );
+/* 1.54.1 (човекът: „защо „за спасяване“ сумата стои на нула“): FunnelKit прави количката „изгубена“ след 15 дни, но тя остава в опашката — сумата е на опашката */
+$wpdb->query( "UPDATE wp_bwfan_abandonedcarts SET status = 2 WHERE ID = $cidR" );
+$_GET = array( 'view' => 'carts', 'q' => '54@example.com' ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒: „За спасяване“ = сумата на опашката (25 + 25, едната „изгубена“ във FunnelKit), „2 колички в опашката“, бележка „1 е извън имейлите на FunnelKit“; редът на FunnelKit пак казва изгубени 1', (bool) preg_match( '/За спасяване<\/span><b class="apc-kpi__v">50,00 €<\/b>/u', $hc ) && false !== strpos( $hc, '<b>2</b> колички в опашката без поръчка' ) && false !== strpos( $hc, '· 1 е извън имейлите на FunnelKit' ) && false !== strpos( $hc, 'изгубени <b>1</b>' ) && false !== strpos( $hc, 'отворени <b>2</b>' ), ( preg_match( '/За спасяване.{0,400}/su', $hc, $mm ) ? $mm[0] : '' ) );
+Insights::handle_action( 'cart_work', array( 'src' => 'cart', 'id' => $cidN, 'status' => 'declined' ) ); $hc = Insights::carts_html();
+$ok( 'екранът 🛒: отказалата излиза от опашката и от сумата — 25,00 €, 1 количка', (bool) preg_match( '/За спасяване<\/span><b class="apc-kpi__v">25,00 €<\/b>/u', $hc ) && false !== strpos( $hc, '<b>1</b> количка в опашката без поръчка' ), ( preg_match( '/За спасяване.{0,400}/su', $hc, $mm ) ? $mm[0] : '' ) );
+$_GET = array();
 
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
