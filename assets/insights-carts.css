@@ -1,0 +1,280 @@
+/**
+ * ansa™ Промо 1.53.0 — 📈 Insights → 🛒 Изоставени колички (опашката за обаждане) и 📋 работата по количка/сесия.
+ * Печата се вграден (<style>) от Insights::styles() — и в wp-admin, и в портала; коментарите се махат при печата.
+ *
+ * Правилото на екрана: КОЕТО СЕ ЦЪКА изглежда като бутон — заоблено (999px), с плътен цвят или контур, със сянка при hover;
+ * КОЕТО Е САМО ИНФОРМАЦИЯ е малък етикет с прави ъгли (6px), без контур и без hover. Линковете са подчертани при hover.
+ * Всичко е под #ansa-promo-app (рамката на админа/портала), за да е по-силно от общите правила за таблици и полета там.
+ */
+
+/* ── общи за Insights: бутони и етикети ── */
+#ansa-promo-app .ap-abtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 14px; border-radius: 999px; border: 1.5px solid transparent; font: 800 12.5px/1.2 inherit; font-family: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .13s, border-color .13s, box-shadow .13s, color .13s; box-sizing: border-box; }
+#ansa-promo-app .ap-abtn:focus-visible { outline: 3px solid #f9c7b0; outline-offset: 2px; box-shadow: none; }
+#ansa-promo-app .ap-abtn.ap-abtn--go { background: #cf5320; color: #fff; box-shadow: 0 4px 10px rgba(207, 83, 32, .28); }
+#ansa-promo-app .ap-abtn.ap-abtn--go:hover { background: #b3441a; color: #fff; box-shadow: 0 6px 14px rgba(207, 83, 32, .36); }
+#ansa-promo-app .ap-abtn.ap-abtn--dark { background: #43302a; color: #fff; }
+#ansa-promo-app .ap-abtn.ap-abtn--dark:hover { background: #2c1f1b; color: #fff; }
+#ansa-promo-app .ap-abtn.ap-abtn--line { background: #fff; color: #43302a; border-color: #e3c9bd; }
+#ansa-promo-app .ap-abtn.ap-abtn--line:hover { border-color: #cf5320; color: #b3441a; background: #fff8f5; }
+#ansa-promo-app .ap-abtn.ap-abtn--ghost { background: #fbf1ec; color: #6b4a3e; border-color: transparent; list-style: none; }
+#ansa-promo-app .ap-abtn.ap-abtn--ghost:hover { background: #fde4d9; color: #b3441a; }
+#ansa-promo-app .ap-abtn.ap-abtn--ghost::-webkit-details-marker { display: none; }
+#ansa-promo-app .ap-abtn.ap-abtn--sm { min-height: 28px; padding: 4px 11px; font-size: 11.5px; }
+#ansa-promo-app a.ap-abtn[target=_blank]::after { content: "↗"; font-size: 11px; opacity: .75; }
+#ansa-promo-app .ap-op { display: inline-flex; flex-wrap: wrap; gap: 6px; vertical-align: middle; }
+#ansa-promo-app .ap-rowact { display: grid; gap: 6px; justify-items: start; margin-top: 6px; }
+#ansa-promo-app .ap-sec > .ap-sec__hint { padding: 0 20px 8px; font-size: 12.5px; font-weight: 600; color: #6b5148; line-height: 1.55; }
+
+#ansa-promo-app .ap-pill { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 800; line-height: 1.5; background: #f1eceA; color: #5d4a42; white-space: nowrap; vertical-align: middle; cursor: default; }
+#ansa-promo-app .ap-pill--ok { background: #e2f4e9; color: #1a6b3c; }
+#ansa-promo-app .ap-pill--warn { background: #fdefd3; color: #8a5a06; }
+#ansa-promo-app .ap-pill--info { background: #e3eefa; color: #1d558f; }
+#ansa-promo-app .ap-pill--bad { background: #fadddd; color: #b3261e; }
+#ansa-promo-app .ap-pill--muted { background: #f1ecea; color: #7a6a63; }
+
+/* ── 📋 работата: състоянието (текст) + „Отбележи резултат“ (бутон → изскачащ панел) ── */
+#ansa-promo-app .ap-work { display: grid; gap: 3px; justify-items: start; min-width: 150px; }
+#ansa-promo-app .ap-work > span { display: block; font-size: 11.5px; font-weight: 700; color: #6b5148; line-height: 1.4; }
+#ansa-promo-app .ap-work > .ap-pill { display: inline-block; font-size: 11.5px; padding: 3px 8px; }
+#ansa-promo-app .ap-work__cb { color: #1d558f !important; font-weight: 800 !important; }
+#ansa-promo-app .ap-work__cb.is-due { color: #b3261e !important; }
+#ansa-promo-app .ap-work__cb.is-due b { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 6px; background: #fadddd; color: #b3261e; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+#ansa-promo-app .ap-work__n { color: #43302a !important; font-style: italic; white-space: normal; overflow-wrap: anywhere; }
+#ansa-promo-app .ap-work__by { font-size: 10.5px !important; color: #876b5f !important; }
+#ansa-promo-app .ap-work__d { position: relative; margin-top: 4px; }
+#ansa-promo-app .ap-work__d > summary { user-select: none; }
+#ansa-promo-app .ap-work__d[open] > summary { background: #43302a; color: #fff; }
+#ansa-promo-app .ap-work__p { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 320px; max-width: calc(100vw - 32px); padding: 14px; background: #fff; border: 1px solid #f1dcd3; border-radius: 16px; box-shadow: 0 18px 44px rgba(59, 42, 36, .22); text-align: left; white-space: normal; }
+#ansa-promo-app .ap-work__form { display: grid !important; gap: 9px; margin: 0; }
+#ansa-promo-app .ap-work__form.is-busy { opacity: .6; pointer-events: none; }
+#ansa-promo-app .ap-work__ttl { display: grid; gap: 1px; }
+#ansa-promo-app .ap-work__ttl b { font-size: 14px; font-weight: 900; color: #43302a; }
+#ansa-promo-app .ap-work__ttl small { font-size: 11px; color: #876b5f; overflow-wrap: anywhere; }
+#ansa-promo-app .ap-work__q { order: -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed #f1dcd3; }
+#ansa-promo-app .ap-work__q > span { grid-column: 1 / -1; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #876b5f; }
+#ansa-promo-app .ap-work__q .ap-abtn { padding: 7px 6px; font-size: 12px; }
+#ansa-promo-app .ap-work__ttl { order: -2; }
+#ansa-promo-app .ap-work__f { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: center; font-size: 11.5px; font-weight: 800; color: #6b5148; }
+#ansa-promo-app .ap-work__f > span { line-height: 1.25; }
+/* .ap-work__form в селектора: по-силно от „#ansa-promo-app .ap-sec__b input[type=text] / select“ (полетата-хапчета на админа) — формата е и в таблиците на 🧾 Сесии */
+#ansa-promo-app .ap-work__form .ap-work__f select, #ansa-promo-app .ap-work__form .ap-work__f input, #ansa-promo-app .ap-work__form .ap-work__f textarea { width: 100%; max-width: none; min-width: 0; min-height: 34px; height: auto; box-sizing: border-box; margin: 0; padding: 6px 10px; border: 1.5px solid #e3c9bd; border-radius: 10px; background: #fff; color: #43302a; font: 700 12.5px/1.35 inherit; font-family: inherit; box-shadow: none; outline: none; }
+#ansa-promo-app .ap-work__form .ap-work__f select { -webkit-appearance: none; appearance: none; padding-right: 30px; cursor: pointer; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2343302a' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; }
+#ansa-promo-app .ap-work__form .ap-work__f textarea { resize: vertical; min-height: 54px; border-radius: 10px; }
+#ansa-promo-app .ap-work__form .ap-work__f select:focus, #ansa-promo-app .ap-work__form .ap-work__f input:focus, #ansa-promo-app .ap-work__form .ap-work__f textarea:focus { border-color: #cf5320; background-color: #fff; box-shadow: 0 0 0 3px #fde4d9; }
+#ansa-promo-app .ap-work__form[data-st] .ap-work__f--cb, #ansa-promo-app .ap-work__form[data-st] .ap-work__f--order { display: none; }
+#ansa-promo-app .ap-work__form[data-st=callback] .ap-work__f--cb, #ansa-promo-app .ap-work__form[data-st=recovered] .ap-work__f--order { display: grid; }
+#ansa-promo-app .ap-work__save { justify-self: end; min-width: 120px; }
+#ansa-promo-app .ap-work__hl { margin: 12px 0 4px; padding-top: 10px; border-top: 1px dashed #f1dcd3; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #876b5f; }
+#ansa-promo-app .ap-work__h { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+#ansa-promo-app .ap-work__h small { color: #876b5f; font-weight: 700; white-space: normal; }
+#ansa-promo-app .ap-sec--table .ap-sec__b { overflow: visible; }
+
+/* ── 🛒 екранът ── */
+#ansa-promo-app .apc { --m: #876b5f; --line: #f1dcd3; container: apc / inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; max-width: 1560px; }
+#ansa-promo-app .apc small { color: var(--m); }
+#ansa-promo-app .apc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#ansa-promo-app .apc-bad { color: #b3261e; }
+
+/* ① лентата: търсене · период · вид */
+#ansa-promo-app .apc-bar { background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 14px 18px; display: grid; gap: 12px; }
+#ansa-promo-app .apc-search { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0; }
+#ansa-promo-app .apc-search__f { position: relative; flex: 1 1 280px; max-width: 560px; display: block; }
+#ansa-promo-app .apc-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
+#ansa-promo-app .apc-search input[type=search] { width: 100%; height: 42px; box-sizing: border-box; padding: 0 14px 0 40px; border: 1.5px solid #e3c9bd; border-radius: 999px; background: #fff; color: #43302a; font: 700 14px/1 inherit; font-family: inherit; box-shadow: none; outline: none; -webkit-appearance: none; appearance: none; margin: 0; }
+#ansa-promo-app .apc-search input[type=search]::placeholder { color: #a08579; font-weight: 600; }
+#ansa-promo-app .apc-search input[type=search]:focus { border-color: #cf5320; box-shadow: 0 0 0 3px #fde4d9; }
+#ansa-promo-app .apc-search .ap-abtn { min-height: 42px; padding: 0 20px; font-size: 13.5px; }
+#ansa-promo-app .apc-filters { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; }
+#ansa-promo-app .apc-fg { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: relative; }
+#ansa-promo-app .apc-fg.is-off .apc-seg, #ansa-promo-app .apc-fg.is-off .apc-range { opacity: .45; }
+#ansa-promo-app .apc-fg__l { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--m); }
+#ansa-promo-app .apc-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px; background: #fbf1ec; }
+#ansa-promo-app .apc-seg__it { display: inline-block; padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #6b5148; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .13s, color .13s; }
+#ansa-promo-app .apc-seg__it::first-letter { text-transform: uppercase; }
+#ansa-promo-app .apc-seg__it:hover { background: #fff; color: #b3441a; }
+#ansa-promo-app .apc-seg__it.on { background: #43302a; color: #fff; }
+#ansa-promo-app .apc-seg__it:focus-visible, #ansa-promo-app .apc-tab:focus-visible, #ansa-promo-app a.apc-kpi:focus-visible { outline: 3px solid #f9c7b0; outline-offset: 2px; box-shadow: none; }
+#ansa-promo-app .apc-range { position: relative; }
+#ansa-promo-app .apc-range__s { list-style: none; background: #fff; border: 1.5px solid #e3c9bd; padding: 5px 13px; user-select: none; }
+#ansa-promo-app .apc-range__s::-webkit-details-marker { display: none; }
+#ansa-promo-app .apc-range__s::after { content: " ▾"; opacity: .6; }
+#ansa-promo-app .apc-range__s.on { border-color: #43302a; }
+#ansa-promo-app .apc-range__p { position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; display: flex; gap: 10px; align-items: end; padding: 14px; margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 44px rgba(59, 42, 36, .22); }
+#ansa-promo-app .apc-range__p label { display: grid; gap: 3px; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--m); }
+#ansa-promo-app .apc-range__p input[type=date] { height: 36px; padding: 0 10px; border: 1.5px solid #e3c9bd; border-radius: 10px; background: #fff; color: #43302a; font: 700 13px/1 inherit; font-family: inherit; box-shadow: none; }
+#ansa-promo-app .apc-range__p input[type=date]:focus { border-color: #cf5320; box-shadow: 0 0 0 3px #fde4d9; outline: none; }
+
+/* ② числата */
+#ansa-promo-app .apc-kpis { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: 12px; }
+#ansa-promo-app .apc-kpi { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 14px 18px 14px 20px; border-radius: 18px; background: #fff; box-shadow: var(--shadow); border: 2px solid transparent; color: #43302a; text-decoration: none; overflow: hidden; min-height: 104px; }
+#ansa-promo-app .apc-kpi::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 4px; border-radius: 0 4px 4px 0; background: #e3c9bd; }
+#ansa-promo-app .apc-kpi--hero::before { background: #cf5320; }
+#ansa-promo-app .apc-kpi--warn::before { background: #f8a41d; }
+#ansa-promo-app .apc-kpi--bad::before { background: #d64545; }
+#ansa-promo-app .apc-kpi--ok::before { background: #3bb273; }
+#ansa-promo-app .apc-kpi__l { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+#ansa-promo-app .apc-kpi__v { font-size: 28px; font-weight: 900; line-height: 1.15; color: #43302a; }
+#ansa-promo-app .apc-kpi--hero .apc-kpi__v { font-size: 36px; }
+#ansa-promo-app .apc-kpi__s { font-size: 12px; font-weight: 700; color: #6b5148; line-height: 1.4; }
+#ansa-promo-app .apc-kpi__s b { color: #43302a; font-weight: 900; }
+#ansa-promo-app .apc-kpi__s b.apc-bad { color: #b3261e; }
+#ansa-promo-app .apc-kpi__go { margin-top: auto; padding-top: 6px; font-size: 11.5px; font-weight: 800; color: #b3441a; }
+#ansa-promo-app a.apc-kpi { cursor: pointer; transition: border-color .13s, transform .13s, box-shadow .13s; }
+#ansa-promo-app a.apc-kpi:hover { border-color: #f4b99f; transform: translateY(-1px); box-shadow: 0 12px 28px rgba(224, 96, 44, .14); }
+#ansa-promo-app a.apc-kpi:hover .apc-kpi__go { text-decoration: underline; }
+#ansa-promo-app a.apc-kpi.on { border-color: #43302a; }
+#ansa-promo-app .apc-fk { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; margin: -4px 4px 0; font-size: 11.5px; font-weight: 700; color: var(--m); }
+#ansa-promo-app .apc-fk b { color: #43302a; font-weight: 900; }
+#ansa-promo-app .apc-fk span[title] { cursor: help; border-bottom: 1px dotted #d9bfb3; }
+#ansa-promo-app .apc-fk__l { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 6px; background: #fbf1ec; border-bottom: 0 !important; }
+
+/* ③ опашката: табове · помощ · контекст · редове */
+#ansa-promo-app .apc-card { background: #fff; border-radius: 20px; box-shadow: var(--shadow); }
+#ansa-promo-app .apc-card__h { padding: 6px 12px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+#ansa-promo-app .apc-tabs { display: flex; gap: 2px; min-width: max-content; }
+#ansa-promo-app .apc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 12px 14px 11px; border-bottom: 3px solid transparent; font-size: 13.5px; font-weight: 800; color: var(--m); text-decoration: none; white-space: nowrap; cursor: pointer; }
+#ansa-promo-app .apc-tab::first-letter { text-transform: uppercase; }
+#ansa-promo-app .apc-tab b { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #fbf1ec; color: #6b5148; font-size: 11.5px; font-weight: 900; text-align: center; }
+#ansa-promo-app .apc-tab:hover { color: #b3441a; }
+#ansa-promo-app .apc-tab.on { color: #43302a; border-bottom-color: #cf5320; }
+#ansa-promo-app .apc-tab.on b { background: #43302a; color: #fff; }
+#ansa-promo-app .apc-tab__due { font-style: normal; padding: 1px 7px; border-radius: 6px; background: #fadddd; color: #b3261e; font-size: 10.5px; font-weight: 800; }
+#ansa-promo-app .apc-help { border-bottom: 1px solid var(--line); }
+#ansa-promo-app .apc-help > summary { padding: 9px 18px; font-size: 12.5px; font-weight: 800; color: #6b4a3e; cursor: pointer; list-style: none; user-select: none; }
+#ansa-promo-app .apc-help > summary::-webkit-details-marker { display: none; }
+#ansa-promo-app .apc-help > summary::after { content: " ▸"; color: #b3441a; }
+#ansa-promo-app .apc-help[open] > summary::after { content: " ▾"; }
+#ansa-promo-app .apc-help > summary:hover { color: #b3441a; background: #fffaf7; }
+#ansa-promo-app .apc-help > summary span { font-weight: 700; color: var(--m); margin-left: 6px; }
+#ansa-promo-app .apc-help__b { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 6px 18px 16px; background: #fffaf7; font-size: 12.5px; font-weight: 600; color: #5d4a42; line-height: 1.5; }
+#ansa-promo-app .apc-help__b h4 { margin: 0 0 6px; font-size: 11px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; color: #43302a; }
+#ansa-promo-app .apc-help__b ul { margin: 0; padding-left: 16px; }
+#ansa-promo-app .apc-help__b li { margin: 0 0 5px; }
+#ansa-promo-app .apc-help__b b { color: #43302a; font-weight: 800; }
+#ansa-promo-app .apc-help__b dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+#ansa-promo-app .apc-help__b dt { font-weight: 800; color: #43302a; white-space: nowrap; }
+#ansa-promo-app .apc-help__b dd { margin: 0; }
+#ansa-promo-app .apc-ctx { padding: 12px 20px 4px; font-size: 12.5px; font-weight: 700; color: #6b5148; line-height: 2; }
+#ansa-promo-app .apc-ctx .ap-abtn { margin-left: 8px; vertical-align: middle; }
+#ansa-promo-app .apc-ctx b { color: #43302a; font-weight: 900; }
+#ansa-promo-app .apc-ctx__m { color: var(--m); }
+#ansa-promo-app .apc-empty { display: grid; justify-items: center; gap: 6px; padding: 44px 20px 48px; text-align: center; color: #6b5148; }
+#ansa-promo-app .apc-empty__ic { font-size: 34px; opacity: .55; }
+#ansa-promo-app .apc-empty b { font-size: 15px; font-weight: 900; color: #43302a; }
+#ansa-promo-app .apc-empty p { margin: 0 0 6px; max-width: 520px; font-size: 12.5px; font-weight: 600; line-height: 1.5; }
+
+#ansa-promo-app .apc-table { width: 100%; border-collapse: collapse; border-spacing: 0; font-size: 13px; margin: 0; }
+#ansa-promo-app .apc-table th { padding: 10px 12px 8px; text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--m); border-bottom: 1px solid var(--line); white-space: nowrap; }
+#ansa-promo-app .apc-table td { padding: 14px 12px; vertical-align: top; border-bottom: 1px solid var(--line); font-weight: 600; color: #43302a; line-height: 1.45; }
+#ansa-promo-app .apc-table tr:last-child td { border-bottom: 0; }
+#ansa-promo-app .apc-table tr > :first-child { padding-left: 20px; }
+#ansa-promo-app .apc-table tr > :last-child { padding-right: 18px; }
+#ansa-promo-app .apc-table tbody tr:hover td { background: #fffaf7; }
+#ansa-promo-app .apc-table .apc-r { text-align: right; }
+#ansa-promo-app .apc-row.is-due > td:first-child { box-shadow: inset 4px 0 0 #d64545; }
+#ansa-promo-app .apc-row.is-cb > td:first-child { box-shadow: inset 4px 0 0 #7fb0e0; }
+#ansa-promo-app .apc-row.is-done .apc-name, #ansa-promo-app .apc-row.is-done .apc-sum { color: #6b5148; }
+#ansa-promo-app .apc-c-who { width: 23%; min-width: 210px; }
+#ansa-promo-app .apc-c-cart { width: 27%; }
+#ansa-promo-app .apc-c-sum, #ansa-promo-app .apc-c-age { white-space: nowrap; }
+#ansa-promo-app .apc-c-state { width: 21%; min-width: 170px; }
+#ansa-promo-app .apc-c-act { width: 200px; }
+
+#ansa-promo-app .apc-who { display: grid; gap: 3px; justify-items: start; }
+#ansa-promo-app .apc-name { font-size: 14px; font-weight: 900; color: #43302a; overflow-wrap: anywhere; }
+#ansa-promo-app .apc-tel { font-size: 14px; font-weight: 800; color: #43302a; text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#ansa-promo-app a.apc-tel { border-bottom: 1.5px solid #f4b99f; }
+#ansa-promo-app a.apc-tel:hover { color: #b3441a; border-bottom-color: #cf5320; }
+#ansa-promo-app .apc-tel--no { font-size: 12px; font-weight: 700; color: var(--m); font-style: italic; }
+#ansa-promo-app .apc-mail { font-size: 12px; font-weight: 700; color: #6b5148; text-decoration: none; overflow-wrap: anywhere; }
+#ansa-promo-app .apc-mail:hover { color: #b3441a; text-decoration: underline; }
+#ansa-promo-app .apc-who > .apc-mail:first-child { font-size: 14px; font-weight: 900; color: #43302a; }
+#ansa-promo-app .apc-cust { display: block; margin-top: 2px; font-size: 11.5px; }
+#ansa-promo-app .apc-cust small { font-size: 11.5px; font-weight: 700; color: #6b5148; }
+#ansa-promo-app .apc-box { font-weight: 900; color: #43302a; }
+#ansa-promo-app .apc-boxm { display: inline-block; margin-left: 8px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+#ansa-promo-app .apc-lines { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 1px; font-size: 12.5px; font-weight: 600; color: #5d4a42; }
+#ansa-promo-app .apc-lines b { font-weight: 900; color: #43302a; }
+#ansa-promo-app .apc-lines i { font-style: normal; font-size: 10.5px; font-weight: 800; color: var(--m); padding: 0 5px; border-radius: 5px; background: #fbf1ec; }
+#ansa-promo-app .apc-cart > .ap-pill { margin-top: 5px; }
+#ansa-promo-app .apc-sum { font-size: 15px; font-weight: 900; color: #43302a; }
+#ansa-promo-app .apc-age { display: block; font-size: 13px; font-weight: 800; color: #43302a; }
+#ansa-promo-app .apc-age::first-letter { text-transform: uppercase; }
+#ansa-promo-app .apc-c-age small { font-size: 11.5px; font-weight: 700; }
+#ansa-promo-app .apc-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 6px; font-size: 11px; font-weight: 700; color: var(--m); }
+#ansa-promo-app .apc-meta span[title] { cursor: help; }
+#ansa-promo-app .apc-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #c9b8ad; vertical-align: 1px; }
+#ansa-promo-app .apc-dot--ok { background: #3bb273; }
+#ansa-promo-app .apc-dot--warn { background: #f8a41d; }
+#ansa-promo-app .apc-dot--info { background: #2469a8; }
+#ansa-promo-app .apc-acts { display: grid; gap: 6px; }
+#ansa-promo-app .apc-acts .ap-op { display: grid; gap: 6px; }
+#ansa-promo-app .apc-acts .ap-abtn { width: 100%; }
+#ansa-promo-app .apc-acts .ap-work__d { margin-top: 0; }
+#ansa-promo-app .apc-order { justify-self: start; padding: 4px 9px; border-radius: 6px; background: #e2f4e9; color: #1a6b3c; font-size: 12.5px; font-weight: 800; }
+#ansa-promo-app .apc-order a { color: #1a6b3c; text-decoration: underline; }
+
+/* Подредбата следва ширината на СЪДЪРЖАНИЕТО (container query), не на прозореца — лявото меню взима 264px, а в wp-admin рамката е друга. */
+/* по-тясно: числата и помощта по две */
+@container apc (max-width: 1040px) {
+  #ansa-promo-app .apc-kpis { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #ansa-promo-app .apc-help__b { grid-template-columns: 1fr 1fr; }
+  #ansa-promo-app .apc-c-act { width: 178px; }
+  #ansa-promo-app .apc-c-who { min-width: 190px; }
+  #ansa-promo-app .apc-c-state { min-width: 150px; }
+}
+/* тясно (таблет с меню, телефон): всеки ред е карта — без хоризонтален скрол */
+@container apc (max-width: 900px) {
+  #ansa-promo-app .apc-table, #ansa-promo-app .apc-table tbody { display: block; min-width: 0 !important; }
+  #ansa-promo-app .apc-table thead { display: none; }
+  #ansa-promo-app .apc-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; padding: 16px 16px; border-bottom: 8px solid var(--blush, #fdebe9); }
+  #ansa-promo-app .apc-table tr:last-child { border-bottom: 0; }
+  #ansa-promo-app .apc-table td, #ansa-promo-app .apc-table tr > :first-child, #ansa-promo-app .apc-table tr > :last-child { display: block; width: auto; min-width: 0; padding: 0; border: 0; position: static !important; background: transparent !important; box-shadow: none !important; }
+  #ansa-promo-app .apc-c-who { grid-column: 1; grid-row: 1; }
+  #ansa-promo-app .apc-c-sum { grid-column: 2; grid-row: 1; }
+  #ansa-promo-app .apc-c-age { grid-column: 2; grid-row: 1; align-self: end; text-align: right; }
+  #ansa-promo-app .apc-table tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #ansa-promo-app .apc-c-sum, #ansa-promo-app .apc-c-age { text-align: right; }
+  #ansa-promo-app .apc-c-cart { grid-column: 1; }
+  #ansa-promo-app .apc-c-state { grid-column: 2; }
+  #ansa-promo-app .apc-c-act { grid-column: 1 / -1; }
+  #ansa-promo-app .apc-c-cart, #ansa-promo-app .apc-c-state { padding: 10px 12px !important; border-radius: 12px; background: #fffaf7 !important; }
+  #ansa-promo-app .apc-row.is-due { box-shadow: inset 4px 0 0 #d64545; }
+  #ansa-promo-app .apc-row.is-cb { box-shadow: inset 4px 0 0 #7fb0e0; }
+  #ansa-promo-app .apc-acts { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  #ansa-promo-app .apc-acts .ap-op { display: contents; }
+  #ansa-promo-app .apc-acts .ap-work__d[open] { grid-column: 1 / -1; }
+  #ansa-promo-app .apc .ap-work__p { position: static; width: auto; max-width: 460px; margin-top: 8px; box-shadow: none; }
+}
+/* много тясно (телефон): количката и състоянието едно под друго */
+@container apc (max-width: 560px) {
+  #ansa-promo-app .apc-table tr { grid-template-columns: minmax(0, 1fr) auto; }
+  #ansa-promo-app .apc-c-cart, #ansa-promo-app .apc-c-state { grid-column: 1 / -1; }
+}
+/* таблиците на 🧾 Сесии / 🟢 На живо (и „Сесии в промото“ под търсенето): на тесен екран се скролират в картата си, а формата на 📋 е в потока (иначе скролът я реже) */
+@media (max-width: 900px) {
+  #ansa-promo-app .ap-sec--table .ap-sec__b { overflow-x: auto; }
+  #ansa-promo-app .ap-sec--table .ap-work__p { position: static; width: 300px; margin-top: 8px; box-shadow: none; }
+}
+/* телефон: по-едри цели за пръст, формата е в потока (не изскача), полетата са 16px (iOS не увеличава) */
+@media (max-width: 640px) {
+  #ansa-promo-app .apc-bar { padding: 12px; border-radius: 16px; }
+  #ansa-promo-app .apc-search .ap-abtn { flex: 1 1 auto; }
+  #ansa-promo-app .apc-filters { gap: 10px; }
+  #ansa-promo-app .apc-fg { width: 100%; align-items: flex-start; flex-direction: column; gap: 5px; }
+  #ansa-promo-app .apc-seg { border-radius: 16px; }
+  #ansa-promo-app .apc-range__p { position: static; margin-top: 6px; flex-wrap: wrap; box-shadow: none; }
+  #ansa-promo-app .apc-kpis { gap: 8px; }
+  #ansa-promo-app .apc-kpi { padding: 12px 12px 12px 16px; min-height: 0; border-radius: 16px; }
+  #ansa-promo-app .apc-kpi__v { font-size: 22px; }
+  #ansa-promo-app .apc-kpi--hero, #ansa-promo-app .apc-kpi:last-child { grid-column: 1 / -1; }
+  #ansa-promo-app .apc-kpi--hero .apc-kpi__v { font-size: 30px; }
+  #ansa-promo-app .apc-help__b { grid-template-columns: 1fr; gap: 12px; }
+  #ansa-promo-app .apc-help > summary span { display: none; }
+  #ansa-promo-app .apc-table tr { padding: 16px 14px; }
+  #ansa-promo-app .apc-acts { grid-template-columns: 1fr; }
+  #ansa-promo-app .apc-acts .ap-abtn { min-height: 44px; font-size: 14px; }
+  #ansa-promo-app .apc-tel { font-size: 16px; }
+  #ansa-promo-app .apc .ap-work__p { max-width: none; }
+  #ansa-promo-app .ap-work__form .ap-work__f select, #ansa-promo-app .ap-work__form .ap-work__f input, #ansa-promo-app .ap-work__form .ap-work__f textarea, #ansa-promo-app .apc-search input[type=search] { font-size: 16px; min-height: 42px; }
+}

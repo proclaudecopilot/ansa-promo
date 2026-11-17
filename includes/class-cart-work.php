@@ -11,7 +11,7 @@
  *    за да спре flow-ът „Cart Abandoned“ и да излезе от „изоставени“ и във FKA; тагът sezon-kolichka пада.
  *  - ✖ отказала: във FKA става „изгубена“ (status 2) — flow-ът не тръгва; тагът пада.
  *  - връщане към „за прозвъняване“/„обратно обаждане“/…: ако FKA е 2/4 без поръчка → пак 1 (recoverable).
- *  - по подразбиране екранът 🛒 скрива възстановените и отказалите (филтър „работа“: отворени · за обаждане · приключени · всички).
+ *  - по подразбиране екранът 🛒 скрива възстановените и отказалите (табове „работа“: отворени · уговорени · приключени · всички).
  *
  * Действието минава по пътя на разхода/замразяването: admin-post (ins_cart_work) и порталът (ap_action=cart_work с CSRF) →
  * Insights::handle_action → Cart_Work::save(). Таблица {prefix}ansa_promo_cart_work (DB ver 11).
@@ -36,7 +36,7 @@ final class Cart_Work {
 		'wrong'     => array( 'грешен номер', 'muted', '❌' ),
 	);
 	/** Филтърът „работа“ на екрана 🛒. */
-	const FILTERS = array( 'open' => 'отворени', 'callback' => 'за обаждане', 'done' => 'приключени', 'all' => 'всички' );
+	const FILTERS = array( 'open' => 'отворени', 'callback' => 'уговорени', 'done' => 'приключени', 'all' => 'всички' ); /* 1.53.0: „за обаждане“ → „уговорени“ (обратно обаждане + ще поръча) — да не се бърка със „за прозвъняване“ */
 	const LOG_MAX = 20;
 	/** 1.52.0 (скриптът): жестът за Вид 2 — ключ → етикет. */
 	const GESTURES = array( '' => 'без жест', 'gift' => '🎁 колагенова маска', 'ship' => '🚚 безплатна доставка', 'pct' => '💶 отстъпка' );
@@ -143,37 +143,61 @@ final class Cart_Work {
 	}
 
 	/* ── екранът ── */
-	/** Пилът + формата за реда (details, без JS). $src cart|sess, $id, $email, $w = записът или null, $ret = скрити полета за връщане (view/q/kind/work/from/to). */
-	public static function widget( $src, $id, $email, $w, $ret = array() ) {
-		$st = $w ? $w['status'] : ''; $lbl = self::label( $st ); $tone = self::tone( $st );
-		$h = '<div class="ap-work"><span class="ap-pill' . ( $tone ? ' ap-pill--' . $tone : '' ) . '" title="' . esc_attr( $w ? ( $w['by'] ? $w['by'] . ' · ' : '' ) . $w['updated_at'] : 'още никой не е работил по нея' ) . '">' . self::icon( $st ) . ' ' . esc_html( $lbl ) . '</span>';
-		if ( $w ) {
-			if ( 'callback' === $st && $w['callback_at'] ) { $h .= '<br><small>🔁 ' . esc_html( date_i18n( 'd.m H:i', strtotime( $w['callback_at'] ) ) ) . '</small>'; }
-			if ( '' !== $w['gesture'] ) { $h .= '<br><small>' . esc_html( self::gesture_label( $w['gesture'] ) ) . '</small>'; }
-			if ( $w['order_id'] > 0 ) { $h .= '<br><small>поръчка #' . (int) $w['order_id'] . '</small>'; }
-			if ( '' !== $w['note'] ) { $h .= '<br><small class="ap-work__n">„' . esc_html( $w['note'] ) . '“</small>'; }
-			$h .= '<br><small class="ap-small">' . esc_html( ( $w['by'] ? $w['by'] . ' · ' : '' ) . date_i18n( 'd.m H:i', strtotime( $w['updated_at'] ) ) ) . '</small>';
-		}
-		ob_start(); Insights::action_form_open( 'cart_work' );
+	/** 1.53.0: уговореното обратно обаждане е минало (просрочено) — редът отива най-горе в опашката. */
+	public static function is_due( $w, $now = null ) {
+		if ( ! $w || 'callback' !== $w['status'] || empty( $w['callback_at'] ) ) { return false; }
+		$t = strtotime( (string) $w['callback_at'] ); return $t && $t <= ( $now ?: current_time( 'timestamp' ) );
+	}
+	/** 1.53.0: само състоянието на работата (етикет + кога да се звъни пак, жест, поръчка, бележка, кой и кога) — статичен текст, нищо не се цъка. */
+	public static function status_html( $w, $now = null ) {
+		$st = $w ? $w['status'] : ''; $tone = self::tone( $st );
+		$h = '<span class="ap-pill ap-pill--st' . ( $tone ? ' ap-pill--' . $tone : '' ) . '" title="' . esc_attr( $w ? ( $w['by'] ? $w['by'] . ' · ' : '' ) . $w['updated_at'] : 'още никой не е работил по нея' ) . '">' . self::icon( $st ) . ' ' . esc_html( self::label( $st ) ) . '</span>';
+		if ( ! $w ) { return $h; }
+		if ( 'callback' === $st && $w['callback_at'] ) { $due = self::is_due( $w, $now ); $h .= '<span class="ap-work__cb' . ( $due ? ' is-due' : '' ) . '"' . ( $due ? ' title="уговореният час е минал — звънни първо на нея"' : '' ) . '>🔁 ' . esc_html( date_i18n( 'd.m H:i', strtotime( $w['callback_at'] ) ) ) . ( $due ? ' <b>просрочено</b>' : '' ) . '</span>'; }
+		if ( '' !== $w['gesture'] ) { $h .= '<span class="ap-work__g">' . esc_html( self::gesture_label( $w['gesture'] ) ) . '</span>'; }
+		if ( $w['order_id'] > 0 ) { $h .= '<span class="ap-work__o">поръчка #' . (int) $w['order_id'] . '</span>'; }
+		if ( '' !== $w['note'] ) { $h .= '<span class="ap-work__n">„' . esc_html( $w['note'] ) . '“</span>'; }
+		return $h . '<span class="ap-work__by">' . esc_html( ( $w['by'] ? $w['by'] . ' · ' : '' ) . date_i18n( 'd.m H:i', strtotime( $w['updated_at'] ) ) ) . '</span>';
+	}
+	/** 1.53.0: бутонът „Отбележи резултат“ + изскачащата форма (details, работи и без JS) и историята. $src cart|sess, $id, $email, $w = записът или null,
+	 *  $ret = скрити полета за връщане (view/q/kind/work/from/to). Бързите бутони са СЛЕД избора в HTML-а (последната стойност на status печели), на екрана са първи (CSS order). */
+	public static function form_html( $src, $id, $email, $w, $ret = array() ) {
+		$st = $w ? $w['status'] : '';
+		ob_start(); Insights::action_form_open( 'cart_work', ' class="ap-work__form"' );
 		foreach ( array_merge( array( 'src' => $src, 'id' => (int) $id, 'email' => (string) $email ), $ret ) as $k => $v ) { if ( '' !== (string) $v ) { echo '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( (string) $v ) . '">'; } }
-		echo '<select name="status">'; foreach ( self::STATUSES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $st ?: 'new' ) ? ' selected' : '' ) . '>' . esc_html( $v[2] . ' ' . $v[0] ) . '</option>'; } echo '</select>';
-		echo '<select name="gesture" title="жестът по скрипта — само за Вид 2 (колебае се); един на поръчка">'; foreach ( self::GESTURES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $w ? $w['gesture'] : '' ) ? ' selected' : '' ) . '>' . esc_html( 'жест: ' . $v ) . '</option>'; } echo '</select>';
-		echo '<input type="text" name="note" value="' . esc_attr( $w ? $w['note'] : '' ) . '" placeholder="мнение · въпроси · защо не е минала · обещано обаждане" maxlength="500" title="записките по скрипта: мнението за продуктите, въпросите и притесненията, защо поръчката не е завършена, предложен ли е жест, обещано обратно обаждане">';
-		echo '<label title="кога да се звъни пак (при „обратно обаждане“)">🔁 <input type="datetime-local" name="cb" value="' . esc_attr( $w && $w['callback_at'] ? str_replace( ' ', 'T', substr( $w['callback_at'], 0, 16 ) ) : '' ) . '"></label>';
-		echo '<label title="номер на поръчката при „възстановена“ — празно = търси се по имейла">📦 #<input type="text" name="order" value="' . esc_attr( $w && $w['order_id'] > 0 ? (string) $w['order_id'] : '' ) . '" size="6" inputmode="numeric"></label>';
-		echo '<button class="button button-primary">Запази</button> <span class="ap-work__q"><button class="ap-chip ap-chip--sm" name="status" value="noanswer" title="не вдига">📵</button><button class="ap-chip ap-chip--sm" name="status" value="recovered" title="възстановена — поръча (и във FunnelKit)">✅</button><button class="ap-chip ap-chip--sm" name="status" value="declined" title="отказала (във FunnelKit: изгубена)">✖</button></span></form>';
+		echo '<div class="ap-work__ttl"><b>Резултат от обаждането</b>' . ( '' !== (string) $email ? '<small>' . esc_html( (string) $email ) . '</small>' : '' ) . '</div>';
+		echo '<label class="ap-work__f"><span>Статус</span><select name="status">'; foreach ( self::STATUSES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $st ?: 'new' ) ? ' selected' : '' ) . '>' . esc_html( $v[2] . ' ' . $v[0] ) . '</option>'; } echo '</select></label>';
+		echo '<label class="ap-work__f ap-work__f--cb" title="кога да се звъни пак (при „обратно обаждане“)"><span>Звънни пак на</span><input type="datetime-local" name="cb" value="' . esc_attr( $w && $w['callback_at'] ? str_replace( ' ', 'T', substr( $w['callback_at'], 0, 16 ) ) : '' ) . '"></label>';
+		echo '<label class="ap-work__f ap-work__f--order" title="номер на поръчката при „възстановена“ — празно = търси се по имейла"><span>Поръчка №</span><input type="text" name="order" value="' . esc_attr( $w && $w['order_id'] > 0 ? (string) $w['order_id'] : '' ) . '" inputmode="numeric" placeholder="празно = търси по имейла"></label>';
+		echo '<label class="ap-work__f" title="жестът по скрипта — само за Вид 2 (колебае се); един на поръчка"><span>Жест</span><select name="gesture">'; foreach ( self::GESTURES as $k => $v ) { echo '<option value="' . esc_attr( $k ) . '"' . ( $k === ( $w ? $w['gesture'] : '' ) ? ' selected' : '' ) . '>' . esc_html( $v ) . '</option>'; } echo '</select></label>';
+		echo '<label class="ap-work__f"><span>Бележка</span><textarea name="note" rows="2" maxlength="500" placeholder="мнение · въпроси · защо не е минала · обещано обаждане" title="записките по скрипта: мнението за продуктите, въпросите и притесненията, защо поръчката не е завършена, предложен ли е жест, обещано обратно обаждане">' . esc_html( $w ? $w['note'] : '' ) . '</textarea></label>';
+		echo '<button class="ap-abtn ap-abtn--go ap-work__save" type="submit">Запази</button>';
+		echo '<div class="ap-work__q"><span>С един клик</span><button class="ap-abtn ap-abtn--line" name="status" value="noanswer" title="не вдига — остава в опашката">📵 Не вдига</button><button class="ap-abtn ap-abtn--line" name="status" value="recovered" title="възстановена — поръча (и във FunnelKit)">✅ Поръча</button><button class="ap-abtn ap-abtn--line" name="status" value="declined" title="отказала (във FunnelKit: изгубена)">✖ Отказа</button></div></form>';
 		$form = ob_get_clean();
 		$hist = '';
-		if ( $w && count( $w['log'] ) > 1 ) { $hist = '<ul class="ap-work__h">'; foreach ( array_slice( $w['log'], 1, 6 ) as $l ) { $hist .= '<li><small>' . esc_html( date_i18n( 'd.m H:i', strtotime( $l['at'] ) ) . ' · ' . ( $l['by'] ?: '—' ) . ' · ' . self::label( $l['st'] ) . ( ! empty( $l['g'] ) ? ' · ' . self::gesture_label( $l['g'] ) : '' ) . ( $l['note'] ? ' · „' . $l['note'] . '“' : '' ) ) . '</small></li>'; } $hist .= '</ul>'; }
-		return $h . '<details class="ap-work__d"><summary>✎ ' . ( $w ? 'промени' : 'отбележи' ) . '</summary><div class="ap-work__p">' . $form . $hist . '</div></details></div>'; /* 1.51.2: панелът е absolute — не разширява колоната */
+		if ( $w && count( $w['log'] ) > 1 ) { $hist = '<div class="ap-work__hl">История</div><ul class="ap-work__h">'; foreach ( array_slice( $w['log'], 1, 6 ) as $l ) { $hist .= '<li><small>' . esc_html( date_i18n( 'd.m H:i', strtotime( $l['at'] ) ) . ' · ' . ( $l['by'] ?: '—' ) . ' · ' . self::label( $l['st'] ) . ( ! empty( $l['g'] ) ? ' · ' . self::gesture_label( $l['g'] ) : '' ) . ( $l['note'] ? ' · „' . $l['note'] . '“' : '' ) ) . '</small></li>'; } $hist .= '</ul>'; }
+		return '<details class="ap-work__d ap-pop"><summary class="ap-abtn ap-abtn--ghost">📝 ' . ( $w ? 'Промени резултата' : 'Отбележи резултат' ) . '</summary><div class="ap-work__p">' . $form . $hist . '</div></details>'; /* 1.51.2: панелът е absolute — не разширява колоната */
 	}
+	/** Състоянието + формата за реда (🧾 Сесии, 🟢 На живо; на 🛒 двете са в отделни колони). */
+	public static function widget( $src, $id, $email, $w, $ret = array() ) {
+		return '<div class="ap-work">' . self::status_html( $w ) . self::form_html( $src, $id, $email, $w, $ret ) . '</div>';
+	}
+	/** 1.53.0: стиловете на 🛒 и на 📋 (assets/insights-carts.css) — печатат се веднъж от Insights::styles(), за админа и за портала. */
 	public static function styles() {
-		return '.ap-work{min-width:150px;position:relative}.ap-work__d{margin-top:4px}.ap-work__d summary{cursor:pointer;font-size:11px;font-weight:800;color:#a08579;list-style:none}.ap-work__d summary::-webkit-details-marker{display:none}.ap-work__p{position:absolute;right:0;top:100%;z-index:30;width:270px;padding:10px;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(59,42,36,.18);text-align:left}.ap-work__d form{display:flex;flex-direction:column;gap:5px;margin:0}.ap-work__d select,.ap-work__d input[type=text],.ap-work__d input[type=datetime-local]{font-size:12px;padding:4px 7px;border-radius:8px;border:1px solid #e7dcd6;background:#fbf7f5;width:100%;min-width:0;box-sizing:border-box;font-family:inherit}.ap-work__d label{font-size:11px;font-weight:800;color:#a08579;display:flex;align-items:center;gap:4px}.ap-work__d label input{flex:1}.ap-work__d input[name=order]{width:80px;flex:none}.ap-work__q{display:inline-flex;gap:4px;margin-top:2px}.ap-work__q .ap-chip{padding:3px 8px;font-size:12px}.ap-work__h{margin:8px 0 0;padding-left:14px;color:#8c8f94}.ap-work__n{color:#3b2a24}.ap-sec--table .ap-sec__b{overflow:visible}';
+		static $css = null; if ( null === $css ) { $f = ANSA_PROMO_PATH . 'assets/insights-carts.css'; $css = is_readable( $f ) ? (string) file_get_contents( $f ) : ''; $css = trim( (string) preg_replace( '~/\*.*?\*/~s', '', $css ) ); }
+		return $css;
 	}
-	/** Чиповете „работа“. */
-	public static function filter_chips( $cur ) {
-		$h = '<div class="ap-actions ap-fbar" style="padding:0 0 12px"><span class="ap-fbar__l">работа</span><div class="ap-chips">';
-		foreach ( self::FILTERS as $k => $v ) { $h .= '<a class="ap-chip' . ( $k === $cur ? ' on' : '' ) . '" href="' . esc_url( Insights::url( array( 'work' => $k ) ) ) . '">' . esc_html( $v ) . '</a>'; }
-		return $h . '<small>отворени = без възстановените и отказалите (по подразбиране) · за обаждане = „обратно обаждане“ и „ще поръча“ · приключени = възстановени, отказали и с поръчка</small></div></div>';
+	/** 1.53.0: колко реда има във всеки филтър „работа“ — за броячите в табовете. $rows = количките, $wm = записите по ID. */
+	public static function filter_counts( $rows, $wm ) {
+		$c = array_fill_keys( array_keys( self::FILTERS ), 0 );
+		foreach ( (array) $rows as $x ) { foreach ( $c as $k => $n ) { if ( self::passes( $k, $wm[ (int) $x['id'] ] ?? null, $x['order_id'] ?? 0 ) ) { $c[ $k ]++; } } }
+		return $c;
+	}
+	/** 1.53.0: табовете „работа“ с броячи (навигация — линкове). $due = колко уговорени обаждания са просрочени. */
+	public static function filter_tabs( $cur, $counts = array(), $due = 0 ) {
+		$tip = array( 'open' => 'без възстановените и отказалите — това е опашката за обаждане', 'callback' => 'с уговорка: „обратно обаждане“ и „ще поръча“', 'done' => 'възстановени, отказали и с поръчка', 'all' => 'всичко за периода' );
+		$h = '<nav class="apc-tabs" aria-label="Работа по количките">';
+		foreach ( self::FILTERS as $k => $v ) { $h .= '<a class="apc-tab' . ( $k === $cur ? ' on' : '' ) . '" href="' . esc_url( Insights::url( array( 'work' => $k ) ) ) . '" title="' . esc_attr( $tip[ $k ] ) . '"' . ( $k === $cur ? ' aria-current="page"' : '' ) . '>' . esc_html( $v ) . ( isset( $counts[ $k ] ) ? ' <b>' . (int) $counts[ $k ] . '</b>' : '' ) . ( 'callback' === $k && $due > 0 ? ' <i class="apc-tab__due" title="просрочени обратни обаждания">' . (int) $due . ' просрочени</i>' : '' ) . '</a>'; }
+		return $h . '</nav>';
 	}
 }
