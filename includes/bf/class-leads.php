@@ -115,9 +115,9 @@ final class Leads {
 	/* ── ваучери ── */
 	public static function voucher_row( $code ) { global $wpdb; $code = strtoupper( trim( (string) $code ) ); if ( '' === $code ) { return null; } $r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . ' WHERE voucher = %s LIMIT 1', $code ), ARRAY_A ); return is_array( $r ) ? $r : null; }
 	/** Жив = има го, не е ползван и не е изтекъл (voucher_exp е UTC). */
-	public static function voucher_valid( $code ) {
+	public static function voucher_valid( $code, $fresh = false ) { /* 1.54.4: $fresh — без кеша (след като срокът е удължен в същата заявка) */
 		static $cache = array(); $code = strtoupper( trim( (string) $code ) ); if ( '' === $code ) { return false; }
-		if ( isset( $cache[ $code ] ) && $cache[ $code ][0] > time() - 5 ) { return $cache[ $code ][1]; }
+		if ( ! $fresh && isset( $cache[ $code ] ) && $cache[ $code ][0] > time() - 5 ) { return $cache[ $code ][1]; }
 		$r = self::voucher_row( $code ); $ok = $r && empty( $r['voucher_order_id'] ) && ! empty( $r['voucher_exp'] ) && strtotime( $r['voucher_exp'] . ' UTC' ) > time();
 		$cache[ $code ] = array( time(), (bool) $ok ); return (bool) $ok;
 	}
