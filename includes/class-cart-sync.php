@@ -159,12 +159,15 @@ final class Cart_Sync {
 	/** Намира по-късните поръчки за редовете (abandoned_rows) без поръчка: [ cart id => [id, at, total] ].
 	 *  1.55.1: „след“ = след СЪЗДАВАНЕТО на реда на FKA (created, местно). last_modified не е знак за действие на клиента — FunnelKit пипа
 	 *  редовете на куп (на живо: десетки колички с last_modified в една и съща минута), а поръчка от админа не го спира. */
+	const ORDER_BEFORE_H = 24; /* 1.55.2: поръчка до 24 ч ПРЕДИ създаването на реда също брои — човекът току-що е поръчал (по телефона/от админа), количката е от същия епизод */
 	public static function later_orders( $rows ) {
-		$map = array(); foreach ( (array) $rows as $r ) { if ( (int) $r['order_id'] > 0 || '' === (string) $r['email'] ) { continue; } $e = strtolower( (string) $r['email'] ); $d = (string) ( $r['created'] ?: $r['modified'] ); if ( ! isset( $map[ $e ] ) || $d < $map[ $e ] ) { $map[ $e ] = $d; } }
+		$map = array(); foreach ( (array) $rows as $r ) { if ( (int) $r['order_id'] > 0 || '' === (string) $r['email'] ) { continue; } $e = strtolower( (string) $r['email'] ); $d = date( 'Y-m-d H:i:s', strtotime( (string) ( $r['created'] ?: $r['modified'] ) ) - self::ORDER_BEFORE_H * HOUR_IN_SECONDS ); if ( ! isset( $map[ $e ] ) || $d < $map[ $e ] ) { $map[ $e ] = $d; } }
 		if ( ! $map ) { return array(); } $by = Phone_Orders::orders_after( $map ); $out = array();
-		foreach ( (array) $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( (int) $r['order_id'] > 0 || ! isset( $by[ $e ] ) ) { continue; } $thr = date( 'Y-m-d H:i:s', strtotime( (string) ( $r['created'] ?: $r['modified'] ) ) - 2 * MINUTE_IN_SECONDS ); if ( $by[ $e ]['at'] >= $thr ) { $out[ (int) $r['id'] ] = $by[ $e ]; } }
+		foreach ( (array) $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( (int) $r['order_id'] > 0 || ! isset( $by[ $e ] ) ) { continue; } $c = strtotime( (string) ( $r['created'] ?: $r['modified'] ) ); $thr = date( 'Y-m-d H:i:s', $c - self::ORDER_BEFORE_H * HOUR_IN_SECONDS ); if ( $by[ $e ]['at'] >= $thr ) { $o = $by[ $e ]; $o['diff'] = self::diff_label( strtotime( $o['at'] ) - $c ); $out[ (int) $r['id'] ] = $o; } }
 		return $out;
 	}
+	/** „1 ч 17 мин преди количката“ / „4 ч след количката“ / „2 дни след количката“. */
+	public static function diff_label( $sec ) { $a = abs( (int) $sec ); $w = $sec < 0 ? 'преди' : 'след'; if ( $a < HOUR_IN_SECONDS ) { $t = max( 1, (int) round( $a / MINUTE_IN_SECONDS ) ) . ' мин'; } elseif ( $a < DAY_IN_SECONDS ) { $h = (int) floor( $a / HOUR_IN_SECONDS ); $m = (int) round( ( $a % HOUR_IN_SECONDS ) / MINUTE_IN_SECONDS ); $t = $h . ' ч' . ( $m ? ' ' . $m . ' мин' : '' ); } else { $d = (int) round( $a / DAY_IN_SECONDS ); $t = $d . ( 1 === $d ? ' ден' : ' дни' ); } return $t . ' ' . $w . ' количката'; }
 	/** Записва ги: FKA status 4 + order_id, 📋 възстановена (авто; бележката, ако няма запис). Връща броя. */
 	public static function reconcile( $rows ) {
 		global $wpdb; $t = self::table(); $later = self::later_orders( $rows ); $n = 0;
@@ -172,7 +175,7 @@ final class Cart_Sync {
 			$id = (int) $r['id']; if ( ! isset( $later[ $id ] ) ) { continue; } $o = $later[ $id ];
 			$ok = $wpdb->update( $t, array( 'status' => 4, 'order_id' => (int) $o['id'] ), array( 'ID' => $id ) );
 			if ( false === $ok ) { continue; } $n++;
-			if ( class_exists( __NAMESPACE__ . '\\Cart_Work' ) && Cart_Work::table_ok() ) { $d = array( 'src' => 'cart', 'id' => $id, 'status' => 'recovered', 'order' => (string) $o['id'] ); if ( ! Cart_Work::get( 'cart', $id ) ) { $d['note'] = 'поръчка след количката, с други продукти или от друг път (авто)'; } try { Cart_Work::save( $d, 'авто' ); } catch ( \Throwable $e ) {} }
+			if ( class_exists( __NAMESPACE__ . '\\Cart_Work' ) && Cart_Work::table_ok() ) { $d = array( 'src' => 'cart', 'id' => $id, 'status' => 'recovered', 'order' => (string) $o['id'] ); if ( ! Cart_Work::get( 'cart', $id ) ) { $d['note'] = 'поръчка #' . (int) $o['id'] . ' ' . ( $o['diff'] ?? 'около количката' ) . ' — с други продукти или от друг път, FunnelKit не я е свързал (авто)'; } try { Cart_Work::save( $d, 'авто' ); } catch ( \Throwable $e ) {} }
 			if ( self::enabled() && self::available() ) { try { self::sync_email( (string) $r['email'], false, 'reconcile #' . $id ); } catch ( \Throwable $e ) {} }
 		}
 		return $n;
