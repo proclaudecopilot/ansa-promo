@@ -143,10 +143,41 @@ final class Cart_Sync {
 	/* ── мрежата: таблицата на FKA ── */
 	public static function schedules( $s ) { if ( ! isset( $s['ansa_promo_10min'] ) ) { $s['ansa_promo_10min'] = array( 'interval' => 600, 'display' => 'ansa™ Промо: на 10 минути' ); } return $s; }
 	public static function cron() {
+		add_action( Insights_Reports::HOOK, array( __CLASS__, 'reconcile_recent' ) ); /* 1.55.0: на час — количките с по-късна поръчка стават „възстановена“ и без Insights да е отварян */
 		if ( ! self::enabled() ) { if ( wp_next_scheduled( self::HOOK ) ) { wp_clear_scheduled_hook( self::HOOK ); } return; }
 		if ( ! wp_next_scheduled( self::HOOK ) ) { wp_schedule_event( time() + 300, 'ansa_promo_10min', self::HOOK ); }
 	}
 	public static function table() { global $wpdb; return $wpdb->prefix . 'bwfan_abandonedcarts'; }
+	/* ── 1.55.0 (човекът: „защо човек, който вече е пуснал поръчка, му стои „изоставена количка““) ──
+	   FunnelKit прави количката „възстановена“ само ако поръчката мине през СЪЩАТА количка (същата сесия/бисквитка). Поръчка с други продукти,
+	   от админа, по телефона през друг път или от друго устройство я подминава — количката стои „изоставена“, flow-ът ѝ пише, екипът ѝ звъни.
+	   Правилото тук: поръчка от същия billing имейл СЛЕД последната промяна на количката = количката е възстановена → FKA status 4 + order_id,
+	   📋 „възстановена“ (авто). Върви при рендер на 🛒 (за показаните редове) и на час за последните 15 дни. */
+	/** Намира по-късните поръчки за редовете (abandoned_rows) без поръчка: [ cart id => [id, at, total] ]. */
+	public static function later_orders( $rows ) {
+		$map = array(); foreach ( (array) $rows as $r ) { if ( (int) $r['order_id'] > 0 || '' === (string) $r['email'] ) { continue; } $e = strtolower( (string) $r['email'] ); $d = (string) ( $r['modified'] ?: $r['created'] ); if ( ! isset( $map[ $e ] ) || $d > $map[ $e ] ) { $map[ $e ] = $d; } }
+		if ( ! $map ) { return array(); } $by = Phone_Orders::orders_after( $map ); $out = array();
+		foreach ( (array) $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( (int) $r['order_id'] > 0 || ! isset( $by[ $e ] ) ) { continue; } $thr = date( 'Y-m-d H:i:s', strtotime( (string) ( $r['modified'] ?: $r['created'] ) ) - 2 * MINUTE_IN_SECONDS ); if ( $by[ $e ]['at'] >= $thr ) { $out[ (int) $r['id'] ] = $by[ $e ]; } }
+		return $out;
+	}
+	/** Записва ги: FKA status 4 + order_id, 📋 възстановена (авто; бележката, ако няма запис). Връща броя. */
+	public static function reconcile( $rows ) {
+		global $wpdb; $t = self::table(); $later = self::later_orders( $rows ); $n = 0;
+		foreach ( (array) $rows as $r ) {
+			$id = (int) $r['id']; if ( ! isset( $later[ $id ] ) ) { continue; } $o = $later[ $id ];
+			$ok = $wpdb->update( $t, array( 'status' => 4, 'order_id' => (int) $o['id'] ), array( 'ID' => $id ) );
+			if ( false === $ok ) { continue; } $n++;
+			if ( class_exists( __NAMESPACE__ . '\\Cart_Work' ) && Cart_Work::table_ok() ) { $d = array( 'src' => 'cart', 'id' => $id, 'status' => 'recovered', 'order' => (string) $o['id'] ); if ( ! Cart_Work::get( 'cart', $id ) ) { $d['note'] = 'поръчка след количката, с други продукти или от друг път (авто)'; } try { Cart_Work::save( $d, 'авто' ); } catch ( \Throwable $e ) {} }
+			if ( self::enabled() && self::available() ) { try { self::sync_email( (string) $r['email'], false, 'reconcile #' . $id ); } catch ( \Throwable $e ) {} }
+		}
+		return $n;
+	}
+	/** Кронът: количките без поръчка от последните 15 дни (по последна промяна), всички видове. */
+	public static function reconcile_recent() {
+		$rows = self::abandoned_rows( 0, 500, '', 'all', array( 'from' => gmdate( 'Y-m-d', current_time( 'timestamp' ) - 15 * DAY_IN_SECONDS ), 'to' => current_time( 'Y-m-d' ) ) ); if ( ! is_array( $rows ) ) { return 0; }
+		$rows = array_values( array_filter( $rows, function ( $r ) { return (int) $r['order_id'] <= 0 && 4 !== (int) $r['status']; } ) );
+		$n = self::reconcile( $rows ); update_option( self::OPT_LOG . '_reconcile', array( 'at' => current_time( 'mysql' ), 'carts' => count( $rows ), 'recovered' => $n ), false ); return $n;
+	}
 	/** Последната количка на всеки имейл от последните часове: [ email => [ 'promo' => bool, 'status' => int, 'id' => int ] ]; количка с поръчка (recovered) не е промо. */
 	public static function recent_carts( $hours = self::SWEEP_H, $limit = 500 ) {
 		global $wpdb; $t = self::table();

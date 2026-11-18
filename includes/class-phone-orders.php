@@ -229,6 +229,32 @@ final class Phone_Orders {
 		if ( $n > 1 && $p['top'] ) { $t = array(); foreach ( $p['top'] as $nm => $q ) { $t[] = esc_html( $nm ) . ' <b>×' . (int) $q . '</b>'; } $h .= '<div class="apc-prof__l">Най-често купува</div><p class="apc-prof__top">' . implode( ' · ', $t ) . '</p>'; }
 		return $h;
 	}
+	/** 1.55.0 (човекът: „защо човек, който вече е пуснал поръчка, му стои „изоставена количка““): поръчката на същия billing имейл СЛЕД дадена дата (напр.
+	 *  последната промяна на количката) — FunnelKit отбелязва „възстановена“ само ако поръчката мине през същата количка; поръчка с други продукти / от
+	 *  админа / от друга сесия я подминава. $map = [ email => mysql дата (локална) ]; връща [ email => [id, at (локална), total] ] само за намерените. */
+	public static function orders_after( $map ) {
+		global $wpdb; $map = array_filter( array_change_key_case( (array) $map, CASE_LOWER ) ); if ( ! $map ) { return array(); }
+		$bad = array( 'wc-cancelled', 'wc-failed', 'wc-refunded', 'wc-pending', 'wc-checkout-draft', 'trash', 'auto-draft' ); $out = array();
+		$gmt = function ( $local ) { return function_exists( 'get_gmt_from_date' ) ? get_gmt_from_date( $local ) : $local; };
+		$thr = array(); foreach ( $map as $e => $d ) { $t = strtotime( (string) $d ); $thr[ $e ] = $t ? date( 'Y-m-d H:i:s', $t - 2 * MINUTE_IN_SECONDS ) : '0000-00-00 00:00:00'; } /* 2 мин толеранс — чекаутът пипа реда секунди преди поръчката */
+		$min = $gmt( min( $thr ) ); $emails = array_keys( $thr ); $found = array();
+		$hpos = false; try { $hpos = class_exists( '\\Automattic\\WooCommerce\\Utilities\\OrderUtil' ) && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled(); } catch ( \Throwable $e ) {}
+		$t = $wpdb->prefix . 'wc_orders'; $nb = implode( ',', array_fill( 0, count( $bad ), '%s' ) );
+		if ( $hpos && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) === $t ) {
+			foreach ( array_chunk( $emails, 300 ) as $chunk ) { $in = implode( ',', array_fill( 0, count( $chunk ), '%s' ) );
+				foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT id, LOWER(billing_email) AS e, date_created_gmt AS d, total_amount AS total FROM {$t} WHERE type = 'shop_order' AND LOWER(billing_email) IN ($in) AND status NOT IN ($nb) AND date_created_gmt >= %s ORDER BY date_created_gmt ASC", array_merge( $chunk, $bad, array( $min ) ) ), ARRAY_A ) as $r ) { $found[] = array( 'e' => $r['e'], 'id' => (int) $r['id'], 'gmt' => (string) $r['d'], 'total' => (float) $r['total'] ); } }
+		} elseif ( ! $hpos && self::posts_orders_ok() ) {
+			$tp = isset( $wpdb->posts ) ? $wpdb->posts : $wpdb->prefix . 'posts'; $tm = isset( $wpdb->postmeta ) ? $wpdb->postmeta : $wpdb->prefix . 'postmeta';
+			foreach ( array_chunk( $emails, 300 ) as $chunk ) { $in = implode( ',', array_fill( 0, count( $chunk ), '%s' ) );
+				foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT p.ID AS id, LOWER(pm.meta_value) AS e, p.post_date_gmt AS d, pt.meta_value AS total FROM {$tp} p INNER JOIN {$tm} pm ON pm.post_id = p.ID AND pm.meta_key = '_billing_email' LEFT JOIN {$tm} pt ON pt.post_id = p.ID AND pt.meta_key = '_order_total' WHERE p.post_type = 'shop_order' AND LOWER(pm.meta_value) IN ($in) AND p.post_status NOT IN ($nb) AND p.post_date_gmt >= %s ORDER BY p.post_date_gmt ASC", array_merge( $chunk, $bad, array( $min ) ) ), ARRAY_A ) as $r ) { $found[] = array( 'e' => $r['e'], 'id' => (int) $r['id'], 'gmt' => (string) $r['d'], 'total' => (float) $r['total'] ); } }
+		} elseif ( function_exists( 'wc_get_orders' ) ) {
+			foreach ( array_slice( $emails, 0, 80 ) as $e ) { try { $os = (array) wc_get_orders( array( 'limit' => 20, 'orderby' => 'date', 'order' => 'DESC', 'billing_email' => $e, 'return' => 'objects' ) ); } catch ( \Throwable $x ) { $os = array(); }
+				foreach ( $os as $o ) { if ( ! is_object( $o ) || strtolower( (string) $o->get_billing_email() ) !== $e || in_array( 'wc-' . $o->get_status(), $bad, true ) || in_array( $o->get_status(), $bad, true ) ) { continue; } $d = $o->get_date_created(); $found[] = array( 'e' => $e, 'id' => (int) $o->get_id(), 'gmt' => $gmt( $d ? $d->date( 'Y-m-d H:i:s' ) : '' ), 'total' => (float) $o->get_total() ); } }
+			usort( $found, function ( $a, $b ) { return strcmp( $a['gmt'], $b['gmt'] ); } );
+		}
+		foreach ( $found as $f ) { $e = $f['e']; if ( isset( $out[ $e ] ) || ! isset( $thr[ $e ] ) || $f['gmt'] < $gmt( $thr[ $e ] ) ) { continue; } $out[ $e ] = array( 'id' => $f['id'], 'at' => function_exists( 'get_date_from_gmt' ) ? get_date_from_gmt( $f['gmt'] ) : $f['gmt'], 'total' => $f['total'] ); }
+		return $out;
+	}
 	public static function customer( $email ) { $m = self::customers( array( $email ) ); return $m[ strtolower( trim( (string) $email ) ) ] ?? array( 'n' => 0, 'last' => '', 'total' => 0.0, 'regular' => false ); }
 	/** HTML баджът по скрипта: 🟢 редовен (Сценарий А) / 🆕 нов (Сценарий Б). */
 	public static function customer_html( $c ) {
