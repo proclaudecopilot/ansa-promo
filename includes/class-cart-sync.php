@@ -148,16 +148,21 @@ final class Cart_Sync {
 		if ( ! wp_next_scheduled( self::HOOK ) ) { wp_schedule_event( time() + 300, 'ansa_promo_10min', self::HOOK ); }
 	}
 	public static function table() { global $wpdb; return $wpdb->prefix . 'bwfan_abandonedcarts'; }
+	/** 1.55.1: FunnelKit пише created_time / last_modified в GMT — за екрана и сравненията → местно време. */
+	public static function local( $dt ) { $dt = (string) $dt; return '' !== $dt && function_exists( 'get_date_from_gmt' ) ? get_date_from_gmt( $dt ) : $dt; }
+	public static function gmt( $dt ) { $dt = (string) $dt; return '' !== $dt && function_exists( 'get_gmt_from_date' ) ? get_gmt_from_date( $dt ) : $dt; }
 	/* ── 1.55.0 (човекът: „защо човек, който вече е пуснал поръчка, му стои „изоставена количка““) ──
 	   FunnelKit прави количката „възстановена“ само ако поръчката мине през СЪЩАТА количка (същата сесия/бисквитка). Поръчка с други продукти,
 	   от админа, по телефона през друг път или от друго устройство я подминава — количката стои „изоставена“, flow-ът ѝ пише, екипът ѝ звъни.
 	   Правилото тук: поръчка от същия billing имейл СЛЕД последната промяна на количката = количката е възстановена → FKA status 4 + order_id,
 	   📋 „възстановена“ (авто). Върви при рендер на 🛒 (за показаните редове) и на час за последните 15 дни. */
-	/** Намира по-късните поръчки за редовете (abandoned_rows) без поръчка: [ cart id => [id, at, total] ]. */
+	/** Намира по-късните поръчки за редовете (abandoned_rows) без поръчка: [ cart id => [id, at, total] ].
+	 *  1.55.1: „след“ = след СЪЗДАВАНЕТО на реда на FKA (created, местно). last_modified не е знак за действие на клиента — FunnelKit пипа
+	 *  редовете на куп (на живо: десетки колички с last_modified в една и съща минута), а поръчка от админа не го спира. */
 	public static function later_orders( $rows ) {
-		$map = array(); foreach ( (array) $rows as $r ) { if ( (int) $r['order_id'] > 0 || '' === (string) $r['email'] ) { continue; } $e = strtolower( (string) $r['email'] ); $d = (string) ( $r['modified'] ?: $r['created'] ); if ( ! isset( $map[ $e ] ) || $d > $map[ $e ] ) { $map[ $e ] = $d; } }
+		$map = array(); foreach ( (array) $rows as $r ) { if ( (int) $r['order_id'] > 0 || '' === (string) $r['email'] ) { continue; } $e = strtolower( (string) $r['email'] ); $d = (string) ( $r['created'] ?: $r['modified'] ); if ( ! isset( $map[ $e ] ) || $d < $map[ $e ] ) { $map[ $e ] = $d; } }
 		if ( ! $map ) { return array(); } $by = Phone_Orders::orders_after( $map ); $out = array();
-		foreach ( (array) $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( (int) $r['order_id'] > 0 || ! isset( $by[ $e ] ) ) { continue; } $thr = date( 'Y-m-d H:i:s', strtotime( (string) ( $r['modified'] ?: $r['created'] ) ) - 2 * MINUTE_IN_SECONDS ); if ( $by[ $e ]['at'] >= $thr ) { $out[ (int) $r['id'] ] = $by[ $e ]; } }
+		foreach ( (array) $rows as $r ) { $e = strtolower( (string) $r['email'] ); if ( (int) $r['order_id'] > 0 || ! isset( $by[ $e ] ) ) { continue; } $thr = date( 'Y-m-d H:i:s', strtotime( (string) ( $r['created'] ?: $r['modified'] ) ) - 2 * MINUTE_IN_SECONDS ); if ( $by[ $e ]['at'] >= $thr ) { $out[ (int) $r['id'] ] = $by[ $e ]; } }
 		return $out;
 	}
 	/** Записва ги: FKA status 4 + order_id, 📋 възстановена (авто; бележката, ако няма запис). Връща броя. */
@@ -246,7 +251,7 @@ final class Cart_Sync {
 		global $wpdb; $t = self::table(); $q = self::search_norm( $q ); if ( ! isset( self::KINDS[ $kind ] ) ) { $kind = 'season'; }
 		/* 1.52.2 (човекът: „пише нула колички, това е абсурдно“ — период в миналото): $rg = [from, to] (Y-m-d) → периодът е В заявката по last_modified,
 		   не след LIMIT-а (иначе 300-те най-нови редове са извън периода и всички отпадат) */
-		$rw = ''; if ( is_array( $rg ) && ! empty( $rg['from'] ) && ! empty( $rg['to'] ) ) { $rw = $wpdb->prepare( ' AND last_modified >= %s AND last_modified < %s', $rg['from'] . ' 00:00:00', gmdate( 'Y-m-d', strtotime( $rg['to'] ) + DAY_IN_SECONDS ) . ' 00:00:00' ); $days = 0; }
+		$rw = ''; if ( is_array( $rg ) && ! empty( $rg['from'] ) && ! empty( $rg['to'] ) ) { $rw = $wpdb->prepare( ' AND last_modified >= %s AND last_modified < %s', self::gmt( $rg['from'] . ' 00:00:00' ), self::gmt( gmdate( 'Y-m-d', strtotime( $rg['to'] ) + DAY_IN_SECONDS ) . ' 00:00:00' ) ); $days = 0; } /* 1.55.1: границите в GMT (FKA) */
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
 		/* 1.50.3 (човекът: „deti_67@abv.bg излиза че няма изоставена, а има“): видът — season = само със „Сезонът“ ред (както досега), bf = Черният петък, shop = без промо ред, all = всички колички на FKA */
 		$kw = 'season' === $kind ? "items LIKE '%\"" . Cart::META . "\"%'" : ( 'bf' === $kind ? "items LIKE '%\"" . self::BF_META . "\"%'" : '1=1' );
@@ -258,7 +263,7 @@ final class Cart_Sync {
 			$c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
 			$email = strtolower( (string) $r['email'] );
 			if ( '' !== $q && ! self::search_match( $q, $email, $c['name'], $c['phone'] ) ) { continue; } /* 1.50.2: SQL-ът е само предварителна мрежа, тук е точната проверка */
-			$out[] = array( 'id' => (int) $r['ID'], 'email' => $email, 'kind' => $p['kind'], 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'currency' => (string) ( $r['currency'] ?? '' ), 'name' => $c['name'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'], 'tagged' => 'season' === $p['kind'] && $tid > 0 && self::available() && Merge::contact_has( $email, 'tags', $tid ) );
+			$out[] = array( 'id' => (int) $r['ID'], 'email' => $email, 'kind' => $p['kind'], 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => self::local( $r['created_time'] ), 'modified' => self::local( $r['last_modified'] ), /* 1.55.1: местно време */ 'total' => (float) $r['total'], 'currency' => (string) ( $r['currency'] ?? '' ), 'name' => $c['name'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'], 'tagged' => 'season' === $p['kind'] && $tid > 0 && self::available() && Merge::contact_has( $email, 'tags', $tid ) );
 		}
 		return $out;
 	}
@@ -298,7 +303,7 @@ final class Cart_Sync {
 		global $wpdb; $t = self::table(); $id = (int) $id; if ( $id <= 0 || $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return null; }
 		$r = $wpdb->get_row( $wpdb->prepare( "SELECT ID, email, status, order_id, created_time, last_modified, total, currency, items, checkout_data FROM {$t} WHERE ID = %d", $id ), ARRAY_A ); if ( ! $r ) { return null; }
 		$p = self::parse_items( $r['items'] ); if ( 'all' !== $kind && $p['kind'] !== $kind ) { return null; } $c = self::parse_checkout( $r['checkout_data'] ); list( $lbl, $tone ) = self::status_label( $r['status'], $r['order_id'] );
-		return array( 'id' => (int) $r['ID'], 'kind' => $p['kind'], 'email' => strtolower( (string) $r['email'] ), 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => (string) $r['created_time'], 'modified' => (string) $r['last_modified'], 'total' => (float) $r['total'], 'name' => $c['name'], 'first' => $c['first'], 'last' => $c['last'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'] );
+		return array( 'id' => (int) $r['ID'], 'kind' => $p['kind'], 'email' => strtolower( (string) $r['email'] ), 'status' => (int) $r['status'], 'status_label' => $lbl, 'tone' => $tone, 'order_id' => (int) $r['order_id'], 'created' => self::local( $r['created_time'] ), 'modified' => self::local( $r['last_modified'] ), 'total' => (float) $r['total'], 'name' => $c['name'], 'first' => $c['first'], 'last' => $c['last'], 'phone' => $c['phone'], 'consent' => $c['consent'], 'meta' => $p['meta'], 'lines' => $p['lines'] );
 	}
 	/** Обобщение за плочките: брой по състояние, сума на изоставените, с таг. */
 	public static function abandoned_stats( $rows ) {
