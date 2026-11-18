@@ -77,6 +77,8 @@ final class Plugin {
 		if ( ! get_option( Tickets::OPT_BACKFILL ) && ! wp_next_scheduled( Tickets::BACKFILL_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Tickets::BACKFILL_HOOK ); }
 		/* 1.50.0: еднократно след ъпдейта — заседналите „в офис/изпратена“ след получаване се връщат на „Получена“ (до 1000) */
 		if ( ! get_option( Status_Guard::OPT_REPAIR ) && ! wp_next_scheduled( Status_Guard::REPAIR_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Status_Guard::REPAIR_HOOK ); }
+		/* 1.55.3: еднократно след ъпдейта — поръчките по телефон, закачени за акаунта на оператора, минават на клиента */
+		if ( ! get_option( Phone_Orders::OPT_REPAIR ) && ! wp_next_scheduled( Phone_Orders::REPAIR_HOOK ) ) { wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, Phone_Orders::REPAIR_HOOK ); }
 	}
 
 	/** register_activation_hook — таблиците + маркер кога е активиран. */
