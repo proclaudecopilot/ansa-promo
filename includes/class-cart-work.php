@@ -111,7 +111,7 @@ final class Cart_Work {
 		elseif ( in_array( $cur, array( 2, 4 ), true ) && (int) $fka['order_id'] <= 0 ) { $set = array( 'status' => 1 ); } /* върната в работа → пак recoverable */
 		if ( ! $set ) { return ''; }
 		if ( isset( $set['status'] ) && $set['status'] === $cur && ! isset( $set['order_id'] ) ) { return ''; }
-		$set['last_modified'] = current_time( 'mysql' ); $r = $wpdb->update( $t, $set, array( 'ID' => (int) $fka['ID'] ) );
+		$r = $wpdb->update( $t, $set, array( 'ID' => (int) $fka['ID'] ) ); /* 1.55.0: без last_modified — по него се съди дали поръчката е след количката */
 		if ( false === $r ) { return ' · FunnelKit: не се записа (' . $wpdb->last_error . ')'; }
 		return ' · FunnelKit: ' . ( 4 === (int) $set['status'] ? 'възстановена' : ( 2 === (int) $set['status'] ? 'изгубена' : 'пак изоставена (recoverable)' ) );
 	}
