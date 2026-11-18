@@ -47,6 +47,56 @@ final class Phone_Orders {
 		add_action( 'wp_footer', array( __CLASS__, 'checkout_bridge_footer' ), 1 ); /* резерва, ако шаблонът няма wp_head */
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'on_any_order' ), 25 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'on_any_order' ), 25 );
+		/* 1.55.3 (човекът: „като възстановим поръчка излизат на профила на Яна и някакъв администратор … трябва да си стоят на профила на клиента“):
+		   операторът е логнат в WP в своя браузър → WooCommerce пише поръчката към НЕГОВИЯ акаунт и презаписва НЕГОВИЯ профил с адреса на клиента */
+		add_action( 'woocommerce_checkout_create_order', array( __CLASS__, 'order_customer' ), 5, 2 );
+		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( __CLASS__, 'order_customer' ), 5, 2 );
+		add_action( 'woocommerce_new_order', array( __CLASS__, 'new_order_customer' ), 5, 2 );
+		add_action( 'woocommerce_checkout_update_customer', array( __CLASS__, 'keep_operator_profile' ), 5, 2 );
+		add_action( self::REPAIR_HOOK, array( __CLASS__, 'repair_customers' ) );
+	}
+	const REPAIR_HOOK = 'ansa_promo_phone_customer_repair'; const OPT_REPAIR = 'ansa_promo_phone_customer_repair_v1';
+	/** Има ли контекст на оператор в тази сесия (линк от Insights)? */
+	public static $ctx_override = null; /* тестове */
+	public static function op_ctx() { $ctx = null !== self::$ctx_override ? self::$ctx_override : Cart::ctx(); return isset( $ctx['op'] ) && is_array( $ctx['op'] ) && '' !== (string) ( $ctx['op']['src'] ?? '' ) ? $ctx['op'] : null; }
+	/** Текущият потребител е от екипа (може да пипа поръчки)? */
+	public static function is_staff_user( $uid = null ) { $uid = null === $uid ? ( function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0 ) : (int) $uid; if ( $uid <= 0 ) { return false; } return function_exists( 'user_can' ) && ( user_can( $uid, 'edit_shop_orders' ) || user_can( $uid, 'manage_woocommerce' ) || user_can( $uid, Plugin::CAP ) ); }
+	/** Клиентът за поръчката по billing имейла: акаунтът с този имейл (ако не е от екипа), иначе гост (0). */
+	public static function customer_id_for( $email ) { $email = strtolower( trim( (string) $email ) ); if ( '' === $email || ! function_exists( 'email_exists' ) ) { return 0; } $uid = (int) email_exists( $email ); return $uid > 0 && ! self::is_staff_user( $uid ) ? $uid : 0; }
+	/** Поръчката от линка на оператора: клиентът е човекът с billing имейла, не логнатият оператор. */
+	public static function order_customer( $order, $data = null ) {
+		if ( ! is_object( $order ) || ! method_exists( $order, 'set_customer_id' ) || ! self::op_ctx() ) { return; }
+		$cur = function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0; if ( $cur <= 0 || ! self::is_staff_user( $cur ) ) { return; } /* гост/клиент — нищо за поправяне */
+		$email = method_exists( $order, 'get_billing_email' ) ? (string) $order->get_billing_email() : ''; if ( '' === $email && is_array( $data ) ) { $email = (string) ( $data['billing_email'] ?? '' ); } if ( '' === $email ) { $email = (string) ( self::op_ctx()['email'] ?? '' ); }
+		$uid = self::customer_id_for( $email ); if ( (int) $order->get_customer_id() !== $uid ) { $order->set_customer_id( $uid ); }
+		if ( method_exists( $order, 'update_meta_data' ) ) { $order->update_meta_data( '_ansa_promo_operator', (string) ( self::op_ctx()['by'] ?? '' ) ?: ( function_exists( 'wp_get_current_user' ) ? (string) wp_get_current_user()->user_login : '' ) ); }
+	}
+	/** Мрежа за чекаути, които правят поръчката сами (ANSA Checkout / wc_create_order): при първия запис на поръчката. */
+	public static function new_order_customer( $order_id, $order = null ) {
+		if ( ! self::op_ctx() ) { return; } $order = is_object( $order ) ? $order : ( function_exists( 'wc_get_order' ) ? wc_get_order( (int) $order_id ) : null ); if ( ! $order ) { return; }
+		$cur = function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0; if ( $cur <= 0 || (int) $order->get_customer_id() !== $cur ) { return; } /* само ако е закачена за оператора */
+		$before = (int) $order->get_customer_id(); self::order_customer( $order ); if ( (int) $order->get_customer_id() !== $before ) { try { $order->save(); } catch ( \Throwable $e ) {} }
+	}
+	/** Профилът на оператора не се презаписва с адреса на клиента (WC_Checkout::process_customer прави save() на логнатия потребител). */
+	public static function keep_operator_profile( $customer, $data = null ) {
+		if ( ! is_object( $customer ) || ! method_exists( $customer, 'get_id' ) || (int) $customer->get_id() <= 0 || ! self::op_ctx() || ! self::is_staff_user( (int) $customer->get_id() ) ) { return; }
+		try { $orig = new \WC_Customer( (int) $customer->get_id() ); foreach ( array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'email', 'phone' ) as $f ) { $g = 'get_billing_' . $f; $s = 'set_billing_' . $f; if ( method_exists( $orig, $g ) && method_exists( $customer, $s ) ) { $customer->$s( $orig->$g() ); } if ( 'email' === $f || 'phone' === $f ) { continue; } $g = 'get_shipping_' . $f; $s = 'set_shipping_' . $f; if ( method_exists( $orig, $g ) && method_exists( $customer, $s ) ) { $customer->$s( $orig->$g() ); } } } catch ( \Throwable $e ) {}
+	}
+	/** Еднократно след ъпдейта: поръчките по телефон от последните 60 дни, закачени за акаунт на оператор → клиентът по billing имейла (или гост). Връща броя. */
+	public static function repair_customers( $days = 60, $limit = 500 ) {
+		if ( ! function_exists( 'wc_get_orders' ) || ! function_exists( 'get_users' ) ) { return 0; }
+		$staff = array(); try { $staff = array_map( 'intval', (array) get_users( array( 'role__in' => array( 'administrator', 'shop_manager' ), 'fields' => 'ID' ) ) ); } catch ( \Throwable $e ) {} $staff = array_values( array_filter( $staff ) ); if ( ! $staff ) { return 0; }
+		$n = 0; $log = array();
+		try { $orders = (array) wc_get_orders( array( 'limit' => (int) $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'objects', 'customer' => $staff, 'date_created' => '>' . ( time() - (int) $days * DAY_IN_SECONDS ) ) ); } catch ( \Throwable $e ) { $orders = array(); }
+		foreach ( $orders as $o ) {
+			if ( ! is_object( $o ) || ! method_exists( $o, 'get_meta' ) ) { continue; }
+			$m = $o->get_meta( '_ansa_promo' ); $ph = ( is_array( $m ) && ! empty( $m['phone_order'] ) ) || is_array( $o->get_meta( '_ansa_promo_phone' ) ); if ( ! $ph ) { continue; } /* само поръчките по телефон от Insights */
+			$email = strtolower( (string) $o->get_billing_email() ); $cu = function_exists( 'get_userdata' ) ? get_userdata( (int) $o->get_customer_id() ) : null; if ( $cu && strtolower( (string) $cu->user_email ) === $email ) { continue; } /* операторът е и клиентът — рядко, но възможно */
+			$uid = self::customer_id_for( $email ); if ( $uid === (int) $o->get_customer_id() ) { continue; }
+			try { $o->set_customer_id( $uid ); $o->add_order_note( '📞 ansa™ Промо: поръчката беше закачена за акаунта на оператора (' . ( $cu ? $cu->user_login : '#' . (int) $o->get_customer_id() ) . ') — прехвърлена на клиента ' . ( $uid ? '#' . $uid : '(гост)' ) . ' по billing имейла.' ); $o->save(); $n++; $log[] = (int) $o->get_id(); } catch ( \Throwable $e ) {}
+		}
+		update_option( self::OPT_REPAIR, array( 'at' => current_time( 'mysql' ), 'ver' => ANSA_PROMO_VER, 'fixed' => $n, 'ids' => array_slice( $log, 0, 100 ) ), false );
+		return $n;
 	}
 	const GIFT_KEY = 'ansa_promo_phone_gift'; /* 1.52.0: белегът на реда подарък в количка извън Сезона */
 
@@ -342,6 +392,7 @@ final class Phone_Orders {
 	/** Попълва клиента на WooCommerce в сесията на оператора (чекаутът на FunnelKit чете оттам). */
 	public static function prefill_customer( $d ) {
 		if ( ! function_exists( 'WC' ) || ! WC()->customer ) { return; }
+		if ( function_exists( 'get_current_user_id' ) && get_current_user_id() > 0 && self::is_staff_user() ) { return; } /* 1.55.3: логнат оператор — WC()->customer е НЕГОВИЯТ профил; полетата идват от checkout_value / ANSA Checkout (мостът) */
 		try {
 			$c = WC()->customer;
 			if ( '' !== $d['email'] ) { $c->set_billing_email( $d['email'] ); }

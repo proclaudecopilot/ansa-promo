@@ -633,6 +633,19 @@ $wpdb->query( "UPDATE wp_bwfan_abandonedcarts SET status = 1, order_id = 0 WHERE
 $_GET = array( 'view' => 'carts', 'q' => 'buyer81', 'kind' => 'all', 'work' => 'all' ); $hc = Insights::carts_html();
 $ok( 'екранът 🛒 с q=buyer81 (случаят marigorgina): „✅ Поръчка #81 · поръчала 1 ч 17 мин преди количката“', false !== strpos( $hc, '#81' ) && false !== strpos( $hc, 'поръчала 1 ч 17 мин преди количката' ) && false === strpos( $hc, 'data-op="go"' ) );
 $ok( 'reconcile_recent: минава без грешка (периодът е последните 15 дни; тестовите колички са по-стари)', is_int( $CS::reconcile_recent() ) );
+/* ══ 1.55.3: поръчката от линка на оператора е на клиента, не на логнатия оператор (човекът: „излизат на профила на Яна и някакъв администратор“) ══ */
+$GLOBALS['__uid'] = 7; function get_current_user_id() { return (int) $GLOBALS['__uid']; } function user_can( $uid, $cap ) { return 7 === (int) $uid; } /* 7 = Яна (оператор) */
+function email_exists( $e ) { return array( 'misshamonika76@gmail.com' => 501, 'yana@example.com' => 7 )[ strtolower( $e ) ] ?? false; }
+class FakeOrder55 extends FakeOrder { public $cid = 7; public $em = 'misshamonika76@gmail.com'; public $saved = 0; public $notes = array(); function get_customer_id() { return $this->cid; } function set_customer_id( $v ) { $this->cid = (int) $v; } function get_billing_email() { return $this->em; } function save() { $this->saved++; } function add_order_note( $t ) { $this->notes[] = $t; } }
+$ok( 'is_staff_user: 7 (Яна) да, 501 (клиентка) не, 0 не', $PO::is_staff_user( 7 ) && ! $PO::is_staff_user( 501 ) && ! $PO::is_staff_user( 0 ) );
+$ok( 'customer_id_for: имейлът на клиентката → нейният акаунт 501; имейл без акаунт → гост 0; имейлът на оператор → гост 0 (не се закача за екипа)', 501 === $PO::customer_id_for( 'MissHaMonika76@gmail.com' ) && 0 === $PO::customer_id_for( 'nobody@example.com' ) && 0 === $PO::customer_id_for( 'yana@example.com' ) );
+$o = new FakeOrder55( 110204 ); $PO::$ctx_override = array(); $PO::order_customer( $o ); $ok( 'order_customer без контекст на оператор → нищо (обикновена поръчка на логнат клиент/админ не се пипа)', 7 === $o->cid );
+$PO::$ctx_override = array( 'op' => array( 'src' => 'cart:5', 'by' => 'Яна', 'email' => 'misshamonika76@gmail.com' ) ); $PO::order_customer( $o ); $ok( 'order_customer с контекст: клиентът е 501 (акаунтът с billing имейла), метата _ansa_promo_operator = Яна', 501 === $o->cid && 'Яна' === ( $o->extra['_ansa_promo_operator'] ?? '' ) );
+$o2 = new FakeOrder55( 110205 ); $o2->em = 'guest@example.com'; $PO::order_customer( $o2 ); $ok( 'order_customer: клиент без акаунт → гост (0)', 0 === $o2->cid );
+$GLOBALS['__uid'] = 501; $o3 = new FakeOrder55( 110206 ); $o3->cid = 501; $PO::order_customer( $o3 ); $ok( 'order_customer: когато логнатият е самата клиентка (не е от екипа) → нищо', 501 === $o3->cid ); $GLOBALS['__uid'] = 7;
+$o4 = new FakeOrder55( 110207 ); $PO::new_order_customer( 110207, $o4 ); $ok( 'new_order_customer (мрежа за ANSA Checkout / wc_create_order): закачена за оператора → клиентът 501 и save()', 501 === $o4->cid && 1 === $o4->saved );
+$o5 = new FakeOrder55( 110208 ); $o5->cid = 501; $PO::new_order_customer( 110208, $o5 ); $ok( 'new_order_customer: вече е на клиента → без save', 501 === $o5->cid && 0 === $o5->saved );
+$PO::$ctx_override = null;
 $ok( 'action_return_args: view + q/kind/work/период от POST-а, нищо друго', array( 'view' => 'carts', 'q' => 'x', 'kind' => 'all', 'work' => 'done', 'from' => '2026-10-01' ) === Insights::action_return_args( array( 'view' => 'carts', 'q' => 'x', 'kind' => 'all', 'work' => 'done', 'from' => '2026-10-01', 'status' => 'recovered', 'id' => '5' ) ) );
 $_GET = array();
 $_GET = array( 'view' => 'carts', 'q' => 'example.com' ); $hc = Insights::carts_html();
