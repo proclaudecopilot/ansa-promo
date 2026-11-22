@@ -377,6 +377,7 @@ final class Insights_Portal {
 	private static function csv( $which ) {
 		nocache_headers(); header( 'Content-Type: text/csv; charset=utf-8' );
 		if ( 'stats' === $which ) { header( 'Content-Disposition: attachment; filename="ansa-promo-insights-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo Insights::csv( (int) ( $_GET['days'] ?? 30 ) ); exit; }
+		if ( 'bf_leads' === $which ) { header( 'Content-Disposition: attachment; filename="ansa-bf-leads-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo BF\Leads::csv(); exit; } /* 1.55.4 (човекът: „пълният списък за всички лийдове от Черния петък“): същият CSV като в админа, и от портала */
 		if ( 'sessions' !== $which ) { header( 'Content-Disposition: attachment; filename="ansa-promo-' . preg_replace( '/[^a-z]/', '', $which ) . '-' . gmdate( 'Ymd-Hi' ) . '.csv"' ); echo Insights::csv_breakdown( $which, Insights::range( (string) ( $_GET['from'] ?? '' ), (string) ( $_GET['to'] ?? '' ) ) ); exit; } /* 1.28.0: по разбивка */
 		header( 'Content-Disposition: attachment; filename="ansa-promo-sessions-' . gmdate( 'Ymd-Hi' ) . '.csv"' );
 		$q = ! empty( $_GET['from'] ) || ! empty( $_GET['to'] ) ? array_map( 'sanitize_text_field', array_intersect_key( (array) wp_unslash( $_GET ), array_flip( array( 'from', 'to', 'step', 'mode', 'box', 'ord', 'dev' ) ) ) ) : null;
