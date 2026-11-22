@@ -179,7 +179,7 @@ final class Leads {
 	public static function unsynced( $limit = 500 ) { global $wpdb; $r = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . " WHERE promo = %s AND (fka = '' OR fka LIKE 'retry%%') ORDER BY id ASC LIMIT %d", self::PROMO, (int) $limit ), ARRAY_A ); return is_array( $r ) ? $r : array(); }
 	public static function backfill() { $cfg = Config::get_published(); $r = array( 'ok' => 0, 'retry' => 0, 'skip' => 0 ); foreach ( self::unsynced() as $row ) { $k = (string) self::sync( (int) $row['id'], $row['email'], ! empty( $row['consent'] ), $cfg, (string) $row['kind'] ); if ( 0 === strpos( $k, 'retry' ) ) { $r['retry']++; } elseif ( in_array( $k, array( 'off', 'no-consent', 'no-email' ), true ) ) { $r['skip']++; } else { $r['ok']++; } } return $r; }
 	public static function csv() {
-		$rows = self::rows( 5000 ); $out = fopen( 'php://temp', 'w+' ); fputcsv( $out, array( 'id', 'created_at', 'email', 'kind', 'bonus', 'ref_code', 'utm', 'consent', 'voucher', 'voucher_exp', 'voucher_order_id', 'converted_order_id', 'fka' ) );
+		$rows = self::rows( 20000 ); $out = fopen( 'php://temp', 'w+' ); /* 1.55.4: без таван от 5000 */ fputcsv( $out, array( 'id', 'created_at', 'email', 'kind', 'bonus', 'ref_code', 'utm', 'consent', 'voucher', 'voucher_exp', 'voucher_order_id', 'converted_order_id', 'fka' ) );
 		foreach ( $rows as $r ) { fputcsv( $out, array( $r['id'], $r['created_at'], $r['email'], $r['kind'], $r['bonus'], $r['ref_code'], $r['utm'], $r['consent'], $r['voucher'], $r['voucher_exp'], $r['voucher_order_id'], $r['converted_order_id'], $r['fka'] ) ); }
 		rewind( $out ); return "\xEF\xBB\xBF" . stream_get_contents( $out );
 	}
