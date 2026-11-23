@@ -171,6 +171,7 @@ final class Page {
 	/** Има ли посетителят достъп до ранния достъп (бисквитка от линка на имейла / контекст). */
 	public static function early_ok( $cfg = null ) {
 		$cfg = $cfg ?: Config::get_published();
+		if ( ! empty( $cfg['early']['open'] ) ) { return true; } /* 1.55.5 (човекът: „няма токен, директно линкът трябва да работи от 07:00 на 23.11“): ранният достъп е за всички */
 		if ( ! empty( $_GET['ea'] ) && self::ea_valid( (string) wp_unslash( $_GET['ea'] ), $cfg ) ) { return true; }
 		if ( ! empty( $_COOKIE[ self::EA_COOKIE ] ) && self::ea_valid( (string) $_COOKIE[ self::EA_COOKIE ], $cfg ) ) { return true; }
 		$ctx = Cart::ctx(); return ! empty( $ctx['early'] );

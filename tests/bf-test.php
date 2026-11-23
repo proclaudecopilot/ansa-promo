@@ -66,6 +66,11 @@ $ok( 'normalize: минутите на ваучера са ограничени'
 $ok( 'normalize: cookie_days ≥ 1', $x['aff']['cookie_days'] >= 1 );
 $ok( 'normalize: start < max при броячa', $x['seats']['start'] < $x['seats']['max'], $x['seats']['start'] . '/' . $x['seats']['max'] );
 $ok( 'early_url носи токена', false !== strpos( Config::early_url( $d ), 'cheren-petak-2026/?ea=' . $d['early']['token'] ) );
+/* 1.55.5: ранният достъп е отворен за всички по подразбиране (и за старо публикувано без ключа); с open=false — само токенът */
+$ok( 'early.open: по подразбиране true, и при публикувано без ключа', true === $d['early']['open'] && true === Config::normalize( array( 'early' => array( 'token' => 'abc123abc123abc1' ) ) )['early']['open'] && false === Config::normalize( array( 'early' => array( 'open' => 0 ) ) )['early']['open'] );
+if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $v ) { return $v; } }
+$_GET = array(); $_COOKIE = array();
+$ok( 'early_ok: open → true без токен; open=false → false без токен, true с верен ?ea=', AnsaPromo\BF\Page::early_ok( $d ) && ! AnsaPromo\BF\Page::early_ok( array_merge( $d, array( 'early' => array_merge( $d['early'], array( 'open' => false ) ) ) ) ) && ( $_GET['ea'] = $d['early']['token'] ) && AnsaPromo\BF\Page::early_ok( array_merge( $d, array( 'early' => array_merge( $d['early'], array( 'open' => false ) ) ) ) ) ); $_GET = array();
 
 /* ── 1.46.0: ваучерите за списъка + „Ти си късметлия“ ── */
 $ok( 'listv по подразбиране: 10 €, до края на ранния достъп, тагове bf-revived / bf-vip, auto', 10.0 === (float) $d['listv']['amount'] && 'early_end' === $d['listv']['until'] && 'bf-revived' === $d['listv']['tag_revived'] && 'bf-vip' === $d['listv']['tag_vip'] && $d['listv']['auto'] && 'BFV' === $d['listv']['prefix'] );
