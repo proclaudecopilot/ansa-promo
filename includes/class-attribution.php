@@ -49,7 +49,11 @@ final class Attribution {
 	/* ── 1. бисквитките ── */
 	public static function script() {
 		if ( is_admin() || ( function_exists( 'is_feed' ) && is_feed() ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) { return; }
-		echo '<script id="ansa-promo-src" data-loading-method="immediate">(function(){try{'
+		echo self::script_html();
+	}
+	/** 1.56.1: като низ — страницата на Черния петък рисува своя <head> без wp_head. */
+	public static function script_html() {
+		return '<script id="ansa-promo-src" data-loading-method="immediate">(function(){try{'
 			. 'var q=location.search.replace(/^\\?/,""),r=document.referrer||"",h="";try{h=r?new URL(r).hostname:""}catch(e){}'
 			. 'var me=location.hostname.replace(/^www\\./,""),ext=h&&h.replace(/^www\\./,"")!==me,marks=/(^|&)(utm_|fbclid=|gclid=|ttclid=|msclkid=|ap_)/i.test(q);'
 			. 'if(!(marks||ext||!r))return;'
