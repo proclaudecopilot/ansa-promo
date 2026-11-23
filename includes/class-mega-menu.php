@@ -21,6 +21,15 @@
  *  с картите е на страници — JS мери колко реда влизат в панела (max-height = екранът − 140px) без скрол и показва толкова карти
  *  (колони × редове); останалите са на следваща страница с ‹ › в реда със заглавието („Менопауза · 5 продукта · 1–4“, „1 / 2“).
  *  Преизчислява се при отваряне на панела, при смяна на нуждата и при resize; скрит панел (0px) не се мери — тогава всичко е видимо.
+ * 1.56.0 (човекът: „менюто започна да зарежда страшно бавно“ + „махни Сезона от менюто, фокусът е Черният петък 25–30.11; Сезонът може да се върне на 01.12.2026“):
+ *  - измерено на живо (десктоп 1912px): снимките на картите (13 × 768px, ~850 KB, loading=lazy в скрит панел) тръгват чак ~10 сек. след отварянето на страницата
+ *    и идват до ~15-ата сек.; замъгляването на страницата (backdrop-filter: blur върху целия екран) спира рисуването за 0,2–1 сек. при всяко отваряне;
+ *  - снимките: srcset (браузърът взема 600px вместо 768px), decoding=async, и се зареждат предварително — при първо приближаване на мишката до хедъра
+ *    или щом страницата се успокои след load; loading=lazy остава в HTML като резерва без JS;
+ *  - фонът зад менюто е само затъмняване (без blur);
+ *  - products() се смята веднъж на заявка (шорткодът се печата два пъти от ElementsKit + /shop/);
+ *  - кампанията в менюто е по прозорци от време (data-amm-from/until, превключва се и в браузъра — кешираният HTML на FlyingPress остава верен):
+ *    Сезонът е скрит до SEASON_BACK (01.12.2026 00:00 по часа на сайта); Черният петък се показва в публичната си фаза (BF Config: public_start → public_end).
  *
  * @package AnsaPromo
  * @since 1.40.0
@@ -50,6 +59,8 @@ final class Mega_Menu {
 	const SHORT = array( 'utera-za' => 'Utera+', 'eyefresh-hidrogelni' => 'EyeFresh пачове', 'ashwagandha' => 'Ashwagandha + Mg + B6', 'omega-3' => 'Omega-3', 'collamask' => 'CollaMask', 'd3k2' => 'D3K2', 'no-ache' => 'No Ache' );
 	/** Кратко описание за продуктите извън промото (иначе първото изречение от краткото описание в магазина). */
 	const DS = array( 'ashwagandha' => 'Спокойствие, сън и по-малко стрес', 'omega-3' => 'Пречистено рибено масло за сърце и мозък', 'collamask' => 'Попиваща колагенова маска за лице', 'd3k2' => 'Настроение, имунитет и кости', 'no-ache' => 'Подкрепа за стави и мускули' );
+	/** 1.56.0: Сезонът се връща в менюто (хапчето, картата вдясно, лентата на телефона) от тази дата по часа на сайта; дотогава фокусът е Черният петък. */
+	const SEASON_BACK = '2026-12-01 00:00';
 	const LINKS = array( 'shop' => '/shop/', 'promo' => '/sezonut-na-ansa/', 'quiz' => '/health-quiz-by-ansa/', 'about' => '/za-nas/', 'reviews' => '/review/' );
 
 	/** Регистрация: шорткодът, хапчето в навигацията и стилът му. Ако старият mu-plugin (Ansa_Mega_Menu, 28.10.2026) още е на сайта, той води — без двойно регистриране. */
@@ -68,16 +79,55 @@ final class Mega_Menu {
 		try { if ( true ) { $b = Config::largest_box( Config::get_published() ); if ( $b && (float) $b['pct'] > 0 ) { return (int) round( (float) $b['pct'] ); } } } catch ( \Throwable $e ) {}
 		return 40;
 	}
-	/** Вмъква хапчето след „Продукти“ (преди „Отзиви“, елемент 15391) само в главното меню. */
+	/** 1.56.0: „Y-m-d H:i“ по часа на сайта → timestamp (0 при грешка). */
+	public static function site_ts( $s ) {
+		try { $tz = new \DateTimeZone( function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : 'UTC' ); return ( new \DateTimeImmutable( (string) $s, $tz ) )->getTimestamp(); } catch ( \Throwable $e ) { return 0; }
+	}
+	/** 1.56.0: кампаниите в менюто по прозорци от време: [ 'bf' => [from, until, url], 'season' => [from, until, url, pct] ]; until 0 = без край.
+	 *  Изминал прозорец не се връща. Бъдещ се връща (печата се скрит и браузърът го показва, когато му дойде времето — страниците са кеширани). */
+	public static function windows( $now = null ) {
+		$now = null === $now ? self::now() : (int) $now; $o = array();
+		try {
+			if ( class_exists( __NAMESPACE__ . '\\BF\\Config' ) && class_exists( __NAMESPACE__ . '\\BF\\Page' ) ) {
+				$bf = BF\Config::get_published(); $force = (string) ( $bf['force'] ?? '' );
+				if ( ! empty( $bf['enabled'] ) ) {
+					if ( 'public' === $force ) { $o['bf'] = array( 'from' => 0, 'until' => 0, 'url' => BF\Page::url( $bf ) ); }
+					elseif ( '' === $force ) {
+						$p = BF\Config::phase_ts( $bf ); $from = (int) ( $p['public_start'] ?? 0 ); $until = (int) ( $p['public_end'] ?? 0 );
+						if ( $from && ( ! $until || $now < $until ) ) { $o['bf'] = array( 'from' => $from, 'until' => $until, 'url' => BF\Page::url( $bf ) ); }
+					}
+				}
+			}
+		} catch ( \Throwable $e ) { unset( $o['bf'] ); }
+		try {
+			if ( self::season_on() ) {
+				$from = self::site_ts( self::SEASON_BACK ); $until = (int) Config::deadline_ts( Config::get_published() );
+				if ( ! $until || ( $now < $until && $from < $until ) ) { $o['season'] = array( 'from' => $from, 'until' => $until, 'url' => Cart::promo_url(), 'pct' => self::season_pct() ); }
+			}
+		} catch ( \Throwable $e ) { unset( $o['season'] ); }
+		return $o;
+	}
+	/** Часът за прозорците; $clock го подменя в тестовете. */
+	public static $clock = null;
+	public static function now() { return null === self::$clock ? time() : (int) self::$clock; }
+	public static function window_on( $w, $now = null ) { $now = null === $now ? self::now() : (int) $now; return $now >= (int) $w['from'] && ( ! (int) $w['until'] || $now < (int) $w['until'] ); }
+	/** Атрибутите на елемент с прозорец: класът amm-w го предава на JS; hidden = състоянието по часа на сървъра (резерва без JS). */
+	private static function window_attrs( $w, $now = null ) { return ' data-amm-from="' . (int) $w['from'] . '" data-amm-until="' . (int) $w['until'] . '"' . ( self::window_on( $w, $now ) ? '' : ' hidden' ); }
+	/** „30.11“ — краят на Черния петък за текста в менюто. */
+	private static function bf_until_label( $w ) { $u = (int) $w['until']; if ( ! $u ) { return ''; } return function_exists( 'wp_date' ) ? (string) wp_date( 'd.m', $u ) : date( 'd.m', $u ); }
+	/** Вмъква хапчето на кампанията след „Продукти“ (преди „Отзиви“, елемент 15391) само в главното меню. 1.56.0: Черният петък и/или Сезонът, всеки в своя прозорец. */
 	public static function season_item( $items, $args ) {
-		if ( ! self::season_on() || false === strpos( $items, 'menu-item-15392' ) || false !== strpos( $items, 'amm-season' ) ) { return $items; }
-		$li = '<li class="menu-item nav-item amm-season"><a href="' . esc_url( Cart::promo_url() ) . '" class="ekit-menu-nav-link amm-season-link"><span>Сезонът<span class="amm-sx"> на ANSA</span></span><i>−' . self::season_pct() . '%</i></a></li>';
+		if ( false === strpos( $items, 'menu-item-15392' ) || false !== strpos( $items, 'amm-season' ) ) { return $items; }
+		$W = self::windows(); if ( ! $W ) { return $items; }
+		$li = '';
+		if ( isset( $W['bf'] ) ) { $li .= '<li class="menu-item nav-item amm-season amm-bf amm-w"' . self::window_attrs( $W['bf'] ) . '><a href="' . esc_url( $W['bf']['url'] ) . '" class="ekit-menu-nav-link amm-season-link"><span>Черен петък</span><i>подарък</i></a></li>'; }
+		if ( isset( $W['season'] ) ) { $li .= '<li class="menu-item nav-item amm-season amm-w"' . self::window_attrs( $W['season'] ) . '><a href="' . esc_url( $W['season']['url'] ) . '" class="ekit-menu-nav-link amm-season-link"><span>Сезонът<span class="amm-sx"> на ANSA</span></span><i>−' . (int) $W['season']['pct'] . '%</i></a></li>'; }
 		$pos = strpos( $items, '<li id="menu-item-15391"' );
 		return false === $pos ? $items . $li : substr( $items, 0, $pos ) . $li . substr( $items, $pos );
 	}
 	public static function season_css() {
-		if ( ! self::season_on() ) { return; }
-		echo '<style id="amm-season-css">.elementskit-navbar-nav li.amm-season{display:inline-flex;align-items:center}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important;align-items:center;gap:7px;background:#2b1e19;color:#fff!important;padding:7px 12px!important;border-radius:100px;font-size:12.5px;font-weight:800;line-height:1!important;margin:0 4px;white-space:nowrap;height:auto!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link:hover{background:#3d2a22;color:#fff!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-style:normal;background:#ef6b4d;color:#fff;border-radius:100px;padding:3px 7px;font-size:11px;font-weight:900}@media (min-width:1025px){.elementor-widget-ekit-nav-menu.elementor-widget__width-initial{width:auto!important;max-width:none!important}.ekit-wid-con .elementskit-navbar-nav{flex-wrap:nowrap!important;white-space:nowrap;padding-left:36px}.ekit-wid-con .elementskit-navbar-nav>li{flex:0 0 auto}.elementor-widget-ekit-nav-menu,.elementor-widget-ekit-nav-menu .elementor-widget-container,.elementskit-menu-container{overflow:visible!important}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:10px!important;padding-right:10px!important}.elementskit-navbar-nav>li:first-child>a.ekit-menu-nav-link{padding-left:0!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{margin:0 0 0 2px}}
+		if ( ! self::windows() ) { return; }
+		echo '<style id="amm-season-css">.amm-w[hidden]{display:none!important}.elementskit-navbar-nav li.amm-season{display:inline-flex;align-items:center}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important;align-items:center;gap:7px;background:#2b1e19;color:#fff!important;padding:7px 12px!important;border-radius:100px;font-size:12.5px;font-weight:800;line-height:1!important;margin:0 4px;white-space:nowrap;height:auto!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link:hover{background:#3d2a22;color:#fff!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-style:normal;background:#ef6b4d;color:#fff;border-radius:100px;padding:3px 7px;font-size:11px;font-weight:900}@media (min-width:1025px){.elementor-widget-ekit-nav-menu.elementor-widget__width-initial{width:auto!important;max-width:none!important}.ekit-wid-con .elementskit-navbar-nav{flex-wrap:nowrap!important;white-space:nowrap;padding-left:36px}.ekit-wid-con .elementskit-navbar-nav>li{flex:0 0 auto}.elementor-widget-ekit-nav-menu,.elementor-widget-ekit-nav-menu .elementor-widget-container,.elementskit-menu-container{overflow:visible!important}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:10px!important;padding-right:10px!important}.elementskit-navbar-nav>li:first-child>a.ekit-menu-nav-link{padding-left:0!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{margin:0 0 0 2px}}
 @media (min-width:1025px){#site-header .elementor-widget-ekit-nav-menu{width:auto!important;max-width:100%!important}}
 @media (min-width:1025px) and (max-width:1600px){#site-header .elementor-widget-ekit-nav-menu>.elementor-widget-container{padding-left:0!important;padding-right:0!important}.ekit-wid-con .elementskit-navbar-nav{padding-left:0}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:6px!important;padding-right:6px!important;font-size:13px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11.5px!important;padding:6px 10px!important;gap:5px;margin:0 2px}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-size:10px;padding:3px 6px}}
 @media (min-width:1025px) and (max-width:1300px){.amm-sx{display:none}}
@@ -86,7 +136,14 @@ final class Mega_Menu {
 	}
 
 	/** Продуктите: от ansa-promo (същият списък като в промото), иначе WooCommerce по slug. */
+	private static $products_memo = null;
+	/** 1.56.0: веднъж на заявка — ElementsKit печата шорткода два пъти (десктоп + телефон), /shop/ го вика трети път. */
 	public static function products() {
+		if ( null === self::$products_memo ) { self::$products_memo = self::build_products(); }
+		return self::$products_memo;
+	}
+	public static function reset_memory() { self::$products_memo = null; }
+	private static function build_products() {
 		$out = array();
 		if ( class_exists( __NAMESPACE__ . '\\Frontend' ) ) {
 			try {
@@ -99,7 +156,7 @@ final class Mega_Menu {
 					if ( '' !== $slug && $slug !== $key && self::listed( $slug ) && ! self::listed( $key ) ) { $key = $slug; }
 					$out[ $key ] = array(
 						'key' => $key, 'id' => $id, 'name' => (string) ( $p['name'] ?? ( $wc ? $wc->get_name() : '' ) ), 'ds' => (string) ( $p['ds'] ?? '' ),
-						'img' => self::image( (string) $p['key'], $id, (string) ( $p['img'] ?? '' ) ), 'price' => self::from_price( $wc, $price ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'],
+						'img' => self::image( (string) $p['key'], $id, (string) ( $p['img'] ?? '' ) ), 'srcset' => self::image_srcset( (string) $p['key'], $id ), 'price' => self::from_price( $wc, $price ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'],
 					);
 				}
 			} catch ( \Throwable $e ) { $out = array(); }
@@ -113,7 +170,7 @@ final class Mega_Menu {
 					if ( ! $wc->is_visible() || ! $wc->is_in_stock() || (float) $wc->get_price() <= 0 ) { continue; }
 					$t = mb_strtolower( $wc->get_name() ); if ( false !== mb_strpos( $t, 'ваучер' ) || false !== mb_strpos( $t, 'voucher' ) || false !== mb_strpos( $t, 'персонал' ) ) { continue; }
 					$key = (string) $wc->get_slug(); $img = wp_get_attachment_image_url( (int) $wc->get_image_id(), 'medium_large' );
-					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
+					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'srcset' => self::srcset_of( (int) $wc->get_image_id() ), 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
 					$have[ $id ] = 1;
 				}
 			} catch ( \Throwable $e ) { /* магазинът не отговаря — само продуктите от промото */ }
@@ -124,7 +181,7 @@ final class Mega_Menu {
 					$post = get_page_by_path( $key, OBJECT, 'product' ); $wc = $post ? wc_get_product( (int) $post->ID ) : null;
 					if ( ! $wc || isset( $have[ (int) $wc->get_id() ] ) || 'publish' !== $wc->get_status() || ! $wc->is_in_stock() || (float) $wc->get_price() <= 0 ) { continue; }
 					$id = (int) $wc->get_id(); $img = wp_get_attachment_image_url( (int) $wc->get_image_id(), 'medium_large' );
-					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
+					$out[ $key ] = array( 'key' => $key, 'id' => $id, 'name' => self::short_name( $wc->get_name() ), 'ds' => self::DS[ $key ] ?? self::first_sentence( wp_strip_all_tags( $wc->get_short_description() ) ), 'img' => $img ?: '', 'srcset' => self::srcset_of( (int) $wc->get_image_id() ), 'price' => self::from_price( $wc, (float) $wc->get_price() ), 'url' => get_permalink( $id ) ?: self::LINKS['shop'] );
 					$have[ $id ] = 1;
 				} catch ( \Throwable $e ) { /* продуктът не се чете — остава без него */ }
 			}
@@ -158,6 +215,15 @@ final class Mega_Menu {
 		$tid = (int) get_post_thumbnail_id( $id ); if ( $tid ) { $u = wp_get_attachment_image_url( $tid, 'medium_large' ); if ( $u ) { return $u; } }
 		return $fallback;
 	}
+	/** 1.56.0: srcset на снимката, която image() връща (само когато е attachment; при URL от опцията или от промото — празно). */
+	public static function image_srcset( $key, $id ) {
+		$ov = get_option( 'ansa_mega_menu_images', array() ); $ov = is_array( $ov ) ? $ov : array(); $v = $ov[ $key ] ?? '';
+		if ( '' !== $v ) { return ctype_digit( (string) $v ) ? self::srcset_of( (int) $v ) : ''; }
+		return self::srcset_of( (int) get_post_thumbnail_id( $id ) );
+	}
+	private static function srcset_of( $aid ) { if ( ! $aid || ! function_exists( 'wp_get_attachment_image_srcset' ) ) { return ''; } try { $s = wp_get_attachment_image_srcset( (int) $aid, 'medium_large' ); return is_string( $s ) ? $s : ''; } catch ( \Throwable $e ) { return ''; } }
+	/** Атрибутите srcset/sizes на снимка в менюто; $sizes = колко широка се рисува. */
+	private static function img_attrs( $p, $sizes ) { $ss = (string) ( $p['srcset'] ?? '' ); return ( '' !== $ss ? ' srcset="' . esc_attr( $ss ) . '" sizes="' . esc_attr( $sizes ) . '"' : '' ) . ' loading="lazy" decoding="async"'; }
 	private static function short_name( $n ) { $n = preg_replace( '/^\s*ansa(™|\x{2122})?\s*[-–—]\s*/u', '', (string) $n ); $n = preg_split( '/\s+[-–—|]\s+/u', $n )[0]; return trim( $n ); }
 	private static function first_sentence( $t ) { $t = trim( preg_replace( '/\s+/', ' ', (string) $t ) ); $parts = preg_split( '/(?<=[.!?])\s+/u', $t ); $f = trim( (string) ( $parts[0] ?? $t ), " .\n" ); return mb_strlen( $f ) > 70 ? mb_substr( $f, 0, 68 ) . '…' : $f; }
 	public static function need_of( $key ) { foreach ( self::NEEDS as $k => $n ) { if ( 'new' !== $k && in_array( $key, $n[2], true ) ) { return $n[0]; } } return 'Нови'; }
@@ -175,7 +241,7 @@ final class Mega_Menu {
 		$cards = '';
 		foreach ( $P as $k => $p ) {
 			$name = self::SHORT[ $k ] ?? $p['name']; $new = in_array( 'new', self::needs_of( $k ), true ) ? '<i class="amm-new">ново</i>' : '';
-			$cards .= '<a class="amm-card" data-c="' . esc_attr( implode( ' ', self::needs_of( $k ) ) ) . '" href="' . esc_url( $p['url'] ) . '"><span class="amm-pic">' . $new . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="' . esc_attr( $name ) . '" loading="lazy">' : '' ) . '</span><span class="amm-cat">' . esc_html( self::need_of( $k ) ) . '</span><b>' . esc_html( $name ) . '</b><small>' . esc_html( $p['ds'] ) . '</small><span class="amm-price">от ' . esc_html( self::money( $p['price'] ) ) . '</span></a>';
+			$cards .= '<a class="amm-card" data-c="' . esc_attr( implode( ' ', self::needs_of( $k ) ) ) . '" href="' . esc_url( $p['url'] ) . '"><span class="amm-pic">' . $new . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="' . esc_attr( $name ) . '"' . self::img_attrs( $p, '(max-width:1024px) 56px, 200px' ) . '>' : '' ) . '</span><span class="amm-cat">' . esc_html( self::need_of( $k ) ) . '</span><b>' . esc_html( $name ) . '</b><small>' . esc_html( $p['ds'] ) . '</small><span class="amm-price">от ' . esc_html( self::money( $p['price'] ) ) . '</span></a>';
 		}
 		/* телефон: групи по нужда */
 		$acc = '';
@@ -183,22 +249,34 @@ final class Mega_Menu {
 		foreach ( self::NEEDS as $k => $n ) {
 			if ( 'new' === $k || ! $counts[ $k ] ) { continue; }
 			$rows = '';
-			foreach ( self::list_of( $k ) as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy">' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
+			foreach ( self::list_of( $k ) as $x ) { if ( ! isset( $P[ $x ] ) ) { continue; } $p = $P[ $x ]; $rows .= '<a class="amm-row" href="' . esc_url( $p['url'] ) . '">' . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt=""' . self::img_attrs( $p, '56px' ) . '>' : '<span></span>' ) . '<span><b>' . esc_html( self::SHORT[ $x ] ?? $p['name'] ) . '</b><small>' . esc_html( $p['ds'] ) . '</small></span><em>' . esc_html( self::money( $p['price'] ) ) . '</em></a>'; }
 			$acc .= '<details><summary><span class="amm-ic">' . $n[1] . '</span>' . esc_html( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></summary><div class="amm-acc-rows"><div class="amm-acc-cap">' . esc_html( $n[0] ) . ' · ' . self::plural( $counts[ $k ] ) . '</div>' . $rows . '</div></details>';
 			$first = false;
+		}
+		/* 1.56.0: кампанията вдясно и на телефона — Черният петък и/или Сезонът, всеки в своя прозорец (текстът на Черния петък е от одобрените page.title / page.desc) */
+		$W = self::windows(); $promo = ''; $mpromo = '';
+		if ( isset( $W['bf'] ) ) {
+			$a = self::window_attrs( $W['bf'] ); $u = esc_url( $W['bf']['url'] ); $till = self::bf_until_label( $W['bf'] ); $ey = 'Черен петък 2026' . ( '' !== $till ? ' · до ' . $till : '' );
+			$promo  .= '<a class="amm-promo amm-w"' . $a . ' href="' . $u . '"><span class="amm-ey">' . esc_html( $ey ) . '</span><strong>Всяка опаковка = подарък по избор</strong><span class="amm-p">Купуваш 1, получаваш 2. Всяка опаковка ти носи още една по избор — подарък.</span><span class="amm-cta">Към Черния петък →</span></a>';
+			$mpromo .= '<a class="amm-mpromo amm-w"' . $a . ' href="' . $u . '"><span><b>' . esc_html( $ey ) . '</b><small>Всяка опаковка = подарък по избор</small></span><em>Виж →</em></a>';
+		}
+		if ( isset( $W['season'] ) ) {
+			$a = self::window_attrs( $W['season'] ); $u = esc_url( $W['season']['url'] );
+			$promo  .= '<a class="amm-promo amm-w"' . $a . ' href="' . $u . '"><span class="amm-ey">Сезонът на ANSA</span><strong>До −' . (int) $W['season']['pct'] . '% + козметичен сет за 1 €</strong><span class="amm-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −' . (int) $W['season']['pct'] . '%, сетът и книгата с рецепти.</span><span class="amm-cta">Избери продуктите →</span></a>';
+			$mpromo .= '<a class="amm-mpromo amm-w"' . $a . ' href="' . $u . '"><span><b>Сезонът на ANSA · до −' . (int) $W['season']['pct'] . '%</b><small>+ козметичен сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a>';
 		}
 		$out = '<div class="amm" data-amm="' . self::VER . '">'
 			. '<div class="amm-needs"><div class="amm-t">По нужда</div>' . $needs . '</div>'
 			. '<div class="amm-grid"><div class="amm-t amm-gt"><b class="amm-title">Всички продукти</b><span class="amm-cnt">' . self::plural( $counts['all'] ) . '</span><span class="amm-pager" hidden><button type="button" class="amm-pg amm-prev" aria-label="Предишни продукти">‹</button><span class="amm-pgn">1 / 1</span><button type="button" class="amm-pg amm-next" aria-label="Следващи продукти">›</button></span></div><div class="amm-cards all' . ( count( $P ) > 10 ? ' six' : '' ) . '">' . $cards . '</div>'
 			. '<div class="amm-foot"><a href="' . $L['shop'] . '">Всички продукти</a><a href="' . $L['quiz'] . '">Как да избера</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . $L['about'] . '">За ansa</a></div></div>'
 			. '<div class="amm-aside">'
-			. '<a class="amm-promo" href="' . esc_url( Cart::promo_url() ) . '"><span class="amm-ey">Сезонът на ANSA · нашият Черен петък</span><strong>До −40% + козметичен сет за 1 €</strong><span class="amm-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −40%, сетът и книгата с рецепти.</span><span class="amm-cta">Избери продуктите →</span></a>'
+			. $promo
 			. '<a class="amm-quiz" href="' . $L['quiz'] . '"><span class="amm-qic">🧭</span><b>Не знаеш откъде да започнеш?</b><small>Няколко въпроса, 1 минута, и ти казваме кой продукт е за теб.</small><span>Започни теста →</span></a>'
 			. '<ul class="amm-trust"><li>💗 15 300+ доволни жени</li><li>🌿 Направено в България</li><li>🚚 Доставка за 1–2 работни дни</li><li>💳 С карта или наложен платеж</li></ul>'
 			. '</div>'
 			. '<div class="amm-mobile">'
 			. '<form class="amm-msearch" role="search" method="get" action="' . esc_url( home_url( '/' ) ) . '"><input type="search" name="s" placeholder="Търси продукт…" autocomplete="off" aria-label="Търси продукт"><input type="hidden" name="post_type" value="product"><button type="submit" aria-label="Търси">🔍</button></form>'
-			. ( self::season_on() ? '<a class="amm-mpromo" href="' . esc_url( Cart::promo_url() ) . '"><span><b>Сезонът на ANSA · до −' . self::season_pct() . '%</b><small>+ козметичен сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a>' : '' )
+			. $mpromo
 			. '<nav class="amm-mnav" aria-label="Меню"><a href="' . esc_url( home_url( '/' ) ) . '">Начало</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . esc_url( home_url( '/ansa-blog/' ) ) . '">Полезно</a><a href="' . $L['about'] . '">За ansa</a><a href="' . esc_url( home_url( '/my-account/' ) ) . '">Вход</a></nav>'
 			. '<div class="amm-mt"><span>Продукти по нужда</span><a href="' . $L['shop'] . '">Всички →</a></div>'
 			. '<div class="amm-acc">' . $acc . '</div>'
@@ -216,7 +294,8 @@ final class Mega_Menu {
 		$css = <<<'CSS'
 .elementskit-megamenu-panel{padding:0!important;border-radius:0!important;box-shadow:0 30px 60px #3a241626!important}
 .elementskit-megamenu-panel .e-con,.elementskit-megamenu-panel .e-con-inner,.elementskit-megamenu-panel .elementor-widget-container,.elementskit-megamenu-panel .elementor-widget{padding:0!important;margin:0!important;max-width:none!important}
-.amm-backdrop{position:fixed;inset:0;z-index:98;background:rgba(43,30,25,.32);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s}.amm-backdrop.on{opacity:1}
+.amm-backdrop{position:fixed;inset:0;z-index:98;background:rgba(43,30,25,.46);opacity:0;pointer-events:none;transition:opacity .15s}.amm-backdrop.on{opacity:1}
+.amm-w[hidden]{display:none!important}
 @media (min-width:1025px){.amm{max-height:calc(100vh - 140px);overflow:auto}.elementskit-megamenu-panel.elementskit-dropdown-menu-full_width,.elementskit-dropdown-menu-full_width>.elementskit-megamenu-panel{background:#fffaf7}}
 .amm{--amm-ink:#332723;--amm-muted:#7d6a61;--amm-coral:#ef6b4d;--amm-deep:#a93e28;--amm-line:#f0e3db;font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--amm-ink);background:#fffaf7;display:grid;grid-template-columns:252px minmax(0,1fr) 290px;align-items:stretch;text-align:left;box-sizing:border-box;position:relative;line-height:1.3;white-space:normal;max-width:1760px;margin:0 auto}
 .amm *,.amm *:before,.amm *:after{box-sizing:border-box}
@@ -315,13 +394,21 @@ function pick(n,label){page=0;list=n==='all'?cards:cards.filter(function(c){retu
 if(prev)prev.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();page--;show()});if(next)next.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();page++;show()});
 var needs=root.querySelectorAll('.amm-need');for(var j=0;j<needs.length;j++){(function(b){var go=function(){for(var x=0;x<needs.length;x++)needs[x].classList.toggle('on',needs[x]===b);pick(b.getAttribute('data-n'),b.querySelector('span:nth-child(2)').childNodes[0].textContent.trim())};b.addEventListener('mouseenter',go);b.addEventListener('click',function(e){e.preventDefault();go()});b.addEventListener('focus',go)})(needs[j])}
 root.ammRelayout=show;var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(show,120)});show()}
+/* 1.56.0: кампанията по прозорци — елементите .amm-w носят data-amm-from/until (сек.); кешираната страница показва вярната кампания */
+function win(){var now=Date.now()/1000,w=document.querySelectorAll('.amm-w');for(var i=0;i<w.length;i++){var f=+w[i].getAttribute('data-amm-from')||0,u=+w[i].getAttribute('data-amm-until')||0;w[i].hidden=!(now>=f&&(!u||now<u))}}
+/* 1.56.0: снимките на картите идват предварително (loading=lazy → eager), не при първото отваряне на панела; hi = човекът вече е при менюто */
+var warmed=0;function warm(hi){if(warmed>(hi?1:0)||window.innerWidth<=1024)return;warmed=hi?2:1;var im=document.querySelectorAll('.amm-card img');for(var i=0;i<im.length;i++){if(hi&&!im[i].complete){try{im[i].fetchPriority='high'}catch(e){}}if(im[i].loading!=='eager')im[i].loading='eager'}}
+function near(e){if(e.clientY<220){document.removeEventListener('pointermove',near);warm(true)}}
+document.addEventListener('pointermove',near,{passive:true});
+function idle(){var f=function(){warm(false)};if(window.requestIdleCallback)requestIdleCallback(f,{timeout:4000});else setTimeout(f,1500)}
+if(document.readyState==='complete')idle();else window.addEventListener('load',idle);
 var bd=null;function backdrop(){if(bd)return bd;bd=document.createElement('div');bd.className='amm-backdrop';document.body.appendChild(bd);return bd}
 function relayout(root){if(root.ammRelayout){requestAnimationFrame(root.ammRelayout);setTimeout(root.ammRelayout,80)}}
-function hookItem(root){var li=root.closest('li.elementskit-megamenu-has,li.menu-item');if(!li||li.dataset.ammBd)return;li.dataset.ammBd='1';var show=function(){if(window.innerWidth>1024)backdrop().classList.add('on');relayout(root)},hide=function(){if(bd)bd.classList.remove('on')};li.addEventListener('mouseenter',show);li.addEventListener('mouseleave',hide);li.addEventListener('focusin',show);li.addEventListener('focusout',function(e){if(!li.contains(e.relatedTarget))hide()})}
+function hookItem(root){var li=root.closest('li.elementskit-megamenu-has,li.menu-item');if(!li||li.dataset.ammBd)return;li.dataset.ammBd='1';var show=function(){warm(true);if(window.innerWidth>1024)backdrop().classList.add('on');relayout(root)},hide=function(){if(bd)bd.classList.remove('on')};li.addEventListener('mouseenter',show);li.addEventListener('mouseleave',hide);li.addEventListener('focusin',show);li.addEventListener('focusout',function(e){if(!li.contains(e.relatedTarget))hide()})}
 function go(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey)return;var a=e.target.closest&&e.target.closest('.amm a[href]');if(!a||a.target==='_blank')return;a.classList.add('amm-go')}
 document.addEventListener('click',go,true);window.addEventListener('pageshow',function(){var g=document.querySelectorAll('.amm-go');for(var i=0;i<g.length;i++)g[i].classList.remove('amm-go')});
-function all(){var r=document.querySelectorAll('.amm');for(var i=0;i<r.length;i++){init(r[i]);hookItem(r[i]);relayout(r[i])}}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();document.addEventListener('ekit-megamenu-open',all);setTimeout(all,1500)})();
+function all(){win();var r=document.querySelectorAll('.amm');for(var i=0;i<r.length;i++){init(r[i]);hookItem(r[i]);relayout(r[i])}}
+win();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();document.addEventListener('ekit-megamenu-open',all);setTimeout(all,1500)})();
 JS;
 		return '<style id="amm-css">' . $css . '</style><script id="amm-js">' . $js . '</script>';
 	}
