@@ -8,7 +8,7 @@ use AnsaPromo\Attribution; use AnsaPromo\Source;
 if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $v ) { return $v; } }
 if ( ! function_exists( 'is_admin' ) ) { function is_admin() { return false; } }
 if ( ! function_exists( 'get_gmt_from_date' ) ) { function get_gmt_from_date( $d ) { return $d; } }
-define( 'ANSA_PROMO_VER', 'test' );
+if ( ! defined( 'ANSA_PROMO_VER' ) ) { define( 'ANSA_PROMO_VER', 'test' ); }
 $n = 0; $fail = array(); $ok = function ( $name, $cond, $diag = '' ) use ( &$n, &$fail ) { $n++; if ( ! $cond ) { $fail[] = $name . ( '' !== $diag ? ' — ' . $diag : '' ); } };
 class AOrder { public $meta = array(); public $saved = 0; private $id; public $status; public $total; public $date; function __construct( $id, $meta = array(), $status = 'processing', $total = 50, $date = '2026-11-23 10:00:00' ) { $this->id = $id; $this->meta = $meta; $this->status = $status; $this->total = $total; $this->date = $date; } function get_id() { return $this->id; } function get_meta( $k ) { return $this->meta[ $k ] ?? ''; } function update_meta_data( $k, $v ) { $this->meta[ $k ] = $v; } function save() { $this->saved++; } function get_status() { return $this->status; } function get_total() { return $this->total; } function get_date_created() { return new class( $this->date ) { private $d; function __construct( $d ) { $this->d = $d; } function date( $f ) { return date( $f, strtotime( $this->d ) ); } }; } }
 
