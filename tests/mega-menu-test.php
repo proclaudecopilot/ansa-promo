@@ -96,5 +96,49 @@ $ok( 'Utera+ не е в групата Менопауза', false === strpos( $m
 preg_match( '~<details><summary><span class="amm-ic">💛</span>Общо здраве<small>(\d+)</small></summary>(.*?)</details>~su', $h, $g );
 $ok( 'Общо здраве: Omega-3 и D3K2 (No Ache е изчерпан)', $g && '2' === $g[1] && false !== strpos( $g[2], '>D3K2<' ) && false !== strpos( $g[2], '>Omega-3<' ) && false === strpos( $g[2], 'No Ache' ), $g[1] ?? '' );
 
+/* ── 1.56.0: веднъж на заявка; srcset; кампанията по прозорци (Сезонът скрит до 01.12, Черният петък 25–30.11) ── */
+$ok( '1.56.0: products() е запомнен за заявката (същият масив)', Mega_Menu::products() === $P );
+$ok( '1.56.0: снимките са с decoding=async и остават loading=lazy в HTML', false === strpos( $h, '<img' ) || ( false !== strpos( $h, 'loading="lazy" decoding="async"' ) ) );
+$ok( '1.56.0: без blur зад менюто', false === strpos( $h, 'backdrop-filter' ) && false !== strpos( $h, '.amm-backdrop{' ) );
+$ok( '1.56.0: JS зарежда снимките предварително и превключва прозорците', false !== strpos( $h, "loading='eager'" ) && false !== strpos( $h, "querySelectorAll('.amm-w')" ) );
+function wp_get_attachment_image_srcset( $id, $size = '' ) { return 123 === (int) $id ? 'http://x/a-768x768.webp 768w, http://x/a-600x600.webp 600w' : false; }
+$GLOBALS['opts']['ansa_mega_menu_images'] = array( 'greens' => '123', 'sakura' => 'https://cdn.x/s.webp' );
+$ok( '1.56.0: srcset от attachment-а в опцията', 'http://x/a-768x768.webp 768w, http://x/a-600x600.webp 600w' === Mega_Menu::image_srcset( 'greens', 100 ) );
+$ok( '1.56.0: URL в опцията → без srcset; без снимка → без srcset', '' === Mega_Menu::image_srcset( 'sakura', 200 ) && '' === Mega_Menu::image_srcset( 'meno', 500 ) );
+unset( $GLOBALS['opts']['ansa_mega_menu_images'] );
+if ( ! function_exists( 'add_query_arg' ) ) { function add_query_arg( $k, $v = null, $u = null ) { return (string) $u; } }
+spl_autoload_register( function ( $c ) { if ( 0 !== strpos( $c, 'AnsaPromo\\BF\\' ) ) { return; } $f = ANSA_PROMO_PATH . 'includes/bf/class-' . strtolower( str_replace( '_', '-', substr( $c, 13 ) ) ) . '.php'; if ( is_file( $f ) ) { require_once $f; } } );
+$tz = new DateTimeZone( 'Europe/Sofia' ); $ts = function ( $x ) use ( $tz ) { return ( new DateTimeImmutable( $x, $tz ) )->getTimestamp(); };
+$bf = AnsaPromo\BF\Config::normalize( array( 'enabled' => true ) ); /* фазите по подразбиране: публичен 25.11 07:00 → 30.11 10:00 */
+$GLOBALS['opts'][ AnsaPromo\BF\Config::OPTION ] = array( 'draft' => null, 'published' => $bf, 'published_at' => 1, 'version' => 1, 'history' => array() ); AnsaPromo\BF\Config::reset_memory();
+$ok( 'site_ts: 01.12.2026 00:00 по часа на сайта', $ts( '2026-12-01 00:00' ) === Mega_Menu::site_ts( Mega_Menu::SEASON_BACK ) );
+$W = Mega_Menu::windows( $ts( '2026-11-23 13:00' ) );
+$ok( '23.11: Черният петък е бъдещ прозорец 25.11 07:00 → 30.11 10:00', isset( $W['bf'] ) && $ts( '2026-11-25 07:00' ) === $W['bf']['from'] && $ts( '2026-11-30 10:00' ) === $W['bf']['until'] && ! Mega_Menu::window_on( $W['bf'], $ts( '2026-11-23 13:00' ) ), json_encode( $W ) );
+$ok( '23.11: Сезонът е бъдещ прозорец от 01.12 и не се показва', isset( $W['season'] ) && $ts( '2026-12-01 00:00' ) === $W['season']['from'] && ! Mega_Menu::window_on( $W['season'], $ts( '2026-11-23 13:00' ) ), json_encode( $W ) );
+$ok( '26.11: Черният петък се показва, Сезонът не', Mega_Menu::window_on( $W['bf'], $ts( '2026-11-26 12:00' ) ) && ! Mega_Menu::window_on( $W['season'], $ts( '2026-11-26 12:00' ) ) );
+$ok( '30.11 09:59 да / 10:00 не', Mega_Menu::window_on( $W['bf'], $ts( '2026-11-30 09:59' ) ) && ! Mega_Menu::window_on( $W['bf'], $ts( '2026-11-30 10:00' ) ) );
+$W2 = Mega_Menu::windows( $ts( '2026-11-30 12:00' ) ); $ok( '30.11 12:00: Черният петък вече не се печата; Сезонът още е скрит', ! isset( $W2['bf'] ) && isset( $W2['season'] ) && ! Mega_Menu::window_on( $W2['season'], $ts( '2026-11-30 12:00' ) ) );
+$ok( '01.12 00:00: Сезонът се връща', Mega_Menu::window_on( $W2['season'], $ts( '2026-12-01 00:00' ) ) && ! Mega_Menu::window_on( $W2['season'], $ts( '2026-11-30 23:59' ) ) );
+/* шорткодът и хапчето в три момента */
+$render = function ( $when ) use ( $ts ) { Mega_Menu::$clock = $ts( $when ); $r = new ReflectionProperty( 'AnsaPromo\\Mega_Menu', 'assets_done' ); $r->setAccessible( true ); $r->setValue( null, false ); return array( Mega_Menu::shortcode(), Mega_Menu::season_item( '<li id="menu-item-15392" class="x"></li><li id="menu-item-15391" class="y"></li>', null ) ); };
+$vis = function ( $html, $needle ) { return (bool) preg_match( '~<(?:a|li) class="[^"]*amm-w[^"]*" data-amm-from="\d+" data-amm-until="\d+"(?! hidden)[^>]*>(?:(?!</a>|</li>).)*' . preg_quote( $needle, '~' ) . '~su', $html ); };
+list( $h1, $n1 ) = $render( '2026-11-23 13:00' );
+$ok( '23.11 меню: нито Сезонът, нито Черният петък се виждат (и двете са hidden)', ! $vis( $h1, 'Сезонът на ANSA' ) && ! $vis( $h1, 'Черен петък 2026' ) && ! $vis( $n1, 'Сезонът' ) && ! $vis( $n1, 'Черен петък' ) && false !== strpos( $h1, 'hidden' ), $n1 );
+$ok( '23.11 меню: двете са в HTML за кеша (с прозорците си)', 2 === substr_count( $n1, 'amm-w"' ) && 2 === substr_count( $h1, 'class="amm-promo amm-w"' ) && 2 === substr_count( $h1, 'class="amm-mpromo amm-w"' ) );
+$ok( 'хапчето стои между „Продукти“ и „Отзиви“', (bool) preg_match( '~menu-item-15392.*amm-bf.*amm-season amm-w.*menu-item-15391~s', $n1 ) );
+list( $h2, $n2 ) = $render( '2026-11-26 12:00' );
+$ok( '26.11 меню: Черният петък се вижда (хапче, карта, телефон), Сезонът не', $vis( $n2, 'Черен петък' ) && $vis( $h2, 'Черен петък 2026 · до 30.11' ) && ! $vis( $n2, 'Сезонът' ) && ! $vis( $h2, 'Сезонът на ANSA' ), $n2 );
+$ok( '26.11: линкът е страницата на Черния петък', false !== strpos( $n2, 'href="http://x/cheren-petak-2026/"' ) );
+list( $h3, $n3 ) = $render( '2026-12-01 00:05' );
+$ok( '01.12 меню: Сезонът се вижда, Черният петък го няма в HTML', $vis( $n3, 'Сезонът' ) && $vis( $h3, 'Сезонът на ANSA' ) && false === strpos( $h3, 'Черен петък 2026' ) && false === strpos( $n3, 'amm-bf' ), $n3 );
+/* force и изключен Черен петък */
+$bf['enabled'] = false; $GLOBALS['opts'][ AnsaPromo\BF\Config::OPTION ]['published'] = $bf; AnsaPromo\BF\Config::reset_memory();
+$ok( 'изключен Черен петък → няма прозорец', ! isset( Mega_Menu::windows( $ts( '2026-11-26 12:00' ) )['bf'] ) );
+$bf['enabled'] = true; $bf['force'] = 'public'; $GLOBALS['opts'][ AnsaPromo\BF\Config::OPTION ]['published'] = $bf; AnsaPromo\BF\Config::reset_memory();
+$Wf = Mega_Menu::windows( $ts( '2026-11-23 13:00' ) ); $ok( 'force=public → показва се веднага', isset( $Wf['bf'] ) && Mega_Menu::window_on( $Wf['bf'], $ts( '2026-11-23 13:00' ) ) );
+$bf['force'] = 'over'; $GLOBALS['opts'][ AnsaPromo\BF\Config::OPTION ]['published'] = $bf; AnsaPromo\BF\Config::reset_memory();
+$ok( 'force=over → няма прозорец', ! isset( Mega_Menu::windows( $ts( '2026-11-26 12:00' ) )['bf'] ) );
+Mega_Menu::$clock = null;
+
 if ( $fail ) { echo "ГРЕШКИ:\n- " . implode( "\n- ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";
