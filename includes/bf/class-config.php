@@ -64,12 +64,12 @@ final class Config {
 			$row( 'greens',   'dgr001', 3994,   'Daily Greens',      'чревно здраве и лекота',       'Стомах',  array( 'fav' => true ) ),
 			$row( 'berber',   'BRBR',   11546,  'ДихидроБерберин',   'апетит и кръвна захар',        'Тегло',   array( 'fav' => true ) ),
 			$row( 'sakura',   'SKST',   28726,  'Sakura SkinTonic',  'кожа, тен и фини линии',       'Кожа',    array( 'fav' => true ) ),
-			$row( 'yoni',     '',       15836,  'YoniBiotic 3в1',    'пробиотик за жени',            'За жени', array( 'fav' => true ) ),
+			$row( 'yoni',     '',       15836,  'YoniBiotic 3в1',    'пробиотик за жени',            'За жени', array( 'fav' => true, 'enabled' => false ) ), /* 1.55.6: човекът: „Махни и YONI — нямаме го!“ */
 			$row( 'red',      'prod002', 3875,  'Red Routine',       'плодова добавка за сън',       'Сън',     array( 'fav' => true ) ),
 			$row( 'meno',     'MENO',   22307,  'MenoStop',          'дневна и нощна капсула',       'За жени' ),
 			$row( 'utera',    '',       58069,  'Utera+',            'репродуктивна система и ПМС',  'За жени' ),
-			$row( 'thyro',    'prod003', 1298,  'ThyroZen',          'щитовидна жлеза',              'Тяло' ),
-			$row( 'ashwa',    '',       3796,   'Ашваганда',         'стрес и спокойствие',          'Сън' ),
+			$row( 'thyro',    'prod003', 1298,  'ThyroZen',          'щитовидна жлеза',              'Тяло',    array( 'gift_only' => true ) ), /* 1.55.6: само подарък (човекът: основните са greens, berber, sakura, red, meno, utera) */
+			$row( 'ashwa',    '',       3796,   'Ашваганда',         'стрес и спокойствие',          'Сън',     array( 'gift_only' => true ) ),
 			$row( 'kera',     '',       106954, 'KeraTonica',        'коса, мигли и вежди',          'Кожа',    array( 'gift_only' => true, 'is_new' => true ) ),
 			$row( 'alivia',   '',       106944, 'Alivia',            'скованост, дискомфорт',        'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
 			$row( 'veno',     '',       106949, 'VenoTonus',         'здрави кръвоносни съдове',     'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
@@ -152,6 +152,28 @@ final class Config {
 	}
 	private static function write_store( $s ) { self::$memory = $s; update_option( self::OPTION, $s, false ); }
 	public static function reset_memory() { self::$memory = null; }
+	/* ── 1.55.6 (човекът, по време на кампанията: „Може да си купиш ашваганда, alivia, veno, ahcc, kera, thyro за основен продукт, а не би трябвало — те са само
+	   възможни като подаръци. Основните продукти са greens, berber, sakura, red, meno, utera. Махни и YONI — нямаме го!“; админът не е достъпен) ──
+	   Еднократна поправка на публикуваното и черновата: основните продукти са само шестте, всичко друго е gift_only; yoni е изключен. */
+	const MAIN_KEYS = array( 'greens', 'berber', 'sakura', 'red', 'meno', 'utera' );
+	const OPT_MIGRATE_1556 = 'ansa_promo_bf_migrate_1556';
+	public static function fix_products( $cfg ) {
+		$n = 0; if ( ! is_array( $cfg ) || ! is_array( $cfg['products'] ?? null ) ) { return array( $cfg, 0 ); }
+		foreach ( $cfg['products'] as $i => $p ) {
+			$k = (string) ( $p['key'] ?? '' );
+			if ( 'yoni' === $k && ! empty( $p['enabled'] ) ) { $cfg['products'][ $i ]['enabled'] = false; $n++; }
+			elseif ( '' !== $k && 'yoni' !== $k && ! in_array( $k, self::MAIN_KEYS, true ) && empty( $p['gift_only'] ) ) { $cfg['products'][ $i ]['gift_only'] = true; $n++; }
+			elseif ( in_array( $k, self::MAIN_KEYS, true ) && ! empty( $p['gift_only'] ) ) { $cfg['products'][ $i ]['gift_only'] = false; $n++; }
+		}
+		return array( $cfg, $n );
+	}
+	public static function maybe_migrate_1556() {
+		if ( get_option( self::OPT_MIGRATE_1556 ) ) { return null; }
+		$s = self::read_store(); $r = array( 'published' => 0, 'draft' => 0 );
+		foreach ( array( 'published', 'draft' ) as $w ) { if ( is_array( $s[ $w ] ?? null ) ) { list( $s[ $w ], $n ) = self::fix_products( $s[ $w ] ); $r[ $w ] = $n; } }
+		if ( $r['published'] || $r['draft'] ) { if ( $r['published'] ) { $s['version'] = (int) ( $s['version'] ?? 0 ) + 1; } self::write_store( $s ); }
+		update_option( self::OPT_MIGRATE_1556, array( 'at' => current_time( 'mysql' ) ) + $r, false ); return $r;
+	}
 	public static function store_exists() { return is_array( get_option( self::OPTION, null ) ); }
 	public static function get_draft() { $s = self::read_store(); return self::normalize( is_array( $s['draft'] ) ? $s['draft'] : ( is_array( $s['published'] ) ? $s['published'] : array() ) ); }
 	public static function get_published() { $s = self::read_store(); return self::normalize( is_array( $s['published'] ) ? $s['published'] : array() ); }

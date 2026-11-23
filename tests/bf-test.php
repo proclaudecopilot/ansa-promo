@@ -66,6 +66,12 @@ $ok( 'normalize: минутите на ваучера са ограничени'
 $ok( 'normalize: cookie_days ≥ 1', $x['aff']['cookie_days'] >= 1 );
 $ok( 'normalize: start < max при броячa', $x['seats']['start'] < $x['seats']['max'], $x['seats']['start'] . '/' . $x['seats']['max'] );
 $ok( 'early_url носи токена', false !== strpos( Config::early_url( $d ), 'cheren-petak-2026/?ea=' . $d['early']['token'] ) );
+/* 1.55.6: основните продукти са шестте; thyro/ashwa и новите 4 са само подарък; yoni е изключен — и в seed-а, и през fix_products() за публикувано */
+$keys = array(); foreach ( $d['products'] as $p ) { $keys[ $p['key'] ] = $p; }
+$ok( 'seed: greens/berber/sakura/red/meno/utera са основни; thyro/ashwa/kera/alivia/veno/ahcc са gift_only; yoni е изключен', ! $keys['greens']['gift_only'] && ! $keys['utera']['gift_only'] && ! $keys['meno']['gift_only'] && $keys['thyro']['gift_only'] && $keys['ashwa']['gift_only'] && $keys['kera']['gift_only'] && ! $keys['yoni']['enabled'] );
+$old = Config::normalize( array( 'products' => array( array( 'key' => 'thyro', 'gift_only' => false, 'enabled' => true ), array( 'key' => 'yoni', 'enabled' => true ), array( 'key' => 'greens', 'gift_only' => true ), array( 'key' => 'kera', 'gift_only' => true ), array( 'key' => 'sakura' ) ) ) );
+list( $fx, $n ) = Config::fix_products( $old ); $fk = array(); foreach ( $fx['products'] as $p ) { $fk[ $p['key'] ] = $p; }
+$ok( 'fix_products (старо публикувано): thyro → подарък, yoni → изключен, greens → основен (3 промени); kera и sakura без промяна', 3 === $n && $fk['thyro']['gift_only'] && ! $fk['yoni']['enabled'] && ! $fk['greens']['gift_only'] && $fk['kera']['gift_only'] && ! $fk['sakura']['gift_only'] && 0 === Config::fix_products( $fx )[1] );
 /* 1.55.5: ранният достъп е отворен за всички по подразбиране (и за старо публикувано без ключа); с open=false — само токенът */
 $ok( 'early.open: по подразбиране true, и при публикувано без ключа', true === $d['early']['open'] && true === Config::normalize( array( 'early' => array( 'token' => 'abc123abc123abc1' ) ) )['early']['open'] && false === Config::normalize( array( 'early' => array( 'open' => 0 ) ) )['early']['open'] );
 if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $v ) { return $v; } }
