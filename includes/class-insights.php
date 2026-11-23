@@ -822,7 +822,7 @@ final class Insights {
 	   по дни, списък на сесиите с филтри стъпка/спрели точно/кутия/поръчка/устройство и страници, CSV на точно този филтър). */
 	/** 1.28.0 (т. 1, 2): екраните — 📊 Преглед (анализът за периода), 🟢 На живо, 🧾 Сесии (списъкът + докъде стигат и къде спират; старото „История“), 🛒 Колички, 💸 Разход, 📌 Отчети. */
 	/** 1.42.0: 🎯 Лендър (Lander_Report — основният отчет) · 📊 Подробно (старият Преглед). */
-	public static function views() { return array( 'overview' => '🎯 Лендър', 'classic' => '📊 Подробно', 'live' => '🟢 На живо', 'sessions' => '🧾 Сесии', 'carts' => '🛒 Изоставени колички', 'spend' => '💸 Разход', 'snap' => '📌 Отчети' ); }
+	public static function views() { return array( 'overview' => '🎯 Лендър', 'attrib' => '📣 Източници', 'classic' => '📊 Подробно', 'live' => '🟢 На живо', 'sessions' => '🧾 Сесии', 'carts' => '🛒 Изоставени колички', 'spend' => '💸 Разход', 'snap' => '📌 Отчети' ); } /* 1.56.0: 📣 поръчките по източник */
 	public static function current_view() { $v = sanitize_key( (string) ( $_GET['view'] ?? 'overview' ) ); if ( 'history' === $v ) { $v = 'sessions'; } return isset( self::views()[ $v ] ) ? $v : 'overview'; }
 	public static function render( $days = 30 ) {
 		self::$period = null; self::$period_explicit = false; /* 1.28.0: периодът се чете наново за всеки рендер */
@@ -831,7 +831,7 @@ final class Insights {
 		self::backfill_orders(); /* 1.21.1: поръчки без сесия → сесия order-<id> (най-много веднъж на 10 мин) */
 		self::styles();
 		/* 1.28.0 (т. 1): без чиповете на изгледите — навигацията е една (менюто); тук е само периодът */
-		if ( 'live' === $view ) { self::render_live(); } elseif ( 'sessions' === $view ) { self::render_sessions(); } elseif ( 'carts' === $view ) { echo self::carts_html( $days ); } elseif ( 'spend' === $view ) { self::render_spend(); } elseif ( 'snap' === $view ) { self::render_snaps(); } elseif ( 'classic' === $view ) { self::render_overview( $days ); } else { Lander_Report::render(); }
+		if ( 'live' === $view ) { self::render_live(); } elseif ( 'sessions' === $view ) { self::render_sessions(); } elseif ( 'carts' === $view ) { echo self::carts_html( $days ); } elseif ( 'spend' === $view ) { self::render_spend(); } elseif ( 'attrib' === $view ) { echo Attribution::html(); } elseif ( 'snap' === $view ) { self::render_snaps(); } elseif ( 'classic' === $view ) { self::render_overview( $days ); } else { Lander_Report::render(); }
 		echo self::scripts();
 	}
 	/** Лентата с периода (чипове + от–до) и действията (CSV, 📌). $extra = HTML след формата. */
@@ -839,7 +839,7 @@ final class Insights {
 		$p = self::period(); $chips = '';
 		foreach ( self::quick_ranges() as $k => $v ) { $chips .= '<a class="ap-chip' . ( (string) $k === $p['key'] ? ' on' : '' ) . '" href="' . esc_url( self::url( array( 'from' => $v[0], 'to' => $v[1] ) ) ) . '">' . esc_html( $v[2] ) . '</a>'; }
 		$today = current_time( 'Y-m-d' ); $view = self::current_view();
-		$keep = ''; foreach ( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work', 'cust' ) ) as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $keep .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } }
+		$keep = ''; foreach ( array_merge( self::FILTER_KEYS, array( 'q', 'kind', 'work', 'cust', 'touch' ) ) as $k ) { if ( isset( $_GET[ $k ] ) && '' !== $_GET[ $k ] ) { $keep .= '<input type="hidden" name="' . esc_attr( $k ) . '" value="' . esc_attr( sanitize_text_field( (string) wp_unslash( $_GET[ $k ] ) ) ) . '">'; } }
 		return '<div class="ap-actions ap-period" style="padding:0 0 12px"><div class="ap-chips">' . $chips . '</div>'
 			. '<form method="get" action="' . esc_url( self::$portal ? Insights_Portal::url() : admin_url( 'admin.php' ) ) . '" class="ap-ins-range">' . ( self::$portal ? '' : '<input type="hidden" name="page" value="' . esc_attr( Plugin::MENU_SLUG ) . '"><input type="hidden" name="tab" value="insights">' ) . '<input type="hidden" name="view" value="' . esc_attr( $view ) . '">' . $keep
 			. '<label>от <input type="date" name="from" value="' . esc_attr( $p['from'] ) . '" max="' . esc_attr( $today ) . '"></label><label>до <input type="date" name="to" value="' . esc_attr( $p['to'] ) . '" max="' . esc_attr( $today ) . '"></label><button class="button">Покажи</button></form><span class="sp"></span>' . $extra . '</div>';
@@ -980,7 +980,7 @@ final class Insights {
 		/* 1.28.0: периодът и филтрите вървят с линковете (ако не са подменени); null в $args = махни */
 		$keep = array(); $g = $_GET;
 		if ( ! isset( $args['from'] ) && ! isset( $args['to'] ) && ! isset( $args['days'] ) && null !== self::$period && self::$period_explicit ) { $keep['from'] = self::$period['from']; $keep['to'] = self::$period['to']; }
-		foreach ( array_merge( array( 'view', 'q', 'kind', 'work', 'cust' ), self::FILTER_KEYS ) as $k ) { if ( isset( $g[ $k ] ) && '' !== $g[ $k ] && ! array_key_exists( $k, $args ) ) { $keep[ $k ] = sanitize_text_field( (string) wp_unslash( $g[ $k ] ) ); } } /* 1.50.2: q = търсенето на 🛒 */
+		foreach ( array_merge( array( 'view', 'q', 'kind', 'work', 'cust', 'touch' ), self::FILTER_KEYS ) as $k ) { if ( isset( $g[ $k ] ) && '' !== $g[ $k ] && ! array_key_exists( $k, $args ) ) { $keep[ $k ] = sanitize_text_field( (string) wp_unslash( $g[ $k ] ) ); } } /* 1.50.2: q = търсенето на 🛒 */
 		if ( isset( $keep['view'] ) && 'history' === $keep['view'] ) { $keep['view'] = 'sessions'; }
 		$args = array_merge( $keep, $args ); foreach ( $args as $k => $v ) { if ( null === $v || '' === $v ) { unset( $args[ $k ] ); } }
 		if ( isset( $args['days'] ) ) { unset( $args['from'], $args['to'] ); }
@@ -1542,6 +1542,7 @@ final class Insights {
 
 	/* ── 1.28.0 (т. 30): CSV по разбивка и JSON за Looker Studio ── */
 	public static function csv_breakdown( $which, $rg, $f = null ) {
+		if ( 'attrib' === $which ) { return Attribution::csv( $rg ); } /* 1.56.0 */
 		$f = $f ?: self::filters(); $o = self::report_opts( $f ); $os = self::orders_stats( $rg, null, null, $o ); $r = self::sessions_report( 0, $rg, self::report_opts( $f, $os['by_id'] ) ); $sp = self::spend_for( $rg ); $names = self::product_names();
 		$map = array( 'utm' => array( $r['by_utm'], 'utm', $sp['utm'] ), 'camp' => array( $r['by_camp'], 'кампания', $sp['camp'] ), 'day' => array( $r['by_day'], 'ден', null ), 'box' => array( $r['by_box'], 'кутия', null ), 'dev' => array( $r['by_dev'], 'устройство', null ), 'src' => array( $r['by_src'], 'източник', null ), 'hour' => array( $r['by_hour'], 'час', null ), 'ref' => array( $r['by_ref'], 'referrer', null ), 'week' => array( $r['by_week'], 'седмица', null ) );
 		list( $rows, $first, $spend ) = $map[ $which ] ?? $map['utm'];
