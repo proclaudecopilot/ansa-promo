@@ -74,6 +74,7 @@ final class Config {
 			$row( 'alivia',   '',       106944, 'Alivia',            'скованост, дискомфорт',        'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
 			$row( 'veno',     '',       106949, 'VenoTonus',         'здрави кръвоносни съдове',     'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
 			$row( 'ahcc',     '',       106936, 'AHCC-Бета',         'имунитет, гъбен комплекс',     'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
+			$row( 'eyefresh', 'PATCH01', 0,     'EyeFresh',          'пачове за очи',                'Кожа',    array( 'gift_only' => true ) ), /* 1.55.7: човекът: „В подаръците може да сложиш и EyeFresh (PATCH01)“ — ID-то по SKU */
 		);
 	}
 	public static function product_defaults() {
@@ -166,6 +167,22 @@ final class Config {
 			elseif ( in_array( $k, self::MAIN_KEYS, true ) && ! empty( $p['gift_only'] ) ) { $cfg['products'][ $i ]['gift_only'] = false; $n++; }
 		}
 		return array( $cfg, $n );
+	}
+	/** 1.55.7: EyeFresh (SKU PATCH01) като подарък — добавя реда, ако го няма (по key или SKU). Връща 1 при добавяне. */
+	public static function add_eyefresh( $cfg ) {
+		if ( ! is_array( $cfg ) || ! is_array( $cfg['products'] ?? null ) ) { return array( $cfg, 0 ); }
+		foreach ( $cfg['products'] as $p ) { if ( 'eyefresh' === (string) ( $p['key'] ?? '' ) || 'PATCH01' === strtoupper( (string) ( $p['sku'] ?? '' ) ) ) { return array( $cfg, 0 ); } }
+		$pid = 0; if ( class_exists( __NAMESPACE__ . '\\Catalog' ) ) { try { $pid = (int) Catalog::find_by_sku( 'PATCH01' ); if ( ! $pid ) { $r = Catalog::search( 'EyeFresh', 1 ); $pid = $r ? (int) $r[0]['id'] : 0; } } catch ( \Throwable $e ) {} }
+		$cfg['products'][] = array_merge( self::product_defaults(), array( 'key' => 'eyefresh', 'sku' => 'PATCH01', 'product_id' => $pid, 'name' => 'EyeFresh', 'sub' => 'пачове за очи', 'cat' => 'Кожа', 'gift_only' => true ) );
+		return array( $cfg, 1 );
+	}
+	const OPT_MIGRATE_1557 = 'ansa_promo_bf_migrate_1557';
+	public static function maybe_migrate_1557() {
+		if ( get_option( self::OPT_MIGRATE_1557 ) ) { return null; }
+		$s = self::read_store(); $r = array( 'published' => 0, 'draft' => 0 );
+		foreach ( array( 'published', 'draft' ) as $w ) { if ( is_array( $s[ $w ] ?? null ) ) { list( $s[ $w ], $n ) = self::add_eyefresh( $s[ $w ] ); $r[ $w ] = $n; } }
+		if ( $r['published'] || $r['draft'] ) { if ( $r['published'] ) { $s['version'] = (int) ( $s['version'] ?? 0 ) + 1; } self::write_store( $s ); if ( function_exists( 'delete_transient' ) ) { try { delete_transient( self::runtime_key() ); } catch ( \Throwable $e ) {} } }
+		update_option( self::OPT_MIGRATE_1557, array( 'at' => current_time( 'mysql' ) ) + $r, false ); return $r;
 	}
 	public static function maybe_migrate_1556() {
 		if ( get_option( self::OPT_MIGRATE_1556 ) ) { return null; }

@@ -24,7 +24,7 @@ $d = Config::normalize( Config::defaults() );
 $ok( 'normalize idempotent', Config::normalize( $d ) === $d );
 $ok( 'slug по подразбиране cheren-petak-2026', 'cheren-petak-2026' === $d['slug'] );
 $ok( 'токенът се генерира сам (≥ 16 знака, [a-z0-9])', strlen( $d['early']['token'] ) >= 16 && preg_match( '/^[a-z0-9]+$/i', $d['early']['token'] ) );
-$ok( 'продуктите: 13 (9 за купуване + 4 само подарък и нови)', 13 === count( $d['products'] ) && 4 === count( array_filter( $d['products'], function ( $p ) { return $p['gift_only'] && $p['is_new']; } ) ) );
+$ok( 'продуктите: 14 (6 основни + 7 само подарък, от тях 4 нови; yoni изключен)', 14 === count( $d['products'] ) && 4 === count( array_filter( $d['products'], function ( $p ) { return $p['gift_only'] && $p['is_new']; } ) ) && 7 === count( array_filter( $d['products'], function ( $p ) { return $p['gift_only']; } ) ) && 6 === count( array_filter( $d['products'], function ( $p ) { return ! $p['gift_only'] && $p['enabled']; } ) ) ); /* 1.55.6/1.55.7 */
 $ok( 'ключовете на продуктите са уникални', count( $d['products'] ) === count( array_unique( array_column( $d['products'], 'key' ) ) ) );
 $ok( 'ваучер 10 € / 30 мин / 17 мин на страницата', 10.0 === (float) $d['cold']['voucher'] && 30 === (int) $d['cold']['minutes'] && 17 === (int) $d['cold']['landing_minutes'] );
 $ok( 'партньор: ваучер 5 €, маската CollaMask „10 маски“ #11163', 5.0 === (float) $d['aff']['voucher'] && '' === $d['aff']['mask_sku'] && 11163 === (int) $d['aff']['mask_product_id'] );
@@ -72,6 +72,11 @@ $ok( 'seed: greens/berber/sakura/red/meno/utera са основни; thyro/ashwa
 $old = Config::normalize( array( 'products' => array( array( 'key' => 'thyro', 'gift_only' => false, 'enabled' => true ), array( 'key' => 'yoni', 'enabled' => true ), array( 'key' => 'greens', 'gift_only' => true ), array( 'key' => 'kera', 'gift_only' => true ), array( 'key' => 'sakura' ) ) ) );
 list( $fx, $n ) = Config::fix_products( $old ); $fk = array(); foreach ( $fx['products'] as $p ) { $fk[ $p['key'] ] = $p; }
 $ok( 'fix_products (старо публикувано): thyro → подарък, yoni → изключен, greens → основен (3 промени); kera и sakura без промяна', 3 === $n && $fk['thyro']['gift_only'] && ! $fk['yoni']['enabled'] && ! $fk['greens']['gift_only'] && $fk['kera']['gift_only'] && ! $fk['sakura']['gift_only'] && 0 === Config::fix_products( $fx )[1] );
+/* 1.55.7: EyeFresh (PATCH01) е подарък — в seed-а и през add_eyefresh() за публикувано без него */
+$keys = array(); foreach ( $d['products'] as $p ) { $keys[ $p['key'] ] = $p; }
+$ok( 'seed: eyefresh е gift_only със SKU PATCH01', isset( $keys['eyefresh'] ) && $keys['eyefresh']['gift_only'] && 'PATCH01' === $keys['eyefresh']['sku'] && $keys['eyefresh']['enabled'] );
+list( $ae, $na ) = Config::add_eyefresh( Config::normalize( array( 'products' => array( array( 'key' => 'greens' ) ) ) ) ); $ak = array_column( $ae['products'], 'key' );
+$ok( 'add_eyefresh: добавя реда веднъж (по key/SKU), gift_only', 1 === $na && in_array( 'eyefresh', $ak, true ) && 0 === Config::add_eyefresh( $ae )[1] && 0 === Config::add_eyefresh( Config::normalize( array( 'products' => array( array( 'key' => 'x', 'sku' => 'patch01' ) ) ) ) )[1] );
 /* 1.55.5: ранният достъп е отворен за всички по подразбиране (и за старо публикувано без ключа); с open=false — само токенът */
 $ok( 'early.open: по подразбиране true, и при публикувано без ключа', true === $d['early']['open'] && true === Config::normalize( array( 'early' => array( 'token' => 'abc123abc123abc1' ) ) )['early']['open'] && false === Config::normalize( array( 'early' => array( 'open' => 0 ) ) )['early']['open'] );
 if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $v ) { return $v; } }
