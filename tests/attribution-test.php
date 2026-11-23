@@ -57,7 +57,7 @@ $ok( 'report(last): Meta кампаниите по път (кампания → 
 $rf = Attribution::report( $rows, 'first' ); $ok( 'report(first): email 2 (21 и 23), meta 1', 2 === $rf['by_ch']['email']['n'] && 1 === $rf['by_ch']['meta']['n'] );
 $csv = Attribution::csv( array( 'from' => '2026-11-23', 'to' => '2026-11-23' ) ); $ok( 'csv(): заглавия и 6 реда, с канал/път', 7 === substr_count( $csv, "\n" ) && false !== strpos( $csv, 'order_id;date;status;total;kind;channel_last;path_last;channel_first;path_first' ) && false !== strpos( $csv, '21;"2026-11-23 10:00:00";processing;100.00;' ) && false !== strpos( $csv, 'BF Retargeting → Warm 30d → Video A' ) && false !== strpos( $csv, 'без данни' ), substr( $csv, 0, 400 ) );
 /* скриптът */
-ob_start(); Attribution::script(); $js = ob_get_clean(); $ok( 'script(): пише двете бисквитки, 30 дни, SameSite, само при докосване', false !== strpos( $js, 'ansa_src_first' ) && false !== strpos( $js, 'ansa_src_last' ) && false !== strpos( $js, 'max-age=2592000' ) && false !== strpos( $js, 'SameSite=Lax' ) && false !== strpos( $js, 'if(!(marks||ext||!r))return' ) );
+ob_start(); Attribution::script(); $js = ob_get_clean(); $ok( 'script_html() = същото като script()', Attribution::script_html() === $js ); $ok( 'script(): пише двете бисквитки, 30 дни, SameSite, само при докосване', false !== strpos( $js, 'ansa_src_first' ) && false !== strpos( $js, 'ansa_src_last' ) && false !== strpos( $js, 'max-age=2592000' ) && false !== strpos( $js, 'SameSite=Lax' ) && false !== strpos( $js, 'if(!(marks||ext||!r))return' ) );
 
 if ( $fail ) { echo "FAIL\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
 echo "OK $n проверки\n";

@@ -279,7 +279,7 @@ final class Page {
 	public static function meta( $cfg ) { $c = Copy::effective( $cfg['copy'] ); return array( 'title' => wp_strip_all_tags( $c['page.title'] ), 'desc' => wp_strip_all_tags( $c['page.desc'] ) ); }
 	public static function page_html( $cfg, $draft = false ) {
 		$rt = self::runtime( $cfg, $draft, $draft ? self::phase_force() : null ); $m = self::meta( $cfg ); $url = self::url( $cfg ); $ver = ANSA_PROMO_VER;
-		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+		return '<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' . ( class_exists( 'AnsaPromo\\Attribution' ) ? \AnsaPromo\Attribution::script_html() : '' ) /* 1.56.1: бисквитките за произхода и тук — страницата няма wp_head */
 			. ( $draft ? '<meta name="robots" content="noindex,nofollow">' : '' )
 			. '<title>' . esc_html( $m['title'] ) . '</title><meta name="description" content="' . esc_attr( $m['desc'] ) . '"><link rel="canonical" href="' . esc_url( $url ) . '">'
 			. '<meta property="og:type" content="website"><meta property="og:title" content="' . esc_attr( $m['title'] ) . '"><meta property="og:description" content="' . esc_attr( $m['desc'] ) . '"><meta property="og:url" content="' . esc_url( $url ) . '">'
