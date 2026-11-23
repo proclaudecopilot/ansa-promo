@@ -41,6 +41,7 @@ final class Plugin {
 		Config::maybe_migrate_delivered(); /* 1.9.0: „получена“ = само Delivered */
 		Catalog::register();
 		Frontend::register();
+		Attribution::register(); /* 1.56.0: 📣 произходът на всяка поръчка (бисквитки първо/последно докосване → мета на поръчката) */
 		Leads::register();
 		Lead_Sync::register(); /* v1.11.0: лийдовете от имейл-попъпа → FunnelKit лист + таг */
 		Cart_Sync::register(); /* v1.25.0: изоставената промо количка → таг на контакта (FKA Cart Abandoned → условие Contact Tags) */
