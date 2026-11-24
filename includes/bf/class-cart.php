@@ -11,6 +11,8 @@
  *  - Ваучерите са отрицателни такси (woocommerce_cart_calculate_fees): студеният (10 €, 30 мин., важи в цялата количка, и без промо група) и
  *    партньорският (5 € в публичната промоция). Маската (CollaMask) е ред role=pgift на €0.
  *  - Партньорският код на ansa Partner минава (атрибуция), но без отстъпка (zero discount) — като в Сезона; другите купони са блокирани.
+ *    1.57.0 (BF\Aff): кодът на партньора се слага при ВСЯКО perform_add (не само докато сесийният ref на Partner е жив) и има предпазна мрежа при
+ *    поръчката; партньорският ваучер е с код и срок (ctx affv) — тук се приспада сам, а извън Черния петък е WooCommerce купон.
  *  - Сезонът (AnsaPromo\Cart) не пипа тези редове: за него са „чужди“, но той действа само когато има СВОЯ група; perform_add изпразва количката.
  *
  * @package AnsaPromo
@@ -67,12 +69,13 @@ final class Cart {
 	public static function ctx() { return ( function_exists( 'WC' ) && WC()->session ) ? (array) WC()->session->get( self::CTX, array() ) : array(); }
 	public static function set_ctx( $c ) { if ( function_exists( 'WC' ) && WC()->session ) { if ( ! WC()->session->has_session() ) { WC()->session->set_customer_session_cookie( true ); } WC()->session->set( self::CTX, $c ); } }
 	/** След поръчка: количката е нова, но ваучерът/партньорът/ранният достъп на посетителя остават (ваучерът е еднократен — Leads го маркира). */
-	public static function clear_ctx() { $c = self::ctx(); if ( ! $c ) { return; } $keep = array_intersect_key( $c, array_flip( array( 'email', 'lead', 'ref', 'affgift', 'early', 'utm', 'sid' ) ) ); self::set_ctx( $keep ); }
+	public static function clear_ctx() { $c = self::ctx(); if ( ! $c ) { return; } $keep = array_intersect_key( $c, array_flip( array( 'email', 'lead', 'ref', 'affgift', 'affv', 'early', 'utm', 'sid' ) ) ); self::set_ctx( $keep ); }
 	/** Безопасната част за bf.js. */
 	public static function ctx_public() {
 		$c = self::ctx(); $v = is_array( $c['voucher'] ?? null ) ? $c['voucher'] : null;
 		return array( 'email' => (string) ( $c['email'] ?? '' ), 'lead' => (int) ( $c['lead'] ?? 0 ), 'affgift' => (string) ( $c['affgift'] ?? '' ), 'ref' => (string) ( $c['ref'] ?? '' ), 'early' => ! empty( $c['early'] ), 'pause' => ! empty( $c['pause_lead'] ), 'mode' => (string) ( $c['mode'] ?? '' ),
-			'voucher' => $v ? array( 'code' => (string) $v['code'], 'amount' => (float) $v['amount'], 'exp' => (int) $v['exp'], 'live' => Leads::voucher_valid( (string) $v['code'] ) ) : null );
+			'voucher' => $v ? array( 'code' => (string) $v['code'], 'amount' => (float) $v['amount'], 'exp' => (int) $v['exp'], 'live' => Leads::voucher_valid( (string) $v['code'] ) ) : null,
+			'affv' => Aff::ctx_public( $c ) ); /* 1.57.0: ваучерът от партньора — кодът, срокът, жив ли е */
 	}
 	public static function remember_ref( $code ) {
 		$code = strtoupper( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $code ) ); if ( '' === $code ) { return; }
@@ -164,6 +167,8 @@ final class Cart {
 		$partner = ( '' !== $ref && ! empty( $cfg['aff']['enabled'] ) ) ? Page::partner( $ref ) : null; if ( ! $partner ) { $affgift = ''; }
 		$ctx = array_merge( $prev, array( 'mode' => $mode, 'promo' => $cfg['id'], 'phase' => $phase, 'variant' => sanitize_key( (string) ( $a['variant'] ?? '' ) ), 'pay' => $pay, 'utm' => sanitize_key( (string) ( $a['utm'] ?? '' ) ), 'sid' => (string) ( $a['sid'] ?? '' ), 'draft' => $draft, 'staff' => $staff, 't' => time(), 'ref' => $ref, 'affgift' => $affgift ) );
 		$email = sanitize_email( (string) ( $a['email'] ?? '' ) ); if ( '' !== $email ) { $ctx['email'] = $email; } if ( ! empty( $a['lead'] ) ) { $ctx['lead'] = (int) $a['lead']; }
+		/* 1.57.0: избран ваучер без код в сесията (записана преди 1.57.0) → кодът ѝ се взема / издава сега */
+		if ( 'v5' === $affgift && $partner && empty( $ctx['affv']['code'] ) && ! empty( $ctx['email'] ) && Aff::on( $cfg ) ) { $ctx = Aff::attach( $ctx, (string) $ctx['email'], (int) ( $ctx['lead'] ?? 0 ), $partner['code'], $cfg ); }
 		self::$mutating = true;
 		$_POST['ansa_no_gift'] = 1; /* Shrine Cart_Gift: без подаръци по вариация */
 		WC()->cart->empty_cart();
@@ -184,6 +189,8 @@ final class Cart {
 		$ctx['group'] = $group; self::set_ctx( $ctx );
 		$gw = 'cod' === $pay ? ( $cfg['checkout']['cod_gateway'] ?: 'cod' ) : $cfg['checkout']['card_gateway']; if ( $gw && WC()->session ) { WC()->session->set( 'chosen_payment_method', $gw ); }
 		if ( '' !== $ref && class_exists( '\\AnsaPromo\\Partner' ) ) { try { Partner::reapply_ref( $group, null, $ctx, $cfg ); } catch ( \Throwable $e ) {} }
+		/* 1.57.0: сесийният ref на Partner се изразходва при първото прилагане → при втора количка кодът (и комисионата) отпадаше; сега кодът на партньора от линка се слага при всяко perform_add */
+		if ( $partner ) { Aff::ensure_coupon( $partner['code'] ); }
 		WC()->cart->calculate_totals(); WC()->cart->set_session();
 		try { Insights::hit( 'add', 'bf', (string) $ctx['variant'] ); } catch ( \Throwable $e ) {}
 		do_action( 'ansa_promo_bf_added', $group, $ctx, $cfg );
@@ -254,10 +261,9 @@ final class Cart {
 			$cart->add_fee( self::copy( 'co.fee.cold', array( 'voucher' => self::fmt( $v['amount'] ), 'code' => (string) $v['code'] ) ), -self::fee_net( $cart, $amt ), false );
 		}
 		/* партньорският ваучер: само в публичната промоция, при промо група с платени опаковки */
-		if ( $g && 'promo' === $g['mode'] && 'v5' === (string) ( $ctx['affgift'] ?? '' ) && (int) $g['paid'] > 0 && ( 'public' === Config::phase_now( $cfg ) || $g['draft'] || ! empty( $g['staff'] ) ) && ! empty( $cfg['aff']['enabled'] ) && (float) $cfg['aff']['voucher'] > 0 && $sub > 0 ) {
-			$p = Page::partner( (string) ( $ctx['ref'] ?? '' ) );
-			if ( $p ) { $amt = min( (float) $cfg['aff']['voucher'], $sub ); $cart->add_fee( self::copy( 'co.fee.aff', array( 'aff_voucher' => self::fmt( $cfg['aff']['voucher'] ), 'partner' => $p['name'] ) ), -self::fee_net( $cart, $amt ), false ); }
-		}
+		/* 1.57.0: с код и срок (BF\Aff::fee) — жив, неизползван ваучер в сесията; aff.voucher_days = 0 → както досега, без код */
+		$af = $sub > 0 ? Aff::fee( $ctx, $g, $cfg, $cart ) : null;
+		if ( $af ) { $amt = min( (float) $af['amount'], $sub ); $cart->add_fee( self::copy( 'co.fee.aff', array( 'aff_voucher' => self::fmt( $af['amount'] ), 'partner' => $af['partner']['name'], 'code' => (string) $af['code'] ) ), -self::fee_net( $cart, $amt ), false ); }
 	}
 
 	/* ═══ ЗАКЛЮЧВАНЕ / ЕТИКЕТИ ═══ */
@@ -296,6 +302,7 @@ final class Cart {
 		$cfg = self::cfg(); if ( empty( $cfg['checkout']['block_coupons'] ) ) { return $valid; }
 		$code = is_object( $coupon ) ? $coupon->get_code() : (string) $coupon;
 		if ( class_exists( '\\AnsaPromo\\Partner' ) && Partner::is_partner_code( $code, $coupon ) ) { return $valid; }
+		if ( Aff::is_voucher_code( $code ) ) { return $valid; } /* 1.57.0: ваучерът от партньора, въведен на ръка като купон (друго устройство) — минава; Aff::fee не го приспада втори път */
 		if ( apply_filters( 'ansa_promo_bf_allow_coupon', false, $coupon, $g ) ) { return $valid; }
 		throw new \Exception( self::copy( 'co.coupon' ), 100 );
 	}
@@ -343,9 +350,13 @@ final class Cart {
 		$cfg = self::cfg(); $ctx = self::ctx(); $sv = self::savings(); $p = ! empty( $ctx['ref'] ) ? Page::partner( (string) $ctx['ref'] ) : null;
 		$gifts = array(); foreach ( $g['gifts'] as $it ) { $gifts[] = array( 'id' => (int) $it['product_id'], 'name' => wp_strip_all_tags( $it['data']->get_name() ), 'qty' => (int) $it['quantity'] ); }
 		$v = is_array( $ctx['voucher'] ?? null ) && Leads::voucher_valid( (string) $ctx['voucher']['code'] ) ? array( 'kind' => 'cold', 'code' => (string) $ctx['voucher']['code'], 'amount' => (float) $ctx['voucher']['amount'] ) : null;
+		$af = Aff::fee( $ctx, $g, $cfg, WC()->cart ); $void = '';
+		/* подаръкът от партньора е един: избрана маска при жив ваучер в сесията → ваучерът отпада с тази поръчка */
+		if ( ! $af && $g['pgift'] && $p && Aff::on( $cfg ) && ! empty( $ctx['affv']['code'] ) && Leads::voucher_valid( (string) $ctx['affv']['code'] ) ) { $void = (string) $ctx['affv']['code']; }
 		$meta = array(
 			'promo' => $cfg['id'], 'group' => $g['group'], 'mode' => $g['mode'], 'phase' => $g['phase'], 'variant' => (string) ( $ctx['variant'] ?? '' ), 'paid' => (int) $g['paid'], 'ngifts' => (int) $g['ngifts'], 'gifts' => $gifts,
 			'pgift' => $g['pgift'] ? 'mask' : '', 'lucky' => $g['lucky'] ? 1 : 0, 'voucher' => $v, 'aff' => $p ? array( 'code' => $p['code'], 'name' => $p['name'], 'gift' => (string) ( $ctx['affgift'] ?? '' ) ) : null,
+			'affv' => ( $af && '' !== (string) $af['code'] ) ? array( 'code' => (string) $af['code'], 'amount' => (float) $af['amount'] ) : null, 'affv_void' => $void, /* 1.57.0: приспаднатият ваучер от партньора / отпадналият заради маската */
 			'savings' => $sv, 'lead_id' => (int) ( $ctx['lead'] ?? 0 ), 'lead_email' => (string) ( $ctx['email'] ?? '' ), 'utm' => (string) ( $ctx['utm'] ?? '' ), 'sid' => (string) ( $ctx['sid'] ?? '' ), 'pay' => (string) ( $ctx['pay'] ?? '' ), 'draft' => ! empty( $g['draft'] ), 'staff' => ! empty( $g['staff'] ), 'ver' => ANSA_PROMO_VER, 'config_version' => Config::version(),
 		);
 		return apply_filters( 'ansa_promo_bf_order_meta', $meta, $g, $cfg );
@@ -356,6 +367,7 @@ final class Cart {
 		$order->update_meta_data( '_ansa_bf_paid', (int) $m['paid'] ); $order->update_meta_data( '_ansa_bf_gifts', (int) $m['ngifts'] ); $order->update_meta_data( '_ansa_bf_savings', (float) ( $m['savings']['total'] ?? 0 ) );
 		$order->update_meta_data( '_ansa_bf_voucher', $m['voucher'] ? $m['voucher']['code'] : '' ); $order->update_meta_data( '_ansa_bf_ref', $m['aff'] ? $m['aff']['code'] : '' ); $order->update_meta_data( '_ansa_bf_lead', (int) $m['lead_id'] );
 		$order->update_meta_data( '_ansa_bf_staff', ! empty( $m['staff'] ) ? 1 : 0 ); /* 1.50.0 */
+		$order->update_meta_data( '_ansa_bf_affv', ! empty( $m['affv']['code'] ) ? (string) $m['affv']['code'] : '' ); /* 1.57.0 */
 	}
 	public static function order_meta( $order, $data ) { $m = self::build_meta(); if ( $m ) { self::write_meta( $order, $m ); } }
 	public static function order_meta_store_api( $order, $request ) { $m = self::build_meta(); if ( $m ) { self::write_meta( $order, $m ); } }
@@ -368,7 +380,7 @@ final class Cart {
 		if ( ! is_object( $order ) || ! method_exists( $order, 'get_meta' ) ) { $order = wc_get_order( (int) $order ); if ( ! $order ) { return; } }
 		$m = $order->get_meta( '_ansa_promo_bf' ); if ( ! is_array( $m ) ) { return; }
 		Leads::on_order( $order, $m );
-		$order->add_order_note( sprintf( 'ansa™ Черен петък: %s · фаза %s · %d платени + %d подаръка%s%s · спестени %s €', $m['mode'], $m['phase'], (int) $m['paid'], (int) $m['ngifts'], $m['pgift'] ? ' + маска' : '', $m['voucher'] ? ' · ваучер ' . $m['voucher']['code'] . ' (−' . self::fmt( $m['voucher']['amount'] ) . ' €)' : '', self::fmt( $m['savings']['total'] ?? 0 ) ) . ( $m['aff'] ? ' · партньор ' . $m['aff']['code'] : '' ) );
+		$order->add_order_note( sprintf( 'ansa™ Черен петък: %s · фаза %s · %d платени + %d подаръка%s%s · спестени %s €', $m['mode'], $m['phase'], (int) $m['paid'], (int) $m['ngifts'], $m['pgift'] ? ' + маска' : '', $m['voucher'] ? ' · ваучер ' . $m['voucher']['code'] . ' (−' . self::fmt( $m['voucher']['amount'] ) . ' €)' : '', self::fmt( $m['savings']['total'] ?? 0 ) ) . ( $m['aff'] ? ' · партньор ' . $m['aff']['code'] : '' ) . ( ! empty( $m['affv']['code'] ) ? ' · ваучер от партньора ' . $m['affv']['code'] . ' (−' . self::fmt( $m['affv']['amount'] ) . ' €)' : '' ) . ( ! empty( $m['affv_void'] ) ? ' · ваучерът ' . $m['affv_void'] . ' отпада (избрана е маската)' : '' ) );
 		if ( ! empty( $m['staff'] ) ) { $order->add_order_note( 'ansa™ Черен петък: СЛУЖЕБНА поръчка (служебен линк, преди старта) — не влиза в Insights и не праща Purchase към Meta.' ); }
 		else { try { Insights::hit( 'created', 'bf', (string) $m['variant'] ); } catch ( \Throwable $e ) {} }
 		do_action( 'ansa_promo_bf_order_created', $order, $m );

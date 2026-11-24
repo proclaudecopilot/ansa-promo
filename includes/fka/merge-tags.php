@@ -92,6 +92,13 @@ class Ansa_Promo_FKA_Bf_Voucher extends Ansa_Promo_FKA_Tag {
 class Ansa_Promo_FKA_Bf_Voucher_Exp extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'bf_voucher_exp'; protected $ansa_desc = 'ansa™ Черен петък: до кога важи ваучерът на контакта (дд.мм.гггг чч:мм)';
 }
+/* 1.57.0: ваучерът от партньора (AnsaPromo\BF\Aff) — за автоматизацията на тага bf-partner */
+class Ansa_Promo_FKA_Bf_Aff_Voucher extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_aff_voucher'; protected $ansa_desc = 'ansa™ Черен петък: кодът на ваучера от партньора (неизползван и в срок; празно, ако няма)';
+}
+class Ansa_Promo_FKA_Bf_Aff_Voucher_Exp extends Ansa_Promo_FKA_Tag {
+	protected $ansa_key = 'bf_aff_voucher_exp'; protected $ansa_desc = 'ansa™ Черен петък: до коя дата важи ваучерът от партньора (дд.мм.гггг)';
+}
 class Ansa_Promo_FKA_Bf_Early_Url extends Ansa_Promo_FKA_Tag {
 	protected $ansa_key = 'bf_early_url'; protected $ansa_desc = 'ansa™ Черен петък: личният линк за ранния достъп (токенът + подписаният имейл → ваучерът влиза сам в количката); с UTM';
 }

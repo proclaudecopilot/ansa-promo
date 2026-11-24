@@ -103,6 +103,7 @@ final class Copy {
 				'aff.sub'        => 'Всяка опаковка ти носи още една по избор. С линка на {{partner}} получаваш и подарък отгоре — избери го и влез.',
 				'aff.choose'     => 'Подаръкът от {{partner}} — избери',
 				'aff.v.title'    => 'Ваучер {{aff_voucher}} €',
+				'aff.v.sub'      => 'с код · важи {{aff_days}} дни, и след Черния петък',
 				'aff.m.title'    => 'Колагенова маска подарък',
 				'aff.m.sub'      => 'CollaMask · {{mask_price}} €',
 				'aff.cta'        => 'Вземи подаръка и влез',
@@ -120,6 +121,12 @@ final class Copy {
 				'aff.wait.sub'   => 'Black Friday отваря на {{public_date}} в {{public_time}}. Ще ти пратим линк по имейл — подаръкът от {{partner}} те чака в количката.',
 				'aff.wait.cta'   => 'Разгледай продуктите',
 				'aff.toast'      => 'Подаръкът е запазен',
+				/* 1.57.0: ваучерът от партньора е с код и срок */
+				'aff.toast.code' => 'Ваучерът ти: {{code}} — запази го',
+				'aff.wait.code'  => 'Твоят ваучер: <b>{{code}}</b> · важи до {{aff_exp}}. Запази кода — пратихме ти го и на имейла.',
+				'em.affv.subject' => 'Твоят ваучер {{aff_voucher}} € от ansa™ — код {{code}}',
+				'em.affv.h'       => 'Ваучер {{aff_voucher}} € — подарък от {{partner}}',
+				'em.affv.body'    => "Здравей,\n\nтова е твоят ваучер за <strong>{{aff_voucher}} €</strong>:\n\n<strong style=\"font-size:24px;letter-spacing:1px\">{{code}}</strong>\n\nВажи до <strong>{{aff_exp}}</strong>, еднократно.\n\nНа Черния петък се приспада сам в количката ти: <a href=\"{{url}}\">към Черния петък ›</a>\n\nАко не го използваш тогава, остава твой — въведи кода в полето за код за отстъпка при следваща поръчка в ansa.bg.",
 			),
 			'shop' => array(
 				'shop.pill.early'   => '⏳ ранен достъп',
@@ -185,6 +192,8 @@ final class Copy {
 				'shop.how.s3'       => 'Завършваш поръчката',
 				'shop.affnote.v'    => '🔗 Идваш от <b>{{partner}}</b>: ваучерът ти {{aff_voucher}} € се приспада в количката.',
 				'shop.affnote.m'    => '🔗 Идваш от <b>{{partner}}</b>: колагенова маска CollaMask е добавена към поръчката ти.',
+				'shop.affnote.vc'   => '🔗 Идваш от <b>{{partner}}</b>: ваучерът ти {{aff_voucher}} € (код <b>{{code}}</b>, важи до {{aff_exp}}) се приспада в количката.',
+				'shop.affnote.used' => '🔗 Идваш от <b>{{partner}}</b>: ваучерът ти <b>{{code}}</b> вече е използван.',
 				'shop.affnote.none' => '🔗 Идваш от <b>{{partner}}</b>:',
 				'shop.affnote.cta'  => 'вземи подаръка ѝ →',
 				'shop.closed.title' => 'Ранният достъп още не е отворен.',
@@ -308,7 +317,7 @@ final class Copy {
 	}
 
 	public static function vars() {
-		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount', 'total', 'reg', 'opk', 'g', 'full', 'timer' );
+		return array( 'voucher', 'seats', 'max', 'left', 'minutes', 'early_date', 'early_time', 'public_date', 'public_time', 'partner', 'aff_voucher', 'aff_days', 'aff_exp', 'mask_price', 'n', 'podaruk', 'produkt', 'pct', 'sel', 'ex_pay', 'price', 'paid', 'gifts', 'code', 'save', 'url', 'name', 'email', 'amount', 'total', 'reg', 'opk', 'g', 'full', 'timer' );
 	}
 	public static function defaults() { static $d = null; if ( null === $d ) { $d = array(); foreach ( self::registry() as $g => $keys ) { $d += $keys; } } return $d; }
 	public static function effective( $overrides ) {
