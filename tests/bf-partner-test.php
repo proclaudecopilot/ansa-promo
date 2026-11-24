@@ -315,6 +315,15 @@ $ok( 'стрес: минати са всички пътища (платена, �
 $sum_base = 0.0; if ( $REAL && $ENGINE ) { $bad_base = 0; foreach ( $stress as $s ) { $o = wc_get_order( $s['o'] ); $b = $ENGINE->commission_base( $o ); $sum_base += $b; if ( abs( $b - $s['paid'] ) > 0.005 ) { $bad_base++; } } $ok( 'стрес: базата за комисионата е точно платените продукти (ваучерът и подаръците не я намаляват)', 0 === $bad_base, $bad_base ); }
 $ok( 'няма грешки към базата', array() === $wpdb->errors, array_slice( $wpdb->errors, 0, 3 ) );
 
+/* ═══ 1.57.3: партньорски код, въведен на ръка в чекаута = партньорски линк (ZAVASYA20) ═══ */
+new_visitor(); $b = build( $I1, $G1 ); $cx = Cart::ctx();
+$ok( '1.57.3: количка без ref → в контекста няма партньор', ! empty( $b['success'] ) && '' === (string) ( $cx['ref'] ?? '' ), $cx );
+Cart::on_coupon_applied( 'anssid5ansa' ); $cx = Cart::ctx();
+$ok( '1.57.3: on_coupon_applied(партньорски код) → ref = ANSSID5ANSA, изборът по подразбиране е ваучер (v5)', 'ANSSID5ANSA' === (string) ( $cx['ref'] ?? '' ) && 'v5' === (string) ( $cx['affgift'] ?? '' ), $cx );
+$m = Cart::coupon_message( 'Coupon code applied successfully.', 200, 'anssid5ansa' );
+$ok( '1.57.3: съобщението е за подаръка на партньора (Мария), не за отстъпка', false !== strpos( $m, 'Мария' ) && ( false !== strpos( $m, 'подарък' ) || false !== strpos( $m, 'Подаръкът' ) ) && false === strpos( $m, '% отстъпка' ), $m );
+$ok( '1.57.3: грешка (не успех) → съобщението не се пипа', 'x' === Cart::coupon_message( 'x', 101, 'anssid5ansa' ) );
+Cart::on_coupon_applied( 'NOPE123' ); $ok( '1.57.3: непартньорски код → нищо не се променя', 'ANSSID5ANSA' === (string) ( Cart::ctx()['ref'] ?? '' ) && 'y' === Cart::coupon_message( 'y', 200, 'NOPE123' ) );
 } catch ( Throwable $e ) { $fail[] = 'ИЗКЛЮЧЕНИЕ: ' . get_class( $e ) . ': ' . $e->getMessage() . ' @ ' . basename( $e->getFile() ) . ':' . $e->getLine(); }
 
 if ( $fail ) { echo 'FAIL ' . count( $fail ) . ' от ' . $n . ":\n - " . implode( "\n - ", $fail ) . "\n"; exit( 1 ); }
