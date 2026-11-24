@@ -42,6 +42,28 @@ final class Aff {
 		foreach ( array( 'on-hold', 'processing', 'completed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'order_done' ), 28 ); }
 		foreach ( array( 'cancelled', 'failed' ) as $st ) { add_action( 'woocommerce_order_status_' . $st, array( __CLASS__, 'release' ), 28 ); }
 		add_action( self::MAIL_HOOK, array( __CLASS__, 'mail_cron' ) );
+		/* 1.57.1: ваучерът се комбинира с партньорски код без ръчна настройка в ansa Partner (белият му списък се допълва при четене) */
+		add_filter( 'option_ansa_partner_settings', array( __CLASS__, 'partner_allow' ) );
+		add_filter( 'default_option_ansa_partner_settings', array( __CLASS__, 'partner_allow' ) );
+	}
+
+	/**
+	 * 1.57.1: ansa Partner пуска до партньорския код само купоните от „Кодове, съвместими с партньорски“ (allowed_with_partner, със „*“ накрая за префикс).
+	 * Клиент с ваучер, който после дойде през партньорски линк, получаваше „Кодът не може да се комбинира с партньорска отстъпка“ — а ваучерът му важи
+	 * 3 месеца. Шарката на нашите кодове ({префикс}{сума}-*) се добавя към списъка при четене на настройките; в базата нищо не се записва.
+	 */
+	public static function partner_allow( $s ) {
+		static $pat = null; static $busy = false; if ( $busy ) { return $s; }
+		try {
+			if ( null === $pat ) { /* веднъж на заявка: настройките на Partner се четат често */
+				$busy = true; $cfg = Config::get_published(); $busy = false;
+				$pat = self::on( $cfg ) ? strtolower( preg_replace( '/[^a-z]/i', '', (string) $cfg['aff']['voucher_prefix'] ) ?: 'bfp' ) . (int) round( (float) $cfg['aff']['voucher'] ) . '-*' : '';
+			}
+			if ( '' === $pat ) { return $s; }
+			$s = is_array( $s ) ? $s : array(); $cur = (string) ( $s['allowed_with_partner'] ?? 'ansacart05' ); /* без запис в настройките Partner ползва своя списък по подразбиране */
+			if ( ! in_array( $pat, array_map( 'strtolower', array_map( 'trim', preg_split( '/[\r\n,]+/', $cur ) ) ), true ) ) { $s['allowed_with_partner'] = trim( $cur . "\n" . $pat ); }
+		} catch ( \Throwable $e ) { $busy = false; }
+		return $s;
 	}
 
 	/* ═══ 1. КОМИСИОНАТА ═══ */
@@ -196,13 +218,15 @@ final class Aff {
 	public static function restore( $email, $cfg ) {
 		try {
 			global $wpdb; $email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) || empty( $cfg['aff']['enabled'] ) ) { return; }
-			$ctx = Cart::ctx(); if ( ! empty( $ctx['ref'] ) ) { return; }
 			$r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . " WHERE promo = %s AND kind = 'aff' AND email = %s AND ref_code <> '' ORDER BY id DESC LIMIT 1", Leads::PROMO, $email ), ARRAY_A );
-			if ( ! is_array( $r ) ) { return; } $p = Page::partner( (string) $r['ref_code'] ); if ( ! $p ) { return; }
-			Cart::remember_ref( $p['code'] ); $ctx = Cart::ctx(); $ctx['ref'] = $p['code'];
+			if ( ! is_array( $r ) ) { return; }
+			$ctx = Cart::ctx();
+			/* партньорът: този от адреса (?ref=, последният клик) остава; без него — партньорът на записването */
+			if ( empty( $ctx['ref'] ) ) { $p = Page::partner( (string) $r['ref_code'] ); if ( ! $p ) { return; } Cart::remember_ref( $p['code'] ); $ctx = Cart::ctx(); $ctx['ref'] = $p['code']; }
+			else { $p = Page::partner( (string) $ctx['ref'] ); if ( ! $p ) { return; } }
 			if ( empty( $ctx['affgift'] ) && in_array( (string) $r['bonus'], array( 'v5', 'mask' ), true ) ) { $ctx['affgift'] = (string) $r['bonus']; }
 			if ( empty( $ctx['email'] ) ) { $ctx['email'] = $email; } if ( empty( $ctx['lead'] ) ) { $ctx['lead'] = (int) $r['id']; }
-			if ( 'v5' === (string) ( $ctx['affgift'] ?? '' ) ) { $ctx = self::attach( $ctx, $email, (int) $r['id'], $p['code'], $cfg ); }
+			if ( 'v5' === (string) ( $ctx['affgift'] ?? '' ) && empty( $ctx['affv']['code'] ) ) { $ctx = self::attach( $ctx, $email, (int) $r['id'], $p['code'], $cfg ); }
 			Cart::set_ctx( $ctx );
 		} catch ( \Throwable $e ) {}
 	}
@@ -310,7 +334,17 @@ final class Aff {
 	/** Плейсхолдърите за текстовете с кода. */
 	public static function vars( $row, $cfg, $partner = '' ) {
 		$exp = self::exp_ts( $row );
-		return array( 'code' => (string) $row['voucher'], 'aff_voucher' => Cart::fmt( $cfg['aff']['voucher'] ), 'aff_exp' => $exp ? wp_date( 'd.m.Y', $exp ) : '', 'aff_days' => self::days( $cfg ), 'partner' => (string) $partner, 'url' => Page::url( $cfg ) );
+		return array( 'code' => (string) $row['voucher'], 'aff_voucher' => Cart::fmt( $cfg['aff']['voucher'] ), 'aff_exp' => $exp ? wp_date( 'd.m.Y', $exp ) : '', 'aff_days' => self::days( $cfg ), 'partner' => (string) $partner,
+			/* 1.57.1: линкът в имейла носи партньора и подписания имейл → на всяко устройство ваучерът е в количката, а поръчката е с кода на партньора */
+			'url' => ( '' !== (string) ( $row['ref_code'] ?? '' ) && Page::partner( (string) $row['ref_code'] ) ) ? add_query_arg( array( 'ref' => rawurlencode( (string) $row['ref_code'] ), 'u' => Boost::utoken( (string) $row['email'] ) ), Page::url( $cfg ) ) : Page::url( $cfg ) );
+	}
+	/** 1.57.1: кодът на (живия) партньор, през чийто линк се е записал този имейл; '' ако няма. За линковете в имейлите. */
+	public static function lead_ref( $email ) {
+		try {
+			global $wpdb; $email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) ) { return ''; }
+			$code = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT ref_code FROM ' . Schema::table( 'leads' ) . " WHERE promo = %s AND kind = 'aff' AND email = %s AND ref_code <> '' ORDER BY id DESC LIMIT 1", Leads::PROMO, $email ) );
+			$p = '' !== $code ? Page::partner( $code ) : null; return $p ? (string) $p['code'] : '';
+		} catch ( \Throwable $e ) { return ''; }
 	}
 	/** FunnelKit merge tags {{ansa_promo_bf_aff_voucher}} / {{ansa_promo_bf_aff_voucher_exp}} — за автоматизацията на тага bf-partner. */
 	public static function merge( $key, $email ) {

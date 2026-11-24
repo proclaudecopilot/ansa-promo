@@ -280,11 +280,19 @@ final class Boost {
 	/** Стойността за имейла на текущия FKA контакт (или attr email= за тест от админ). */
 	public static function merge( $key, $attr = array() ) {
 		$attr = is_array( $attr ) ? $attr : array(); $cfg = Config::get_published();
-		if ( 'bf_url' === $key ) { return esc_url_raw( add_query_arg( array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => sanitize_text_field( (string) ( $attr['utm_content'] ?? 'bf_public' ) ) ), Page::url( $cfg ) ) ); }
 		$email = '';
 		if ( ! empty( $attr['email'] ) && function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' ) && is_email( (string) $attr['email'] ) ) { $email = (string) $attr['email']; }
 		if ( '' === $email && method_exists( Merge::class, 'fka_email' ) ) { $email = (string) Merge::fka_email(); }
 		if ( '' === $email && method_exists( Merge::class, 'fka_email_deep' ) ) { $email = (string) Merge::fka_email_deep(); }
+		/* 1.57.1: записаните през партньорски линк получават в имейла адрес с ?ref=КОД и подписания си имейл (?u=) — на всяко устройство страницата е
+		   на партньора, подаръкът и ваучерът са в количката, а поръчката носи кода му (комисионата). Без промяна в автоматизациите на FunnelKit. */
+		$aff_ref = '' !== $email ? Aff::lead_ref( $email ) : '';
+		if ( 'bf_url' === $key ) {
+			$q = array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => sanitize_text_field( (string) ( $attr['utm_content'] ?? 'bf_public' ) ) );
+			if ( '' !== $aff_ref ) { $q = array( 'ref' => $aff_ref, 'u' => self::utoken( $email ) ) + $q; }
+			return esc_url_raw( add_query_arg( $q, Page::url( $cfg ) ) );
+		}
+		if ( 'bf_early_url' === $key && '' !== $aff_ref ) { return esc_url_raw( add_query_arg( 'ref', $aff_ref, self::personal_url( $email, $cfg, array( 'utm_content' => (string) ( $attr['utm_content'] ?? 'bf_early' ) ) ) ) ); }
 		if ( 'bf_early_url' === $key ) { return esc_url_raw( '' !== $email ? self::personal_url( $email, $cfg, array( 'utm_content' => (string) ( $attr['utm_content'] ?? 'bf_early' ) ) ) : add_query_arg( array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => 'bf_early' ), Config::early_url( $cfg ) ) ); }
 		if ( 'bf_aff_voucher' === $key || 'bf_aff_voucher_exp' === $key ) { $val = Aff::merge( $key, $email ); return '' !== $val ? $val : (string) ( $attr['fallback'] ?? '' ); } /* 1.57.0 */
 		$row = '' !== $email ? self::voucher_for( $email ) : null; if ( ! $row ) { return (string) ( $attr['fallback'] ?? '' ); }

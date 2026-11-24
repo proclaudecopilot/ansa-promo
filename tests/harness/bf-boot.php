@@ -11,7 +11,7 @@ final class Plugin { const CAP = "manage_woocommerce"; }
 final class Insights { static function hit() {} static function request_sid( $s ) { return (string) $s; } static function period() { return array(); } }
 final class Leads { static function rate_limited() { return false; } static function ip() { return "127.0.0.1"; } static function mark_fka() {} }
 final class Lead_Sync { static function available() { return false; } static function sync() { return "off"; } }
-final class Merge { static function tag_id() { return 0; } static function term_id() { return 0; } }
+final class Merge { static function tag_id() { return 0; } static function term_id() { return 0; } static function fka_email() { return (string) ( $GLOBALS["fka_email"] ?? "" ); } }
 final class Catalog {
 	static function find_by_sku( $s ) { return 0; }
 	static function wc_line( $id ) { $p = \wc_get_product( $id ); if ( ! $p ) { return array( "ok" => false ); } return array( "ok" => true, "price" => $p->get_regular_price(), "img" => "", "wc_name" => $p->get_name(), "stock" => $p->is_in_stock(), "variation_id" => 0, "product_id" => $id ); }
@@ -35,7 +35,7 @@ $REAL = is_file( $pp . 'includes/class-ap-coupons.php' ) && is_file( $pp . 'incl
 class AP_Schema { static function table( $n ) { return 'wp_ansa_partner_' . $n; } }
 class AP_Game { static function config() { return array( 'raffle_enabled' => 0, 'to' => '' ); } static function visible() { return false; } }
 class AP_Manager { const CAP = 'manage_woocommerce'; }
-function ansa_partner_safe_mode() { return false; } function ansa_partner_settings() { return array( 'allowed_with_partner' => "ansacart05", 'block_self_referrals' => 1, 'include_vat' => 0, 'legacy_link_prefixes' => '' ); }
+function ansa_partner_safe_mode() { return false; } function ansa_partner_settings() { $s = get_option( 'ansa_partner_settings', array() ); return array_merge( array( 'allowed_with_partner' => 'ansacart05', 'block_self_referrals' => 1, 'include_vat' => 0, 'legacy_link_prefixes' => '' ), is_array( $s ) ? $s : array() ); } /* както в ansa-partner.php: get_option + стойностите по подразбиране */
 function ansa_partner_feed_push() {} function ansa_partner_log_shield() {} function ansa_partner_excluded_product_ids() { return array(); } function ansa_partner_won_statuses() { return array( 'completed' ); } function ansa_partner_status_is_won( $s ) { return 'completed' === $s; }
 function get_user_by() { return false; } function get_userdata() { return false; } function wc_format_decimal( $n, $d = 2 ) { return number_format( (float) $n, $d, '.', '' ); } function add_rewrite_rule() {}
 $ENGINE = null;
