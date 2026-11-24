@@ -30,7 +30,22 @@ final class Page {
 	const RUNTIME_TTL = 5 * MINUTE_IN_SECONDS;
 	private static $pw_ok = null; private static $pw_err = false;
 
+	/** 1.57.4 (човекът: „https://ansa.bg/bf26 да пренасочва към https://ansa.bg/cheren-petak-2026“): кратките псевдоними на страницата. */
+	const ALIASES = array( 'bf26', 'bf2026', 'blackfriday', 'black-friday' );
+	/** Адресът, към който пренасочва пътят, ако е псевдоним ('' = не е): параметрите (UTM, ref, ea…) се пренасят. */
+	public static function alias_target( $path, $query = '', $cfg = null ) {
+		$seg = strtolower( trim( (string) wp_parse_url( (string) $path, PHP_URL_PATH ), '/' ) ); if ( '' === $seg || ! in_array( $seg, self::ALIASES, true ) ) { return ''; }
+		$url = self::url( $cfg ); $query = ltrim( (string) $query, '?' ); if ( '' !== $query ) { $url .= ( false === strpos( $url, '?' ) ? '?' : '&' ) . $query; }
+		return $url;
+	}
+	public static function alias_redirect() {
+		$uri = (string) ( $_SERVER['REQUEST_URI'] ?? '' ); if ( '' === $uri ) { return; }
+		$url = self::alias_target( $uri, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ); if ( '' === $url ) { return; }
+		if ( ! headers_sent() ) { nocache_headers(); header( 'X-Robots-Tag: noindex' ); }
+		wp_redirect( $url, 302 ); exit; /* 302, не 301 — браузърът да не го запомни завинаги */
+	}
 	public static function register() {
+		add_action( 'template_redirect', array( __CLASS__, 'alias_redirect' ), 0 ); /* 1.57.4: /bf26 → страницата */
 		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1556' ), 5 );
 		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1557' ), 6 ); /* 1.55.7: EyeFresh като подарък */
 		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1562' ), 7 ); /* 1.56.2: купоните важат */ /* 1.55.6: еднократно — основните продукти са шестте, другите само подарък, yoni изключен */
