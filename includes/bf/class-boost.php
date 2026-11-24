@@ -110,7 +110,7 @@ final class Boost {
 	/** Живият ваучер на имейла (най-новият неизползван с бъдещ срок) или null. */
 	public static function voucher_for( $email ) {
 		global $wpdb; $email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) ) { return null; }
-		$r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . " WHERE promo = %s AND email = %s AND voucher <> '' AND voucher_order_id IS NULL AND voucher_exp IS NOT NULL AND voucher_exp > %s ORDER BY voucher_exp DESC, id DESC LIMIT 1", Leads::PROMO, $email, gmdate( 'Y-m-d H:i:s' ) ), ARRAY_A );
+		$r = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Schema::table( 'leads' ) . " WHERE promo = %s AND email = %s AND kind <> 'aff' AND voucher <> '' AND voucher_order_id IS NULL AND voucher_exp IS NOT NULL AND voucher_exp > %s ORDER BY voucher_exp DESC, id DESC LIMIT 1", Leads::PROMO, $email, gmdate( 'Y-m-d H:i:s' ) ), ARRAY_A );
 		return is_array( $r ) ? $r : null;
 	}
 	/** Сумата на ваучера по реда: ВИП/възобновен = listv.amount, студен = cold.voucher. */
@@ -122,6 +122,7 @@ final class Boost {
 	 * При подписания личен линк (?u=, identify) имейлът е доказан и остава.
 	 */
 	public static function apply_row( $row, $cfg, $with_email = true ) {
+		if ( 'aff' === (string) ( $row['kind'] ?? '' ) ) { return Aff::apply_row( $row, $cfg ); } /* 1.57.0: партньорският ваучер има свое място в контекста (affv), не портфейла */
 		$ctx = Cart::ctx(); $exp = strtotime( (string) $row['voucher_exp'] . ' UTC' );
 		$ctx['voucher'] = array( 'code' => (string) $row['voucher'], 'amount' => self::amount_for( $row, $cfg ), 'exp' => (int) $exp, 'lead' => (int) $row['id'] );
 		if ( $with_email && empty( $ctx['email'] ) ) { $ctx['email'] = (string) $row['email']; } if ( empty( $ctx['lead'] ) ) { $ctx['lead'] = (int) $row['id']; }
@@ -210,7 +211,7 @@ final class Boost {
 		$mod = strtotime( (string) ( $cart['last_modified'] ?? '' ) . ' UTC' ); if ( $mod && $mod < time() - (int) apply_filters( 'ansa_promo_bf_recover_max_age', self::RECOVER_MAX_AGE, $cart ) ) { $why = 'old'; return null; }
 		$t = Schema::table( 'leads' );
 		if ( (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE promo = %s AND email = %s AND converted_order_id IS NOT NULL", Leads::PROMO, $email ) ) > 0 ) { $why = 'converted'; return null; }
-		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE promo = %s AND email = %s AND voucher <> '' AND voucher_order_id IS NULL ORDER BY id DESC LIMIT 10", Leads::PROMO, $email ), ARRAY_A );
+		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE promo = %s AND email = %s AND kind <> 'aff' AND voucher <> '' AND voucher_order_id IS NULL ORDER BY id DESC LIMIT 10", Leads::PROMO, $email ), ARRAY_A );
 		if ( ! $rows ) { $why = 'no-voucher'; return null; }
 		/* 1.54.6: без условието „кодът е в снимката“ — FKA презаписва снимката при всяко отваряне на количката без ваучера (на живо: not-in-email
 		   за линк, чието писмо го е показало). При няколко кода на имейла: този от снимката, иначе най-новият. */
@@ -243,6 +244,7 @@ final class Boost {
 		$row = self::voucher_for( $email );
 		if ( $row && ( ! $cur || (string) $cur['code'] !== (string) $row['voucher'] || ! Leads::voucher_valid( (string) $cur['code'] ) ) ) { self::apply_row( $row, $cfg ); }
 		elseif ( empty( $ctx['email'] ) ) { $ctx['email'] = $email; Cart::set_ctx( $ctx ); }
+		Aff::restore( $email, $cfg ); /* 1.57.0: записана през партньорски линк → партньорът, подаръкът и ваучерът ѝ се връщат в сесията */
 		return $email;
 	}
 
@@ -274,7 +276,7 @@ final class Boost {
 	}
 
 	/* ═══ MERGE TAGS за FunnelKit ({{ansa_promo_bf_voucher}} …) ═══ */
-	const TAGS = array( 'bf_voucher' => 'BF10-K7M2', 'bf_voucher_exp' => '23.11.2026 23:59', 'bf_early_url' => 'https://ansa.bg/cheren-petak-2026/?ea=…&u=…', 'bf_url' => 'https://ansa.bg/cheren-petak-2026/' );
+	const TAGS = array( 'bf_voucher' => 'BF10-K7M2', 'bf_voucher_exp' => '23.11.2026 23:59', 'bf_aff_voucher' => 'BFP5-K7M2QX', 'bf_aff_voucher_exp' => '22.02.2027', 'bf_early_url' => 'https://ansa.bg/cheren-petak-2026/?ea=…&u=…', 'bf_url' => 'https://ansa.bg/cheren-petak-2026/' );
 	/** Стойността за имейла на текущия FKA контакт (или attr email= за тест от админ). */
 	public static function merge( $key, $attr = array() ) {
 		$attr = is_array( $attr ) ? $attr : array(); $cfg = Config::get_published();
@@ -284,6 +286,7 @@ final class Boost {
 		if ( '' === $email && method_exists( Merge::class, 'fka_email' ) ) { $email = (string) Merge::fka_email(); }
 		if ( '' === $email && method_exists( Merge::class, 'fka_email_deep' ) ) { $email = (string) Merge::fka_email_deep(); }
 		if ( 'bf_early_url' === $key ) { return esc_url_raw( '' !== $email ? self::personal_url( $email, $cfg, array( 'utm_content' => (string) ( $attr['utm_content'] ?? 'bf_early' ) ) ) : add_query_arg( array( 'utm_source' => 'email', 'utm_medium' => 'email', 'utm_campaign' => 'bf2026', 'utm_content' => 'bf_early' ), Config::early_url( $cfg ) ) ); }
+		if ( 'bf_aff_voucher' === $key || 'bf_aff_voucher_exp' === $key ) { $val = Aff::merge( $key, $email ); return '' !== $val ? $val : (string) ( $attr['fallback'] ?? '' ); } /* 1.57.0 */
 		$row = '' !== $email ? self::voucher_for( $email ) : null; if ( ! $row ) { return (string) ( $attr['fallback'] ?? '' ); }
 		if ( 'bf_voucher' === $key ) { return (string) $row['voucher']; }
 		if ( 'bf_voucher_exp' === $key ) { return Config::fmt_dt( strtotime( (string) $row['voucher_exp'] . ' UTC' ) ); }

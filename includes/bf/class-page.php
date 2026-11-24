@@ -247,7 +247,7 @@ final class Page {
 			'products' => (object) $prods, 'order' => array_keys( $prods ), 'cats' => $cats,
 			'cold' => array( 'enabled' => ! empty( $cfg['cold']['enabled'] ), 'voucher' => (float) $cfg['cold']['voucher'], 'minutes' => (int) $cfg['cold']['minutes'], 'landing_minutes' => (int) $cfg['cold']['landing_minutes'] ),
 			'seats' => array( 'enabled' => ! empty( $cfg['seats']['enabled'] ), 'n' => Config::seats_now( $cfg ), 'max' => (int) $cfg['seats']['max'] ),
-			'aff' => array( 'enabled' => ! empty( $cfg['aff']['enabled'] ), 'voucher' => (float) $cfg['aff']['voucher'], 'mask' => $mask ? array( 'name' => $mask['name'], 'price' => $mask['price'], 'img' => $mask['img'] ) : null ),
+			'aff' => array( 'enabled' => ! empty( $cfg['aff']['enabled'] ), 'voucher' => (float) $cfg['aff']['voucher'], 'days' => Aff::on( $cfg ) ? Aff::days( $cfg ) : 0, 'mask' => $mask ? array( 'name' => $mask['name'], 'price' => $mask['price'], 'img' => $mask['img'] ) : null ),
 			'ship' => array( 'free_from' => (int) $cfg['ship']['free_from'], 'paid' => (float) $cfg['ship']['paid'] ),
 			'cod' => '' !== (string) $cfg['checkout']['cod_gateway'],
 			'listv' => array( 'enabled' => ! empty( $cfg['listv']['enabled'] ), 'amount' => (float) $cfg['listv']['amount'] ), /* 1.46.0 */
@@ -267,8 +267,9 @@ final class Page {
 		/* 1.46.0: личният линк ?u= (подписан имейл) → ваучерът на човека влиза в сесията; и автоматичното издаване при старта на ранния достъп */
 		if ( ! empty( $_REQUEST['u'] ) ) { try { Boost::identify( (string) wp_unslash( $_REQUEST['u'] ), $cfg ); } catch ( \Throwable $e ) {} }
 		if ( ! $draft ) { try { Boost::maybe_auto(); } catch ( \Throwable $e ) {} }
+		Aff::sync_ctx( $cfg ); /* 1.57.0: избран ваучер от партньора без код в сесията → кодът се взема / издава */
 		$early = false;
-		if ( '' !== $ea && self::ea_valid( $ea, $cfg ) ) { $early = true; setcookie( self::EA_COOKIE, (string) $cfg['early']['token'], time() + (int) $cfg['early']['cookie_days'] * DAY_IN_SECONDS, '/', '', is_ssl(), false ); $ctx['early'] = 1; Cart::set_ctx( $ctx ); }
+		if ( '' !== $ea && self::ea_valid( $ea, $cfg ) ) { $early = true; setcookie( self::EA_COOKIE, (string) $cfg['early']['token'], time() + (int) $cfg['early']['cookie_days'] * DAY_IN_SECONDS, '/', '', is_ssl(), false ); $ctx = Cart::ctx(); /* 1.57.0: свежият контекст — горният $ctx е отпреди партньора/ваучера и ги презаписваше */ $ctx['early'] = 1; Cart::set_ctx( $ctx ); }
 		elseif ( self::early_ok( $cfg ) ) { $early = true; }
 		$r['early_ok'] = $early;
 		$r['ctx'] = Cart::ctx_public();

@@ -5,6 +5,7 @@
  * Същата таблица {prefix}ansa_promo_leads (DB ver 10: promo, kind, bonus, ref_code, voucher, voucher_exp, voucher_order_id).
  *  - kind=cold: студеният трафик — ваучер {prefix}{сума}-XXXX в портфейла за N минути (Cart::fees го приспада в ЦЯЛАТА количка, еднократно).
  *  - kind=aff: партньорски линк — подаръкът по избор (bonus v5 | mask) + кодът на партньора; важи в публичната промоция.
+ *    1.57.0: изборът „ваучер“ издава код {prefix}{сума}-XXXXXX със срок aff.voucher_days в същия ред (voucher / voucher_exp) — виж BF\Aff.
  * FunnelKit: Lead_Sync::sync с нашия лист и таг по вид (Config leads); при поръчка таговете на лийда падат и поръчката получава orders.fka_tag.
  *
  * @package AnsaPromo
@@ -84,6 +85,7 @@ final class Leads {
 			$id = self::capture( $email, 'aff', $bonus, $p['code'], $utm, $consent, '', 0 );
 			if ( ! $id ) { wp_send_json_error( array( 'code' => 'db' ), 500 ); }
 			Cart::remember_ref( $p['code'] ); $ctx = Cart::ctx(); $ctx['affgift'] = $bonus; $ctx['ref'] = $p['code']; $out['lead'] = $id; $out['partner'] = array( 'code' => $p['code'], 'name' => $p['name'] );
+			if ( 'v5' === $bonus ) { $ctx = Aff::attach( $ctx, $email, $id, $p['code'], $cfg ); } /* 1.57.0: ваучерът е с код и срок (един на имейл) */
 			self::sync( $id, $email, $consent, $cfg, 'aff' );
 		}
 		$ctx['email'] = $email; if ( ! empty( $out['lead'] ) ) { $ctx['lead'] = (int) $out['lead']; }
@@ -119,11 +121,15 @@ final class Leads {
 	/** Жив = има го, не е ползван и не е изтекъл (voucher_exp е UTC). */
 	public static function voucher_valid( $code, $fresh = false ) { /* 1.54.4: $fresh — без кеша (след като срокът е удължен в същата заявка) */
 		static $cache = array(); $code = strtoupper( trim( (string) $code ) ); if ( '' === $code ) { return false; }
-		if ( ! $fresh && isset( $cache[ $code ] ) && $cache[ $code ][0] > time() - 5 ) { return $cache[ $code ][1]; }
-		$r = self::voucher_row( $code ); $ok = $r && empty( $r['voucher_order_id'] ) && ! empty( $r['voucher_exp'] ) && strtotime( $r['voucher_exp'] . ' UTC' ) > time();
-		$cache[ $code ] = array( time(), (bool) $ok ); return (bool) $ok;
+		$aw = self::awaiting_id(); /* 1.57.0: кешът е за (код, поръчката, която сесията плаща); $fresh забравя всичко за кода */
+		if ( $fresh ) { unset( $cache[ $code ] ); } elseif ( isset( $cache[ $code ][ $aw ] ) && $cache[ $code ][ $aw ][0] > time() - 5 ) { return $cache[ $code ][ $aw ][1]; }
+		$r = self::voucher_row( $code ); $ok = $r && ( empty( $r['voucher_order_id'] ) || ( $aw > 0 && (int) $r['voucher_order_id'] === $aw ) ) && ! empty( $r['voucher_exp'] ) && strtotime( $r['voucher_exp'] . ' UTC' ) > time();
+		$cache[ $code ][ $aw ] = array( time(), (bool) $ok ); return (bool) $ok;
 	}
-	public static function voucher_use( $code, $order_id ) { global $wpdb; $code = strtoupper( trim( (string) $code ) ); if ( '' === $code || ! $order_id ) { return; } $wpdb->query( $wpdb->prepare( 'UPDATE ' . Schema::table( 'leads' ) . ' SET voucher_order_id = %d WHERE voucher = %s AND voucher_order_id IS NULL', (int) $order_id, $code ) ); }
+	/** 1.57.0: ваучерът е „зает“ от поръчката, която ТАЗИ сесия още плаща (order_awaiting_payment) → за нея остава жив. Иначе при неуспешно плащане и втори опит
+	 *  WooCommerce преизчислява същата поръчка, ваучерът вече е „използван“ (от нея самата) и отстъпката изчезваше. */
+	private static function awaiting_id() { try { return ( function_exists( 'WC' ) && WC()->session ) ? (int) WC()->session->get( 'order_awaiting_payment' ) : 0; } catch ( \Throwable $e ) { return 0; } }
+	public static function voucher_use( $code, $order_id ) { global $wpdb; $code = strtoupper( trim( (string) $code ) ); if ( '' === $code || ! $order_id ) { return; } $wpdb->query( $wpdb->prepare( 'UPDATE ' . Schema::table( 'leads' ) . ' SET voucher_order_id = %d WHERE voucher = %s AND voucher_order_id IS NULL', (int) $order_id, $code ) ); self::voucher_valid( $code, true ); /* 1.57.0: кешът на заявката не помни „жив“ за току-що използван ваучер */ }
 	public static function convert_email( $email, $order_id ) { global $wpdb; $email = strtolower( sanitize_email( (string) $email ) ); if ( ! is_email( $email ) || ! $order_id ) { return 0; } return (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . Schema::table( 'leads' ) . " SET converted_order_id = %d WHERE converted_order_id IS NULL AND promo = %s AND email = %s", (int) $order_id, self::PROMO, $email ) ); }
 
 	/* ── поръчка ── */

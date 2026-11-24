@@ -52,7 +52,7 @@
   try { var raw = sessionStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') S = Object.assign(S0(), o); } } catch (e) {}
   S.sheet = null; S.luckyOpen = false; S._exp = S._exp || {};
   var save = function () { try { sessionStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
-  var ctx = { email: '', lead: 0, affgift: '', ref: '', early: false, voucher: null, mode: '' };
+  var ctx = { email: '', lead: 0, affgift: '', ref: '', early: false, voucher: null, affv: null, mode: '' };
   var partner = R.partner || null; var earlyOk = !!R.early_ok; var phase = R.phase || 'prep'; var phaseEnd = (R.phase_end || 0) * 1000; var seats = R.seats || { enabled: false, n: 0, max: 0 };
   var variant = function () { if (partner && R.aff && R.aff.enabled) return 'aff'; if (earlyOk) return 'list'; if (paidMarkers || (!isEmailLink && phase === 'prep')) return 'cold'; return 'direct'; };
   var voucherLive = function () { return !!(ctx.voucher && ctx.voucher.live && ctx.voucher.exp * 1000 > now()); };
@@ -68,7 +68,11 @@
   var isEarly = function () { return phase === 'early'; }, isPublic = function () { return phase === 'public'; };
   var inWallet = function () { return S.screen === 'wallet'; };
   var affGift = function () { return (isPublic() || R.draft) && partner && ctx.email && (S.affgift || ctx.affgift) ? (S.affgift || ctx.affgift) : ''; };
-  var affVoucher = function () { return affGift() === 'v5' && paidCount() ? Math.min(R.aff.voucher, subtotal()) : 0; };
+  /* 1.57.0: ваучерът от партньора е с код и срок (R.aff.days > 0) — приспада се само докато е жив и неизползван (ctx.affv от сървъра); days = 0 → както досега, без код */
+  var affCode = function () { return !!(R.aff && R.aff.days); };
+  var affvLive = function () { return !!(ctx.affv && ctx.affv.live && ctx.affv.exp * 1000 > now()); };
+  var dmy = function (ts) { if (!ts) return ''; var d = new Date(ts * 1000); var p = function (x) { return (x < 10 ? '0' : '') + x; }; return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear(); };
+  var affVoucher = function () { if (affGift() !== 'v5' || !paidCount()) return 0; if (affCode()) return affvLive() ? Math.min(ctx.affv.amount, subtotal()) : 0; return Math.min(R.aff.voucher, subtotal()); };
   /* 1.46.0: ваучерът от имейла (възобновен / ВИП) или живият студен ваучер — в промо количката */
   var listDisc = function () { return !inWallet() && voucherLive() && paidCount() ? Math.min(ctx.voucher.amount, subtotal()) : 0; };
   var luckyOn = function () { return !!(R.lucky && R.lucky.enabled && (R.draft || (R.lucky.phases || []).indexOf(phase) >= 0)); };
@@ -80,7 +84,7 @@
   var saveLine = function (cls) { var sv = savings(); if (!sv || sv.total <= 0) return ''; return '<div class="savebox ' + (cls || '') + '"><span>' + (sv.est ? T('shop.save.est') : T('shop.save')) + '</span><b>' + fmt2(sv.total) + '</b><em>−' + sv.pct + ' %</em></div>'; };
   var trimGifts = function () { var over = giftCount() - paidCount(); if (over <= 0) return; Object.keys(S.gifts).reverse().forEach(function (k) { while (over > 0 && S.gifts[k] > 0) { S.gifts[k]--; over--; } if (!S.gifts[k]) delete S.gifts[k]; }); };
   var dates = R.dates || {};
-  var V = function (extra) { return Object.assign({ voucher: fmtNum(R.cold.voucher), minutes: R.cold.minutes, early_date: dates.early_date, early_time: dates.early_time, public_date: dates.public_date, public_time: dates.public_time, partner: partner ? partner.name : '', aff_voucher: fmtNum(R.aff ? R.aff.voucher : 0), mask_price: fmtNum(maskPrice()) }, extra || {}); };
+  var V = function (extra) { return Object.assign({ voucher: fmtNum(R.cold.voucher), minutes: R.cold.minutes, early_date: dates.early_date, early_time: dates.early_time, public_date: dates.public_date, public_time: dates.public_time, partner: partner ? partner.name : '', aff_voucher: fmtNum(R.aff ? R.aff.voucher : 0), mask_price: fmtNum(maskPrice()), aff_days: R.aff ? (R.aff.days || 0) : 0, code: ctx.affv ? ctx.affv.code : '', aff_exp: ctx.affv ? dmy(ctx.affv.exp) : '' }, extra || {}); };
   function fmtNum(n) { return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',').replace(/,00$/, ''); }
 
   /* ── toast ── */
@@ -200,14 +204,14 @@
       + '<div class="hrow">' + logoImg + '<span class="tpill">' + T('aff.pill', V()) + '</span></div>'
       + '<div class="eyebrow">' + T('aff.eyebrow') + '</div><div class="h1" style="font-size:25px">' + T('aff.title', V()) + '</div><p class="sub">' + T('aff.sub', V()) + '</p></div>'
       + '<div class="wrap"><div class="card"><div class="h2">' + T('aff.choose', V()) + '</div><div class="bonus">'
-      + bonusBtn('v5', cur, '🎟️', T('aff.v.title', V()), '') + (R.aff.mask ? bonusBtn('mask', cur, '<img src="' + esc(R.aff.mask.img) + '" alt="">', T('aff.m.title'), T('aff.m.sub', V())) : '') + '</div>'
+      + bonusBtn('v5', cur, '🎟️', T('aff.v.title', V()), affCode() ? T('aff.v.sub', V()) : '') + (R.aff.mask ? bonusBtn('mask', cur, '<img src="' + esc(R.aff.mask.img) + '" alt="">', T('aff.m.title'), T('aff.m.sub', V())) : '') + '</div>'
       + emailForm(T('aff.cta') + '<small>' + T('aff.cta.sub') + '</small>') + '<div class="trust">' + T('aff.trust') + '</div></div>'
       + '<div class="k2">' + T('aff.how.h') + '</div><div class="steps"><div class="st o"><i>1=2</i><div>' + T('aff.how.1') + '<small>' + T('aff.how.1.sub') + '</small></div></div><div class="st o"><i>2=4</i><div>' + T('aff.how.2') + '</div></div><div class="st o"><i>🎁</i><div>' + T('aff.how.3', V()) + '<small>' + T('aff.how.3.sub', V()) + '</small></div></div></div>'
       + (news.length ? '<div class="k2">' + T('aff.new.h') + '</div><div class="gridp">' + news.map(function (p) { return '<div class="gp"><img src="' + esc(pimg(p)) + '" alt=""><b>' + esc(p.name) + '</b><small>' + esc(p.sub) + '</small></div>'; }).join('') + '</div>' : '')
       + '<div class="footnote">' + T('aff.foot', V()) + '</div></div></div>';
   }
   function vAffWait() {
-    return '<div class="scroll"><div class="hero"><div class="hrow">' + logoImg + '<span class="tpill">' + T('aff.pill', V()) + '</span></div><div class="h1">' + T('aff.wait.title') + '</div><p class="sub">' + T('aff.wait.sub', V()) + '</p></div>'
+    return '<div class="scroll"><div class="hero"><div class="hrow">' + logoImg + '<span class="tpill">' + T('aff.pill', V()) + '</span></div><div class="h1">' + T('aff.wait.title') + '</div><p class="sub">' + T('aff.wait.sub', V()) + '</p>' + (affCode() && ctx.affv && (S.affgift || ctx.affgift) === 'v5' ? '<p class="sub affcode">' + T(affvLive() ? 'aff.wait.code' : 'shop.affnote.used', V()) + '</p>' : '') + '</div>'
       + '<div class="wrap"><div class="k2">' + T('gifts.new') + '</div><div class="gridp">' + giftList().filter(function (p) { return p.isNew; }).map(function (p) { return '<div class="gp"><img src="' + esc(pimg(p)) + '" alt=""><b>' + esc(p.name) + '</b><small>' + esc(p.sub) + '</small></div>'; }).join('') + '</div>'
       + '<div class="k2">' + T('gifts.best') + '</div>' + cartList().slice(0, 6).map(function (p) { return '<div class="tile"><img src="' + esc(pimg(p)) + '" alt=""><div><div class="n">' + esc(p.name) + '<small>' + esc(p.sub) + '</small></div><div class="pr">' + fmt(p.price) + '</div><button class="more" data-act="sheet" data-id="' + p.key + '">' + T('shop.more') + '</button></div></div>'; }).join('') + '</div></div>';
   }
@@ -272,7 +276,7 @@
           : '<div class="sline"><span>' + T('shop.foot.pay') + ' <b>' + fmt2(total()) + '</b>' + (sv ? ' <s>' + fmt2(total() + sv.total) + '</s>' : '') + '</span><span class="ok">' + T('shop.foot.r', { n: n, podaruk: GIFT(n), pct: sv ? sv.pct : 0, save: fmt2(sv ? sv.total : 0) }) + '</span></div>')
         + '<button class="cta big" data-act="screen" data-id="gifts">' + T('shop.foot.cta', { sel: n === 1 ? T('shop.sel1') : T('shop.seln', { n: n }) }) + '<small>' + T('shop.foot.cta.sub', { n: n, podaruk: GIFT(n), save: fmt2(sv ? sv.total : 0) }) + '</small></button>'
       : '<div class="sline"><span style="color:var(--tan)">' + T('shop.foot.empty') + '</span><span class="ok">' + T('shop.foot.empty.r') + '</span></div><button class="cta sm" disabled>' + T('shop.foot.empty.cta') + '</button>';
-    var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T('shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
+    var affnote = (isPublic() && partner) ? '<div class="affnote">' + (ctx.email ? (affGift() === 'v5' ? T(affCode() && ctx.affv ? (affvLive() ? 'shop.affnote.vc' : 'shop.affnote.used') : 'shop.affnote.v', V()) : T('shop.affnote.m', V())) : T('shop.affnote.none', V()) + ' <button class="more" style="color:#fff" data-act="screen" data-id="aff">' + T('shop.affnote.cta') + '</button>') + '</div>' : '';
     /* механиката (уравнението + „Спестяваш“ + бележката за партньора): на телефона в тъмната секция, на десктоп (1.45.4) вдясно над „Твоята поръчка“ — както ваучерът в портфейла */
     var mech = affnote + '<div class="eq pop" id="eq" data-n="' + (n || S.demoN || 1) + '">' + eqHtml(n || S.demoN || 1) + '</div>' + (n ? saveLine('hero') : '<div class="eq-note" id="eqNote">' + T('shop.eq.note') + '</div>');
     return '<div class="scroll"><div class="hero' + (isDesk() ? ' slim' : '') + '">'
@@ -390,7 +394,11 @@
   function post(action, data, _retry) { var fd = new FormData(); fd.append('action', action); fd.append('nonce', R.nonce); if (R.draft) fd.append('draft', '1'); Object.keys(data || {}).forEach(function (k) { fd.append(k, data[k]); }); return fetch(R.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { if (!_retry && j && !j.success && j.data && j.data.code === 'nonce') { return freshNonce().then(function () { return post(action, data, true); }); } return j; }); }
   function applyCtx(c) { if (!c) return; ctx = Object.assign(ctx, c); if (c.email) S.signed = true; if (c.voucher) { S._exp.walletExp = !c.voucher.live; } if (c.affgift) S.affgift = c.affgift; if (c.email && !S.email) S.email = c.email; if (c.lead) S.lead = c.lead; }
   function refresh() {
-    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam; if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam; if (phParam) d.phase = phParam;
+    var d = { view: '1', variant: variant() }; if (refParam) d.ref = refParam;
+    /* 1.57.0: бисквитката на партньора (aff.cookie_days) се записваше, но никой не я четеше — след изтичане на WC сесията (48 ч.) партньорът се губеше.
+       Без ?ref= в адреса тя връща партньора: страницата, подаръкът и кодът му в количката (комисионата). Не и в прегледа на екипа. */
+    else if (!R.draft) { var ac = (cookie('ansa_bf_aff') || '').replace(/[^a-z0-9_\-]/gi, '').toUpperCase(); if (ac) d.ref = ac; }
+    if (eaParam) d.ea = eaParam; if (uParam) d.u = uParam; if (phParam) d.phase = phParam;
     var url = R.ajax + '?action=ansa_bf_runtime' + (pvOn() ? '&ansa_bf=draft' : '') + '&_=' + Date.now();
     var fd = new FormData(); Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
@@ -413,7 +421,7 @@
     post('ansa_bf_lead', { email: v, kind: kind, bonus: S.affgift || ctx.affgift || 'v5', consent: '1', utm: utm, ref: partner ? partner.code : refParam, sid: '' }).then(function (j) {
       if (!j || !j.success) { var code = j && j.data && j.data.code; S.emailErr = code === 'rate' ? T('err.rate') : code === 'email' ? T('err.email') : code === 'live' ? T('err.live') : T('err.add'); render(); return; }
       applyCtx(j.data.ctx); S.signed = true; S.emailErr = ''; if (j.data.lead) S.lead = j.data.lead; if (j.data.partner) partner = j.data.partner;
-      if (kind === 'aff') { toast(T('aff.toast'), 'ok'); S.screen = isPublic() ? 'shop' : 'affwait'; }
+      if (kind === 'aff') { toast(affCode() && ctx.affv && affvLive() && (S.affgift || ctx.affgift) === 'v5' ? T('aff.toast.code', V()) : T('aff.toast'), 'ok'); S.screen = isPublic() ? 'shop' : 'affwait'; }
       else if (kind === 'pause') { S.pauseOk = true; toast(T('pause.toast', V()), 'ok'); }
       else { S._exp.walletExp = false; S.screen = 'wallet'; }
       render();
