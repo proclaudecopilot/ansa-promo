@@ -114,8 +114,17 @@ $ok( 'първият ваучер влиза', true === WC()->cart->apply_coupon
 $ok( 'вторият (на друг имейл) се отказва: „Само един ваучер…“', false === WC()->cart->apply_coupon( $codes[1] ) && false !== strpos( (string) $GLOBALS['last_coupon_error'], 'един ваучер' ) && 45.0 === WC()->cart->get_total( 'edit' ), $GLOBALS['last_coupon_error'] ?? '' );
 $ok( 'чужд купон (не ваучер) не се засяга от правилото', true === WC()->cart->apply_coupon( 'SUMMER10' ) );
 if ( $REAL ) {
+	/* 1.57.1: ваучерът се комбинира с партньорски код без настройка в ansa Partner (белият му списък се допълва при четене) */
+	$ok( 'ansa Partner: белият списък включва шарката на ваучерите, без да се записва в настройките', AP_Coupons::is_allowed_with_partner( $codes[0] ) && AP_Coupons::is_allowed_with_partner( 'ansacart05' ) && ! AP_Coupons::is_allowed_with_partner( 'SUMMER10' ) && ! isset( $GLOBALS['opts']['ansa_partner_settings'] ), ansa_partner_settings()['allowed_with_partner'] );
 	new_visitor(); WC()->cart->add_to_cart( 900, 2 ); WC()->cart->apply_coupon( 'IVA5ANSA' );
-	$ok( 'ansa Partner: при партньорски код в обикновена количка ваучерът НЕ се комбинира (не е в белия му списък)', false === WC()->cart->apply_coupon( $codes[0] ) && false !== strpos( (string) $GLOBALS['last_coupon_error'], 'не може да се комбинира' ), $GLOBALS['last_coupon_error'] ?? '' );
+	$ok( 'обикновена количка: партньорски код (−5 %) + ваучер (−5 €) се комбинират: 50 → 42,50', true === WC()->cart->apply_coupon( $codes[0] ) && array( 'iva5ansa', strtolower( $codes[0] ) ) === WC()->cart->get_applied_coupons() && 42.5 === WC()->cart->get_total( 'edit' ), array( $GLOBALS['last_coupon_error'] ?? '', WC()->cart->get_applied_coupons(), WC()->cart->get_total( 'edit' ) ) );
+	$ok( 'втори ваучер пак се отказва', false === WC()->cart->apply_coupon( $codes[1] ) );
+	$ok( 'чужд купон при партньорски код пак се отказва от Partner', false === WC()->cart->apply_coupon( 'SUMMER10' ) );
+	/* ваучерът е в количката, после клиентът идва през партньорски линк: Partner прилага кода и НЕ мете ваучера */
+	new_visitor(); WC()->cart->add_to_cart( 900, 2 ); WC()->cart->apply_coupon( $codes[1] ); $_SERVER['REMOTE_ADDR'] = '10.8.8.8'; ajax( array( $RT, 'ajax_ref' ), array( 'code' => 'ANSSID5ANSA' ) );
+	$ok( 'ваучер в количката + клик на партньорски линк: и двата остават', array( strtolower( $codes[1] ), 'anssid5ansa' ) === WC()->cart->get_applied_coupons() && 42.75 === WC()->cart->get_total( 'edit' ), array( WC()->cart->get_applied_coupons(), WC()->cart->get_total( 'edit' ) ) ); /* 50 − 5 € = 45, после −5 % */
+	$oc = checkout( 'b@example.com', 'ok' );
+	$ok( 'поръчката: комисионата е за Мария, ваучерът е използван', 1 === ( lock( $oc )['partner_id'] ?? 0 ) && (int) row( $codes[1] )['voucher_order_id'] === $oc->get_id() );
 }
 
 /* ═══ 7. Неуспешно плащане, втори опит, отказ ═══ */
@@ -208,6 +217,14 @@ $wpdb->insert( 'wp_ansa_promo_leads', array( 'email' => 'klient9@example.com', '
 $ok( 'Boost::voucher_for връща студения, не партньорския (по-дълъг срок)', 'BF10-COLD01' === ( Boost::voucher_for( 'klient9@example.com' )['voucher'] ?? '' ) );
 $ok( 'merge tag-овете: bf_voucher = студеният, bf_aff_voucher = партньорският + датата', 'BF10-COLD01' === Boost::merge( 'bf_voucher', array( 'email' => 'klient9@example.com' ) ) || true );
 $ok( 'Aff::merge: кодът и срокът', $code9 === Aff::merge( 'bf_aff_voucher', 'klient9@example.com' ) && wp_date( 'd.m.Y', time() + 90 * DAY_IN_SECONDS ) === Aff::merge( 'bf_aff_voucher_exp', 'klient9@example.com' ) && '' === Aff::merge( 'bf_aff_voucher', 'klient1@example.com' ) && '' === Aff::merge( 'bf_aff_voucher', 'nikoi@example.com' ) );
+/* 1.57.1: линковете в имейлите носят партньора (без промяна в автоматизациите на FunnelKit) */
+$GLOBALS['fka_email'] = 'klient9@example.com'; $u1 = Boost::merge( 'bf_url' ); $u2 = Boost::merge( 'bf_early_url' ); parse_str( (string) parse_url( $u1, PHP_URL_QUERY ), $q1 ); parse_str( (string) parse_url( $u2, PHP_URL_QUERY ), $q2 );
+$ok( '{{ansa_promo_bf_url}} за записана през партньор: ?ref=КОД + подписаният имейл + UTM', 'IVA5ANSA' === ( $q1['ref'] ?? '' ) && 'klient9@example.com' === Boost::email_from_utoken( $q1['u'] ?? '' ) && 'email' === ( $q1['utm_medium'] ?? '' ) && 0 === strpos( $u1, 'https://www.ansa.bg/cheren-petak-2026/?' ), $u1 );
+$ok( '{{ansa_promo_bf_early_url}} също носи партньора', 'IVA5ANSA' === ( $q2['ref'] ?? '' ) && 'klient9@example.com' === Boost::email_from_utoken( $q2['u'] ?? '' ) && ! empty( $q2['ea'] ), $u2 );
+new_visitor(); visit( $q1['ref'] ); ajax( array( Page::class, 'ajax_runtime' ), array( 'ref' => $q1['ref'], 'u' => $q1['u'] ) ); $cx = Cart::ctx();
+$ok( 'отварянето на този линк на ново устройство: партньорът, изборът и ваучерът са в сесията', 'IVA5ANSA' === ( $cx['ref'] ?? '' ) && 'v5' === ( $cx['affgift'] ?? '' ) && $code9 === ( $cx['affv']['code'] ?? '' ), $cx );
+$GLOBALS['fka_email'] = 'nikoi@example.com'; $u3 = Boost::merge( 'bf_url' ); $GLOBALS['fka_email'] = '';
+$ok( 'за контакт без партньор адресът е както досега (без ref / u)', false === strpos( $u3, 'ref=' ) && false === strpos( $u3, '&u=' ) && false === strpos( Boost::merge( 'bf_url' ), 'ref=' ), $u3 );
 $ok( 'row_by_code: само партньорски ваучери (не студен, не партньорски код, не купон)', null === Aff::row_by_code( 'BF10-COLD01' ) && null === Aff::row_by_code( 'ANSSID5ANSA' ) && null === Aff::row_by_code( 'SUMMER10' ) && null !== Aff::row_by_code( strtolower( $code9 ) ) );
 new_visitor(); Cart::set_ctx( array( 'voucher' => array( 'code' => 'BF10-COLD01', 'amount' => 10, 'exp' => time() + 3600, 'lead' => 1 ) ) ); visit( 'ANSSID5ANSA' ); lead( 'klient10@example.com', 'v5', 'ANSSID5ANSA' ); build( $I2, $G2, 'ANSSID5ANSA', 'v5', 'klient10@example.com' );
 $ok( 'студеният (10 €) и партньорският (5 €) се приспадат заедно, както досега: 89,80 − 15', -15.0 === fee_sum() && 74.80 === WC()->cart->get_total( 'edit' ), array( fee_sum(), WC()->cart->get_total( 'edit' ) ) );

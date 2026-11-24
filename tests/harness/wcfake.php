@@ -23,7 +23,7 @@ function run_cron() { $q = $GLOBALS['cron'] ?? array(); $GLOBALS['cron'] = array
 
 /* ── WordPress ── */
 $GLOBALS['opts'] = array(); $GLOBALS['transients'] = array(); $GLOBALS['user_meta'] = array(); $GLOBALS['uid'] = 0; $GLOBALS['caps'] = false; $GLOBALS['mails'] = array(); $GLOBALS['cron'] = array(); $GLOBALS['qv'] = array();
-function get_option( $k, $d = false ) { return $GLOBALS['opts'][ $k ] ?? $d; } function update_option( $k, $v, $a = true ) { $GLOBALS['opts'][ $k ] = $v; return true; } function delete_option( $k ) { unset( $GLOBALS['opts'][ $k ] ); return true; }
+function get_option( $k, $d = false ) { return array_key_exists( $k, $GLOBALS['opts'] ) ? apply_filters( 'option_' . $k, $GLOBALS['opts'][ $k ] ) : apply_filters( 'default_option_' . $k, $d ); } /* както WP: option_{име} / default_option_{име} */ function update_option( $k, $v, $a = true ) { $GLOBALS['opts'][ $k ] = $v; return true; } function delete_option( $k ) { unset( $GLOBALS['opts'][ $k ] ); return true; }
 function get_transient( $k ) { $t = $GLOBALS['transients'][ $k ] ?? null; if ( ! $t || ( $t[1] && $t[1] < time() ) ) { return false; } return $t[0]; }
 function set_transient( $k, $v, $ttl = 0 ) { $GLOBALS['transients'][ $k ] = array( $v, $ttl ? time() + $ttl : 0 ); return true; } function delete_transient( $k ) { unset( $GLOBALS['transients'][ $k ] ); return true; }
 function get_user_meta( $u, $k, $single = false ) { return $GLOBALS['user_meta'][ $u ][ $k ] ?? ''; } function update_user_meta( $u, $k, $v ) { $GLOBALS['user_meta'][ $u ][ $k ] = $v; return true; } function delete_user_meta( $u, $k ) { unset( $GLOBALS['user_meta'][ $u ][ $k ] ); return true; }
