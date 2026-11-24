@@ -50,6 +50,8 @@ final class Cart {
 		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'check_cart' ) );
 		add_filter( 'woocommerce_package_rates', array( __CLASS__, 'free_shipping' ), 50, 2 );
 		add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'block_coupon' ), 10, 2 );
+		add_action( 'woocommerce_applied_coupon', array( __CLASS__, 'on_coupon_applied' ), 20 ); /* 1.57.3: партньорски код, въведен на ръка = партньорски линк */
+		add_filter( 'woocommerce_coupon_message', array( __CLASS__, 'coupon_message' ), 20, 3 );
 		add_filter( 'woocommerce_coupon_get_discount_amount', array( __CLASS__, 'zero_partner_discount' ), 50, 5 );
 		add_filter( 'woocommerce_checkout_get_value', array( __CLASS__, 'prefill_email' ), 10, 2 );
 		add_action( 'woocommerce_review_order_after_cart_contents', array( __CLASS__, 'checkout_row' ) );
@@ -296,6 +298,27 @@ final class Cart {
 		$cfg = self::cfg(); if ( (int) $cfg['ship']['free_from'] <= 0 || (int) $g['paid'] < (int) $cfg['ship']['free_from'] ) { return $rates; }
 		foreach ( $rates as $id => $rate ) { $rate->set_cost( 0 ); $taxes = $rate->get_taxes(); if ( is_array( $taxes ) ) { $rate->set_taxes( array_map( '__return_zero', $taxes ) ); } $rate->set_label( $rate->get_label() . ' · ' . self::copy( 'co.ship.free' ) ); }
 		return $rates;
+	}
+	/* ── 1.57.3 (човекът: „ZAVASYA20 се използва от клиент за Черния петък. Не важи! Трябва да важат кодовете на афилиейтите от ref линка … или от техните
+	   купони (affiliate portal)“): партньорски код, въведен на ръка в чекаута, е същото като идване през партньорския линк — партньорът влиза в
+	   контекста (комисионата), клиентът получава подаръка на партньора (ваучер 5 € по подразбиране / маската, ако я е избрал на страницата). Самият купон
+	   е с 0 € отстъпка (ansa Partner, zero_partner_discount) — офертата на Черния петък е цената. ── */
+	public static function on_coupon_applied( $code ) {
+		$code = strtoupper( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $code ) ); if ( '' === $code ) { return; }
+		$g = self::group(); if ( ! $g || 'promo' !== $g['mode'] ) { return; } /* само количка на Черния петък */
+		if ( ! class_exists( '\\AnsaPromo\\Partner' ) || ! Partner::is_partner_code( $code ) ) { return; }
+		$p = Page::partner( $code ); if ( ! $p ) { return; }
+		self::remember_ref( $code );
+		$c = self::ctx(); if ( empty( $c['affgift'] ) ) { $c['affgift'] = 'v5'; self::set_ctx( $c ); }
+	}
+	/** Съобщението при прилагане на партньорски код в количка на Черния петък — не „20 % отстъпка“ (тя е 0 тук), а подаръкът. */
+	public static function coupon_message( $msg, $msg_code, $coupon ) {
+		$code = is_object( $coupon ) && method_exists( $coupon, 'get_code' ) ? (string) $coupon->get_code() : (string) $coupon;
+		$success = class_exists( 'WC_Coupon' ) && defined( 'WC_Coupon::WC_COUPON_SUCCESS' ) ? \WC_Coupon::WC_COUPON_SUCCESS : 200; if ( (int) $msg_code !== (int) $success ) { return $msg; }
+		$g = self::group(); if ( ! $g || 'promo' !== $g['mode'] || ! class_exists( '\\AnsaPromo\\Partner' ) || ! Partner::is_partner_code( $code ) ) { return $msg; }
+		$p = Page::partner( $code ); if ( ! $p ) { return $msg; } $cfg = self::cfg(); $gift = (string) ( self::ctx()['affgift'] ?? 'v5' );
+		if ( 'public' !== Config::phase_now( $cfg ) && empty( $g['draft'] ) && empty( $g['staff'] ) ) { return 'Кодът на ' . $p['name'] . ' е приет ✓ Подаръкът за клиента (ваучер ' . self::fmt( $cfg['aff']['voucher'] ) . ' € или маска) важи в публичния Черен петък.'; }
+		return 'Пазаруваш с кода на ' . $p['name'] . ' — подарък за Черния петък: ' . ( 'mask' === $gift ? 'CollaMask' : 'ваучер ' . self::fmt( $cfg['aff']['voucher'] ) . ' € (или CollaMask по избор на страницата)' ) . ' ✓';
 	}
 	public static function block_coupon( $valid, $coupon ) {
 		$g = self::group(); if ( ! $g || ! $valid ) { return $valid; }
