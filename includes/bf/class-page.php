@@ -32,7 +32,8 @@ final class Page {
 
 	public static function register() {
 		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1556' ), 5 );
-		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1557' ), 6 ); /* 1.55.7: EyeFresh като подарък */ /* 1.55.6: еднократно — основните продукти са шестте, другите само подарък, yoni изключен */
+		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1557' ), 6 ); /* 1.55.7: EyeFresh като подарък */
+		add_action( 'init', array( 'AnsaPromo\\BF\\Config', 'maybe_migrate_1562' ), 7 ); /* 1.56.2: купоните важат */ /* 1.55.6: еднократно — основните продукти са шестте, другите само подарък, yoni изключен */
 		add_action( 'parse_request', array( __CLASS__, 'route' ) );
 		add_filter( 'pre_handle_404', array( __CLASS__, 'no_404' ), 10, 2 );
 		add_action( 'template_redirect', array( __CLASS__, 'render_route' ), 0 );

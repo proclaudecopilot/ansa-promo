@@ -72,6 +72,8 @@ $ok( 'seed: greens/berber/sakura/red/meno/utera са основни; thyro/ashwa
 $old = Config::normalize( array( 'products' => array( array( 'key' => 'thyro', 'gift_only' => false, 'enabled' => true ), array( 'key' => 'yoni', 'enabled' => true ), array( 'key' => 'greens', 'gift_only' => true ), array( 'key' => 'kera', 'gift_only' => true ), array( 'key' => 'sakura' ) ) ) );
 list( $fx, $n ) = Config::fix_products( $old ); $fk = array(); foreach ( $fx['products'] as $p ) { $fk[ $p['key'] ] = $p; }
 $ok( 'fix_products (старо публикувано): thyro → подарък, yoni → изключен, greens → основен (3 промени); kera и sakura без промяна', 3 === $n && $fk['thyro']['gift_only'] && ! $fk['yoni']['enabled'] && ! $fk['greens']['gift_only'] && $fk['kera']['gift_only'] && ! $fk['sakura']['gift_only'] && 0 === Config::fix_products( $fx )[1] );
+/* 1.56.2: купоните важат по подразбиране (block_coupons = false); старо публикувано с true → migrate-ът го сваля (проверено през normalize + ключа) */
+$ok( 'checkout.block_coupons по подразбиране е false; подадено true се пази (настройката остава)', false === $d['checkout']['block_coupons'] && true === Config::normalize( array( 'checkout' => array( 'block_coupons' => 1 ) ) )['checkout']['block_coupons'] );
 /* 1.55.7: EyeFresh (PATCH01) е подарък — в seed-а и през add_eyefresh() за публикувано без него */
 $keys = array(); foreach ( $d['products'] as $p ) { $keys[ $p['key'] ] = $p; }
 $ok( 'seed: eyefresh е gift_only със SKU PATCH01', isset( $keys['eyefresh'] ) && $keys['eyefresh']['gift_only'] && 'PATCH01' === $keys['eyefresh']['sku'] && $keys['eyefresh']['enabled'] );

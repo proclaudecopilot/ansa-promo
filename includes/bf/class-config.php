@@ -47,7 +47,7 @@ final class Config {
 			/* 1.46.0: попъпът „Ти си късметлия“ на стъпка 2 — 1 бр CollaMask (#11161 „1 маска“; на сайта няма SKU MASK01 — ако го дадеш на вариацията, намира се по SKU) */
 			'lucky'    => array( 'enabled' => true, 'product_id' => 11161, 'sku' => '', 'dwell' => 45, 'exit' => true, 'phases' => 'early,public' ),
 			'ship'     => array( 'free_from' => 2, 'paid' => 2.55 ),
-			'checkout' => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => true ),
+			'checkout' => array( 'card_gateway' => 'fkwcs_stripe', 'cod_gateway' => 'cod', 'block_coupons' => false ), /* 1.56.2: купоните важат (ваучерите „20 €“ за първите два дни от имейла) */
 			/* лийдовете → FunnelKit: един лист за всички + таг по вид (студен / партньор); при поръчка таговете падат */
 			'leads'    => array( 'fka' => true, 'list' => 'Черен петък 2026 — лийдове', 'tag_cold' => 'bf-cold', 'tag_aff' => 'bf-partner', 'tag_pause' => 'bf-reminder', 'consent_only' => false, 'untag_on_order' => true ),
 			'orders'   => array( 'fka_tag' => 'cheren-petak-2026' ),
@@ -178,6 +178,15 @@ final class Config {
 		return array( $cfg, 1 );
 	}
 	const OPT_MIGRATE_1557 = 'ansa_promo_bf_migrate_1557';
+	/** 1.56.2 (човекът: „Излиза им съобщение: В Black Friday количката купоните не важат … Трябва да важат“): еднократно — купоните са разрешени в публикуваното и черновата. */
+	const OPT_MIGRATE_1562 = 'ansa_promo_bf_migrate_1562';
+	public static function maybe_migrate_1562() {
+		if ( get_option( self::OPT_MIGRATE_1562 ) ) { return null; }
+		$s = self::read_store(); $r = array( 'published' => 0, 'draft' => 0 );
+		foreach ( array( 'published', 'draft' ) as $w ) { if ( is_array( $s[ $w ] ?? null ) && is_array( $s[ $w ]['checkout'] ?? null ) && ! empty( $s[ $w ]['checkout']['block_coupons'] ) ) { $s[ $w ]['checkout']['block_coupons'] = false; $r[ $w ] = 1; } }
+		if ( $r['published'] || $r['draft'] ) { if ( $r['published'] ) { $s['version'] = (int) ( $s['version'] ?? 0 ) + 1; } self::write_store( $s ); if ( function_exists( 'delete_transient' ) ) { try { delete_transient( self::runtime_key() ); } catch ( \Throwable $e ) {} } }
+		update_option( self::OPT_MIGRATE_1562, array( 'at' => current_time( 'mysql' ) ) + $r, false ); return $r;
+	}
 	public static function maybe_migrate_1557() {
 		if ( get_option( self::OPT_MIGRATE_1557 ) ) { return null; }
 		$s = self::read_store(); $r = array( 'published' => 0, 'draft' => 0 );
