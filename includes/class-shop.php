@@ -71,6 +71,8 @@ final class Shop {
 			? '<a class="as-season" href="' . $promo . '"><span class="as-ey">Сезонът на ANSA · нашият Черен петък</span><strong>До −' . (int) $pct . '% + козметичен сет за 1 €</strong><span class="as-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −' . (int) $pct . '%, сетът и книгата с рецепти.</span><span class="as-cta">Избери продуктите →</span><i class="as-leaf" aria-hidden="true">🍂</i></a>'
 			: '<a class="as-season as-season--quiz" href="' . $L['quiz'] . '"><span class="as-ey">Здравословният помощник</span><strong>Не знаеш откъде да започнеш?</strong><span class="as-p">Няколко въпроса, 1 минута, и ти казваме кой продукт е за теб.</span><span class="as-cta">Започни теста →</span><i class="as-leaf" aria-hidden="true">🧭</i></a>';
 
+		$aside = Mega_Menu::bf( 'shop_banner_html' ) . $aside; /* 1.58.0: банерът на Черния петък; този на Сезона се скрива с body.abf-on */
+
 		$chips = '<button class="as-chip on" data-n="all" type="button"><span class="as-ic">🌿</span>Всички<small>' . (int) $counts['all'] . '</small></button>';
 		foreach ( Mega_Menu::NEEDS as $k => $n ) { if ( ! $counts[ $k ] ) { continue; } $chips .= '<button class="as-chip" data-n="' . esc_attr( $k ) . '" data-l="' . esc_attr( $n[0] ) . '" type="button"><span class="as-ic">' . $n[1] . '</span>' . $h( $n[0] ) . '<small>' . (int) $counts[ $k ] . '</small></button>'; }
 
@@ -79,7 +81,7 @@ final class Shop {
 			$needs = Mega_Menu::needs_of( $k ); $new = in_array( 'new', $needs, true ) ? '<i class="as-new">ново</i>' : '';
 			$rating = $p['reviews'] > 0 && $p['rating'] > 0 ? '<span class="as-rating"><i>★</i> ' . $h( self::rating( $p['rating'] ) ) . ' · ' . (int) $p['reviews'] . ( 1 === (int) $p['reviews'] ? ' отзив' : ' отзива' ) . '</span>' : '<span class="as-rating as-rating--none"></span>';
 			$cards .= '<a class="as-card" data-c="' . esc_attr( implode( ' ', $needs ) ) . '" href="' . esc_url( $p['url'] ) . '">'
-				. '<span class="as-pic">' . $new . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="' . esc_attr( $p['name'] ) . '" loading="lazy">' : '' ) . '</span>'
+				. '<span class="as-pic">' . $new . ( $p['img'] ? '<img src="' . esc_url( $p['img'] ) . '" alt="' . esc_attr( $p['name'] ) . '" loading="lazy">' : '' ) . Mega_Menu::bf( 'card_badge_html', (int) $p['id'] ) . '</span>'
 				. '<span class="as-cat">' . $h( Mega_Menu::need_of( $k ) ) . '</span>'
 				. '<b class="as-name">' . $h( $p['name'] ) . '</b>'
 				. '<small class="as-ds">' . $h( $p['ds'] ) . '</small>'

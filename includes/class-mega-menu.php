@@ -63,6 +63,10 @@ final class Mega_Menu {
 	public static function season_on() {
 		try { $cfg = Config::get_published(); if ( ! Config::is_live( $cfg ) ) { return false; } $until = Config::deadline_ts( $cfg ); return ! $until || time() < $until; } catch ( \Throwable $e ) { return false; }
 	}
+	/** 1.58.0: „Черен петък навсякъде“ (BF\Sitewide) — състоянието и парчетата HTML за менюто и магазина; '' ако класът го няма или гръмне (менюто не бива да пада заради лентата). */
+	public static function bf( $method, $arg = null ) {
+		try { $c = __NAMESPACE__ . '\\BF\\Sitewide'; if ( ! class_exists( $c ) || ! is_callable( array( $c, $method ) ) ) { return ''; } return (string) ( null === $arg ? $c::$method() : $c::$method( $arg ) ); } catch ( \Throwable $e ) { return ''; }
+	}
 	/** Процентът на най-голямата кутия от ansa-promo (иначе 40). */
 	public static function season_pct() {
 		try { if ( true ) { $b = Config::largest_box( Config::get_published() ); if ( $b && (float) $b['pct'] > 0 ) { return (int) round( (float) $b['pct'] ); } } } catch ( \Throwable $e ) {}
@@ -76,7 +80,7 @@ final class Mega_Menu {
 		return false === $pos ? $items . $li : substr( $items, 0, $pos ) . $li . substr( $items, $pos );
 	}
 	public static function season_css() {
-		if ( ! self::season_on() ) { return; }
+		if ( ! self::season_on() && '' === self::bf( 'state' ) ) { return; } /* 1.58.0: хапчето „Черен петък 1 + 1“ ползва същото разположение в менюто */
 		echo '<style id="amm-season-css">.elementskit-navbar-nav li.amm-season{display:inline-flex;align-items:center}.elementskit-navbar-nav li.amm-season>a.amm-season-link{display:inline-flex!important;align-items:center;gap:7px;background:#2b1e19;color:#fff!important;padding:7px 12px!important;border-radius:100px;font-size:12.5px;font-weight:800;line-height:1!important;margin:0 4px;white-space:nowrap;height:auto!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link:hover{background:#3d2a22;color:#fff!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-style:normal;background:#ef6b4d;color:#fff;border-radius:100px;padding:3px 7px;font-size:11px;font-weight:900}@media (min-width:1025px){.elementor-widget-ekit-nav-menu.elementor-widget__width-initial{width:auto!important;max-width:none!important}.ekit-wid-con .elementskit-navbar-nav{flex-wrap:nowrap!important;white-space:nowrap;padding-left:36px}.ekit-wid-con .elementskit-navbar-nav>li{flex:0 0 auto}.elementor-widget-ekit-nav-menu,.elementor-widget-ekit-nav-menu .elementor-widget-container,.elementskit-menu-container{overflow:visible!important}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:10px!important;padding-right:10px!important}.elementskit-navbar-nav>li:first-child>a.ekit-menu-nav-link{padding-left:0!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{margin:0 0 0 2px}}
 @media (min-width:1025px){#site-header .elementor-widget-ekit-nav-menu{width:auto!important;max-width:100%!important}}
 @media (min-width:1025px) and (max-width:1600px){#site-header .elementor-widget-ekit-nav-menu>.elementor-widget-container{padding-left:0!important;padding-right:0!important}.ekit-wid-con .elementskit-navbar-nav{padding-left:0}.elementskit-navbar-nav>li>a.ekit-menu-nav-link{padding-left:6px!important;padding-right:6px!important;font-size:13px!important}.elementskit-navbar-nav li.amm-season>a.amm-season-link{font-size:11.5px!important;padding:6px 10px!important;gap:5px;margin:0 2px}.elementskit-navbar-nav li.amm-season>a.amm-season-link i{font-size:10px;padding:3px 6px}}
@@ -192,12 +196,14 @@ final class Mega_Menu {
 			. '<div class="amm-grid"><div class="amm-t amm-gt"><b class="amm-title">Всички продукти</b><span class="amm-cnt">' . self::plural( $counts['all'] ) . '</span><span class="amm-pager" hidden><button type="button" class="amm-pg amm-prev" aria-label="Предишни продукти">‹</button><span class="amm-pgn">1 / 1</span><button type="button" class="amm-pg amm-next" aria-label="Следващи продукти">›</button></span></div><div class="amm-cards all' . ( count( $P ) > 10 ? ' six' : '' ) . '">' . $cards . '</div>'
 			. '<div class="amm-foot"><a href="' . $L['shop'] . '">Всички продукти</a><a href="' . $L['quiz'] . '">Как да избера</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . $L['about'] . '">За ansa</a></div></div>'
 			. '<div class="amm-aside">'
+			. self::bf( 'menu_promo_html' ) /* 1.58.0: докато тече публичният Черен петък, картата на Сезона е скрита (body.abf-on) и се вижда тази */
 			. '<a class="amm-promo" href="' . esc_url( Cart::promo_url() ) . '"><span class="amm-ey">Сезонът на ANSA · нашият Черен петък</span><strong>До −40% + козметичен сет за 1 €</strong><span class="amm-p">Отстъпката расте с всяка опаковка. 5+ опаковки = −40%, сетът и книгата с рецепти.</span><span class="amm-cta">Избери продуктите →</span></a>'
 			. '<a class="amm-quiz" href="' . $L['quiz'] . '"><span class="amm-qic">🧭</span><b>Не знаеш откъде да започнеш?</b><small>Няколко въпроса, 1 минута, и ти казваме кой продукт е за теб.</small><span>Започни теста →</span></a>'
 			. '<ul class="amm-trust"><li>💗 15 300+ доволни жени</li><li>🌿 Направено в България</li><li>🚚 Доставка за 1–2 работни дни</li><li>💳 С карта или наложен платеж</li></ul>'
 			. '</div>'
 			. '<div class="amm-mobile">'
 			. '<form class="amm-msearch" role="search" method="get" action="' . esc_url( home_url( '/' ) ) . '"><input type="search" name="s" placeholder="Търси продукт…" autocomplete="off" aria-label="Търси продукт"><input type="hidden" name="post_type" value="product"><button type="submit" aria-label="Търси">🔍</button></form>'
+			. self::bf( 'menu_mpromo_html' )
 			. ( self::season_on() ? '<a class="amm-mpromo" href="' . esc_url( Cart::promo_url() ) . '"><span><b>Сезонът на ANSA · до −' . self::season_pct() . '%</b><small>+ козметичен сет за 1 € при 5+ опаковки</small></span><em>Започни →</em></a>' : '' )
 			. '<nav class="amm-mnav" aria-label="Меню"><a href="' . esc_url( home_url( '/' ) ) . '">Начало</a><a href="' . $L['reviews'] . '">Отзиви</a><a href="' . esc_url( home_url( '/ansa-blog/' ) ) . '">Полезно</a><a href="' . $L['about'] . '">За ansa</a><a href="' . esc_url( home_url( '/my-account/' ) ) . '">Вход</a></nav>'
 			. '<div class="amm-mt"><span>Продукти по нужда</span><a href="' . $L['shop'] . '">Всички →</a></div>'
