@@ -2,7 +2,7 @@
 // Сезонът отстъпва, броячите вървят, лентата за продукта е пред опциите, лепкавата лента е само на телефон; след края (страница от кеша)
 // всичко от Черния петък изчезва и Сезонът се връща; „заредена“ страница го показва сама в началото.
 // php tests/harness/sitewide-page.php on > /tmp/sw-on.html; php tests/harness/sitewide-page.php armed > /tmp/sw-armed.html
-// node tests/harness/sitewide-check.js /tmp/sw-on.html /tmp/sw-armed.html [shots-dir]
+// node tests/harness/sitewide-check.js /tmp/sw-on.html /tmp/sw-armed.html [shots-dir] [/tmp/sw-nohost.html]
 const { chromium } = require('playwright'); const path = require('path');
 (async () => {
   const on = 'file://' + path.resolve(process.argv[2]); const armed = 'file://' + path.resolve(process.argv[3]); const shots = process.argv[4] || ''; const fails = []; let n = 0;
@@ -60,6 +60,10 @@ const { chromium } = require('playwright'); const path = require('path');
     ok(`${tag}: без JS грешки`, errs.length === 0, errs.join(' | '));
     await page.close();
   }
+  /* 1.58.1: хедър без въртележка (като чекаута) → лентата не се слага никъде */
+  if (process.argv[5]) { const page = await browser.newPage({ viewport: { width: 390, height: 760 } }); await page.clock.install({ time: T('2026-11-26T11:59:30') }); await page.goto('file://' + path.resolve(process.argv[5])); await page.waitForTimeout(150); const s = await st(page);
+    const hdr = await page.evaluate(() => document.querySelector('#site-header').innerText.replace(/\s+/g, ' ').trim());
+    ok('хедър без въртележка: няма лента, хедърът е непипнат', s.bars === 0 && s.visBars === 0 && hdr.indexOf('ЧЕРЕН') < 0, { bars: s.bars, hdr }); await page.close(); }
   await browser.close();
   if (fails.length) { console.log('ГРЕШКИ:\n- ' + fails.join('\n- ')); process.exit(1); } console.log('OK ' + n + ' проверки');
 })();

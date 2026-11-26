@@ -88,6 +88,18 @@ $ok( 'CSS: без body.abf-on нищо от Черния петък не се в
 $ok( 'CSS: Сезонът се скрива в менюто, мега менюто, мобилното меню и магазина', false !== strpos( $css, 'body.abf-on li.amm-season:not(.abf-li),body.abf-on a.amm-promo:not(.abf-promo),body.abf-on a.amm-mpromo:not(.abf-promo),body.abf-on a.as-season:not(.abf-shop){display:none!important}' ) );
 $ok( 'CSS: без </style> и без незатворени скоби', false === stripos( $css, '</style' ) && substr_count( $css, '{' ) === substr_count( $css, '}' ), substr_count( $css, '{' ) . '/' . substr_count( $css, '}' ) );
 
+/* ── 1.58.1: страниците за плащане — нищо от Черния петък (лентата се качваше върху хедъра на чекаута) ── */
+$_SERVER['REQUEST_URI'] = '/checkout/?x=1';
+$ok( 'чекаут: тихо — body без abf-on', Sitewide::quiet() && ! in_array( 'abf-on', Sitewide::body_class( array() ), true ) );
+ob_start(); Sitewide::footer(); $o = ob_get_clean(); $ok( 'чекаут: подът не печата лента, лепкава лента и скрипт', '' === $o, $o );
+ob_start(); Sitewide::head(); $o = ob_get_clean(); $ok( 'чекаут: CSS-ът остава (той крие .abf-only без класа на body)', false !== strpos( $o, 'body:not(.abf-on) .abf-only{display:none!important}' ) );
+$_SERVER['REQUEST_URI'] = '/checkout/order-received/123/'; $ok( '„благодарим“ също е тихо', Sitewide::quiet() );
+$_SERVER['REQUEST_URI'] = '/shop/'; Sitewide::reset();
+$ok( 'магазинът не е тих', ! Sitewide::quiet() && in_array( 'abf-on', Sitewide::body_class( array() ), true ) );
+ob_start(); Sitewide::footer(); $o = ob_get_clean(); $ok( 'магазинът: подът печата', false !== strpos( $o, 'abf-bar-t' ) );
+$ok( 'скриптът слага лентата само на мястото на въртележката (без резервно място в хедъра)', false === strpos( Sitewide::footer_html(), 'abf-barfree' ) && false === strpos( Sitewide::footer_html(), '#site-header' ) );
+unset( $_SERVER['REQUEST_URI'] );
+
 /* ── „заредено“: в страницата, но без класа на body ── */
 $c = bf_cfg( array(), '' ); Sitewide::reset(); add_filter( 'ansa_promo_bf_now', function () use ( $ts ) { return $ts( '2026-11-24 12:00' ); } );
 $ok( 'заредено: парчетата са в страницата', 'armed' === Sitewide::state() && '' !== Sitewide::menu_promo_html() && false !== strpos( Sitewide::nav_item( $menu, null ), 'abf-li' ) );

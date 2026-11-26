@@ -115,7 +115,14 @@ final class Sitewide {
 	}
 
 	/* ── изходът ── */
-	public static function body_class( $c ) { if ( 'on' === self::state() && ! self::skip() ) { $c[] = 'abf-on'; } return $c; }
+	public static function body_class( $c ) { if ( 'on' === self::state() && ! self::skip() && ! self::quiet() ) { $c[] = 'abf-on'; } return $c; }
+	/** 1.58.1 (видяно на живо: лентата се качваше върху хедъра на чекаута — той е друг шаблон, без въртележка): на страниците за плащане
+	 *  (чекаут, плащане на поръчка, „благодарим“) няма нищо от Черния петък — без класа на body и без скрипта всичко .abf-only стои скрито, Сезонът е както винаги. */
+	public static function quiet() {
+		try { if ( function_exists( 'is_checkout' ) && is_checkout() ) { return true; } } catch ( \Throwable $e ) {}
+		$path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+		return (bool) apply_filters( 'ansa_promo_bf_sitewide_quiet', (bool) preg_match( '#^(checkout|porachka)(/|$)#', $path ) );
+	}
 
 	/** Хапчето „Черен петък 1 + 1“ — на мястото на хапчето на Сезона (след „Продукти“, преди елемент 15391), само в главното меню. */
 	public static function nav_item( $items, $args ) {
@@ -151,7 +158,7 @@ final class Sitewide {
 	}
 
 	public static function footer() {
-		if ( self::$printed || '' === self::state() || self::skip() ) { return; }
+		if ( self::$printed || '' === self::state() || self::skip() || self::quiet() ) { return; }
 		self::$printed = true;
 		echo self::footer_html( self::pdp_key(), self::sticky_allowed() );
 	}
@@ -186,10 +193,9 @@ final class Sitewide {
 			. 'if(k==="mini")return t.d>0?t.d+"д "+p2(t.h)+"ч":p2(t.h)+"ч "+p2(t.m)+"м";'
 			. 'if(k==="short")return t.d>0?t.d+" "+dn(t.d)+" "+p2(t.h)+" ч":p2(t.h)+" ч "+p2(t.m)+" мин";'
 			. 'return(t.d>0?t.d+" "+dn(t.d)+" ":"")+p2(t.h)+" ч "+p2(t.m)+" мин"}'
-			/* лентата: на мястото на въртележката в хедъра (Elementor „slides“); без такава — най-горе в хедъра */
+			/* лентата: на мястото на въртележката в хедъра (Elementor „slides“) */
 			. 'function place(){var t=d.getElementById("abf-bar-t");if(t&&!d.querySelector(".abf-bar")){var w=d.querySelectorAll(".elementor-location-header .elementor-widget-slides"),i,h;'
-			. 'if(w.length){for(i=0;i<w.length;i++){h=w[i].parentNode;h.classList.add("abf-barhost");h.appendChild(t.content.firstChild.cloneNode(true))}}'
-			. 'else{h=d.querySelector("#site-header")||d.querySelector("header");if(h){h.insertBefore(t.content.firstChild.cloneNode(true),h.firstChild);h.classList.add("abf-barfree")}}}'
+			. 'for(i=0;i<w.length;i++){h=w[i].parentNode;h.classList.add("abf-barhost");h.appendChild(t.content.firstChild.cloneNode(true))}}' /* 1.58.1: само там; хедър без въртележка (чекаутът) остава без лента */
 			/* продуктовата страница: преди картата с опциите за покупка (първият висок блок след заглавието) */
 			. 'var p=d.querySelector(".abf-pdp:not(.abf-placed)");if(p){var ti=d.querySelector(".elementor-widget-woocommerce-product-title")||d.querySelector(".product_title"),a=null,n;'
 			. 'if(ti){n=ti;a=n;for(var x=n.nextElementSibling,c=0;x&&c<8;x=x.nextElementSibling,c++){if(x.offsetHeight>=300){break}a=x}a.parentNode.insertBefore(p,a.nextSibling);p.classList.add("abf-placed")}}'
