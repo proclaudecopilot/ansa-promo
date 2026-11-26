@@ -129,6 +129,7 @@ final class Cart {
 			'pay' => sanitize_key( (string) ( $_POST['pay'] ?? 'card' ) ), 'email' => sanitize_email( (string) wp_unslash( $_POST['email'] ?? '' ) ),
 			'variant' => sanitize_key( (string) ( $_POST['variant'] ?? '' ) ), 'utm' => sanitize_key( (string) ( $_POST['utm'] ?? '' ) ), 'lead' => (int) ( $_POST['lead'] ?? 0 ),
 			'sid' => Insights::request_sid( (string) ( $_POST['sid'] ?? '' ) ), 'ref' => (string) wp_unslash( $_POST['ref'] ?? '' ), 'affgift' => sanitize_key( (string) ( $_POST['affgift'] ?? '' ) ),
+			'lucky' => ! empty( $_POST['lucky'] ), /* 1.58.2: полето го нямаше тук — bf.js праща lucky=1 след „Вземи подаръка“, perform_add го чете, а ajax_add не го предаваше → маската от „Ти си късметлия“ не влизаше в НИТО ЕДНА количка от 1.46.0 насам (клиенти: „добавя се и после я няма в поръчката“) */
 		) );
 		if ( empty( $r['ok'] ) ) { wp_send_json_error( $r ); }
 		wp_send_json_success( $r );
@@ -197,7 +198,7 @@ final class Cart {
 		try { Insights::hit( 'add', 'bf', (string) $ctx['variant'] ); } catch ( \Throwable $e ) {}
 		do_action( 'ansa_promo_bf_added', $group, $ctx, $cfg );
 		do_action( 'ansa_promo_added', $group, 'bf:' . $mode, $ctx, $cfg ); /* 1.45.4: хукът на Сезона → Pixel CAPI Pro праща AddToCart с реалната количка */
-		$sv = self::savings(); return array( 'ok' => true, 'group' => $group, 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url(), 'savings' => $sv );
+		$sv = self::savings(); $gl = self::group(); return array( 'ok' => true, 'group' => $group, 'total' => WC()->cart->get_total( 'edit' ), 'checkoutUrl' => self::checkout_url(), 'savings' => $sv, 'lucky' => (bool) ( $gl && $gl['lucky'] ) ); /* 1.58.2: lucky = маската наистина е в количката */
 	}
 
 	/* ═══ ЧУЖДИ РЕДОВЕ / FK REWARDS ═══ */
