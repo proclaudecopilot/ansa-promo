@@ -8,14 +8,15 @@
 require __DIR__ . '/wcfake.php';
 require __DIR__ . '/bf-boot.php';
 if ( ! function_exists( 'wp_unschedule_event' ) ) { function wp_unschedule_event() { return true; } }
+if ( ! function_exists( 'wp_parse_url' ) ) { function wp_parse_url( $u, $c = -1 ) { return parse_url( $u, $c ); } }
 use AnsaPromo\BF\Sitewide;
-$state = ( $argv[1] ?? 'on' ) === 'armed' ? 'armed' : 'on';
+$state = ( $argv[1] ?? 'on' ) === 'armed' ? 'armed' : 'on'; $nohost = 'nohost' === ( $argv[1] ?? '' ); /* nohost: хедър без въртележка (като чекаута) */
 $GLOBALS['home'] = 'https://www.ansa.bg'; bf_cfg( array(), '' ); Sitewide::reset();
 add_filter( 'ansa_promo_bf_sitewide_state', function () use ( $state ) { return $state; } );
 
 $menu = '<li id="menu-item-15392" class="menu-item nav-item"><a class="ekit-menu-nav-link" href="#">Продукти</a></li><li class="menu-item nav-item"><a class="ekit-menu-nav-link" href="#">Отзиви</a></li><li class="menu-item nav-item"><a class="ekit-menu-nav-link" href="#">Начало</a></li>';
 $menu = Sitewide::nav_item( $menu, null ) . '<li class="menu-item nav-item amm-season"><a href="#" class="ekit-menu-nav-link amm-season-link"><span>Сезонът на ANSA</span><i>−40%</i></a></li>';
-$slides = '<div class="elementor-element elementor-widget elementor-widget-slides"><div class="swiper">Над 15 300 доволни жени</div></div>';
+$slides = $nohost ? '<b>лого</b>' : '<div class="elementor-element elementor-widget elementor-widget-slides"><div class="swiper">Над 15 300 доволни жени</div></div>';
 $cards = '';
 foreach ( array( 101 => 'Daily Greens', 103 => 'Sakura SkinTonic', 201 => 'KeraTonica', 900 => 'Редовен продукт' ) as $id => $name ) { $cards .= '<a class="as-card" href="#"><span class="as-pic" data-id="' . $id . '"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">' . Sitewide::card_badge_html( $id ) . '</span><b>' . $name . '</b></a>'; }
 
