@@ -68,7 +68,7 @@ final class Config {
 			$row( 'red',      'prod002', 3875,  'Red Routine',       'плодова добавка за сън',       'Сън',     array( 'fav' => true ) ),
 			$row( 'meno',     'MENO',   22307,  'MenoStop',          'дневна и нощна капсула',       'За жени' ),
 			$row( 'utera',    '',       58069,  'Utera+',            'репродуктивна система и ПМС',  'За жени' ),
-			$row( 'thyro',    'prod003', 1298,  'ThyroZen',          'щитовидна жлеза',              'Тяло',    array( 'gift_only' => true ) ), /* 1.55.6: само подарък (човекът: основните са greens, berber, sakura, red, meno, utera) */
+			$row( 'thyro',    'prod003', 1298,  'ThyroZen',          'щитовидна жлеза',              'Тяло' ), /* 1.58.2: пак основен (човекът, 27.11: „Thyrozen липсва при продуктите, добави го … да може да се избира като продукт, срещу който да получиш подарък“); 1.55.6 го беше направил само подарък */
 			$row( 'ashwa',    '',       3796,   'Ашваганда',         'стрес и спокойствие',          'Сън',     array( 'gift_only' => true ) ),
 			$row( 'kera',     '',       106954, 'KeraTonica',        'коса, мигли и вежди',          'Кожа',    array( 'gift_only' => true, 'is_new' => true ) ),
 			$row( 'alivia',   '',       106944, 'Alivia',            'скованост, дискомфорт',        'Тяло',    array( 'gift_only' => true, 'is_new' => true ) ),
@@ -157,7 +157,26 @@ final class Config {
 	/* ── 1.55.6 (човекът, по време на кампанията: „Може да си купиш ашваганда, alivia, veno, ahcc, kera, thyro за основен продукт, а не би трябвало — те са само
 	   възможни като подаръци. Основните продукти са greens, berber, sakura, red, meno, utera. Махни и YONI — нямаме го!“; админът не е достъпен) ──
 	   Еднократна поправка на публикуваното и черновата: основните продукти са само шестте, всичко друго е gift_only; yoni е изключен. */
-	const MAIN_KEYS = array( 'greens', 'berber', 'sakura', 'red', 'meno', 'utera' );
+	const MAIN_KEYS = array( 'greens', 'berber', 'sakura', 'red', 'meno', 'utera', 'thyro' ); /* 1.58.2: + thyro */
+	/* ── 1.58.2 (човекът, 27.11.2026, по време на публичната фаза: „Thyrozen липсва при продуктите, добави го в Черния петък да може да се избира
+	   като продукт, срещу който да получиш подарък“) ── еднократно: ThyroZen вече се КУПУВА (не е „само подарък“) — в публикуваното и в черновата.
+	   Остава и подарък, както всеки основен продукт. Включен/изключен не се пипа: ако е изключен от настройките, остава изключен. */
+	const OPT_MIGRATE_1582 = 'ansa_promo_bf_migrate_1582';
+	public static function make_main( $cfg, $key ) {
+		$n = 0; if ( ! is_array( $cfg ) || ! is_array( $cfg['products'] ?? null ) ) { return array( $cfg, 0 ); }
+		foreach ( $cfg['products'] as $i => $p ) { if ( $key === (string) ( $p['key'] ?? '' ) && ! empty( $p['gift_only'] ) ) { $cfg['products'][ $i ]['gift_only'] = false; $n++; } }
+		return array( $cfg, $n );
+	}
+	public static function maybe_migrate_1582() {
+		if ( get_option( self::OPT_MIGRATE_1582 ) ) { return null; }
+		$s = self::read_store(); $r = array( 'published' => 0, 'draft' => 0 ); $old = self::runtime_key();
+		foreach ( array( 'published', 'draft' ) as $w ) { if ( is_array( $s[ $w ] ?? null ) ) { list( $s[ $w ], $n ) = self::make_main( $s[ $w ], 'thyro' ); $r[ $w ] = $n; } }
+		if ( $r['published'] || $r['draft'] ) {
+			if ( $r['published'] ) { $s['version'] = (int) ( $s['version'] ?? 0 ) + 1; } self::write_store( $s );
+			if ( function_exists( 'delete_transient' ) ) { try { delete_transient( $old ); delete_transient( self::runtime_key() ); } catch ( \Throwable $e ) {} } /* продуктите на страницата се четат наново */
+		}
+		update_option( self::OPT_MIGRATE_1582, array( 'at' => current_time( 'mysql' ) ) + $r, false ); return $r;
+	}
 	const OPT_MIGRATE_1556 = 'ansa_promo_bf_migrate_1556';
 	public static function fix_products( $cfg ) {
 		$n = 0; if ( ! is_array( $cfg ) || ! is_array( $cfg['products'] ?? null ) ) { return array( $cfg, 0 ); }
